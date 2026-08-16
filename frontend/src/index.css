@@ -1,0 +1,384 @@
+/* Fonts are loaded from index.html (preconnect + <link>). A CSS @import here
+   would block first paint on a second network round trip to fonts.googleapis.com. */
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 222.2 84% 4.9%;
+    --foreground: 210 40% 98%;
+
+    --card: 222.2 84% 4.9%;
+    --card-foreground: 210 40% 98%;
+
+    --popover: 222.2 84% 4.9%;
+    --popover-foreground: 210 40% 98%;
+
+    --primary: 216 100% 50%;
+    --primary-foreground: 210 40% 98%;
+
+    --secondary: 217.2 32.6% 17.5%;
+    --secondary-foreground: 210 40% 98%;
+
+    --muted: 217.2 32.6% 17.5%;
+    --muted-foreground: 215 20.2% 65.1%;
+
+    --accent: 217.2 32.6% 17.5%;
+    --accent-foreground: 210 40% 98%;
+
+    --destructive: 0 62.8% 30.6%;
+    --destructive-foreground: 210 40% 98%;
+
+    --border: 217.2 32.6% 17.5%;
+    --input: 217.2 32.6% 17.5%;
+    --ring: 216 100% 50%;
+
+    --radius: 0.5rem;
+
+    /* Certificate Design Tokens - Exact Reference Colors */
+    --cert-primary: #0066CC;
+    --cert-text: #000000;
+    --cert-bg: #FFFFFF;
+  }
+  
+  .dark {
+    --background: 222.2 84% 4.9%;
+    --foreground: 210 40% 98%;
+
+    --card: 222.2 84% 4.9%;
+    --card-foreground: 210 40% 98%;
+
+    --popover: 222.2 84% 4.9%;
+    --popover-foreground: 210 40% 98%;
+
+    --primary: 216 100% 50%;
+    --primary-foreground: 210 40% 98%;
+
+    --secondary: 217.2 32.6% 17.5%;
+    --secondary-foreground: 210 40% 98%;
+
+    --muted: 217.2 32.6% 17.5%;
+    --muted-foreground: 215 20.2% 65.1%;
+
+    --accent: 217.2 32.6% 17.5%;
+    --accent-foreground: 210 40% 98%;
+
+    --destructive: 0 62.8% 30.6%;
+    --destructive-foreground: 210 40% 98%;
+
+    --border: 217.2 32.6% 17.5%;
+    --input: 217.2 32.6% 17.5%;
+    --ring: 216 100% 50%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground font-sans antialiased selection:bg-blue-500/30 selection:text-blue-200;
+    font-feature-settings: "rlig" 1, "calt" 1;
+  }
+  h1, h2, h3, h4, h5, h6 {
+    @apply tracking-tight;
+  }
+}
+
+/* Professional Scrollbar */
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+::-webkit-scrollbar-track {
+  background: #0f172a;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #334155; 
+  border-radius: 5px;
+  border: 2px solid #0f172a;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #475569; 
+}
+
+/* Utility Classes for Glassmorphism */
+.glass-panel {
+  @apply bg-slate-900/60 backdrop-blur-md border border-slate-800;
+}
+
+.glass-card {
+  @apply bg-slate-950/50 backdrop-blur-sm border border-white/5 transition-all duration-300 hover:border-white/10 hover:bg-slate-900/60;
+}
+
+/* === CERTIFICATE UTILITY CLASSES === */
+
+/* Certificate Color Utilities */
+.text-cert-primary {
+  color: var(--cert-primary);
+}
+
+.bg-cert-primary {
+  background-color: var(--cert-primary);
+}
+
+.border-cert-primary {
+  border-color: var(--cert-primary);
+}
+
+.text-cert-text {
+  color: var(--cert-text);
+}
+
+.bg-cert-text {
+  background-color: var(--cert-text);
+}
+
+.bg-cert-bg {
+  background-color: var(--cert-bg);
+}
+
+/* Certificate Container */
+.cert-container {
+  background: var(--cert-bg);
+  color: var(--cert-text);
+  position: relative;
+  overflow: hidden;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+/* Certificate Typography - Matching Reference Exactly */
+.cert-header-logo {
+  font-family: Georgia, 'Times New Roman', serif;
+  font-style: italic;
+  font-weight: bold;
+  font-size: 16pt;
+  line-height: 1;
+  color: var(--cert-primary);
+}
+
+.cert-header-tagline {
+  font-family: Georgia, 'Times New Roman', serif;
+  font-style: normal;
+  font-weight: normal;
+  font-size: 9pt;
+  line-height: 1.2;
+  color: var(--cert-primary);
+  margin-top: 2mm;
+}
+
+.cert-title {
+  font-family: Georgia, 'Times New Roman', serif;
+  font-style: italic;
+  font-weight: bold;
+  font-size: 28pt;
+  line-height: 1.2;
+  color: var(--cert-primary);
+}
+
+.cert-certify-text {
+  font-family: Georgia, 'Times New Roman', serif;
+  font-style: italic;
+  font-weight: normal;
+  font-size: 13pt;
+  line-height: 1;
+  color: var(--cert-text);
+}
+
+.cert-student-name {
+  font-family: Georgia, 'Times New Roman', serif;
+  font-style: italic;
+  font-weight: bold;
+  font-size: 24pt;
+  line-height: 1;
+  color: var(--cert-primary);
+}
+
+.cert-body {
+  font-family: Georgia, 'Times New Roman', serif;
+  font-style: italic;
+  font-weight: normal;
+  font-size: 12pt;
+  line-height: 1.5;
+  color: var(--cert-text);
+}
+
+.cert-signature {
+  font-family: Georgia, 'Times New Roman', serif;
+  font-style: normal;
+  font-weight: normal;
+  font-size: 11pt;
+  line-height: 1;
+  color: var(--cert-text);
+}
+
+.cert-number {
+  font-family: Georgia, 'Times New Roman', serif;
+  font-style: normal;
+  font-weight: normal;
+  font-size: 11pt;
+  line-height: 1;
+  color: var(--cert-text);
+}
+
+/* Print Styles for A4 Certificates — certificate page only */
+@media print {
+  @page { 
+    size: auto;
+    margin: 0;
+  }
+  
+  html, body { 
+    background: white !important; 
+    color: black !important; 
+    margin: 0 !important;
+    padding: 0 !important;
+    width: 100% !important;
+    height: 100% !important;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+  
+  .no-print, 
+  nav, 
+  header, 
+  aside, 
+  .sidebar, 
+  .actions, 
+  button,
+  .print-hide,
+  [data-radix-dialog-overlay],
+  [role="dialog"] > *:not(:has(#printable-certificate)):not(:has(#printable-transcript)):not(:has(#printable-invoice)) {
+    display: none !important;
+  }
+
+  /* Hide app chrome; show only the active printable document sheet */
+  body * {
+    visibility: hidden !important;
+  }
+
+  #printable-certificate,
+  #printable-certificate *,
+  #printable-transcript,
+  #printable-transcript *,
+  #printable-invoice,
+  #printable-invoice * {
+    visibility: visible !important;
+  }
+
+  #printable-certificate,
+  #printable-transcript,
+  #printable-invoice {
+    position: fixed !important;
+    inset: 0 !important;
+    width: 210mm !important;
+    max-width: 210mm !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    background: white !important;
+    box-shadow: none !important;
+    border: none !important;
+    border-radius: 0 !important;
+    overflow: visible !important;
+    z-index: 99999 !important;
+  }
+
+  #printable-certificate {
+    height: 297mm !important;
+    max-height: 297mm !important;
+    overflow: hidden !important;
+  }
+
+  #printable-certificate > * {
+    width: 100% !important;
+    height: 100% !important;
+    max-width: none !important;
+    border: none !important;
+    border-radius: 0 !important;
+    box-shadow: none !important;
+  }
+
+  #printable-transcript,
+  #printable-invoice {
+    height: auto !important;
+    max-height: none !important;
+  }
+
+  #transcript-page-1,
+  #transcript-page-2 {
+    box-shadow: none !important;
+    page-break-after: always;
+  }
+  
+  .print-only { 
+    display: block !important; 
+  }
+  
+  .cert-container,
+  .cert-print-sheet {
+    border: none !important;
+    background: white !important;
+    box-shadow: none !important;
+    page-break-inside: avoid;
+    width: 210mm !important;
+    height: 297mm !important;
+    max-width: 210mm !important;
+    max-height: 297mm !important;
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+  
+  .bg-cert-primary {
+    background-color: var(--cert-primary) !important;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+  
+  .text-cert-primary {
+    color: var(--cert-primary) !important;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+  
+  .border-cert-text {
+    border-color: var(--cert-text) !important;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+  
+  * { 
+    text-shadow: none !important; 
+  }
+}
+
+/* Responsive Certificate Preview */
+@media (max-width: 768px) {
+  .cert-container {
+    max-width: 100%;
+  }
+  
+  .cert-header-logo {
+    font-size: 12pt;
+  }
+  
+  .cert-header-tagline {
+    font-size: 7pt;
+  }
+  
+  .cert-title {
+    font-size: 20pt;
+  }
+  
+  .cert-student-name {
+    font-size: 18pt;
+  }
+  
+  .cert-body {
+    font-size: 10pt;
+  }
+}

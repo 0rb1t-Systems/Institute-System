@@ -1,0 +1,38 @@
+# Minimal Supabase config for CLI deploys (functions + secrets)
+project_id = "jtfgfrmpkbglbxtdfnnk"
+
+[api]
+enabled = true
+
+[functions.create-user]
+verify_jwt = true
+
+[functions.delete-user]
+verify_jwt = true
+
+[functions.update-user]
+verify_jwt = true
+
+[functions.waafipay-charge]
+verify_jwt = true
+
+[functions.provision-tenant]
+verify_jwt = true
+
+[functions.create-tenant-admin]
+verify_jwt = true
+
+[functions.delete-tenant]
+verify_jwt = true
+
+[functions.seed-super-admin]
+verify_jwt = false
+
+[functions.approve-registration-inquiry]
+verify_jwt = true
+
+[functions.public-register-student]
+verify_jwt = false
+
+[functions.public-provision-tenant]
+verify_jwt = false

@@ -1,0 +1,5 @@
+{
+  "count": 2001,
+  "updated": "2026-08-06",
+  "note": "Baseline for npm run typecheck:full (tsconfig.strict.json). Auto-lowers when debt shrinks; fails if count rises."
+}

@@ -1,0 +1,48 @@
+# Dependencies & build
+node_modules/
+frontend/node_modules/
+frontend/dist/
+dist/
+build/
+.vite/
+*.tsbuildinfo
+
+# Environment & secrets (keep *.example)
+.env
+.env.*
+!.env.example
+!**/.env.example
+*.pem
+*.key
+credentials.json
+service-account*.json
+
+# Cursor / local tooling (may contain MCP secrets)
+.cursor/
+
+# Logs & OS
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.DS_Store
+Thumbs.db
+Desktop.ini
+
+# Editor / IDE
+.idea/
+.vscode/*
+!.vscode/extensions.json
+!.vscode/settings.json.example
+
+# Test / coverage / cache
+coverage/
+.nyc_output/
+.cache/
+tmp/
+temp/
+
+
+# Local nested-repo backup (never push)
+frontend/git-history-backup/
+
