@@ -7,7 +7,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Loader2, AlertCircle, LogIn, GraduationCap } from 'lucide-react';
+import { Loader2, AlertCircle, LogIn } from 'lucide-react';
 import { getUserMessage } from '@/lib/mapError';
 import { MESSAGES } from '@/lib/messages';
 
@@ -78,13 +78,13 @@ const LoginPage = () => {
       <Card className="w-full max-w-md bg-slate-900/80 border-slate-800 backdrop-blur-sm shadow-2xl relative z-10">
         <CardHeader className="space-y-2 text-center pb-8">
           <div className="flex justify-center mb-4">
-             <div className="h-12 w-12 rounded-xl bg-indigo-600 flex items-center justify-center shadow-lg shadow-indigo-900/20">
-                <GraduationCap className="h-7 w-7 text-white" />
-             </div>
+             <Link to="/" className="font-display text-2xl font-bold tracking-tight text-white">
+               Tvet<span className="text-teal-300">Flow</span>
+             </Link>
           </div>
-          <CardTitle className="text-2xl font-bold text-white">Portal Login</CardTitle>
+          <CardTitle className="text-2xl font-bold text-white">Sign in</CardTitle>
           <CardDescription className="text-slate-400">
-            Sign in to your institution dashboard
+            Institution admin portal
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -153,8 +153,8 @@ const LoginPage = () => {
              </p>
              <p className="text-sm text-slate-300 text-center">
                 New institution?{' '}
-                <Link to="/create-institution" className="text-indigo-400 hover:text-indigo-300 font-medium">
-                  Create institution
+                <Link to="/create-institution" className="text-teal-400 hover:text-teal-300 font-medium">
+                  Create institution admin
                 </Link>
              </p>
              <p className="text-xs text-slate-500 text-center space-x-3">
