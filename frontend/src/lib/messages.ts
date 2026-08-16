@@ -86,6 +86,16 @@ export const MESSAGES = {
     REGISTRATION_FEE_REQUIRED:
       'You cannot sign in until your registration fee is paid. Please contact your institution office to complete payment, then try again.',
     FORGOT_PASSWORD: 'Please contact your administrator to recover your password.',
+    PLATFORM_ADMIN_ONLY: {
+      title: 'Access denied',
+      description:
+        'Only institution admins can sign in on the TvetFlow platform. Staff, instructors, affiliates, and students must use their institution landing page (/?tenant=your-slug).',
+    },
+    WRONG_INSTITUTION: {
+      title: 'Access denied',
+      description:
+        'This account does not belong to this institution. Sign in from your own institution landing page only.',
+    },
     SIGNUP_FAILED: {
       title: 'Registration failed',
       description: 'We could not create your account. Please try again.',

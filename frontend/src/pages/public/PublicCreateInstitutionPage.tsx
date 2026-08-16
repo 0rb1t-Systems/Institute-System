@@ -7,10 +7,9 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { Alert, AlertDescription } from '@/components/ui/alert'
-import { Loader2, CheckCircle2, ArrowLeft, ArrowRight } from 'lucide-react'
+import { Loader2, ArrowLeft, ArrowRight } from 'lucide-react'
 import { publicProvisionTenant } from '@/lib/publicTenantApi'
 import { isValidEmail } from '@/lib/utils'
-import { useAuth } from '@/contexts/AuthContext'
 import { MESSAGES } from '@/lib/messages'
 import { getUserMessage } from '@/lib/mapError'
 
@@ -44,8 +43,6 @@ const PublicCreateInstitutionPage = () => {
   const [step, setStep] = useState('admin')
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
-  const [success, setSuccess] = useState(null)
-  const { login } = useAuth()
   const navigate = useNavigate()
 
   const setField = (key, value) => {
@@ -98,7 +95,7 @@ const PublicCreateInstitutionPage = () => {
       setError(v)
       return
     }
-    setStep('ready')
+    setStep('institution')
   }
 
   const handleSubmitInstitution = async (e) => {
@@ -129,16 +126,12 @@ const PublicCreateInstitutionPage = () => {
         password: form.password,
       })
 
-      setSuccess(result)
+      const slug = String(result?.institution_slug || form.institution_slug)
+        .trim()
+        .toLowerCase()
 
-      const { user, error: loginError } = await login(
-        form.admin_email.trim().toLowerCase(),
-        form.password,
-      )
-      if (loginError || !user) {
-        return
-      }
-      navigate('/dashboard', { replace: true })
+      // Open the new institution's public landing — users sign in from there to dashboards
+      navigate(`/?tenant=${encodeURIComponent(slug)}`, { replace: true })
     } catch (err) {
       setError(getUserMessage(err, { context: 'PublicCreateInstitution', fallback: MESSAGES.UNEXPECTED }))
     } finally {
@@ -146,45 +139,11 @@ const PublicCreateInstitutionPage = () => {
     }
   }
 
-  if (success) {
-    return (
-      <div className="flex min-h-screen items-center justify-center bg-[#061512] p-4 font-sans text-[#e8f2ef]">
-        <Helmet>
-          <title>Institution created · TvetFlow</title>
-        </Helmet>
-        <div className="w-full max-w-md rounded-xl border border-white/10 bg-[#0a2420]/90 p-6 backdrop-blur">
-          <div className="mb-3 flex items-center gap-2 text-teal-300">
-            <CheckCircle2 className="h-5 w-5" />
-            <h1 className="font-display text-lg font-semibold text-white">Institution created</h1>
-          </div>
-          <p className="text-sm text-[#8fb5aa]">
-            {success.institution_name} is ready. Sign in with your admin email if you were not redirected.
-          </p>
-          <div className="mt-4 grid grid-cols-2 gap-2 text-sm text-[#6f968c]">
-            <span>Slug</span>
-            <span className="font-mono text-[#e8f2ef]">{success.institution_slug}</span>
-            <span>Admin</span>
-            <span className="text-[#e8f2ef]">{success.admin?.email}</span>
-          </div>
-          <Button asChild className="mt-6 w-full bg-teal-500 text-[#04201c] hover:bg-teal-400">
-            <Link to={`/login?tenant=${encodeURIComponent(success.institution_slug || '')}`}>
-              Go to sign in
-            </Link>
-          </Button>
-        </div>
-      </div>
-    )
-  }
-
   return (
     <div className="relative min-h-screen overflow-hidden bg-[#061512] font-sans text-[#e8f2ef]">
       <Helmet>
         <title>
-          {step === 'admin'
-            ? 'Create institution admin · TvetFlow'
-            : step === 'ready'
-              ? 'Create institution · TvetFlow'
-              : 'Institution details · TvetFlow'}
+          {step === 'admin' ? 'Create institution admin · TvetFlow' : 'Create institution · TvetFlow'}
         </title>
       </Helmet>
 
@@ -294,50 +253,6 @@ const PublicCreateInstitutionPage = () => {
             </motion.form>
           )}
 
-          {step === 'ready' && (
-            <motion.div
-              key="ready"
-              className="space-y-6"
-              initial={{ opacity: 0, x: -12 }}
-              animate={{ opacity: 1, x: 0 }}
-              exit={{ opacity: 0, x: 12 }}
-              transition={{ duration: 0.28 }}
-            >
-              <div>
-                <div className="mb-3 inline-flex items-center gap-2 rounded-full border border-teal-500/30 bg-teal-500/10 px-3 py-1 text-xs text-teal-200">
-                  <CheckCircle2 className="h-3.5 w-3.5" />
-                  Admin details ready
-                </div>
-                <h1 className="font-display text-2xl font-bold text-white sm:text-3xl">
-                  Next: create your institution
-                </h1>
-                <p className="mt-2 text-sm leading-relaxed text-[#8fb5aa]">
-                  Signed as <span className="text-[#d7ebe4]">{form.admin_email}</span>. Open the institution form when you are ready.
-                </p>
-              </div>
-
-              <Button
-                type="button"
-                className="h-12 w-full bg-teal-500 text-base font-semibold text-[#04201c] hover:bg-teal-400"
-                onClick={() => {
-                  setError('')
-                  setStep('institution')
-                }}
-              >
-                Create institution
-                <ArrowRight className="ml-2 h-4 w-4" />
-              </Button>
-
-              <button
-                type="button"
-                className="text-sm text-[#6f968c] underline-offset-2 hover:text-[#a8cfc4] hover:underline"
-                onClick={() => setStep('admin')}
-              >
-                Edit admin details
-              </button>
-            </motion.div>
-          )}
-
           {step === 'institution' && (
             <motion.form
               key="institution"
@@ -350,10 +265,10 @@ const PublicCreateInstitutionPage = () => {
             >
               <div>
                 <h1 className="font-display text-2xl font-bold text-white sm:text-3xl">
-                  Institution details
+                  Create your institution
                 </h1>
                 <p className="mt-2 text-sm leading-relaxed text-[#8fb5aa]">
-                  Name, contact, and subdomain for your training center.
+                  Admin: <span className="text-[#d7ebe4]">{form.admin_email}</span> — add your institution details next.
                 </p>
               </div>
 
@@ -424,7 +339,7 @@ const PublicCreateInstitutionPage = () => {
                   variant="outline"
                   className="border-white/15 bg-transparent text-[#c5ddd6] hover:bg-white/5"
                   disabled={saving}
-                  onClick={() => setStep('ready')}
+                  onClick={() => setStep('admin')}
                 >
                   Back
                 </Button>
@@ -439,7 +354,7 @@ const PublicCreateInstitutionPage = () => {
                       Creating…
                     </>
                   ) : (
-                    'Finish & open portal'
+                    'Create institution'
                   )}
                 </Button>
               </div>

@@ -1,24 +1,48 @@
 import React, { useState, useEffect } from 'react';
 import { Helmet } from 'react-helmet';
-import { useNavigate, Link, useLocation } from 'react-router-dom';
+import { useNavigate, Link, useLocation, useSearchParams } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Loader2, AlertCircle, LogIn } from 'lucide-react';
+import { Loader2, AlertCircle, LogIn, GraduationCap, ArrowLeft } from 'lucide-react';
 import { getUserMessage } from '@/lib/mapError';
 import { MESSAGES } from '@/lib/messages';
+import { getPublicInstitutionBySubdomain } from '@/lib/api';
+import {
+  getInstitutionPrimary,
+} from '@/lib/institution';
 
-const LoginPage = () => {
+function dashboardPathForRole(role) {
+  if (role === 'super_admin') return '/super-admin';
+  if (role === 'student') return '/student/dashboard';
+  if (role === 'instructor') return '/instructor/dashboard';
+  if (role === 'affiliate') return '/affiliate';
+  return '/dashboard';
+}
+
+const LoginPage = ({ initialError = '' }) => {
   const [identifier, setIdentifier] = useState('');
   const [password, setPassword] = useState('');
-  const [error, setError] = useState('');
+  const [error, setError] = useState(initialError || '');
   const [isLoading, setIsLoading] = useState(false);
+  const [institution, setInstitution] = useState(null);
+  const [loadingTenant, setLoadingTenant] = useState(false);
   const { login } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
+  const [searchParams] = useSearchParams();
+
+  useEffect(() => {
+    if (initialError) setError(initialError);
+  }, [initialError]);
+
+  const tenantFromQuery =
+    searchParams.get('tenant') || searchParams.get('subdomain') || '';
+  // Platform /login must stay admin-only: ignore default env subdomain when no ?tenant=
+  const tenant = String(tenantFromQuery || '').trim().toLowerCase();
 
   useEffect(() => {
     if (location.state?.tenantSuspended) {
@@ -26,10 +50,36 @@ const LoginPage = () => {
     }
   }, [location.state]);
 
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      if (!tenant) {
+        setInstitution(null);
+        return;
+      }
+      setLoadingTenant(true);
+      try {
+        const inst = await getPublicInstitutionBySubdomain(tenant);
+        if (!cancelled) setInstitution(inst || null);
+      } catch {
+        if (!cancelled) setInstitution(null);
+      } finally {
+        if (!cancelled) setLoadingTenant(false);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [tenant]);
+
+  const primary = getInstitutionPrimary(institution);
+  const isTenantLogin = Boolean(tenant);
+  const tenantHomeHref = tenant ? `/?tenant=${encodeURIComponent(tenant)}` : '/';
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
-    
+
     const trimmedIdentifier = identifier.trim();
     const trimmedPassword = password.trim();
 
@@ -38,25 +88,32 @@ const LoginPage = () => {
       return;
     }
 
+    if (isTenantLogin && !institution?.id) {
+      setError(
+        loadingTenant
+          ? 'Loading institution… please wait.'
+          : 'Institution not found. Open a valid institution link (?tenant=slug).',
+      );
+      return;
+    }
+
     setIsLoading(true);
 
     try {
-      const { user, error: loginError } = await login(trimmedIdentifier, trimmedPassword);
-      
+      const { user, error: loginError } = await login(trimmedIdentifier, trimmedPassword, {
+        platformAdminOnly: !isTenantLogin,
+        ...(isTenantLogin && institution?.id
+          ? { requiredInstitutionId: institution.id }
+          : {}),
+      });
+
       if (loginError || !user) {
-          throw loginError || new Error('AUTH.INVALID_CREDENTIALS');
+        throw loginError || new Error('AUTH.INVALID_CREDENTIALS');
       }
 
       setIdentifier('');
       setPassword('');
-
-      const userRole = user.role;
-      if (userRole === 'super_admin') navigate('/super-admin');
-      else if (userRole === 'student') navigate('/student/dashboard');
-      else if (userRole === 'instructor') navigate('/instructor/dashboard');
-      else if (userRole === 'affiliate') navigate('/affiliate');
-      else navigate('/dashboard');
-      
+      navigate(dashboardPathForRole(user.role), { replace: true });
     } catch (err) {
       setError(getUserMessage(err, { context: 'LoginPage', fallback: MESSAGES.AUTH.INVALID_CREDENTIALS }));
     } finally {
@@ -65,56 +122,105 @@ const LoginPage = () => {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-slate-950 p-4 relative overflow-hidden">
+    <div className="relative flex min-h-screen items-center justify-center overflow-hidden bg-slate-950 p-4">
       <Helmet>
-        <title>Portal Login</title>
+        <title>
+          {institution?.name ? `Sign in · ${institution.name}` : isTenantLogin ? 'Portal Sign in' : 'TvetFlow Sign in'}
+        </title>
       </Helmet>
 
-      <div className="absolute top-0 left-0 w-full h-full overflow-hidden pointer-events-none">
-        <div className="absolute -top-[20%] -left-[10%] w-[50%] h-[50%] rounded-full bg-indigo-500/5 blur-[120px]" />
-        <div className="absolute bottom-[10%] right-[10%] w-[30%] h-[30%] rounded-full bg-blue-500/5 blur-[100px]" />
+      <div className="pointer-events-none absolute inset-0 overflow-hidden" aria-hidden>
+        <div
+          className="absolute -left-[10%] -top-[20%] h-[50%] w-[50%] rounded-full blur-[120px]"
+          style={{ backgroundColor: `${primary}18` }}
+        />
+        <div className="absolute bottom-[10%] right-[10%] h-[30%] w-[30%] rounded-full bg-teal-500/5 blur-[100px]" />
       </div>
 
-      <Card className="w-full max-w-md bg-slate-900/80 border-slate-800 backdrop-blur-sm shadow-2xl relative z-10">
-        <CardHeader className="space-y-2 text-center pb-8">
-          <div className="flex justify-center mb-4">
-             <Link to="/" className="font-display text-2xl font-bold tracking-tight text-white">
-               Tvet<span className="text-teal-300">Flow</span>
-             </Link>
-          </div>
-          <CardTitle className="text-2xl font-bold text-white">Sign in</CardTitle>
-          <CardDescription className="text-slate-400">
-            Institution admin portal
-          </CardDescription>
+      <Card className="relative z-10 w-full max-w-md border-slate-800 bg-slate-900/80 shadow-2xl backdrop-blur-sm">
+        <CardHeader className="space-y-3 pb-6 text-center">
+          {isTenantLogin ? (
+            <div className="flex flex-col items-center gap-3">
+              {loadingTenant ? (
+                <Loader2 className="h-8 w-8 animate-spin text-slate-400" />
+              ) : institution?.logo_url ? (
+                <img
+                  src={institution.logo_url}
+                  alt=""
+                  className="h-12 w-12 rounded-xl bg-white/5 object-contain p-1"
+                />
+              ) : (
+                <div
+                  className="flex h-12 w-12 items-center justify-center rounded-xl"
+                  style={{ backgroundColor: primary }}
+                >
+                  <GraduationCap className="h-6 w-6 text-white" />
+                </div>
+              )}
+              <div>
+                <CardTitle className="text-xl font-bold text-white sm:text-2xl">
+                  {institution?.name || 'Institution portal'}
+                </CardTitle>
+                <CardDescription className="mt-1 text-slate-400">
+                  Sign in to open your dashboard
+                </CardDescription>
+              </div>
+            </div>
+          ) : (
+            <>
+              <Link to="/" className="font-display text-2xl font-bold tracking-tight text-white">
+                Tvet<span className="text-teal-300">Flow</span>
+              </Link>
+              <CardTitle className="text-2xl font-bold text-white">Sign in</CardTitle>
+              <CardDescription className="text-slate-400">
+                Platform access for institution admins
+              </CardDescription>
+            </>
+          )}
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-4">
             {error && (
-              <Alert variant="destructive" className="bg-red-950/50 border-red-900/50 text-red-200">
+              <Alert variant="destructive" className="border-red-900/50 bg-red-950/50 text-red-200">
                 <AlertCircle className="h-4 w-4" />
                 <AlertDescription>{error}</AlertDescription>
               </Alert>
             )}
             <div className="space-y-2">
-              <Label htmlFor="identifier" className="text-slate-200">Email or Student ID</Label>
+              <Label htmlFor="identifier" className="text-slate-200">
+                {isTenantLogin ? 'Email or Student ID' : 'Admin email'}
+              </Label>
               <Input
                 id="identifier"
                 type="text"
-                placeholder="e.g. email@example.com or Student ID"
+                placeholder={
+                  isTenantLogin
+                    ? 'e.g. email@example.com or Student ID'
+                    : 'admin@example.com'
+                }
                 value={identifier}
-                onChange={(e) => { setIdentifier(e.target.value); setError(''); }}
-                className="bg-slate-950 border-slate-700 text-white placeholder:text-slate-500 focus:border-indigo-500 focus:ring-indigo-500/20"
+                onChange={(e) => {
+                  setIdentifier(e.target.value);
+                  setError('');
+                }}
+                className="border-slate-700 bg-slate-950 text-white placeholder:text-slate-500"
+                style={{ ['--tw-ring-color']: primary }}
                 disabled={isLoading}
                 required
               />
             </div>
             <div className="space-y-2">
               <div className="flex items-center justify-between">
-                <Label htmlFor="password" className="text-slate-200">Password</Label>
-                <Link 
-                  to="#" 
-                  className="text-xs text-indigo-400 hover:text-indigo-300"
-                  onClick={(e) => { e.preventDefault(); setError(MESSAGES.AUTH.FORGOT_PASSWORD); }}
+                <Label htmlFor="password" className="text-slate-200">
+                  Password
+                </Label>
+                <Link
+                  to="#"
+                  className="text-xs text-teal-400 hover:text-teal-300"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    setError(MESSAGES.AUTH.FORGOT_PASSWORD);
+                  }}
                 >
                   Forgot Password?
                 </Link>
@@ -122,46 +228,77 @@ const LoginPage = () => {
               <Input
                 id="password"
                 type="password"
-                placeholder="Enter your password (or Student ID if new)"
+                placeholder="Enter your password"
                 value={password}
-                onChange={(e) => { setPassword(e.target.value); setError(''); }}
-                className="bg-slate-950 border-slate-700 text-white placeholder:text-slate-500 focus:border-indigo-500 focus:ring-indigo-500/20"
+                onChange={(e) => {
+                  setPassword(e.target.value);
+                  setError('');
+                }}
+                className="border-slate-700 bg-slate-950 text-white placeholder:text-slate-500"
                 disabled={isLoading}
                 required
               />
             </div>
             <div className="pt-2">
-              <Button 
-                  type="submit" 
-                  className="w-full bg-indigo-600 hover:bg-indigo-700 text-white transition-all" 
-                  disabled={isLoading}
+              <Button
+                type="submit"
+                className={
+                  isTenantLogin
+                    ? 'w-full text-white transition-all hover:opacity-90'
+                    : 'w-full bg-teal-600 text-[#04201c] transition-all hover:bg-teal-500'
+                }
+                style={isTenantLogin ? { backgroundColor: primary } : undefined}
+                disabled={isLoading}
               >
                 {isLoading ? (
                   <>
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Verifying...
                   </>
                 ) : (
-                  <>Sign In <LogIn className="ml-2 h-4 w-4" /></>
+                  <>
+                    Sign In <LogIn className="ml-2 h-4 w-4" />
+                  </>
                 )}
               </Button>
             </div>
           </form>
         </CardContent>
-        <CardFooter className="flex flex-col items-center border-t border-slate-800 pt-6 space-y-3">
-             <p className="text-xs text-slate-400 text-center">
-                Sign in with your institution email and password.
-             </p>
-             <p className="text-sm text-slate-300 text-center">
+        <CardFooter className="flex flex-col items-center space-y-3 border-t border-slate-800 pt-6">
+          {isTenantLogin ? (
+            <>
+              <p className="text-center text-xs text-slate-400">
+                Only {institution?.name || 'this institution'}’s admin, staff, instructor, affiliate, and student accounts can sign in here.
+              </p>
+              <Link
+                to={tenantHomeHref}
+                className="inline-flex items-center text-sm text-teal-400 hover:text-teal-300"
+              >
+                <ArrowLeft className="mr-1 h-4 w-4" />
+                Back to {institution?.name || 'institution'} page
+              </Link>
+            </>
+          ) : (
+            <>
+              <p className="text-center text-xs text-slate-400">
+                Only institution admins can sign in here. Staff, instructors, affiliates, and students must use their institution landing page.
+              </p>
+              <p className="text-center text-sm text-slate-300">
                 New institution?{' '}
-                <Link to="/create-institution" className="text-teal-400 hover:text-teal-300 font-medium">
+                <Link to="/create-institution" className="font-medium text-teal-400 hover:text-teal-300">
                   Create institution admin
                 </Link>
-             </p>
-             <p className="text-xs text-slate-500 text-center space-x-3">
-                <Link to="/privacy" className="text-indigo-400 hover:text-indigo-300">Privacy</Link>
-                <span>·</span>
-                <Link to="/terms" className="text-indigo-400 hover:text-indigo-300">Terms</Link>
-             </p>
+              </p>
+            </>
+          )}
+          <p className="space-x-3 text-center text-xs text-slate-500">
+            <Link to="/privacy" className="hover:text-slate-300">
+              Privacy
+            </Link>
+            <span>·</span>
+            <Link to="/terms" className="hover:text-slate-300">
+              Terms
+            </Link>
+          </p>
         </CardFooter>
       </Card>
     </div>

@@ -1,5 +1,5 @@
 import React, { Suspense, lazy, useEffect } from 'react';
-import { Routes, Route, Navigate, useLocation } from 'react-router-dom';
+import { Routes, Route, Navigate, useLocation, useSearchParams } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import MainLayout from '@/components/layout/MainLayout';
 import { Loader2, AlertCircle } from 'lucide-react';
@@ -82,6 +82,36 @@ const PageLoader = () => (
 );
 
 const Lazy = ({ children }) => <Suspense fallback={<PageLoader />}>{children}</Suspense>;
+
+/** Staff/instructor/affiliate/student must not enter via platform /login (no ?tenant=). */
+const PLATFORM_BLOCKED_ROLES = new Set(['staff', 'instructor', 'affiliate', 'student']);
+
+const PlatformLoginRoute = () => {
+  const { user, logout } = useAuth();
+  const [searchParams] = useSearchParams();
+  const [denyMsg, setDenyMsg] = React.useState('');
+  const tenant = String(searchParams.get('tenant') || searchParams.get('subdomain') || '').trim();
+  const blockedOnPlatform =
+    !!user && !tenant && PLATFORM_BLOCKED_ROLES.has(user.role);
+
+  useEffect(() => {
+    if (!blockedOnPlatform) return;
+    setDenyMsg(
+      'Access denied. Only institution admins can sign in on the platform. Use your institution landing page.',
+    );
+    logout();
+  }, [blockedOnPlatform, logout]);
+
+  if (user && !blockedOnPlatform) {
+    if (user.role === 'super_admin') return <Navigate to="/super-admin" replace />;
+    if (user.role === 'student') return <Navigate to="/student/dashboard" replace />;
+    if (user.role === 'instructor') return <Navigate to="/instructor/dashboard" replace />;
+    if (user.role === 'affiliate') return <Navigate to="/affiliate" replace />;
+    return <Navigate to="/dashboard" replace />;
+  }
+
+  return <LoginPage initialError={denyMsg} />;
+};
 
 const ProtectedRoute = ({ children, roles }) => {
   const { user, institution, initializing, logout } = useAuth();
@@ -185,7 +215,7 @@ const App = () => {
     <ErrorBoundary>
       <Routes>
           <Route path="/" element={<WelcomePage />} />
-          <Route path="/login" element={user ? <Navigate to={getRootRedirect()} replace /> : <LoginPage />} />
+          <Route path="/login" element={<PlatformLoginRoute />} />
           <Route path="/signup" element={user ? <Navigate to={getRootRedirect()} replace /> : <SignupPage />} />
           <Route
             path="/create-institution"

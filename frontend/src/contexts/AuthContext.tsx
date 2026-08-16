@@ -33,6 +33,9 @@ export const AuthProvider = ({ children }) => {
   const userIdRef = useRef(null);
   userIdRef.current = user?.id ?? null;
 
+  /** When true, SIGNED_IN handler must not set user (platform admin gate rejected). */
+  const suppressAuthUserRef = useRef(false);
+
   // De-dupes concurrent buildUser() calls. supabase-js fires INITIAL_SESSION
   // on subscribe while initializeAuth() is already resolving getSession(), so
   // without this the whole 3-request profile boot ran twice on every page load.
@@ -247,7 +250,13 @@ export const AuthProvider = ({ children }) => {
       // If status gate fails (pending/suspended), clear the session.
       if (session?.user && event === 'SIGNED_IN' && initDone.current) {
         try {
+          if (suppressAuthUserRef.current) {
+            return;
+          }
           const nextUser = await buildUserOnce(session.user);
+          if (suppressAuthUserRef.current) {
+            return;
+          }
           if (mounted.current && nextUser) setUser(nextUser);
         } catch (err) {
           logError('AuthContext - onAuthStateChange SIGNED_IN', err);
@@ -284,8 +293,15 @@ export const AuthProvider = ({ children }) => {
   }, [loadUserProfile, finishInit, buildUserOnce]);
 
   const login = useCallback(
-    async (identifier, password) => {
+    // options.platformAdminOnly → reject non-admin on platform /login before setUser
+    // options.requiredInstitutionId → tenant landing: only that institution's users
+    async (identifier, password, options) => {
       setError(null);
+      const platformAdminOnly = !!(options && options.platformAdminOnly);
+      const requiredInstitutionId = options && options.requiredInstitutionId
+        ? String(options.requiredInstitutionId)
+        : '';
+      const gateBeforeSetUser = platformAdminOnly || Boolean(requiredInstitutionId);
       try {
         let emailToUse = identifier;
 
@@ -295,6 +311,10 @@ export const AuthProvider = ({ children }) => {
             throw new Error('AUTH.INVALID_CREDENTIALS');
           }
           emailToUse = resolvedEmail;
+        }
+
+        if (gateBeforeSetUser) {
+          suppressAuthUserRef.current = true;
         }
 
         const { data, error: signErr } = await supabase.auth.signInWithPassword({
@@ -308,6 +328,40 @@ export const AuthProvider = ({ children }) => {
           await supabase.auth.signOut();
           throw new Error('NO_PROFILE');
         }
+
+        // Platform /login: only institution admin or super admin — never set session user for others
+        if (
+          platformAdminOnly &&
+          nextUser.role !== 'admin' &&
+          nextUser.role !== 'super_admin'
+        ) {
+          await supabase.auth.signOut().catch(() => {});
+          if (mounted.current) {
+            setUser(null);
+            setInstitution(null);
+            setError(new Error('AUTH.PLATFORM_ADMIN_ONLY'));
+          }
+          suppressAuthUserRef.current = false;
+          return { user: null, error: new Error('AUTH.PLATFORM_ADMIN_ONLY') };
+        }
+
+        // Tenant landing / ?tenant= login: only users of THIS institution
+        if (
+          requiredInstitutionId &&
+          nextUser.role !== 'super_admin' &&
+          String(nextUser.institution_id || '') !== requiredInstitutionId
+        ) {
+          await supabase.auth.signOut().catch(() => {});
+          if (mounted.current) {
+            setUser(null);
+            setInstitution(null);
+            setError(new Error('AUTH.WRONG_INSTITUTION'));
+          }
+          suppressAuthUserRef.current = false;
+          return { user: null, error: new Error('AUTH.WRONG_INSTITUTION') };
+        }
+
+        suppressAuthUserRef.current = false;
         if (mounted.current) {
           setUser(nextUser);
           setError(null);
@@ -315,6 +369,7 @@ export const AuthProvider = ({ children }) => {
         }
         return { user: nextUser, session: data.session, error: null };
       } catch (err) {
+        suppressAuthUserRef.current = false;
         logError('AuthContext - login', err);
         await supabase.auth.signOut().catch(() => {});
         if (mounted.current) {
