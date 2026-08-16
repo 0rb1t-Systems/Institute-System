@@ -18,9 +18,10 @@ import Logo from '@/components/Logo';
 import { cn } from '@/lib/utils';
 import { notify } from '@/lib/notify';
 import { getNavItemsForRole, resolveActiveNavHref } from '@/components/layout/navConfig';
+import { getTenantLandingPath } from '@/lib/institution';
 
 const Header = () => {
-  const { user, logout } = useAuth();
+  const { user, institution, logout } = useAuth();
   const { refreshData, loading } = useData();
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [sheetOpen, setSheetOpen] = useState(false);
@@ -28,6 +29,13 @@ const Header = () => {
   const location = useLocation();
 
   const navItems = getNavItemsForRole(user?.role);
+
+  const handleLogout = async () => {
+    const path = getTenantLandingPath(institution, user?.role);
+    setSheetOpen(false);
+    await logout();
+    navigate(path, { replace: true });
+  };
   const activeHref = resolveActiveNavHref(location.pathname, navItems);
 
   const handleRefresh = async () => {
@@ -99,11 +107,7 @@ const Header = () => {
             <Button
               variant="ghost"
               className="w-full justify-start gap-3 text-sm text-red-400 hover:text-red-300 hover:bg-red-950/40"
-              onClick={async () => {
-                setSheetOpen(false);
-                await logout();
-                navigate('/login');
-              }}
+              onClick={handleLogout}
             >
               <LogOut className="h-4 w-4" />
               Sign Out
@@ -162,7 +166,7 @@ const Header = () => {
             </Link>
             <DropdownMenuSeparator className="bg-slate-800" />
             <DropdownMenuItem
-              onClick={logout}
+              onClick={handleLogout}
               className="cursor-pointer text-red-400 hover:text-red-300 hover:bg-red-950/50 focus:bg-red-950/50"
             >
               <LogOut className="mr-2 h-4 w-4" /> Sign out

@@ -173,7 +173,7 @@ const LoginPage = ({ initialError = '' }) => {
               </Link>
               <CardTitle className="text-2xl font-bold text-white">Sign in</CardTitle>
               <CardDescription className="text-slate-400">
-                Platform access for institution admins
+                Admin sign in
               </CardDescription>
             </>
           )}
@@ -267,7 +267,7 @@ const LoginPage = ({ initialError = '' }) => {
           {isTenantLogin ? (
             <>
               <p className="text-center text-xs text-slate-400">
-                Only {institution?.name || 'this institution'}’s admin, staff, instructor, affiliate, and student accounts can sign in here.
+                Only this institution’s accounts can sign in here.
               </p>
               <Link
                 to={tenantHomeHref}
@@ -280,7 +280,7 @@ const LoginPage = ({ initialError = '' }) => {
           ) : (
             <>
               <p className="text-center text-xs text-slate-400">
-                Only institution admins can sign in here. Staff, instructors, affiliates, and students must use their institution landing page.
+                Institution accounts must sign in from their own landing page.
               </p>
               <p className="text-center text-sm text-slate-300">
                 New institution?{' '}

@@ -6,15 +6,17 @@ import { cn } from '@/lib/utils';
 import Logo from '@/components/Logo';
 import { Button } from '@/components/ui/button';
 import { getNavItemsForRole, resolveActiveNavHref } from '@/components/layout/navConfig';
+import { getTenantLandingPath } from '@/lib/institution';
 
 const Sidebar = () => {
-  const { user, logout } = useAuth();
+  const { user, institution, logout } = useAuth();
   const location = useLocation();
   const navigate = useNavigate();
 
   const handleLogout = async () => {
+    const path = getTenantLandingPath(institution, user?.role);
     await logout();
-    navigate('/login');
+    navigate(path, { replace: true });
   };
 
   const NavItem = ({ href, icon: Icon, label, active }) => (

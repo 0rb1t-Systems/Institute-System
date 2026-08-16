@@ -102,6 +102,36 @@ export function getTenantLoginUrl(institution?: InstitutionBrand): string {
   return `${getTenantBaseUrl(institution)}/login`
 }
 
+const LAST_TENANT_KEY = 'tvetflow_last_tenant'
+
+/** Remember active tenant for post-logout return to institution landing. */
+export function rememberTenantSubdomain(subdomain?: string | null): void {
+  if (typeof window === 'undefined') return
+  const s = String(subdomain || '').trim().toLowerCase()
+  if (s) sessionStorage.setItem(LAST_TENANT_KEY, s)
+  else sessionStorage.removeItem(LAST_TENANT_KEY)
+}
+
+export function getRememberedTenantSubdomain(): string {
+  if (typeof window === 'undefined') return ''
+  return String(sessionStorage.getItem(LAST_TENANT_KEY) || '').trim().toLowerCase()
+}
+
+/**
+ * Where to send users after logout.
+ * Institution users → tenant landing; super_admin / unknown → platform /login.
+ */
+export function getTenantLandingPath(
+  institution?: InstitutionBrand,
+  role?: string | null,
+): string {
+  if (role === 'super_admin') return '/login'
+  const subdomain =
+    String(institution?.subdomain || '').trim().toLowerCase() || getRememberedTenantSubdomain()
+  if (!subdomain) return '/login'
+  return `/?tenant=${encodeURIComponent(subdomain)}`
+}
+
 /**
  * Public verification URLs for QR codes.
  * - certificate / verify → document check by verification_code

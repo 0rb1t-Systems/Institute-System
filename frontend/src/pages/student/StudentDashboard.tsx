@@ -11,9 +11,10 @@ import { BookOpen, Calendar, Clock, ArrowRight, Activity, TrendingUp, CheckCircl
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { getAttendanceEnriched } from '@/lib/api';
 import { formatDate } from '@/lib/utils';
+import { getTenantLandingPath } from '@/lib/institution';
 
 const StudentDashboard = () => {
-    const { user, loading: authLoading, logout } = useAuth();
+    const { user, institution, loading: authLoading, logout } = useAuth();
     const { enrollments, classes, results, loading: dataLoading } = useData();
     const navigate = useNavigate();
 
@@ -24,9 +25,9 @@ const StudentDashboard = () => {
 
     useEffect(() => {
         if (!authLoading && !user) {
-            navigate('/login');
+            navigate(getTenantLandingPath(institution), { replace: true });
         }
-    }, [user, authLoading, navigate]);
+    }, [user, authLoading, navigate, institution]);
 
     useEffect(() => {
         if (!studentId) return;
@@ -87,8 +88,9 @@ const StudentDashboard = () => {
     }, [myResults]);
 
     const handleLogout = async () => {
+        const path = getTenantLandingPath(institution, user?.role);
         await logout();
-        navigate('/login');
+        navigate(path, { replace: true });
     };
 
     if (authLoading || dataLoading || loadingAttendance) {

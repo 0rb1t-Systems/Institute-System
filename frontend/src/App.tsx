@@ -5,7 +5,7 @@ import MainLayout from '@/components/layout/MainLayout';
 import { Loader2, AlertCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import ErrorBoundary from '@/components/ui/ErrorBoundary';
-import { isInstitutionSettingsComplete } from '@/lib/institution';
+import { isInstitutionSettingsComplete, getTenantLandingPath } from '@/lib/institution';
 
 // Phase 1 — eager (core shell)
 import LoginPage from '@/pages/LoginPage';
@@ -137,9 +137,10 @@ const ProtectedRoute = ({ children, roles }) => {
   }
 
   if (!user || tenantSuspended) {
+    const landing = getTenantLandingPath(institution, user?.role);
     return (
       <Navigate
-        to="/login"
+        to={landing}
         state={tenantSuspended ? { tenantSuspended: true, from: location } : { from: location }}
         replace
       />
@@ -148,7 +149,7 @@ const ProtectedRoute = ({ children, roles }) => {
 
   // Defense-in-depth: never render app shell for non-approved profiles
   if (user.status !== 'approved') {
-    return <Navigate to="/login" replace />;
+    return <Navigate to={getTenantLandingPath(institution, user.role)} replace />;
   }
 
   if (roles && !roles.includes(user.role)) {
@@ -166,7 +167,14 @@ const ProtectedRoute = ({ children, roles }) => {
           <p className="text-slate-400 mb-6 text-center max-w-md">
             You do not have permission to access this feature. Please contact your administrator if you believe this is a mistake.
           </p>
-          <Button onClick={() => logout()} variant="destructive">
+          <Button
+            onClick={async () => {
+              const path = getTenantLandingPath(institution, user.role);
+              await logout();
+              window.location.assign(path);
+            }}
+            variant="destructive"
+          >
             Sign Out
           </Button>
         </div>

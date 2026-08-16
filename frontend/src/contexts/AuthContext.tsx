@@ -12,6 +12,7 @@ import {
   getInstitutionCurrency,
   getInstitutionCurrencySymbol,
   getRegistrationFeeAmount,
+  rememberTenantSubdomain,
 } from '@/lib/institution';
 
 const AuthContext = createContext<any>(null);
@@ -124,6 +125,9 @@ export const AuthProvider = ({ children }) => {
     if (instResult?.error) logError('AuthContext - loadInstitution', instResult.error);
     const institutionRow = instResult?.data ?? null;
     if (mounted.current) setInstitution(institutionRow);
+    if (institutionRow?.subdomain) {
+      rememberTenantSubdomain(institutionRow.subdomain);
+    }
     setAppCurrency(
       getInstitutionCurrency(institutionRow),
       getInstitutionCurrencySymbol(institutionRow),
@@ -294,7 +298,7 @@ export const AuthProvider = ({ children }) => {
 
   const login = useCallback(
     // options.platformAdminOnly → reject non-admin on platform /login before setUser
-    // options.requiredInstitutionId → tenant landing: only that institution's users
+    // options.requiredInstitutionId → tenant landing: only that institution's users (not super_admin)
     async (identifier, password, options) => {
       setError(null);
       const platformAdminOnly = !!(options && options.platformAdminOnly);
@@ -345,20 +349,22 @@ export const AuthProvider = ({ children }) => {
           return { user: null, error: new Error('AUTH.PLATFORM_ADMIN_ONLY') };
         }
 
-        // Tenant landing / ?tenant= login: only users of THIS institution
-        if (
-          requiredInstitutionId &&
-          nextUser.role !== 'super_admin' &&
-          String(nextUser.institution_id || '') !== requiredInstitutionId
-        ) {
-          await supabase.auth.signOut().catch(() => {});
-          if (mounted.current) {
-            setUser(null);
-            setInstitution(null);
-            setError(new Error('AUTH.WRONG_INSTITUTION'));
+        // Tenant landing / ?tenant= login: only this institution's users.
+        // Same generic error for wrong tenant and super_admin (no role/tenant leak).
+        if (requiredInstitutionId) {
+          const isWrongTenant =
+            nextUser.role === 'super_admin' ||
+            String(nextUser.institution_id || '') !== requiredInstitutionId;
+          if (isWrongTenant) {
+            await supabase.auth.signOut().catch(() => {});
+            if (mounted.current) {
+              setUser(null);
+              setInstitution(null);
+              setError(new Error('AUTH.WRONG_INSTITUTION'));
+            }
+            suppressAuthUserRef.current = false;
+            return { user: null, error: new Error('AUTH.WRONG_INSTITUTION') };
           }
-          suppressAuthUserRef.current = false;
-          return { user: null, error: new Error('AUTH.WRONG_INSTITUTION') };
         }
 
         suppressAuthUserRef.current = false;
