@@ -32,7 +32,9 @@ function friendlyError(payload, error) {
     FORBIDDEN: 'You do not have permission to perform this action.',
   }
   if (code && known[code]) return known[code]
-  // Prefer safe mapped message; never pass raw Edge/DB text through
+  if (payload?.error && typeof payload.error === 'string' && payload.error.length < 160) {
+    return payload.error
+  }
   return getUserMessage(
     { message: code || error?.message, code },
     { fallback: { description: 'Unable to create institution. Please try again.' } }
@@ -54,6 +56,14 @@ export async function publicProvisionTenant(form) {
       admin_full_name: form.admin_full_name,
       admin_email: form.admin_email,
       password: form.password,
+      landing_template_id: form.landing_template_id || 'classic',
+      hero_headline: form.hero_headline || null,
+      footer_text: form.footer_text || null,
+      description: form.description || null,
+      theme_primary: form.theme_primary || null,
+      theme_accent: form.theme_accent || null,
+      logo_data_url: form.logo_data_url || null,
+      hero_data_url: form.hero_data_url || null,
     },
   })
 

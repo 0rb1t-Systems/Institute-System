@@ -34,6 +34,17 @@ const RESERVED_SLUGS = new Set([
   'verify',
 ])
 
+const LANDING_TEMPLATES = new Set([
+  'classic',
+  'aurora',
+  'campus',
+  'horizon',
+  'crest',
+  'nova',
+  'ledger',
+  'atelier',
+])
+
 function json(body: unknown, status = 200) {
   return new Response(JSON.stringify(body), {
     status,
@@ -66,6 +77,10 @@ function isEmail(v: string): boolean {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v)
 }
 
+function isHexColor(v: string): boolean {
+  return /^#[0-9A-Fa-f]{6}$/.test(v)
+}
+
 function mapProvisionError(msg: string): { error: string; status: number } {
   const m = String(msg || '')
   if (m.includes('INSTITUTION_SLUG_IN_USE')) {
@@ -81,6 +96,54 @@ function mapProvisionError(msg: string): { error: string; status: number } {
     return { error: 'Please complete all required fields.', status: 400 }
   }
   return { error: 'Unable to create institution. Please try again.', status: 400 }
+}
+
+function parseDataUrl(dataUrl: string): { bytes: Uint8Array; contentType: string; ext: string } | null {
+  const raw = String(dataUrl || '').trim()
+  const m = /^data:(image\/(png|jpeg|jpg|webp|svg\+xml));base64,(.+)$/i.exec(raw)
+  if (!m) return null
+  const contentType = m[1].toLowerCase()
+  const subtype = m[2].toLowerCase()
+  const b64 = m[3]
+  try {
+    const bin = atob(b64)
+    if (bin.length > 5 * 1024 * 1024) return null
+    const bytes = new Uint8Array(bin.length)
+    for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i)
+    const ext =
+      subtype === 'jpeg' || subtype === 'jpg'
+        ? 'jpg'
+        : subtype === 'svg+xml'
+          ? 'svg'
+          : subtype
+    return { bytes, contentType, ext }
+  } catch {
+    return null
+  }
+}
+
+async function uploadAsset(
+  admin: ReturnType<typeof createClient>,
+  institutionId: string,
+  kind: 'logo' | 'hero',
+  dataUrl: string | null,
+): Promise<string | null> {
+  if (!dataUrl) return null
+  const parsed = parseDataUrl(dataUrl)
+  if (!parsed) return null
+  if (kind === 'hero' && parsed.ext === 'svg') return null
+
+  const path = `${institutionId}/${kind}-${Date.now()}.${parsed.ext}`
+  const { error } = await admin.storage.from('institution-assets').upload(path, parsed.bytes, {
+    contentType: parsed.contentType,
+    upsert: true,
+  })
+  if (error) {
+    console.error('[public-provision-tenant] asset upload failed', kind, error.message)
+    return null
+  }
+  const { data } = admin.storage.from('institution-assets').getPublicUrl(path)
+  return data?.publicUrl || null
 }
 
 Deno.serve(async (req) => {
@@ -108,6 +171,20 @@ Deno.serve(async (req) => {
     const admin_full_name = String(body.admin_full_name || '').trim()
     const admin_email = String(body.admin_email || '').trim().toLowerCase()
     const password = String(body.password || body.temporary_password || '').trim()
+
+    let landing_template_id = String(body.landing_template_id || 'classic').trim().toLowerCase()
+    if (!LANDING_TEMPLATES.has(landing_template_id)) landing_template_id = 'classic'
+
+    const hero_headline = String(body.hero_headline || '').trim() || null
+    const footer_text = String(body.footer_text || '').trim() || null
+    const description = String(body.description || '').trim() || null
+    let theme_primary = String(body.theme_primary || '').trim()
+    let theme_accent = String(body.theme_accent || '').trim()
+    if (theme_primary && !isHexColor(theme_primary)) theme_primary = ''
+    if (theme_accent && !isHexColor(theme_accent)) theme_accent = ''
+
+    const logo_data_url = body.logo_data_url ? String(body.logo_data_url) : null
+    const hero_data_url = body.hero_data_url ? String(body.hero_data_url) : null
 
     if (
       !institution_name ||
@@ -197,27 +274,50 @@ Deno.serve(async (req) => {
       return json({ error: mapped.error }, mapped.status)
     }
 
+    const instId = String(institutionId)
+    const [logo_url, hero_image_url] = await Promise.all([
+      uploadAsset(admin, instId, 'logo', logo_data_url),
+      uploadAsset(admin, instId, 'hero', hero_data_url),
+    ])
+
+    const branding: Record<string, unknown> = {
+      landing_template_id,
+      hero_headline,
+      footer_text,
+      description,
+    }
+    if (theme_primary) branding.theme_primary = theme_primary
+    if (theme_accent) branding.theme_accent = theme_accent
+    if (logo_url) branding.logo_url = logo_url
+    if (hero_image_url) branding.hero_image_url = hero_image_url
+
+    const { error: brandErr } = await admin.from('institutions').update(branding).eq('id', instId)
+    if (brandErr) {
+      console.error('[public-provision-tenant] branding update failed', brandErr.message)
+    }
+
     await admin.from('audit_logs').insert({
       actor_id: adminUid,
       action: 'tenant.self_provisioned',
       entity_type: 'institution',
-      entity_id: String(institutionId),
+      entity_id: instId,
       metadata: {
         institution_name,
         institution_slug,
         admin_email,
         admin_id: adminUid,
         source: 'public_self_service',
+        landing_template_id,
       },
     })
 
-    // Never return the password — the registrant chose it.
     return json(
       {
         ok: true,
         institution_id: institutionId,
         institution_name,
         institution_slug,
+        landing_template_id,
         admin: {
           id: adminUid,
           email: admin_email,

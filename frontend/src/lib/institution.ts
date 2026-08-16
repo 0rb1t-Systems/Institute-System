@@ -33,6 +33,10 @@ export type InstitutionBrand = {
   transcript_footer_text?: string | null
   invoice_footer_text?: string | null
   settings_completed_at?: string | null
+  landing_template_id?: string | null
+  hero_image_url?: string | null
+  hero_headline?: string | null
+  footer_text?: string | null
 } | null | undefined
 
 const DEFAULT_PRIMARY = '#002147'

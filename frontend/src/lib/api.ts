@@ -5,11 +5,12 @@
 import { supabase, getSupabaseUrl } from '@/lib/supabaseClient'
 import { resolvePublicTenantSubdomain } from '@/lib/institution'
 import { createDefaultUploadFieldLayout } from '@/lib/certificateBuilder'
+import { LANDING_TEMPLATE_IDS } from '@/lib/landingTemplates'
 
 const notReady = (_feature) => new Error('FEATURE_UNAVAILABLE')
 
 const INST_SELECT =
-  'id, name, subdomain, logo_url, description, email, phone, address, website, motto, theme_primary, theme_accent, status, created_at, affiliate_commission_rate, registration_fee_amount, default_instructor_commission_rate, currency, currency_symbol, signatory_left_title, signatory_right_title, signatory_left_name, signatory_right_name, seal_url, signature_url, certificate_footer_text, transcript_footer_text, invoice_footer_text, settings_completed_at'
+  'id, name, subdomain, logo_url, description, email, phone, address, website, motto, theme_primary, theme_accent, status, created_at, affiliate_commission_rate, registration_fee_amount, default_instructor_commission_rate, currency, currency_symbol, signatory_left_title, signatory_right_title, signatory_left_name, signatory_right_name, seal_url, signature_url, certificate_footer_text, transcript_footer_text, invoice_footer_text, settings_completed_at, landing_template_id, hero_image_url, hero_headline, footer_text'
 
 async function requireUser() {
   const { data, error } = await supabase.auth.getUser()
@@ -915,9 +916,9 @@ export const uploadAssignmentFile = async (file, folderHint = 'assignments') => 
   return path
 }
 
-const ALLOWED_ASSET_KINDS = new Set(['logo', 'stamp', 'signature'])
+const ALLOWED_ASSET_KINDS = new Set(['logo', 'stamp', 'signature', 'hero'])
 const ALLOWED_IMAGE_MIME = new Set(['image/png', 'image/jpeg', 'image/webp', 'image/svg+xml'])
-const MAX_ASSET_BYTES = 2 * 1024 * 1024
+const MAX_ASSET_BYTES = 5 * 1024 * 1024
 
 /**
  * Persist institution branding assets under {institution_id}/{kind}-*.{ext}.
@@ -932,9 +933,11 @@ export const uploadInstitutionAsset = async (file, kind = 'logo') => {
   if (file.size > MAX_ASSET_BYTES) throw new Error('FILE_TOO_LARGE')
   const mime = String(file.type || '').toLowerCase()
   if (mime && !ALLOWED_IMAGE_MIME.has(mime)) throw new Error('INVALID_FILE_TYPE')
+  if (assetKind === 'hero' && mime === 'image/svg+xml') throw new Error('INVALID_FILE_TYPE')
 
   const ext = String(file.name || 'png').split('.').pop()?.toLowerCase() || 'png'
   const safeExt = ['png', 'jpg', 'jpeg', 'webp', 'svg'].includes(ext) ? ext : 'png'
+  if (assetKind === 'hero' && safeExt === 'svg') throw new Error('INVALID_FILE_TYPE')
   const path = `${me.institution_id}/${assetKind}-${Date.now()}.${safeExt}`
 
   const { error } = await supabase.storage.from('institution-assets').upload(path, file, {
@@ -984,6 +987,20 @@ export const updateInstitution = async (updates) => {
   }
   if (updates.theme_primary !== undefined) allowed.theme_primary = updates.theme_primary
   if (updates.theme_accent !== undefined) allowed.theme_accent = updates.theme_accent
+  if (updates.landing_template_id !== undefined) {
+    const tid = String(updates.landing_template_id || '').trim().toLowerCase()
+    if (!LANDING_TEMPLATE_IDS.includes(tid as (typeof LANDING_TEMPLATE_IDS)[number])) {
+      throw new Error('INVALID_LANDING_TEMPLATE')
+    }
+    allowed.landing_template_id = tid
+  }
+  if (updates.hero_image_url !== undefined) allowed.hero_image_url = updates.hero_image_url || null
+  if (updates.hero_headline !== undefined) {
+    allowed.hero_headline = String(updates.hero_headline || '').trim() || null
+  }
+  if (updates.footer_text !== undefined) {
+    allowed.footer_text = String(updates.footer_text || '').trim() || null
+  }
   if (updates.affiliate_commission_rate !== undefined) {
     const rate = Number(updates.affiliate_commission_rate)
     if (!Number.isFinite(rate) || rate < 0 || rate > 1) throw new Error('INVALID_AFFILIATE_RATE')

@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import React, { useMemo, useState } from 'react'
 import { Helmet } from 'react-helmet'
 import { Link, useNavigate } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
@@ -12,6 +12,12 @@ import { publicProvisionTenant } from '@/lib/publicTenantApi'
 import { isValidEmail } from '@/lib/utils'
 import { MESSAGES } from '@/lib/messages'
 import { getUserMessage } from '@/lib/mapError'
+import LandingTemplatePicker, {
+  emptyLandingCustomize,
+  type LandingCustomizeValues,
+} from '@/components/landing/LandingTemplatePicker'
+import type { LandingInstitution } from '@/components/landing/types'
+import { getLandingTemplate } from '@/lib/landingTemplates'
 
 const empty = {
   institution_name: '',
@@ -34,13 +40,25 @@ function toSlug(name) {
     .replace(/^-|-$/g, '')
 }
 
+async function fileToDataUrl(file: File | null): Promise<string | null> {
+  if (!file) return null
+  if (file.size > 5 * 1024 * 1024) throw new Error('FILE_TOO_LARGE')
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader()
+    reader.onload = () => resolve(String(reader.result || ''))
+    reader.onerror = () => reject(new Error('FILE_READ_FAILED'))
+    reader.readAsDataURL(file)
+  })
+}
+
 /**
- * Public self-service: institution admin first, then create institution form.
+ * Public self-service: admin → institution → landing template → create.
  */
 const PublicCreateInstitutionPage = () => {
   const [form, setForm] = useState(empty)
   const [slugTouched, setSlugTouched] = useState(false)
-  const [step, setStep] = useState('admin')
+  const [step, setStep] = useState<'admin' | 'institution' | 'template'>('admin')
+  const [landing, setLanding] = useState<LandingCustomizeValues>(() => emptyLandingCustomize('aurora'))
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
   const navigate = useNavigate()
@@ -54,6 +72,18 @@ const PublicCreateInstitutionPage = () => {
       return next
     })
   }
+
+  const previewBase: LandingInstitution = useMemo(
+    () => ({
+      name: form.institution_name.trim() || 'Your Institution',
+      subdomain: form.institution_slug.trim() || 'demo',
+      email: form.institution_email.trim() || null,
+      phone: form.institution_phone.trim() || null,
+      address: form.institution_address.trim() || null,
+      description: landing.description || null,
+    }),
+    [form, landing.description],
+  )
 
   const validateAdmin = () => {
     if (!form.admin_full_name.trim() || !form.admin_email.trim() || !form.password.trim() || !form.confirm_password.trim()) {
@@ -98,8 +128,28 @@ const PublicCreateInstitutionPage = () => {
     setStep('institution')
   }
 
-  const handleSubmitInstitution = async (e) => {
+  const handleInstitutionContinue = (e) => {
     e.preventDefault()
+    setError('')
+    const v = validateInstitution()
+    if (v) {
+      setError(v)
+      return
+    }
+    const meta = getLandingTemplate(landing.landing_template_id)
+    setLanding((prev) => ({
+      ...prev,
+      description:
+        prev.description ||
+        `${form.institution_name.trim()} is dedicated to quality education, professional training, and trusted credentials.`,
+      hero_headline: prev.hero_headline || meta.defaultHeadline,
+      theme_primary: prev.theme_primary || meta.defaultPrimary,
+      theme_accent: prev.theme_accent || meta.defaultAccent,
+    }))
+    setStep('template')
+  }
+
+  const handleCreate = async () => {
     setError('')
     const adminErr = validateAdmin()
     if (adminErr) {
@@ -110,11 +160,21 @@ const PublicCreateInstitutionPage = () => {
     const v = validateInstitution()
     if (v) {
       setError(v)
+      setStep('institution')
+      return
+    }
+    if (!landing.logoFile && !landing.logoPreviewUrl) {
+      setError('Please upload your institution logo — it appears on the landing page and official documents.')
       return
     }
 
     setSaving(true)
     try {
+      const [logo_data_url, hero_data_url] = await Promise.all([
+        fileToDataUrl(landing.logoFile),
+        fileToDataUrl(landing.heroFile),
+      ])
+
       const result = await publicProvisionTenant({
         institution_name: form.institution_name.trim(),
         institution_slug: form.institution_slug.trim().toLowerCase(),
@@ -124,34 +184,51 @@ const PublicCreateInstitutionPage = () => {
         admin_full_name: form.admin_full_name.trim(),
         admin_email: form.admin_email.trim().toLowerCase(),
         password: form.password,
+        landing_template_id: landing.landing_template_id,
+        hero_headline: landing.hero_headline.trim() || null,
+        footer_text: landing.footer_text.trim() || null,
+        description: landing.description.trim() || null,
+        theme_primary: landing.theme_primary || null,
+        theme_accent: landing.theme_accent || null,
+        logo_data_url,
+        hero_data_url,
       })
 
       const slug = String(result?.institution_slug || form.institution_slug)
         .trim()
         .toLowerCase()
 
-      // Open the new institution's public landing — users sign in from there to dashboards
       navigate(`/?tenant=${encodeURIComponent(slug)}`, { replace: true })
     } catch (err) {
-      setError(getUserMessage(err, { context: 'PublicCreateInstitution', fallback: MESSAGES.UNEXPECTED }))
+      const msg = String(err?.message || '')
+      if (msg === 'FILE_TOO_LARGE') {
+        setError('Logo or hero image is too large. Please use files under 5MB.')
+      } else {
+        setError(getUserMessage(err, { context: 'PublicCreateInstitution', fallback: MESSAGES.UNEXPECTED }))
+      }
     } finally {
       setSaving(false)
     }
   }
 
+  const title =
+    step === 'admin'
+      ? 'Create institution admin · TvetFlow'
+      : step === 'institution'
+        ? 'Create institution · TvetFlow'
+        : 'Choose landing template · TvetFlow'
+
   return (
     <div className="relative min-h-screen overflow-hidden bg-[#061512] font-sans text-[#e8f2ef]">
       <Helmet>
-        <title>
-          {step === 'admin' ? 'Create institution admin · TvetFlow' : 'Create institution · TvetFlow'}
-        </title>
+        <title>{title}</title>
       </Helmet>
 
       <div className="pointer-events-none absolute inset-0" aria-hidden>
         <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_10%_0%,rgba(45,140,120,0.22),transparent_50%),linear-gradient(180deg,#061512,#0a2420)]" />
       </div>
 
-      <div className="relative z-10 mx-auto max-w-lg px-4 py-10 sm:py-14">
+      <div className={`relative z-10 mx-auto px-4 py-10 sm:py-14 ${step === 'template' ? 'max-w-5xl' : 'max-w-lg'}`}>
         <div className="mb-8 flex items-center justify-between gap-3">
           <Link to="/" className="font-display text-lg font-bold tracking-tight text-white">
             Tvet<span className="text-teal-300">Flow</span>
@@ -164,9 +241,13 @@ const PublicCreateInstitutionPage = () => {
           </Button>
         </div>
 
-        <p className="mb-6 text-xs uppercase tracking-[0.16em] text-[#5f857c]">
-          Institution admin only
-        </p>
+        <div className="mb-6 flex items-center gap-2 text-[11px] uppercase tracking-[0.14em] text-[#5f857c]">
+          <span className={step === 'admin' ? 'text-teal-300' : ''}>1. Admin</span>
+          <span>·</span>
+          <span className={step === 'institution' ? 'text-teal-300' : ''}>2. Institution</span>
+          <span>·</span>
+          <span className={step === 'template' ? 'text-teal-300' : ''}>3. Landing template</span>
+        </div>
 
         {error && (
           <Alert variant="destructive" className="mb-5">
@@ -190,7 +271,7 @@ const PublicCreateInstitutionPage = () => {
                   Create your admin account
                 </h1>
                 <p className="mt-2 text-sm leading-relaxed text-[#8fb5aa]">
-                  This is the only account you create on TvetFlow. After this, you will set up your institution.
+                  This is the only account you create on TvetFlow. After this, you will set up your institution and landing page.
                 </p>
               </div>
 
@@ -256,7 +337,7 @@ const PublicCreateInstitutionPage = () => {
           {step === 'institution' && (
             <motion.form
               key="institution"
-              onSubmit={handleSubmitInstitution}
+              onSubmit={handleInstitutionContinue}
               className="space-y-5"
               initial={{ opacity: 0, x: -12 }}
               animate={{ opacity: 1, x: 0 }}
@@ -268,7 +349,7 @@ const PublicCreateInstitutionPage = () => {
                   Create your institution
                 </h1>
                 <p className="mt-2 text-sm leading-relaxed text-[#8fb5aa]">
-                  Admin: <span className="text-[#d7ebe4]">{form.admin_email}</span> — add your institution details next.
+                  Admin: <span className="text-[#d7ebe4]">{form.admin_email}</span> — next you will choose a landing template.
                 </p>
               </div>
 
@@ -343,9 +424,44 @@ const PublicCreateInstitutionPage = () => {
                 >
                   Back
                 </Button>
+                <Button type="submit" className="h-11 flex-1 bg-teal-500 font-semibold text-[#04201c] hover:bg-teal-400">
+                  Continue to templates
+                  <ArrowRight className="ml-2 h-4 w-4" />
+                </Button>
+              </div>
+            </motion.form>
+          )}
+
+          {step === 'template' && (
+            <motion.div
+              key="template"
+              className="space-y-6"
+              initial={{ opacity: 0, x: -12 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: 12 }}
+              transition={{ duration: 0.28 }}
+            >
+              <LandingTemplatePicker
+                baseInstitution={previewBase}
+                values={landing}
+                onChange={(patch) => setLanding((prev) => ({ ...prev, ...patch }))}
+                compact
+              />
+
+              <div className="flex flex-col gap-3 sm:flex-row">
                 <Button
-                  type="submit"
+                  type="button"
+                  variant="outline"
+                  className="border-white/15 bg-transparent text-[#c5ddd6] hover:bg-white/5"
                   disabled={saving}
+                  onClick={() => setStep('institution')}
+                >
+                  Back
+                </Button>
+                <Button
+                  type="button"
+                  disabled={saving}
+                  onClick={handleCreate}
                   className="h-11 flex-1 bg-teal-500 font-semibold text-[#04201c] hover:bg-teal-400"
                 >
                   {saving ? (
@@ -358,7 +474,7 @@ const PublicCreateInstitutionPage = () => {
                   )}
                 </Button>
               </div>
-            </motion.form>
+            </motion.div>
           )}
         </AnimatePresence>
       </div>
