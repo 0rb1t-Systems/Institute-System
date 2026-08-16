@@ -46,3 +46,8 @@ temp/
 # Local nested-repo backup (never push)
 frontend/git-history-backup/
 
+# Internal planning docs (local only — not for GitHub)
+PRD_1.md
+ROADMAP_CHANGES_v1.1.md
+PHASE_1_3_COMPLETION_REPORT.md
+
