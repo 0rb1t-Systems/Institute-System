@@ -966,6 +966,20 @@ export const getMyInstitution = async () => {
   return data
 }
 
+/** Persist the active public landing template (institution admin only). */
+export const setLandingTemplate = async (templateId, institutionId = null) => {
+  const tid = String(templateId || '').trim().toLowerCase()
+  if (!LANDING_TEMPLATE_IDS.includes(tid as (typeof LANDING_TEMPLATE_IDS)[number])) {
+    throw new Error('INVALID_LANDING_TEMPLATE')
+  }
+  const { data, error } = await supabase.rpc('set_landing_template', {
+    p_template_id: tid,
+    p_institution_id: institutionId || null,
+  })
+  if (error) throw error
+  return data
+}
+
 export const updateInstitution = async (updates) => {
   const me = await getMyProfile()
   if (!me?.institution_id) throw new Error('FORBIDDEN')

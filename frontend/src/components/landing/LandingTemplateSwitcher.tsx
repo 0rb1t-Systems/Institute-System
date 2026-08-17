@@ -13,11 +13,11 @@ import {
 type Props = {
   open: boolean
   onClose: () => void
-  /** Called when user clicks Done — parent should save `activeId` then close. */
-  onDone: () => void | Promise<void>
+  /** Saves the selected template as the institution default. */
+  onDone: (selectedId: LandingTemplateId) => void | Promise<void>
   institution: LandingInstitution
   activeId: LandingTemplateId
-  /** Preview only — does not persist until Done. */
+  /** Live preview on the page behind the dialog. */
   onSelect: (id: LandingTemplateId) => void
   canSave?: boolean
   saving?: boolean
@@ -25,7 +25,7 @@ type Props = {
 }
 
 /**
- * Pick a template to preview; Done saves the last selected as the default.
+ * Pick a template; Done applies the last clicked choice as the active default.
  */
 export default function LandingTemplateSwitcher({
   open,
@@ -38,19 +38,26 @@ export default function LandingTemplateSwitcher({
   saving = false,
   saveError = '',
 }: Props) {
-  const [hoverId, setHoverId] = useState<LandingTemplateId | null>(null)
-  const previewId = hoverId || activeId
-  const meta = getLandingTemplate(previewId)
+  /** Draft selection inside the dialog — always what Done will save. */
+  const [draftId, setDraftId] = useState<LandingTemplateId>(activeId)
+  const meta = getLandingTemplate(draftId)
 
   const previewInst = useMemo(
     () => ({
       ...institution,
-      landing_template_id: previewId,
-      theme_primary: institution.theme_primary || meta.defaultPrimary,
-      theme_accent: institution.theme_accent || meta.defaultAccent,
+      landing_template_id: draftId,
+      // Preview with this template's palette so each design looks distinct
+      theme_primary: meta.defaultPrimary,
+      theme_accent: meta.defaultAccent,
     }),
-    [institution, previewId, meta.defaultPrimary, meta.defaultAccent],
+    [institution, draftId, meta.defaultPrimary, meta.defaultAccent],
   )
+
+  // Every time the dialog opens, start from the current active template
+  useEffect(() => {
+    if (!open) return
+    setDraftId(activeId)
+  }, [open, activeId])
 
   useEffect(() => {
     if (!open) return undefined
@@ -65,9 +72,15 @@ export default function LandingTemplateSwitcher({
     }
   }, [open, onClose, saving])
 
+  const pick = (id: LandingTemplateId) => {
+    if (saving) return
+    setDraftId(id)
+    onSelect(id)
+  }
+
   const handleDone = () => {
     if (saving) return
-    void onDone()
+    void onDone(draftId)
   }
 
   return (
@@ -106,8 +119,8 @@ export default function LandingTemplateSwitcher({
                   </p>
                   <p className="text-[11px] text-slate-400">
                     {canSave
-                      ? 'Select a design, then press Done to save it as default'
-                      : 'Preview only · sign in as institution admin to save'}
+                      ? 'Click a design, then Done to save it as your public page'
+                      : 'Click Done — sign in as admin once, then it saves automatically'}
                   </p>
                 </div>
               </div>
@@ -125,11 +138,16 @@ export default function LandingTemplateSwitcher({
             <div className="border-b border-white/10 bg-[#070d18] px-3 pt-3 sm:px-4">
               <p className="mb-2 px-1 text-xs text-slate-400">
                 Preview · <span className="font-medium text-white">{meta.name}</span>
+                {canSave ? (
+                  <span className="ml-2 text-teal-300/90">· saved when you press Done</span>
+                ) : (
+                  <span className="ml-2 text-teal-300/90">· Done opens admin sign-in, then saves</span>
+                )}
               </p>
               <div className="overflow-hidden rounded-xl border border-white/10">
                 <div className="max-h-[36vh] overflow-y-auto">
                   <div className="pointer-events-none origin-top scale-[0.92] select-none sm:scale-100">
-                    <TenantLandingRenderer institution={previewInst} preview templateId={previewId} />
+                    <TenantLandingRenderer institution={previewInst} preview templateId={draftId} />
                   </div>
                 </div>
               </div>
@@ -139,16 +157,13 @@ export default function LandingTemplateSwitcher({
               {saveError && <p className="mb-3 text-xs text-red-300">{saveError}</p>}
               <div className="grid gap-2.5 sm:grid-cols-2 lg:grid-cols-4">
                 {LANDING_TEMPLATES.map((t) => {
-                  const selected = activeId === t.id
+                  const selected = draftId === t.id
                   return (
                     <button
                       key={t.id}
                       type="button"
                       disabled={saving}
-                      onMouseEnter={() => setHoverId(t.id)}
-                      onMouseLeave={() => setHoverId(null)}
-                      onFocus={() => setHoverId(t.id)}
-                      onClick={() => onSelect(t.id)}
+                      onClick={() => pick(t.id)}
                       className={`relative rounded-xl border p-2.5 text-left transition disabled:opacity-60 ${
                         selected
                           ? 'border-teal-400/70 bg-teal-500/10 ring-2 ring-teal-400/30'

@@ -49,7 +49,7 @@ export const LANDING_TEMPLATES: LandingTemplateMeta[] = [
   {
     id: 'aurora',
     name: 'Aurora Glass',
-    tagline: 'Soft glass nav + organic hero portrait',
+    tagline: 'Soft glass nav + rounded portrait hero',
     defaultPrimary: '#1A56DB',
     defaultAccent: '#0891B2',
     defaultHeroImage: DEFAULT_HERO_IMAGES.aurora,
@@ -59,7 +59,7 @@ export const LANDING_TEMPLATES: LandingTemplateMeta[] = [
   {
     id: 'campus',
     name: 'Campus Split',
-    tagline: 'Architectural photo with elegant fade',
+    tagline: 'Architectural split with full-bleed photo',
     defaultPrimary: '#0C4A6E',
     defaultAccent: '#B45309',
     defaultHeroImage: DEFAULT_HERO_IMAGES.campus,
@@ -79,7 +79,7 @@ export const LANDING_TEMPLATES: LandingTemplateMeta[] = [
   {
     id: 'horizon',
     name: 'Horizon Light',
-    tagline: 'Airy centered brand with wide campus view',
+    tagline: 'Centered brand with wide campus band',
     defaultPrimary: '#0F766E',
     defaultAccent: '#D97706',
     defaultHeroImage: DEFAULT_HERO_IMAGES.horizon,
@@ -98,13 +98,13 @@ export const LANDING_TEMPLATES: LandingTemplateMeta[] = [
   },
   {
     id: 'nova',
-    name: 'Nova Bento',
-    tagline: 'Modern teal mosaic with bold energy',
-    defaultPrimary: '#0D9488',
-    defaultAccent: '#4F46E5',
+    name: 'Nova Night',
+    tagline: 'Modern dark teal with bold media',
+    defaultPrimary: '#14B8A6',
+    defaultAccent: '#818CF8',
     defaultHeroImage: DEFAULT_HERO_IMAGES.nova,
     defaultHeadline: 'Skills That Open Doors.',
-    previewTone: 'light',
+    previewTone: 'dark',
   },
   {
     id: 'ledger',
@@ -119,7 +119,7 @@ export const LANDING_TEMPLATES: LandingTemplateMeta[] = [
   {
     id: 'atelier',
     name: 'Atelier',
-    tagline: 'Editorial storytelling with calm imagery',
+    tagline: 'Warm editorial with image-led storytelling',
     defaultPrimary: '#1C1917',
     defaultAccent: '#C2410C',
     defaultHeroImage: DEFAULT_HERO_IMAGES.atelier,

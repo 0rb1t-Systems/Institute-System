@@ -38,6 +38,61 @@ export function BrandMark({
   )
 }
 
+/** Compact header actions — Portal Login + Verify on every template. */
+export function LandingHeaderActions({
+  primary,
+  verifyHref,
+  sameTenant,
+  userRole,
+  onOpenLogin,
+  preview,
+  solidClassName = 'rounded-lg text-white',
+  outlineClassName = 'rounded-lg',
+}: {
+  primary: string
+  verifyHref: string
+  sameTenant: boolean
+  userRole?: string | null
+  onOpenLogin: () => void
+  preview?: boolean
+  solidClassName?: string
+  outlineClassName?: string
+}) {
+  return (
+    <div className="flex shrink-0 flex-wrap items-center justify-end gap-2">
+      {sameTenant ? (
+        <Button asChild size="sm" className={solidClassName} style={{ backgroundColor: primary }}>
+          <Link to={preview ? '#' : dashboardPathForRole(userRole)}>Dashboard</Link>
+        </Button>
+      ) : (
+        <Button
+          type="button"
+          size="sm"
+          className={solidClassName}
+          style={{ backgroundColor: primary }}
+          onClick={() => !preview && onOpenLogin()}
+        >
+          <LogIn className="mr-1.5 h-3.5 w-3.5" />
+          Portal Login
+        </Button>
+      )}
+      {preview ? (
+        <Button type="button" size="sm" variant="outline" className={outlineClassName}>
+          <ShieldCheck className="mr-1.5 h-3.5 w-3.5" />
+          Verify
+        </Button>
+      ) : (
+        <Button asChild size="sm" variant="outline" className={outlineClassName}>
+          <Link to={verifyHref}>
+            <ShieldCheck className="mr-1.5 h-3.5 w-3.5" />
+            Verify
+          </Link>
+        </Button>
+      )}
+    </div>
+  )
+}
+
 /** Portal Login + Verify CTAs used by every template. */
 export function LandingCtas({
   primary,

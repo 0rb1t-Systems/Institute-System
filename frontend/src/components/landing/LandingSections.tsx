@@ -25,11 +25,11 @@ type NavProps = {
 }
 
 export function LandingPageNav({ primary, preview, tone = 'light', className = '', activeId = 'home' }: NavProps) {
-  const idle = tone === 'dark' ? 'text-white/65 hover:text-white' : 'text-slate-500 hover:text-slate-900'
+  const idle = tone === 'dark' ? 'text-white/70 hover:text-white' : 'text-slate-500 hover:text-slate-900'
 
   return (
     <nav
-      className={`flex flex-wrap items-center justify-center gap-x-5 gap-y-1 text-[13px] font-medium md:justify-start ${className}`}
+      className={`flex flex-wrap items-center justify-center gap-x-5 gap-y-1 text-[13px] font-medium tracking-wide md:justify-start ${className}`}
       aria-label="Page sections"
     >
       {LANDING_NAV_ITEMS.map((item) => {
@@ -44,7 +44,10 @@ export function LandingPageNav({ primary, preview, tone = 'light', className = '
           >
             {item.label}
             {active && (
-              <span className="absolute -bottom-0.5 left-0 h-0.5 w-full rounded-full" style={{ backgroundColor: primary }} />
+              <span
+                className="absolute -bottom-0.5 left-1/2 h-0.5 w-4 -translate-x-1/2 rounded-full"
+                style={{ backgroundColor: primary }}
+              />
             )}
           </button>
         )
@@ -77,7 +80,7 @@ export function LandingContentSections({
     String(institution.description || '').trim() ||
     tagline ||
     `${institution.name || 'Our institution'} is dedicated to quality education and trusted credentials.`
-  const shortAbout = aboutText.length > 180 ? `${aboutText.slice(0, 177)}…` : aboutText
+  const shortAbout = aboutText.length > 220 ? `${aboutText.slice(0, 217)}…` : aboutText
 
   const programs = [
     { icon: GraduationCap, title: 'Programs', color: primary },
@@ -90,40 +93,48 @@ export function LandingContentSections({
     <>
       <section
         id="about"
-        className={`scroll-mt-24 border-t ${dark ? 'border-white/10 bg-[#070f1c]' : 'border-slate-100 bg-slate-50/90'}`}
+        className={`scroll-mt-24 border-t ${dark ? 'border-white/10 bg-[#0a1220]' : 'border-slate-100 bg-slate-50'}`}
       >
-        <div className="mx-auto flex max-w-6xl flex-col gap-3 px-4 py-8 sm:flex-row sm:items-center sm:justify-between sm:px-6 sm:py-9">
-          <div className="max-w-2xl">
-            <p className="text-[10px] font-semibold uppercase tracking-[0.2em]" style={{ color: primary }}>
-              About
-            </p>
-            <h2 className={`mt-1 font-display text-xl font-bold tracking-tight sm:text-2xl ${dark ? 'text-white' : 'text-slate-900'}`}>
-              {institution.name || 'Our institution'}
-            </h2>
-            <p className={`mt-2 text-sm leading-relaxed ${dark ? 'text-slate-400' : 'text-slate-600'}`}>{shortAbout}</p>
-          </div>
+        <div className="mx-auto max-w-6xl px-4 py-10 sm:px-6 sm:py-12">
+          <p
+            className="text-[11px] font-semibold uppercase tracking-[0.2em]"
+            style={{ color: primary }}
+          >
+            About
+          </p>
+          <h2
+            className={`mt-2 max-w-2xl font-display text-2xl font-bold tracking-tight sm:text-3xl ${
+              dark ? 'text-white' : 'text-slate-900'
+            }`}
+          >
+            {institution.name || 'Our institution'}
+          </h2>
+          <p
+            className={`mt-3 max-w-2xl text-sm leading-relaxed sm:text-[15px] ${
+              dark ? 'text-slate-400' : 'text-slate-600'
+            }`}
+          >
+            {shortAbout}
+          </p>
         </div>
       </section>
 
       <section
         id="programs"
-        className={`scroll-mt-24 border-t ${dark ? 'border-white/10 bg-[#0a1424]' : 'border-slate-100 bg-white'}`}
+        className={`scroll-mt-24 border-t ${dark ? 'border-white/10 bg-[#070d18]' : 'border-slate-100 bg-white'}`}
       >
-        <div className="mx-auto grid max-w-6xl gap-3 px-4 py-7 sm:grid-cols-2 sm:px-6 lg:grid-cols-4">
+        <div className="mx-auto grid max-w-6xl gap-4 px-4 py-8 sm:grid-cols-2 sm:px-6 sm:py-10 lg:grid-cols-4">
           {programs.map((p) => (
-            <div
-              key={p.title}
-              className={`flex items-center gap-3 rounded-xl border px-4 py-3 ${
-                dark ? 'border-white/10 bg-white/[0.04]' : 'border-slate-100 bg-slate-50/80'
-              }`}
-            >
+            <div key={p.title} className="flex items-center gap-3 py-1">
               <span
-                className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg"
+                className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl"
                 style={{ backgroundColor: `${p.color}18`, color: p.color }}
               >
                 <p.icon className="h-4 w-4" />
               </span>
-              <p className={`text-sm font-semibold ${dark ? 'text-white' : 'text-slate-900'}`}>{p.title}</p>
+              <p className={`text-sm font-semibold ${dark ? 'text-white' : 'text-slate-900'}`}>
+                {p.title}
+              </p>
             </div>
           ))}
         </div>

@@ -1,73 +1,124 @@
 import React from 'react'
-import { Link } from 'react-router-dom'
-import { GraduationCap, Sparkles } from 'lucide-react'
-import { Button } from '@/components/ui/button'
-import { BrandMark, LandingCtas, SharedLandingFooter } from '@/components/landing/LandingShared'
+import {
+  BrandMark,
+  LandingCtas,
+  LandingHeaderActions,
+  SharedLandingFooter,
+} from '@/components/landing/LandingShared'
 import { LandingContentSections, LandingPageNav } from '@/components/landing/LandingSections'
-import { dashboardPathForRole, type LandingTemplateProps } from '@/components/landing/types'
+import type { LandingTemplateProps } from '@/components/landing/types'
 
+/** Soft light glass — floating nav, rounded portrait hero. */
 export default function AuroraTemplate(p: LandingTemplateProps) {
   const {
-    institution, primary, accent, heroImage, headline, tagline, verifyHref, year,
-    sameTenant, userRole, onOpenLogin, preview, onChangeTemplate,
+    institution,
+    primary,
+    accent,
+    heroImage,
+    headline,
+    tagline,
+    verifyHref,
+    year,
+    sameTenant,
+    userRole,
+    onOpenLogin,
+    preview,
+    onChangeTemplate,
   } = p
-  const words = String(headline || '').trim().split(/\s+/)
-  const last = words.length > 1 ? words.pop()! : ''
-  const lead = words.join(' ')
 
   return (
-    <div className="relative min-h-screen overflow-x-hidden bg-white font-sans text-slate-900">
+    <div className="relative min-h-screen overflow-x-hidden bg-[#F8FAFC] font-sans text-slate-900">
       <div
         className="pointer-events-none absolute inset-0"
         style={{
-          background: `radial-gradient(ellipse 60% 40% at 90% 0%, ${primary}12, transparent 55%), linear-gradient(180deg,#fff,#F5F8FF)`,
+          background: `radial-gradient(ellipse 55% 45% at 100% 0%, ${primary}14, transparent 55%), radial-gradient(ellipse 40% 30% at 0% 20%, ${accent}10, transparent 50%)`,
         }}
         aria-hidden
       />
 
-      <div className="relative z-30 mx-auto max-w-6xl px-4 pt-4 sm:px-6">
-        <header className="flex flex-wrap items-center justify-between gap-2 rounded-full border border-slate-200/70 bg-white/85 px-3 py-2 shadow-lg backdrop-blur-xl sm:px-4">
-          <div className="flex min-w-0 items-center gap-2.5">
+      <div className="relative z-30 mx-auto max-w-6xl px-4 pt-5 sm:px-6">
+        <header className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-white/80 bg-white/80 px-4 py-3 shadow-[0_8px_30px_rgba(15,23,42,0.06)] backdrop-blur-xl sm:px-5">
+          <div className="flex min-w-0 items-center gap-3">
             <BrandMark institution={institution} primary={primary} size="sm" />
-            <p className="truncate text-sm font-bold text-slate-900">{institution.name}</p>
+            <p className="truncate font-display text-sm font-bold tracking-tight text-slate-900 sm:text-base">
+              {institution.name}
+            </p>
           </div>
-          <LandingPageNav primary={primary} preview={preview} tone="light" />
-          {sameTenant ? (
-            <Button asChild size="sm" className="rounded-full text-white" style={{ backgroundColor: primary }}>
-              <Link to={preview ? '#' : dashboardPathForRole(userRole)}>Dashboard</Link>
-            </Button>
-          ) : (
-            <Button type="button" size="sm" className="rounded-full text-white" style={{ backgroundColor: primary }} onClick={() => !preview && onOpenLogin()}>
-              Portal Login
-            </Button>
-          )}
+          <LandingPageNav primary={primary} preview={preview} tone="light" className="hidden lg:flex" />
+          <LandingHeaderActions
+            primary={primary}
+            verifyHref={verifyHref}
+            sameTenant={sameTenant}
+            userRole={userRole}
+            onOpenLogin={onOpenLogin}
+            preview={preview}
+            solidClassName="rounded-full px-4 text-white"
+            outlineClassName="rounded-full border-slate-200 bg-white"
+          />
         </header>
       </div>
 
-      <section id="home" className="relative z-10 mx-auto grid max-w-6xl scroll-mt-24 items-center gap-8 px-4 py-10 sm:px-6 lg:grid-cols-2 lg:py-12">
-        <div className="space-y-5">
-          <div className="inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-[11px] font-semibold" style={{ backgroundColor: `${primary}12`, color: primary }}>
-            <GraduationCap className="h-3.5 w-3.5" /> Official portal
-          </div>
-          <h1 className="font-display text-3xl font-extrabold leading-[1.08] tracking-tight text-slate-900 sm:text-4xl lg:text-[2.75rem]">
-            {lead ? <>{lead} <span style={{ color: primary }}>{last}</span></> : headline}
+      <section
+        id="home"
+        className="relative z-10 mx-auto grid max-w-6xl scroll-mt-24 items-center gap-10 px-4 py-12 sm:px-6 lg:grid-cols-2 lg:gap-14 lg:py-16"
+      >
+        <div className="space-y-6">
+          <p className="font-display text-2xl font-bold tracking-tight text-slate-900 sm:text-3xl">
+            {institution.name}
+          </p>
+          <h1 className="max-w-lg font-display text-3xl font-bold leading-[1.12] tracking-tight text-slate-800 sm:text-4xl lg:text-[2.65rem]">
+            {headline}
           </h1>
-          <p className="max-w-md text-sm leading-relaxed text-slate-600 sm:text-base">{tagline}</p>
-          <LandingCtas primary={primary} verifyHref={verifyHref} sameTenant={sameTenant} userRole={userRole} onOpenLogin={onOpenLogin} preview={preview} size="default" solidClassName="rounded-full px-5 text-white shadow-md" outlineClassName="rounded-full border-slate-200 bg-white px-5" />
+          <p className="max-w-md text-[15px] leading-relaxed text-slate-600">{tagline}</p>
+          <LandingCtas
+            primary={primary}
+            verifyHref={verifyHref}
+            sameTenant={sameTenant}
+            userRole={userRole}
+            onOpenLogin={onOpenLogin}
+            preview={preview}
+            size="default"
+            solidClassName="rounded-full px-6 text-white shadow-md shadow-slate-900/10"
+            outlineClassName="rounded-full border-slate-200 bg-white px-6"
+          />
         </div>
-        <div className="relative mx-auto w-full max-w-md">
-          <div className="relative overflow-hidden shadow-2xl" style={{ borderRadius: '42% 58% 48% 52% / 48% 42% 58% 52%' }}>
-            <img src={heroImage} alt="" className="aspect-[5/5] w-full object-cover" />
-            <div className="absolute inset-0" style={{ background: `linear-gradient(155deg, ${primary}40, transparent 50%)` }} />
-          </div>
-          <div className="absolute bottom-6 left-0 flex items-center gap-1.5 rounded-full bg-white px-3 py-1.5 text-[11px] font-semibold shadow-lg">
-            <Sparkles className="h-3 w-3" style={{ color: primary }} /> Quality Education
+
+        <div className="relative mx-auto w-full max-w-md lg:max-w-none">
+          <div
+            className="relative overflow-hidden shadow-2xl shadow-slate-900/15"
+            style={{ borderRadius: '1.75rem' }}
+          >
+            <img src={heroImage} alt="" className="aspect-[4/5] w-full object-cover sm:aspect-[5/5]" />
+            <div
+              className="pointer-events-none absolute inset-0"
+              style={{ background: `linear-gradient(160deg, ${primary}28, transparent 45%)` }}
+              aria-hidden
+            />
           </div>
         </div>
       </section>
 
-      <LandingContentSections institution={institution} primary={primary} accent={accent} tagline={tagline} tone="light" />
-      <SharedLandingFooter institution={institution} primary={primary} year={year} verifyHref={verifyHref} onOpenLogin={onOpenLogin} onChangeTemplate={onChangeTemplate} preview={preview} tone="light" />
+      <div className="relative z-10 px-4 pb-2 lg:hidden">
+        <LandingPageNav primary={primary} preview={preview} tone="light" />
+      </div>
+
+      <LandingContentSections
+        institution={institution}
+        primary={primary}
+        accent={accent}
+        tagline={tagline}
+        tone="light"
+      />
+      <SharedLandingFooter
+        institution={institution}
+        primary={primary}
+        year={year}
+        verifyHref={verifyHref}
+        onOpenLogin={onOpenLogin}
+        onChangeTemplate={onChangeTemplate}
+        preview={preview}
+        tone="light"
+      />
     </div>
   )
 }

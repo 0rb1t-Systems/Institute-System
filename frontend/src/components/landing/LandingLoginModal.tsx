@@ -17,6 +17,8 @@ type Props = {
   password: string
   loginError: string
   signingIn: boolean
+  /** Extra note under the title (e.g. template save flow). */
+  subtitle?: string
   onIdentifier: (v: string) => void
   onPassword: (v: string) => void
   onClose: () => void
@@ -32,6 +34,7 @@ export default function LandingLoginModal({
   password,
   loginError,
   signingIn,
+  subtitle = 'Only this institution’s accounts.',
   onIdentifier,
   onPassword,
   onClose,
@@ -86,7 +89,7 @@ export default function LandingLoginModal({
                 <p id="tenant-login-title" className="font-display text-lg font-semibold text-white">
                   Sign in
                 </p>
-                <p className="text-xs text-slate-400">Only this institution’s accounts.</p>
+                <p className="text-xs text-slate-400">{subtitle}</p>
               </div>
             </div>
 
