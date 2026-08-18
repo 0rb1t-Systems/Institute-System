@@ -43,7 +43,7 @@ const GradebookPage = () => {
     });
 
     const classAssignments = (assignments || [])
-      .filter((a) => a.class_id === selectedClassId)
+      .filter((a) => a.class_id === selectedClassId && a.counts_toward_grade !== false)
       .map((a) => ({
         ...a,
         courseName: courses.find((c) => c.id === (a.course_id || classes.find((cl) => cl.id === selectedClassId)?.course_id))?.name || 'Assignment',

@@ -12,12 +12,12 @@ import { Printer, ArrowLeft, Award, Loader2 } from 'lucide-react';
 import { formatDate, cn } from '@/lib/utils';
 import {
   getExamScorePercent,
-  isExamPassed,
   getExamTotalMarks,
   getLetterGrade,
   getGradePoints,
   isCoursePassed,
 } from '@/lib/examPass';
+import { getCombinedExamWithBonus } from '@/lib/assignmentBonus';
 import { getUserMessage } from '@/lib/mapError';
 import { MESSAGES } from '@/lib/messages';
 
@@ -122,9 +122,10 @@ const StudentExamResultPage = () => {
         status: passed ? 'Pass' : 'Fail',
       });
 
-      // Assignment bonus points for same class/course (if graded)
+      // Assignment bonus points for same class/course (gradebook only)
       const relatedAssignments = (assignments || []).filter(
         (a) =>
+          a.counts_toward_grade !== false &&
           a.class_id === exam?.class_id &&
           (!a.course_id || !exam?.course_id || a.course_id === exam.course_id)
       );
@@ -164,6 +165,50 @@ const StudentExamResultPage = () => {
     return rows;
   }, [result, exam, assignments, assignmentSubmissions, gradeRowFromNav]);
 
+  const courseTotals = useMemo(() => {
+    if (result) {
+      const totalMarks = exam ? getExamTotalMarks(exam) : Number(result.total_marks) || 100;
+      const examScore = Number(result.score ?? result.final_score ?? 0);
+      const primaryCourseId =
+        exam?.course_id ||
+        (exam?.class_id ? classes.find((c) => c.id === exam.class_id)?.course_id : null) ||
+        null;
+      const combined = getCombinedExamWithBonus({
+        studentId: result.student_id,
+        classId: exam?.class_id,
+        courseId: exam?.course_id || null,
+        examScore,
+        examTotal: totalMarks,
+        assignments,
+        submissions: assignmentSubmissions,
+        classPrimaryCourseId: primaryCourseId,
+      });
+      const percentage = Math.round(combined.percentage);
+      return {
+        score: combined.combinedScore,
+        totalMarks: combined.examTotal,
+        percentage,
+        letter: getLetterGrade(percentage),
+        points: getGradePoints(percentage),
+        passed: isCoursePassed(percentage),
+      };
+    }
+
+    const score = Number(gradeRowFromNav?.score ?? 0);
+    const totalMarks = Number(gradeRowFromNav?.total) || 100;
+    const percentage = Math.round(
+      gradeRowFromNav?.percentage != null ? Number(gradeRowFromNav.percentage) : (score / totalMarks) * 100
+    );
+    return {
+      score,
+      totalMarks,
+      percentage,
+      letter: getLetterGrade(percentage),
+      points: getGradePoints(percentage),
+      passed: gradeRowFromNav?.status === 'Pass' || isCoursePassed(percentage),
+    };
+  }, [result, exam, classes, assignments, assignmentSubmissions, gradeRowFromNav]);
+
   if (loading) {
     return (
       <div className="p-8 text-center flex items-center justify-center gap-2 text-slate-400">
@@ -183,20 +228,12 @@ const StudentExamResultPage = () => {
     );
   }
 
-  const totalMarks = exam ? getExamTotalMarks(exam) : Number(result?.total_marks) || Number(gradeRowFromNav?.total) || 100;
-  const score = result
-    ? Number(result.score ?? result.final_score ?? 0)
-    : Number(gradeRowFromNav?.score ?? 0);
-  const percentage = Math.round(
-    gradeRowFromNav?.percentage != null
-      ? Number(gradeRowFromNav.percentage)
-      : getExamScorePercent(score, exam || { total_marks: totalMarks })
-  );
-  const passed = result
-    ? isExamPassed(score, exam || { total_marks: totalMarks, passing_score: 50 })
-    : gradeRowFromNav?.status === 'Pass';
-  const letter = getLetterGrade(percentage);
-  const points = getGradePoints(percentage);
+  const totalMarks = courseTotals.totalMarks;
+  const score = courseTotals.score;
+  const percentage = courseTotals.percentage;
+  const passed = courseTotals.passed;
+  const letter = courseTotals.letter;
+  const points = courseTotals.points;
   const submittedAt = result?.submission_date || result?.graded_at || result?.created_at;
   const title =
     course?.name ||

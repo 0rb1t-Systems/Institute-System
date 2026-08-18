@@ -136,16 +136,16 @@ Deno.serve(async (req) => {
       return json({ error: 'Not allowed to create this role' }, 403)
     }
 
-    // Permission Matrix
+    // Permission Matrix — staff may create students only; instructors are admin-only
     const allowed =
       caller.role === 'admin' ||
-      (caller.role === 'staff' && (role === 'student' || role === 'instructor'))
+      (caller.role === 'staff' && role === 'student')
     if (!allowed) {
       return json(
         {
           error:
             caller.role === 'staff'
-              ? 'Staff may only create student or instructor accounts'
+              ? 'Staff may only create student accounts'
               : 'Not allowed to create this role',
         },
         403,

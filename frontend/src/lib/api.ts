@@ -2400,6 +2400,7 @@ export const createAssignment = async (data) => {
       due_date: data.due_date || null,
       total_marks: Number(data.total_marks ?? 100),
       weight: Math.min(100, Math.max(0, Number(data.weight ?? 100) || 100)),
+      counts_toward_grade: data.counts_toward_grade !== false,
       attachment_url: data.attachment_url || null,
       created_by: me.id,
     })
@@ -2419,6 +2420,9 @@ export const updateAssignment = async (id, data) => {
   if (data.total_marks !== undefined) updates.total_marks = Number(data.total_marks)
   if (data.weight !== undefined) {
     updates.weight = Math.min(100, Math.max(0, Number(data.weight) || 100))
+  }
+  if (data.counts_toward_grade !== undefined) {
+    updates.counts_toward_grade = data.counts_toward_grade !== false
   }
   if (data.attachment_url !== undefined) updates.attachment_url = data.attachment_url
   const { data: row, error } = await supabase.from('assignments').update(updates).eq('id', id).select().single()

@@ -243,19 +243,19 @@ const TranscriptView = ({ studentId, onClose }: any) => {
             let grade = '-';
             let displayPercentage = '-';
 
-            // Prefer live exam % (exam total) so ungraded exams never inflate the denominator
-            if (bestResult && bestResult.score !== null) {
+            // Prefer gradebook final (exam + assignment bonus), then live exam, then transcript entry
+            if (gb && gb.final_mark != null) {
+                marks = Number(gb.final_mark);
+                percentageValue = marks;
+                displayPercentage = `${Math.round(percentageValue)}%`;
+                grade = gb.letter_grade || calculateGrade(percentageValue);
+                status = percentageValue >= 60 ? 'Pass' : 'Fail';
+            } else if (bestResult && bestResult.score !== null) {
                 marks = bestResult.score;
                 const total = examDetails?.total_marks || examDetails?.final_marks || bestResult.total_marks || 100;
                 percentageValue = (Number(marks) / Number(total)) * 100;
                 displayPercentage = `${Math.round(percentageValue)}%`;
                 grade = calculateGrade(percentageValue);
-                status = percentageValue >= 60 ? 'Pass' : 'Fail';
-            } else if (gb && gb.final_mark != null) {
-                marks = Number(gb.final_mark);
-                percentageValue = marks;
-                displayPercentage = `${Math.round(percentageValue)}%`;
-                grade = gb.letter_grade || calculateGrade(percentageValue);
                 status = percentageValue >= 60 ? 'Pass' : 'Fail';
             } else if (te && te.mark != null) {
                 marks = Number(te.mark);

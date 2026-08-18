@@ -1,7 +1,8 @@
 /**
- * Assignment marks are bonus points added to the course exam score.
- * Final points = min(examTotal, examScore + sum(assignmentScores))
+ * Gradebook assignment marks are bonus points added to the course exam score.
+ * Final points = min(examTotal, examScore + sum(gradebookAssignmentScores))
  * Never exceed the exam total (e.g. 100).
+ * Practice assignments (counts_toward_grade = false) do not affect the grade.
  */
 
 export type ExamLike = {
@@ -25,7 +26,13 @@ export type AssignmentLike = {
   class_id?: string;
   course_id?: string | null;
   total_marks?: number;
+  counts_toward_grade?: boolean | null;
 };
+
+/** True unless explicitly set to false (legacy rows default to gradebook). */
+export function assignmentCountsTowardGrade(a?: AssignmentLike | null): boolean {
+  return a?.counts_toward_grade !== false;
+}
 
 export type SubmissionLike = {
   id?: string;
@@ -98,8 +105,23 @@ export function getAssignmentBonusRoom({
     : null;
   const examScore = getResultScore(result);
 
+  const assignMax = Math.max(0, num(assignment.total_marks, 0));
+
+  // Practice assignment: no gradebook room / cap.
+  if (!assignmentCountsTowardGrade(assignment)) {
+    return {
+      exam,
+      examScore,
+      examTotal,
+      otherAssignmentPoints: 0,
+      room: null,
+      maxAllowedForThisAssignment: assignMax,
+    };
+  }
+
   const otherAssignmentPoints = (assignments || [])
     .filter((a) => a.id !== assignment.id && a.class_id === assignment.class_id)
+    .filter((a) => assignmentCountsTowardGrade(a))
     .filter((a) => {
       const aCourse = a.course_id || classPrimaryCourseId;
       if (!courseId) return true;
@@ -113,8 +135,6 @@ export function getAssignmentBonusRoom({
       if (score == null) return sum;
       return sum + num(score);
     }, 0);
-
-  const assignMax = Math.max(0, num(assignment.total_marks, 0));
 
   // No exam grade yet → allow up to assignment max (sync waits for exam).
   if (examScore == null) {
@@ -136,5 +156,63 @@ export function getAssignmentBonusRoom({
     otherAssignmentPoints,
     room,
     maxAllowedForThisAssignment: Math.min(assignMax, room),
+  };
+}
+
+/**
+ * Exam score + gradebook assignment bonuses, capped at exam total.
+ * Matches Class Gradebook Final (e.g. 91 + 5 → 96 / 100).
+ */
+export function getCombinedExamWithBonus({
+  studentId,
+  classId,
+  courseId = null,
+  examScore,
+  examTotal = 100,
+  assignments = [],
+  submissions = [],
+  classPrimaryCourseId = null,
+}: {
+  studentId: string;
+  classId?: string | null;
+  courseId?: string | null;
+  examScore: number;
+  examTotal?: number;
+  assignments?: AssignmentLike[];
+  submissions?: SubmissionLike[];
+  classPrimaryCourseId?: string | null;
+}): {
+  bonusPoints: number;
+  combinedScore: number;
+  examTotal: number;
+  percentage: number;
+} {
+  const total = Math.max(1, num(examTotal, 100));
+  const base = Math.max(0, num(examScore, 0));
+  const targetCourse = courseId || classPrimaryCourseId || null;
+
+  const bonusPoints = (assignments || [])
+    .filter((a) => assignmentCountsTowardGrade(a))
+    .filter((a) => !classId || a.class_id === classId)
+    .filter((a) => {
+      if (!targetCourse) return true;
+      const aCourse = a.course_id || classPrimaryCourseId;
+      return !aCourse || aCourse === targetCourse;
+    })
+    .reduce((sum, a) => {
+      const sub = (submissions || []).find(
+        (s) => s.assignment_id === a.id && s.student_id === studentId
+      );
+      const score = sub?.score ?? sub?.grade;
+      if (score == null) return sum;
+      return sum + num(score);
+    }, 0);
+
+  const combinedScore = Math.min(total, base + bonusPoints);
+  return {
+    bonusPoints,
+    combinedScore,
+    examTotal: total,
+    percentage: (combinedScore / total) * 100,
   };
 }

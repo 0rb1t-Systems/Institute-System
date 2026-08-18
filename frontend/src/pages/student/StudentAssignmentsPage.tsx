@@ -135,7 +135,9 @@ const StudentAssignmentsPage = () => {
                                             <Clock className="h-3 w-3 shrink-0" /> Due: {formatDateTime(assign.due_date)}
                                         </span>
                                         <span className="text-[10px] text-slate-500">
-                                          Bonus up to {assign.total_marks} pts (added to exam)
+                                          {assign.counts_toward_grade !== false
+                                            ? `Bonus up to ${assign.total_marks} pts (added to exam)`
+                                            : `Practice up to ${assign.total_marks} pts (not in gradebook)`}
                                         </span>
                                     </div>
                                 </div>
@@ -206,7 +208,8 @@ const StudentAssignmentsPage = () => {
                                     <div className="mt-4 p-4 bg-slate-900 rounded border border-slate-700">
                                         <div className="flex justify-between items-center mb-2">
                                             <span className="font-bold text-white">
-                                              Bonus: {assign.submission.score ?? assign.submission.grade} / {assign.total_marks}
+                                              {assign.counts_toward_grade !== false ? 'Bonus' : 'Score'}:{' '}
+                                              {assign.submission.score ?? assign.submission.grade} / {assign.total_marks}
                                             </span>
                                             <span className="text-xs text-slate-500">
                                               Graded on {formatDateTime(assign.submission.graded_at || assign.submission.updated_at || new Date().toISOString())}

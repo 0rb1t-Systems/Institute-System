@@ -497,7 +497,8 @@ const InstructorsPage = () => {
   const { users, loading, error, refresh } = useUsers();
   const { user: currentUser } = useAuth();
   const isTenantAdmin = currentUser?.role === 'admin';
-  const canManage = currentUser?.role === 'admin' || currentUser?.role === 'staff';
+  /** Only tenant admin may create instructors; staff can view the list only. */
+  const canCreateInstructor = isTenantAdmin;
   const [searchTerm, setSearchTerm] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 10;
@@ -571,11 +572,13 @@ const InstructorsPage = () => {
           <div>
             <h1 className="text-3xl font-bold tracking-tight">Instructors</h1>
             <p className="text-muted-foreground">
-              Create and manage instructor accounts for your institution.
+              {isTenantAdmin
+                ? 'Create and manage instructor accounts for your institution.'
+                : 'View instructor accounts for your institution.'}
             </p>
           </div>
           <div className="flex items-center gap-2">
-            {canManage && (
+            {canCreateInstructor && (
               <Button onClick={() => setIsCreateOpen(true)}>
                 <UserPlus className="mr-2 h-4 w-4" />
                 Create Instructor

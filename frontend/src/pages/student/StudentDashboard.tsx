@@ -7,15 +7,25 @@ import { useData } from '@/contexts/DataContext';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { BookOpen, Calendar, Clock, ArrowRight, Activity, TrendingUp, CheckCircle, Percent, LogOut } from 'lucide-react';
+import { BookOpen, Calendar, Clock, ArrowRight, Activity, TrendingUp, CheckCircle, Percent, LogOut, CreditCard } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { getAttendanceEnriched } from '@/lib/api';
-import { formatDate } from '@/lib/utils';
+import { formatCurrency, formatDate, getMonthsBetween } from '@/lib/utils';
 import { getTenantLandingPath } from '@/lib/institution';
+import { computeStudentBalance, computeMonthlyFee } from '@/lib/finance';
+
+const formatMonthLabel = (ym: string) => {
+    const [y, m] = ym.split('-');
+    if (!y || !m) return ym;
+    return new Date(Number(y), Number(m) - 1, 1).toLocaleDateString('en-US', {
+        month: 'short',
+        year: 'numeric',
+    });
+};
 
 const StudentDashboard = () => {
     const { user, institution, loading: authLoading, logout } = useAuth();
-    const { enrollments, classes, results, loading: dataLoading } = useData();
+    const { enrollments, classes, results, payments, gradebookEntries, loading: dataLoading } = useData();
     const navigate = useNavigate();
 
     const [attendance, setAttendance] = useState([]);
@@ -82,10 +92,75 @@ const StudentDashboard = () => {
     }, [myAttendance]);
 
     const averageGrade = useMemo(() => {
+        if (!studentId) return 0;
+        const gbRows = (gradebookEntries || []).filter(
+          (g) => g.student_id === studentId && g.final_mark != null
+        );
+        if (gbRows.length > 0) {
+          const sum = gbRows.reduce((acc, g) => acc + Number(g.final_mark), 0);
+          return sum / gbRows.length;
+        }
         if (myResults.length === 0) return 0;
-        const sum = myResults.reduce((acc: any, r: any) => acc + ((r.score / r.total_marks) * 100), 0);
+        const sum = myResults.reduce((acc: any, r: any) => {
+          const total = Number(r.total_marks) || 100;
+          return acc + ((Number(r.score) / total) * 100);
+        }, 0);
         return sum / myResults.length;
-    }, [myResults]);
+    }, [studentId, myResults, gradebookEntries]);
+
+    const myPayments = useMemo(() => {
+        if (!studentId) return [];
+        return payments.filter((p) => p.student_id === studentId);
+    }, [payments, studentId]);
+
+    const activeEnrollment = useMemo(() => {
+        if (!studentId) return null;
+        return enrollments.find((e) => e.student_id === studentId && e.status === 'active') || null;
+    }, [enrollments, studentId]);
+
+    const activeClass = useMemo(() => {
+        if (!activeEnrollment) return null;
+        return classes.find((c) => c.id === activeEnrollment.class_id) || null;
+    }, [activeEnrollment, classes]);
+
+    const financialSummary = useMemo(() => {
+        return computeStudentBalance({
+            payments: myPayments,
+            activeClass,
+            enrollment: activeEnrollment,
+            institution,
+        });
+    }, [myPayments, activeClass, activeEnrollment, institution]);
+
+    const monthlyBreakdown = useMemo(() => {
+        if (!activeClass?.start_date || !activeClass?.end_date) return [];
+        const months = getMonthsBetween(activeClass.start_date, activeClass.end_date);
+        const monthlyFee = computeMonthlyFee(activeClass, activeEnrollment);
+        const paidByMonth = new Map<string, number>();
+
+        myPayments.forEach((p) => {
+            if (p.is_registration_fee) return;
+            if (p.status && p.status !== 'completed') return;
+            const key = p.month_paid ? String(p.month_paid).slice(0, 7) : null;
+            if (!key) return;
+            paidByMonth.set(key, (paidByMonth.get(key) || 0) + Number(p.amount || 0));
+        });
+
+        return months.map((month) => {
+            const paidAmount = paidByMonth.get(month) || 0;
+            const remaining = Math.max(0, monthlyFee - paidAmount);
+            const status =
+                paidAmount <= 0 ? 'unpaid' : remaining > 0 ? 'partial' : 'paid';
+            return {
+                month,
+                label: formatMonthLabel(month),
+                monthlyFee,
+                paidAmount,
+                remaining,
+                status,
+            };
+        });
+    }, [activeClass, activeEnrollment, myPayments]);
 
     const handleLogout = async () => {
         const path = getTenantLandingPath(institution, user?.role);
@@ -131,7 +206,7 @@ const StudentDashboard = () => {
             </div>
 
             {/* Quick Stats */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6 mb-8">
                 <Card className="bg-slate-900/50 border-slate-800 relative overflow-hidden group hover:border-blue-500/50 transition-colors">
                     <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
                         <BookOpen className="h-16 w-16 text-blue-500" />
@@ -180,7 +255,89 @@ const StudentDashboard = () => {
                         </p>
                     </CardContent>
                 </Card>
+
+                <Card
+                    className="bg-slate-900/50 border-slate-800 relative overflow-hidden group hover:border-amber-500/50 transition-colors cursor-pointer"
+                    onClick={() => navigate('/portal/finance')}
+                >
+                    <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
+                        <CreditCard className="h-16 w-16 text-amber-500" />
+                    </div>
+                    <CardHeader className="pb-2">
+                        <CardTitle className="text-sm font-medium text-slate-400 uppercase tracking-wider">Outstanding Balance</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                        <div className={`text-3xl font-bold ${financialSummary.balance > 0 ? 'text-red-400' : 'text-green-400'}`}>
+                            {formatCurrency(financialSummary.balance)}
+                        </div>
+                        <p className="text-xs text-slate-500 mt-2">
+                            Paid {formatCurrency(financialSummary.totalPaid)} · View finance
+                        </p>
+                    </CardContent>
+                </Card>
             </div>
+
+            {/* Monthly balance breakdown */}
+            {monthlyBreakdown.length > 0 && (
+                <Card className="bg-slate-900/50 border-slate-800 mb-8">
+                    <CardHeader className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                        <div>
+                            <CardTitle className="text-lg text-white flex items-center gap-2">
+                                <CreditCard className="h-5 w-5 text-amber-400" /> Monthly Balance
+                            </CardTitle>
+                            <CardDescription className="mt-1">
+                                {activeClass?.name
+                                    ? `Tuition months for ${activeClass.name}`
+                                    : 'Tuition months for your active class'}
+                                {financialSummary.monthlyFee > 0
+                                    ? ` · ${formatCurrency(financialSummary.monthlyFee)} / month`
+                                    : ''}
+                            </CardDescription>
+                        </div>
+                        <Button
+                            variant="ghost"
+                            size="sm"
+                            className="text-amber-400 hover:text-amber-300 self-start sm:self-auto"
+                            onClick={() => navigate('/portal/finance')}
+                        >
+                            Full finance <ArrowRight className="ml-1 h-4 w-4" />
+                        </Button>
+                    </CardHeader>
+                    <CardContent>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
+                            {monthlyBreakdown.map((row) => (
+                                <div
+                                    key={row.month}
+                                    className="rounded-lg border border-slate-800 bg-slate-950/60 p-3 flex items-center justify-between gap-3"
+                                >
+                                    <div>
+                                        <div className="text-sm font-medium text-slate-200">{row.label}</div>
+                                        <div className="text-xs text-slate-500 mt-0.5">
+                                            {row.status === 'paid'
+                                                ? `Paid ${formatCurrency(row.paidAmount)}`
+                                                : row.status === 'partial'
+                                                  ? `Paid ${formatCurrency(row.paidAmount)} · Due ${formatCurrency(row.remaining)}`
+                                                  : `Due ${formatCurrency(row.monthlyFee)}`}
+                                        </div>
+                                    </div>
+                                    {row.status === 'paid' ? (
+                                        <Badge className="bg-green-900/30 text-green-400 border-green-900 shrink-0">Paid</Badge>
+                                    ) : row.status === 'partial' ? (
+                                        <Badge className="bg-yellow-900/30 text-yellow-400 border-yellow-900 shrink-0">Partial</Badge>
+                                    ) : (
+                                        <Badge className="bg-red-900/30 text-red-400 border-red-900 shrink-0">Unpaid</Badge>
+                                    )}
+                                </div>
+                            ))}
+                        </div>
+                        {financialSummary.regBalance > 0 && (
+                            <p className="text-sm text-amber-400/90 mt-4">
+                                Registration fee still due: {formatCurrency(financialSummary.regBalance)}
+                            </p>
+                        )}
+                    </CardContent>
+                </Card>
+            )}
 
             <div className="grid lg:grid-cols-3 gap-8">
                 {/* Main Content: Active Classes */}

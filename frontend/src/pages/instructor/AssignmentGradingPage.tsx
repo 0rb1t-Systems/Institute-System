@@ -16,7 +16,7 @@ import { notify, MESSAGES } from '@/lib/notify';
 import { ArrowLeft, Download } from 'lucide-react';
 import { formatDateTime } from '@/lib/utils';
 import { resolveAssignmentFileUrl } from '@/lib/api';
-import { getAssignmentBonusRoom } from '@/lib/assignmentBonus';
+import { getAssignmentBonusRoom, assignmentCountsTowardGrade } from '@/lib/assignmentBonus';
 
 const AssignmentGradingPage = () => {
     const { assignmentId } = useParams();
@@ -114,7 +114,11 @@ const AssignmentGradingPage = () => {
               classPrimaryCourseId,
             });
 
-            if (roomInfo.examScore != null && gradeVal > roomInfo.maxAllowedForThisAssignment) {
+            if (
+              assignmentCountsTowardGrade(assignment) &&
+              roomInfo.examScore != null &&
+              gradeVal > roomInfo.maxAllowedForThisAssignment
+            ) {
               throw new Error(
                 `Only ${roomInfo.maxAllowedForThisAssignment} point(s) can be added. ` +
                 `Exam is ${roomInfo.examScore}/${roomInfo.examTotal}` +
@@ -148,6 +152,8 @@ const AssignmentGradingPage = () => {
         }
     };
 
+    const countsTowardGrade = assignmentCountsTowardGrade(assignment);
+
     if (!assignment) return <div className="p-8 text-center">Assignment not found.</div>;
 
     return (
@@ -161,7 +167,10 @@ const AssignmentGradingPage = () => {
                     <div className="min-w-0">
                         <h1 className="text-xl sm:text-2xl font-bold text-white break-words">{assignment.title}</h1>
                         <p className="text-slate-400 text-sm break-words">
-                            Due: {formatDateTime(assignment.due_date)} | Bonus max: {assignment.total_marks} (added to exam)
+                            Due: {formatDateTime(assignment.due_date)} |{' '}
+                            {countsTowardGrade
+                              ? `Bonus max: ${assignment.total_marks} (added to exam)`
+                              : `Practice max: ${assignment.total_marks} (not in gradebook)`}
                         </p>
                     </div>
             </div>
@@ -249,7 +258,9 @@ const AssignmentGradingPage = () => {
                     <DialogHeader>
                         <DialogTitle>Grade Submission</DialogTitle>
                         <DialogDescription>
-                          Enter bonus marks for {selectedStudent?.student.name}. Points are added to the exam score and cannot exceed the exam total.
+                          {countsTowardGrade
+                            ? `Enter bonus marks for ${selectedStudent?.student.name}. Points are added to the exam score and cannot exceed the exam total.`
+                            : `Enter practice marks for ${selectedStudent?.student.name}. This does not change their Gradebook or GPA.`}
                         </DialogDescription>
                     </DialogHeader>
                     <div className="space-y-4 py-2">
@@ -273,7 +284,7 @@ const AssignmentGradingPage = () => {
                               </Button>
                             ) : null}
                         </div>
-                        {bonusPreview && (
+                        {countsTowardGrade && bonusPreview && (
                           <div className="rounded-md border border-slate-800 bg-slate-950/60 p-3 text-xs text-slate-400 space-y-1">
                             {bonusPreview.examScore != null ? (
                               <>
@@ -299,15 +310,28 @@ const AssignmentGradingPage = () => {
                             )}
                           </div>
                         )}
+                        {!countsTowardGrade && (
+                          <div className="rounded-md border border-slate-800 bg-slate-950/60 p-3 text-xs text-slate-400">
+                            Practice assignment — score is for feedback only and will not appear in the Gradebook.
+                          </div>
+                        )}
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                              <div className="space-y-2">
                                 <Label>
-                                  Marks (Max: {bonusPreview?.maxAllowedForThisAssignment ?? assignment.total_marks})
+                                  Marks (Max:{' '}
+                                  {countsTowardGrade
+                                    ? (bonusPreview?.maxAllowedForThisAssignment ?? assignment.total_marks)
+                                    : assignment.total_marks}
+                                  )
                                 </Label>
                                 <Input
                                   type="number"
                                   min={0}
-                                  max={bonusPreview?.maxAllowedForThisAssignment ?? assignment.total_marks}
+                                  max={
+                                    countsTowardGrade
+                                      ? (bonusPreview?.maxAllowedForThisAssignment ?? assignment.total_marks)
+                                      : assignment.total_marks
+                                  }
                                   value={gradeData.grade}
                                   onChange={(e) => setGradeData({...gradeData, grade: e.target.value})}
                                 />

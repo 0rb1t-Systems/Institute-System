@@ -56,6 +56,7 @@ const AssignmentsPage = () => {
       due_date: '',
       due_time: '14:00',
       total_marks: 10,
+      counts_toward_grade: true,
   });
 
   const availableClasses = useMemo(() => {
@@ -101,6 +102,7 @@ const AssignmentsPage = () => {
               due_date: parts.date,
               due_time: parts.time,
               total_marks: assignment.total_marks,
+              counts_toward_grade: assignment.counts_toward_grade !== false,
           });
           setUploadedFileUrl(assignment.attachment_url || '');
       } else {
@@ -115,6 +117,7 @@ const AssignmentsPage = () => {
               due_date: '',
               due_time: '14:00',
               total_marks: 10,
+              counts_toward_grade: true,
           });
           setUploadedFileUrl('');
       }
@@ -171,6 +174,7 @@ const AssignmentsPage = () => {
               total_marks: marks,
               due_date: new Date(dueLocal).toISOString(),
               attachment_url: uploadedFileUrl || null,
+              counts_toward_grade: formData.counts_toward_grade !== false,
           });
           setIsDialogOpen(false);
           toast({ title: "Success", description: editingAssignment ? MESSAGES.SUCCESS.ASSIGNMENT_UPDATED : MESSAGES.SUCCESS.ASSIGNMENT_CREATED });
@@ -190,7 +194,7 @@ const AssignmentsPage = () => {
       }
   };
 
-  const getSubmissionStats = (assignmentId) => {
+ const getSubmissionStats = (assignmentId) => {
       const subs = assignmentSubmissions.filter(s => s.assignment_id === assignmentId);
       const graded = subs.filter(s => s.score != null || s.grade != null).length;
       return { total: subs.length, graded };
@@ -219,8 +223,19 @@ const AssignmentsPage = () => {
                                     <CardTitle className="text-lg text-slate-100 line-clamp-1" title={assign.title}>{assign.title}</CardTitle>
                                     <CardDescription className="mt-1">{assign.class?.name}</CardDescription>
                                 </div>
-                                <div className="p-2 bg-slate-800 rounded-full">
-                                    <BookOpen className="h-4 w-4 text-indigo-400" />
+                                <div className="flex flex-col items-end gap-2">
+                                    <span
+                                      className={`text-[10px] px-2 py-0.5 rounded border ${
+                                        assign.counts_toward_grade !== false
+                                          ? 'border-amber-700/50 text-amber-300 bg-amber-950/30'
+                                          : 'border-slate-600 text-slate-400 bg-slate-800/50'
+                                      }`}
+                                    >
+                                      {assign.counts_toward_grade !== false ? 'Gradebook' : 'Practice'}
+                                    </span>
+                                    <div className="p-2 bg-slate-800 rounded-full">
+                                        <BookOpen className="h-4 w-4 text-indigo-400" />
+                                    </div>
                                 </div>
                             </div>
                         </CardHeader>
@@ -231,7 +246,11 @@ const AssignmentsPage = () => {
                             </div>
                             <div className="flex items-center text-sm text-slate-400 gap-2">
                                 <CheckCircle className="h-4 w-4" />
-                                <span>Bonus marks: {assign.total_marks} (added to exam)</span>
+                                <span>
+                                  {assign.counts_toward_grade !== false
+                                    ? `Gradebook bonus: ${assign.total_marks} pts (added to exam)`
+                                    : `Practice: ${assign.total_marks} pts (not in gradebook)`}
+                                </span>
                             </div>
                             {assign.attachment_url && (
                                 <div className="flex items-center text-sm text-blue-400 gap-2 bg-blue-950/20 p-2 rounded border border-blue-900/30">
@@ -321,7 +340,7 @@ const AssignmentsPage = () => {
                             </SelectContent>
                         </Select>
                     </div>
-                    {selectedClassCourses.length > 0 && (
+                    {selectedClassCourses.length > 0 && formData.counts_toward_grade !== false && (
                       <div className="space-y-2">
                         <Label>Course (exam this boosts)</Label>
                         <Select
@@ -344,6 +363,32 @@ const AssignmentsPage = () => {
                       </div>
                     )}
                     <div className="space-y-2">
+                        <Label>Counts toward grade?</Label>
+                        <Select
+                          value={formData.counts_toward_grade !== false ? 'gradebook' : 'practice'}
+                          onValueChange={(val) =>
+                            setFormData({ ...formData, counts_toward_grade: val === 'gradebook' })
+                          }
+                        >
+                          <SelectTrigger>
+                            <SelectValue placeholder="Select type" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="gradebook">
+                              Add to Gradebook (boosts exam grade)
+                            </SelectItem>
+                            <SelectItem value="practice">
+                              Practice only (not in Gradebook)
+                            </SelectItem>
+                          </SelectContent>
+                        </Select>
+                        <p className="text-[10px] text-slate-500">
+                          {formData.counts_toward_grade !== false
+                            ? 'Scores appear in Gradebook and are added to the student exam grade (never above exam total).'
+                            : 'Students can submit and be graded for feedback only — no Gradebook or GPA impact.'}
+                        </p>
+                    </div>
+                    <div className="space-y-2">
                         <Label className="flex items-center gap-1"><Clock className="h-3.5 w-3.5" /> Due Date & Time</Label>
                         <DateTimePickerField
                           date={formData.due_date}
@@ -354,7 +399,7 @@ const AssignmentsPage = () => {
                         />
                     </div>
                     <div className="space-y-2">
-                        <Label>Bonus Marks</Label>
+                        <Label>{formData.counts_toward_grade !== false ? 'Bonus Marks' : 'Max Marks'}</Label>
                         <Input
                           type="number"
                           min={1}
@@ -362,7 +407,11 @@ const AssignmentsPage = () => {
                           value={formData.total_marks}
                           onChange={(e) => setFormData({...formData, total_marks: parseInt(e.target.value) || 0})}
                         />
-                        <p className="text-[10px] text-slate-500">e.g. 2, 5, 10, 20 — added to exam, never above exam total.</p>
+                        <p className="text-[10px] text-slate-500">
+                          {formData.counts_toward_grade !== false
+                            ? 'e.g. 2, 5, 10, 20 — added to exam, never above exam total.'
+                            : 'Practice score only — does not change the student grade.'}
+                        </p>
                     </div>
                     <div className="space-y-2">
                          <Label>Attach File (Optional)</Label>

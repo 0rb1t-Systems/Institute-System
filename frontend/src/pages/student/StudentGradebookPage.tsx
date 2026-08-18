@@ -26,6 +26,7 @@ import {
   getLetterGrade,
   isCoursePassed,
 } from '@/lib/examPass';
+import { getCombinedExamWithBonus } from '@/lib/assignmentBonus';
 
 const gradeTone = (grade: string) => {
   switch (grade) {
@@ -56,7 +57,7 @@ const scoreBarColor = (pct: number, pending: boolean) => {
 const StudentGradebookPage = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
-  const { results, exams, courses, classCourses, enrollments, classes, students, gradebookEntries } = useData();
+  const { results, exams, courses, classCourses, enrollments, classes, students, gradebookEntries, assignments, assignmentSubmissions } = useData();
 
   const studentData = useMemo(() => {
     if (!user) return null;
@@ -144,13 +145,31 @@ const StudentGradebookPage = () => {
       let totalDisplay: string | number = '-';
       let resultId = bestResult?.id || null;
 
-      // Prefer live exam % over gradebook entry.
+      // Exam + gradebook assignment bonus (same formula as instructor Class Gradebook Final).
       if (best && Number.isFinite(best.pct)) {
-        percentage = best.pct;
         const examTotal = getExamTotalMarks(examDetails);
-        scoreDisplay = bestResult.score;
+        const examScore = Number(bestResult.score ?? bestResult.final_score ?? 0);
+        const classPrimaryCourseId =
+          classes.find((c) => c.id === course.classId)?.course_id || null;
+        const combined = getCombinedExamWithBonus({
+          studentId: studentData.id,
+          classId: course.classId,
+          courseId: course.id,
+          examScore,
+          examTotal,
+          assignments,
+          submissions: assignmentSubmissions,
+          classPrimaryCourseId,
+        });
+        percentage = combined.percentage;
+        scoreDisplay = combined.combinedScore;
         totalDisplay = examTotal;
-        grade = getLetterGrade(percentage);
+        // Prefer synced letter when % matches gradebook final; otherwise compute.
+        if (gb && gb.final_mark != null && Math.abs(Number(gb.final_mark) - percentage) < 0.51) {
+          grade = gb.letter_grade && gb.letter_grade !== '-' ? gb.letter_grade : getLetterGrade(percentage);
+        } else {
+          grade = getLetterGrade(percentage);
+        }
         points = getGradePoints(percentage);
         status = isCoursePassed(percentage) ? 'Pass' : 'Fail';
       } else if (gb && gb.final_mark != null) {
@@ -177,7 +196,7 @@ const StudentGradebookPage = () => {
       };
     });
 
-  }, [studentData, enrollments, classes, courses, classCourses, exams, results, gradebookEntries]);
+  }, [studentData, enrollments, classes, courses, classCourses, exams, results, gradebookEntries, assignments, assignmentSubmissions]);
 
   const gradesByClass = useMemo(() => {
     const map = new Map<string, { className: string; courses: typeof studentGrades }>();
