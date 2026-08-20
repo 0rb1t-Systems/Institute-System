@@ -43,9 +43,17 @@ import {
 } from '@/lib/documentPdf';
 import CertificateDesignRenderer from '@/components/certificates/CertificateDesignRenderer';
 import type { CertificateRenderData } from '@/lib/certificateTemplates';
+import {
+  formatClassificationRange,
+  getGradePointsFromScale,
+  getInstitutionGradeScale,
+  getLetterGradeFromScale,
+  isCoursePassedFromScale,
+} from '@/lib/gradingScale';
 
 const TranscriptView = ({ studentId, onClose }: any) => {
     const { user, institution } = useAuth();
+    const gradeScale = useMemo(() => getInstitutionGradeScale(institution), [institution]);
     const {
       students,
       results,
@@ -248,21 +256,21 @@ const TranscriptView = ({ studentId, onClose }: any) => {
                 marks = Number(gb.final_mark);
                 percentageValue = marks;
                 displayPercentage = `${Math.round(percentageValue)}%`;
-                grade = gb.letter_grade || calculateGrade(percentageValue);
-                status = percentageValue >= 60 ? 'Pass' : 'Fail';
+                grade = gb.letter_grade || getLetterGradeFromScale(percentageValue, gradeScale);
+                status = isCoursePassedFromScale(percentageValue, gradeScale) ? 'Pass' : 'Fail';
             } else if (bestResult && bestResult.score !== null) {
                 marks = bestResult.score;
                 const total = examDetails?.total_marks || examDetails?.final_marks || bestResult.total_marks || 100;
                 percentageValue = (Number(marks) / Number(total)) * 100;
                 displayPercentage = `${Math.round(percentageValue)}%`;
-                grade = calculateGrade(percentageValue);
-                status = percentageValue >= 60 ? 'Pass' : 'Fail';
+                grade = getLetterGradeFromScale(percentageValue, gradeScale);
+                status = isCoursePassedFromScale(percentageValue, gradeScale) ? 'Pass' : 'Fail';
             } else if (te && te.mark != null) {
                 marks = Number(te.mark);
                 percentageValue = marks;
                 displayPercentage = `${Math.round(percentageValue)}%`;
-                grade = te.grade || calculateGrade(percentageValue);
-                status = percentageValue >= 60 ? 'Pass' : 'Fail';
+                grade = te.grade || getLetterGradeFromScale(percentageValue, gradeScale);
+                status = isCoursePassedFromScale(percentageValue, gradeScale) ? 'Pass' : 'Fail';
             }
 
             return {
@@ -280,16 +288,7 @@ const TranscriptView = ({ studentId, onClose }: any) => {
                 date: bestResult ? new Date(bestResult.submission_date || bestResult.graded_at || Date.now()).toLocaleDateString() : '-'
             };
         });
-    }, [studentData, selectedClassId, classes, courses, results, classCourses, exams, currentClass, gradebookEntries, transcripts]);
-
-    function calculateGrade(percentage) {
-        if (percentage === null || percentage === undefined) return '-';
-        if (percentage >= 90) return 'A';
-        if (percentage >= 80) return 'B';
-        if (percentage >= 70) return 'C';
-        if (percentage >= 60) return 'D';
-        return 'F'; // Below 60 is strictly Fail
-    }
+    }, [studentData, selectedClassId, classes, courses, results, classCourses, exams, currentClass, gradebookEntries, transcripts, gradeScale]);
 
     const stats = useMemo(() => {
         const graded = transcriptData.filter(t => t.marks !== null);
@@ -298,20 +297,12 @@ const TranscriptView = ({ studentId, onClose }: any) => {
         
         let totalPoints = 0;
         graded.forEach(t => {
-            let points = 0;
-            // 4.0 Scale Logic with strict < 60 Fail
-            if (t.percentageValue >= 90) points = 4.0;
-            else if (t.percentageValue >= 80) points = 3.0;
-            else if (t.percentageValue >= 70) points = 2.0;
-            else if (t.percentageValue >= 60) points = 1.0;
-            else points = 0.0; // Fail gets 0 points
-            
-            totalPoints += points;
+            totalPoints += getGradePointsFromScale(t.percentageValue, gradeScale);
         });
         
         const gpa = graded.length > 0 ? (totalPoints / graded.length).toFixed(2) : "0.00";
         return { total: transcriptData.length, passed, failed, gpa };
-    }, [transcriptData]);
+    }, [transcriptData, gradeScale]);
 
     const issuedTranscript = useMemo(() => {
       if (!studentData?.id || !selectedClassId) return null;
@@ -823,23 +814,20 @@ const TranscriptView = ({ studentId, onClose }: any) => {
                                     <div className="font-black text-center text-sm uppercase py-3">Grade Point</div>
                                 </div>
                                 
-                                {[
-                                    { mark: '90 - 100', grade: 'A', point: '4.0' },
-                                    { mark: '80 - 89.9', grade: 'B', point: '3.0' },
-                                    { mark: '70 - 79.9', grade: 'C', point: '2.0' },
-                                    { mark: '60 - 69.9', grade: 'D', point: '1.0' },
-                                    { mark: 'Below 60', grade: 'F', point: '0.0' }
-                                ].map((item, idx) => (
-                                    <div key={idx} className={`grid grid-cols-3 ${idx !== 4 ? 'border-b border-black' : ''}`}>
-                                        <div className="text-center font-bold text-sm py-2 border-r border-black">{item.mark}</div>
-                                        <div className="text-center font-bold text-sm py-2 border-r border-black">{item.grade}</div>
-                                        <div className="text-center font-bold text-sm py-2">{item.point}</div>
+                                {[...gradeScale.bands]
+                                  .sort((a, b) => b.min - a.min)
+                                  .map((item, idx, arr) => (
+                                    <div key={`${item.letter}-${idx}`} className={`grid grid-cols-3 ${idx !== arr.length - 1 ? 'border-b border-black' : ''}`}>
+                                        <div className="text-center font-bold text-sm py-2 border-r border-black">{item.label}</div>
+                                        <div className="text-center font-bold text-sm py-2 border-r border-black">{item.letter}</div>
+                                        <div className="text-center font-bold text-sm py-2">{Number(item.points).toFixed(1)}</div>
                                     </div>
                                 ))}
                             </div>
                         </div>
 
                         {/* Key to Classification Section */}
+                        {gradeScale.classifications?.length ? (
                         <div className="space-y-6 pt-8">
                             <h2 className="text-xl font-black text-center uppercase underline decoration-2 underline-offset-8 tracking-widest">Key to Classification of Awards</h2>
                             
@@ -849,25 +837,21 @@ const TranscriptView = ({ studentId, onClose }: any) => {
                                     <div className="font-black text-center text-sm uppercase py-3">CGPA Range</div>
                                 </div>
 
-                                {[
-                                    { name: 'First Class', gpa: '3.50 - 4.00' },
-                                    { name: 'Second Class – Upper Division', gpa: '3.00 - 3.49' },
-                                    { name: 'Second Class – Lower Division', gpa: '2.50 - 2.99' },
-                                    { name: 'Pass', gpa: '2.00 - 2.49' }
-                                ].map((item, idx) => (
-                                    <div key={idx} className={`grid grid-cols-[2fr_1fr] ${idx !== 3 ? 'border-b border-black' : ''}`}>
+                                {gradeScale.classifications.map((item, idx) => (
+                                    <div key={`${item.name}-${idx}`} className={`grid grid-cols-[2fr_1fr] ${idx !== gradeScale.classifications.length - 1 ? 'border-b border-black' : ''}`}>
                                         <div className="pl-6 font-bold text-sm py-2 border-r border-black text-left">{item.name}</div>
-                                        <div className="text-center font-bold text-sm py-2">{item.gpa}</div>
+                                        <div className="text-center font-bold text-sm py-2">{formatClassificationRange(item)}</div>
                                     </div>
                                 ))}
                             </div>
                         </div>
+                        ) : null}
                     </div>
 
                     <div className="space-y-2 mt-8 border-t-2 border-black pt-6">
                          <div className="flex gap-2 text-xs font-bold items-center">
                             <span className="bg-black text-white px-2 py-0.5 rounded-sm uppercase text-[10px]">Note:</span>
-                            <span>The Cumulative Grade Point Average (CGPA) is calculated on a 4.00 scale.</span>
+                            <span>The Cumulative Grade Point Average (CGPA) is calculated on a {Number(gradeScale.scale_max).toFixed(2)} scale.</span>
                          </div>
                          <div className="space-y-1 text-xs font-bold text-slate-800 ml-10">
                             <p>• <span className="font-black">Nrt</span> – Retake: The Student obtained the score on second sitting.</p>

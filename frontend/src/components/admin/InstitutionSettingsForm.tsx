@@ -21,6 +21,7 @@ import { isValidEmail, setAppCurrency } from '@/lib/utils'
 import { useToast } from '@/components/ui/use-toast'
 import { getUserMessage } from '@/lib/mapError'
 import { MESSAGES } from '@/lib/messages'
+import GradingSystemSettings from '@/components/admin/GradingSystemSettings'
 
 const CURRENCY_OPTIONS = [
   { code: 'USD', symbol: '$', label: 'USD — US Dollar' },
@@ -656,6 +657,8 @@ const InstitutionSettingsForm = ({ onUpdated }) => {
           </Button>
         </CardContent>
       </Card>
+
+      <GradingSystemSettings onUpdated={onUpdated} />
     </div>
   )
 }

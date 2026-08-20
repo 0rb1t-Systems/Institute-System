@@ -1,8 +1,15 @@
 /**
  * Exam pass/fail — single rule for student portal, admin marking, and reports.
  * passing_score is a percentage 0–100 (column on exams).
- * Course letter grades / GPA use a 60% pass mark (transcript scale).
+ * Course letter grades / GPA use institution grading scale (default 60% pass).
  */
+import {
+  getDefaultGradingScale,
+  getGradePointsFromScale,
+  getLetterGradeFromScale,
+  isCoursePassedFromScale,
+  type GradingScale,
+} from '@/lib/gradingScale'
 
 export function getExamTotalMarks(exam?: { total_marks?: number | null; final_marks?: number | null } | null): number {
   const n = Number(exam?.total_marks ?? exam?.final_marks ?? 100)
@@ -33,29 +40,24 @@ export function isExamPassed(
   return getExamScorePercent(score, exam) >= getExamPassingPercent(exam)
 }
 
-/** Letter grade from a percentage mark (0–100). */
-export function getLetterGrade(percentage: number): string {
-  const p = Number(percentage)
-  if (!Number.isFinite(p)) return '-'
-  if (p >= 90) return 'A'
-  if (p >= 80) return 'B'
-  if (p >= 70) return 'C'
-  if (p >= 60) return 'D'
-  return 'F'
+/** Letter grade from a percentage mark (0–100). Optional institution scale. */
+export function getLetterGrade(percentage: number, scale?: GradingScale | null): string {
+  return getLetterGradeFromScale(percentage, scale || getDefaultGradingScale())
 }
 
-/** 4.0-scale grade points from a percentage mark. */
-export function getGradePoints(percentage: number): number {
-  const p = Number(percentage)
-  if (!Number.isFinite(p)) return 0
-  if (p >= 90) return 4.0
-  if (p >= 80) return 3.0
-  if (p >= 70) return 2.0
-  if (p >= 60) return 1.0
-  return 0.0
+/** Grade points from a percentage mark. Optional institution scale. */
+export function getGradePoints(percentage: number, scale?: GradingScale | null): number {
+  return getGradePointsFromScale(percentage, scale || getDefaultGradingScale())
 }
 
-/** Course pass/fail on the transcript scale (default 60%). */
-export function isCoursePassed(percentage: number, passMark = 60): boolean {
+/** Course pass/fail on the transcript scale. */
+export function isCoursePassed(
+  percentage: number,
+  passMarkOrScale: number | GradingScale | null | undefined = 60,
+): boolean {
+  if (passMarkOrScale && typeof passMarkOrScale === 'object') {
+    return isCoursePassedFromScale(percentage, passMarkOrScale)
+  }
+  const passMark = typeof passMarkOrScale === 'number' ? passMarkOrScale : 60
   return Number(percentage) >= passMark
 }

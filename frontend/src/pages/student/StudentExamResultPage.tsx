@@ -20,6 +20,8 @@ import {
 import { getCombinedExamWithBonus } from '@/lib/assignmentBonus';
 import { getUserMessage } from '@/lib/mapError';
 import { MESSAGES } from '@/lib/messages';
+import { useAuth } from '@/contexts/AuthContext';
+import { getInstitutionGradeScale } from '@/lib/gradingScale';
 
 /**
  * Student grading detail — opened from Gradebook "View".
@@ -31,6 +33,8 @@ const StudentExamResultPage = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const gradeRowFromNav = location.state?.gradeRow || null;
+  const { institution } = useAuth();
+  const gradeScale = useMemo(() => getInstitutionGradeScale(institution), [institution]);
   const { results, exams, courses, classes, assignments, assignmentSubmissions } = useData();
   const [fetchedResult, setFetchedResult] = useState(() => location.state?.result || null);
   const [loading, setLoading] = useState(!location.state?.result && !gradeRowFromNav);
@@ -106,9 +110,9 @@ const StudentExamResultPage = () => {
       const totalMarks = exam ? getExamTotalMarks(exam) : Number(result.total_marks) || 100;
       const score = Number(result.score ?? result.final_score ?? 0);
       const percentage = getExamScorePercent(score, exam || { total_marks: totalMarks });
-      const letter = getLetterGrade(percentage);
-      const points = getGradePoints(percentage);
-      const passed = isCoursePassed(percentage);
+      const letter = getLetterGrade(percentage, gradeScale);
+      const points = getGradePoints(percentage, gradeScale);
+      const passed = isCoursePassed(percentage, gradeScale);
 
       rows.push({
         key: 'exam',
@@ -163,7 +167,7 @@ const StudentExamResultPage = () => {
     }
 
     return rows;
-  }, [result, exam, assignments, assignmentSubmissions, gradeRowFromNav]);
+  }, [result, exam, assignments, assignmentSubmissions, gradeRowFromNav, gradeScale]);
 
   const courseTotals = useMemo(() => {
     if (result) {
@@ -188,9 +192,9 @@ const StudentExamResultPage = () => {
         score: combined.combinedScore,
         totalMarks: combined.examTotal,
         percentage,
-        letter: getLetterGrade(percentage),
-        points: getGradePoints(percentage),
-        passed: isCoursePassed(percentage),
+        letter: getLetterGrade(percentage, gradeScale),
+        points: getGradePoints(percentage, gradeScale),
+        passed: isCoursePassed(percentage, gradeScale),
       };
     }
 
@@ -203,11 +207,11 @@ const StudentExamResultPage = () => {
       score,
       totalMarks,
       percentage,
-      letter: getLetterGrade(percentage),
-      points: getGradePoints(percentage),
-      passed: gradeRowFromNav?.status === 'Pass' || isCoursePassed(percentage),
+      letter: getLetterGrade(percentage, gradeScale),
+      points: getGradePoints(percentage, gradeScale),
+      passed: gradeRowFromNav?.status === 'Pass' || isCoursePassed(percentage, gradeScale),
     };
-  }, [result, exam, classes, assignments, assignmentSubmissions, gradeRowFromNav]);
+  }, [result, exam, classes, assignments, assignmentSubmissions, gradeRowFromNav, gradeScale]);
 
   if (loading) {
     return (

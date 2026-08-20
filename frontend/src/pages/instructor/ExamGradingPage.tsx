@@ -15,10 +15,14 @@ import { notify, MESSAGES } from '@/lib/notify';
 import { ArrowLeft, CheckCircle2 } from 'lucide-react';
 import { formatDate } from '@/lib/utils';
 import { getExamScorePercent, getLetterGrade, isExamPassed } from '@/lib/examPass';
+import { useAuth } from '@/contexts/AuthContext';
+import { getInstitutionGradeScale } from '@/lib/gradingScale';
 
 const ExamGradingPage = () => {
     const { examId } = useParams();
     const navigate = useNavigate();
+    const { institution } = useAuth();
+    const gradeScale = useMemo(() => getInstitutionGradeScale(institution), [institution]);
     const { exams, results, enrollments, students, saveManualGrades } = useData();
     const { toast } = useToast();
     
@@ -123,7 +127,7 @@ const ExamGradingPage = () => {
                                 const rawScore = item.result?.final_score ?? item.result?.score;
                                 const hasScore = rawScore !== undefined && rawScore !== null && rawScore !== '';
                                 const pct = hasScore ? Math.round(getExamScorePercent(Number(rawScore), exam)) : null;
-                                const letter = pct != null ? getLetterGrade(pct) : '—';
+                                const letter = pct != null ? getLetterGrade(pct, gradeScale) : '—';
                                 const passed = hasScore ? isExamPassed(Number(rawScore), exam) : null;
 
                                 return (

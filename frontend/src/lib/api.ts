@@ -10,7 +10,7 @@ import { LANDING_TEMPLATE_IDS } from '@/lib/landingTemplates'
 const notReady = (_feature) => new Error('FEATURE_UNAVAILABLE')
 
 const INST_SELECT =
-  'id, name, subdomain, logo_url, description, email, phone, address, website, motto, theme_primary, theme_accent, status, created_at, affiliate_commission_rate, registration_fee_amount, default_instructor_commission_rate, currency, currency_symbol, signatory_left_title, signatory_right_title, signatory_left_name, signatory_right_name, seal_url, signature_url, certificate_footer_text, transcript_footer_text, invoice_footer_text, settings_completed_at, landing_template_id, hero_image_url, hero_headline, footer_text'
+  'id, name, subdomain, logo_url, description, email, phone, address, website, motto, theme_primary, theme_accent, status, created_at, affiliate_commission_rate, registration_fee_amount, default_instructor_commission_rate, currency, currency_symbol, signatory_left_title, signatory_right_title, signatory_left_name, signatory_right_name, seal_url, signature_url, certificate_footer_text, transcript_footer_text, invoice_footer_text, settings_completed_at, landing_template_id, hero_image_url, hero_headline, footer_text, grading_scale'
 
 async function requireUser() {
   const { data, error } = await supabase.auth.getUser()
@@ -916,7 +916,7 @@ export const uploadAssignmentFile = async (file, folderHint = 'assignments') => 
   return path
 }
 
-const ALLOWED_ASSET_KINDS = new Set(['logo', 'stamp', 'signature', 'hero'])
+const ALLOWED_ASSET_KINDS = new Set(['logo', 'stamp', 'seal', 'signature', 'hero', 'grading_key'])
 const ALLOWED_IMAGE_MIME = new Set(['image/png', 'image/jpeg', 'image/webp', 'image/svg+xml'])
 const MAX_ASSET_BYTES = 5 * 1024 * 1024
 
@@ -1065,6 +1065,10 @@ export const updateInstitution = async (updates) => {
   if (updates.invoice_footer_text !== undefined) {
     allowed.invoice_footer_text = String(updates.invoice_footer_text || '').trim() || null
   }
+  if (updates.grading_scale !== undefined) {
+    // null clears custom scale (fallback to platform default)
+    allowed.grading_scale = updates.grading_scale === null ? null : updates.grading_scale
+  }
   // subdomain is provision-time only — never editable by tenant admin via this path
 
   const { data, error } = await supabase
@@ -1101,6 +1105,15 @@ export const updateInstitution = async (updates) => {
     }
   }
 
+  return data
+}
+
+/** Recompute auto gradebook letter grades after institution grading_scale changes. */
+export const resyncInstitutionGradeLetters = async (institutionId) => {
+  const { data, error } = await supabase.rpc('resync_institution_grade_letters', {
+    p_institution_id: institutionId,
+  })
+  if (error) throw error
   return data
 }
 
