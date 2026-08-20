@@ -29,7 +29,7 @@ export function LandingPageNav({ primary, preview, tone = 'light', className = '
 
   return (
     <nav
-      className={`flex flex-wrap items-center justify-center gap-x-5 gap-y-1 text-[13px] font-medium tracking-wide md:justify-start ${className}`}
+      className={`flex flex-wrap items-center justify-center gap-x-3 gap-y-1 text-xs font-medium sm:gap-x-5 sm:text-[13px] sm:tracking-wide md:justify-start ${className}`}
       aria-label="Page sections"
     >
       {LANDING_NAV_ITEMS.map((item) => {
@@ -103,7 +103,7 @@ export function LandingContentSections({
             About
           </p>
           <h2
-            className={`mt-2 max-w-2xl font-display text-2xl font-bold tracking-tight sm:text-3xl ${
+            className={`mt-2 max-w-2xl break-words font-display text-xl font-bold tracking-tight sm:text-3xl ${
               dark ? 'text-white' : 'text-slate-900'
             }`}
           >

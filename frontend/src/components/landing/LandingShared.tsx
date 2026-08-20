@@ -59,32 +59,33 @@ export function LandingHeaderActions({
   outlineClassName?: string
 }) {
   return (
-    <div className="flex shrink-0 flex-wrap items-center justify-end gap-2">
+    <div className="flex min-w-0 flex-wrap items-center justify-end gap-1.5 sm:gap-2">
       {sameTenant ? (
-        <Button asChild size="sm" className={solidClassName} style={{ backgroundColor: primary }}>
+        <Button asChild size="sm" className={`${solidClassName} max-sm:px-2.5`} style={{ backgroundColor: primary }}>
           <Link to={preview ? '#' : dashboardPathForRole(userRole)}>Dashboard</Link>
         </Button>
       ) : (
         <Button
           type="button"
           size="sm"
-          className={solidClassName}
+          className={`${solidClassName} max-sm:px-2.5`}
           style={{ backgroundColor: primary }}
           onClick={() => !preview && onOpenLogin()}
         >
-          <LogIn className="mr-1.5 h-3.5 w-3.5" />
-          Portal Login
+          <LogIn className="mr-1 h-3.5 w-3.5 sm:mr-1.5" />
+          <span className="sm:hidden">Login</span>
+          <span className="hidden sm:inline">Portal Login</span>
         </Button>
       )}
       {preview ? (
-        <Button type="button" size="sm" variant="outline" className={outlineClassName}>
-          <ShieldCheck className="mr-1.5 h-3.5 w-3.5" />
+        <Button type="button" size="sm" variant="outline" className={`${outlineClassName} max-sm:px-2.5`}>
+          <ShieldCheck className="mr-1 h-3.5 w-3.5 sm:mr-1.5" />
           Verify
         </Button>
       ) : (
-        <Button asChild size="sm" variant="outline" className={outlineClassName}>
+        <Button asChild size="sm" variant="outline" className={`${outlineClassName} max-sm:px-2.5`}>
           <Link to={verifyHref}>
-            <ShieldCheck className="mr-1.5 h-3.5 w-3.5" />
+            <ShieldCheck className="mr-1 h-3.5 w-3.5 sm:mr-1.5" />
             Verify
           </Link>
         </Button>
@@ -104,6 +105,7 @@ export function LandingCtas({
   solidClassName = 'rounded-xl text-white',
   outlineClassName = 'rounded-xl',
   size = 'lg',
+  align = 'start',
 }: {
   primary: string
   verifyHref: string
@@ -114,15 +116,22 @@ export function LandingCtas({
   solidClassName?: string
   outlineClassName?: string
   size?: 'sm' | 'default' | 'lg'
+  align?: 'start' | 'center'
 }) {
   const click = () => {
     if (!preview) onOpenLogin()
   }
+  const justify = align === 'center' ? 'justify-center' : 'justify-start'
 
   return (
-    <div className="flex flex-wrap gap-3">
+    <div className={`flex w-full max-w-full flex-col gap-3 sm:flex-row sm:flex-wrap ${justify}`}>
       {sameTenant ? (
-        <Button asChild size={size} className={solidClassName} style={{ backgroundColor: primary }}>
+        <Button
+          asChild
+          size={size}
+          className={`${solidClassName} w-full sm:w-auto`}
+          style={{ backgroundColor: primary }}
+        >
           <Link to={preview ? '#' : dashboardPathForRole(userRole)}>
             Go to dashboard <ArrowRight className="ml-2 h-4 w-4" />
           </Link>
@@ -131,7 +140,7 @@ export function LandingCtas({
         <Button
           type="button"
           size={size}
-          className={solidClassName}
+          className={`${solidClassName} w-full sm:w-auto`}
           style={{ backgroundColor: primary }}
           onClick={click}
         >
@@ -140,15 +149,22 @@ export function LandingCtas({
         </Button>
       )}
       {preview ? (
-        <Button type="button" size={size} variant="outline" className={outlineClassName}>
+        <Button
+          type="button"
+          size={size}
+          variant="outline"
+          className={`${outlineClassName} w-full sm:w-auto`}
+        >
           <ShieldCheck className="mr-2 h-4 w-4" />
-          Verify Credential
+          <span className="sm:hidden">Verify</span>
+          <span className="hidden sm:inline">Verify Credential</span>
         </Button>
       ) : (
-        <Button asChild size={size} variant="outline" className={outlineClassName}>
+        <Button asChild size={size} variant="outline" className={`${outlineClassName} w-full sm:w-auto`}>
           <Link to={verifyHref}>
             <ShieldCheck className="mr-2 h-4 w-4" />
-            Verify Credential
+            <span className="sm:hidden">Verify</span>
+            <span className="hidden sm:inline">Verify Credential</span>
           </Link>
         </Button>
       )}
@@ -193,13 +209,13 @@ export function SharedLandingFooter({
 
   return (
     <footer id="contact" className={`relative z-10 scroll-mt-24 ${wrap}`}>
-      <div className="mx-auto grid max-w-6xl gap-6 px-4 py-7 sm:px-8 md:grid-cols-[1.2fr_1fr_1fr]">
-        <div>
-          <div className="flex items-center gap-2.5">
+      <div className="mx-auto grid max-w-6xl gap-6 px-4 py-7 sm:px-6 md:grid-cols-[1.2fr_1fr_1fr] md:px-8">
+        <div className="min-w-0">
+          <div className="flex min-w-0 items-center gap-2.5">
             <BrandMark institution={institution} primary={primary} size="sm" />
-            <p className={`font-display text-sm font-semibold ${title}`}>{institution.name}</p>
+            <p className={`truncate font-display text-sm font-semibold ${title}`}>{institution.name}</p>
           </div>
-          <p className={`mt-3 max-w-xs text-sm leading-relaxed ${muted}`}>{footerNote}</p>
+          <p className={`mt-3 max-w-xs break-words text-sm leading-relaxed ${muted}`}>{footerNote}</p>
         </div>
 
         <div>
@@ -243,34 +259,34 @@ export function SharedLandingFooter({
           </ul>
         </div>
 
-        <div>
+        <div className="min-w-0">
           <p className={`text-xs font-semibold uppercase tracking-[0.14em] ${muted}`}>Contact</p>
           <ul className="mt-3 space-y-2.5 text-sm">
             {institution.address && (
-              <li className="flex gap-2">
+              <li className="flex min-w-0 gap-2">
                 <MapPin className="mt-0.5 h-4 w-4 shrink-0" style={{ color: primary }} />
-                <span>{institution.address}</span>
+                <span className="min-w-0 break-words">{institution.address}</span>
               </li>
             )}
             {institution.phone && (
-              <li className="flex items-center gap-2">
+              <li className="flex min-w-0 items-center gap-2">
                 <Phone className="h-4 w-4 shrink-0" style={{ color: primary }} />
                 {preview ? (
-                  institution.phone
+                  <span className="break-all">{institution.phone}</span>
                 ) : (
-                  <a href={`tel:${institution.phone}`} className={linkHover}>
+                  <a href={`tel:${institution.phone}`} className={`min-w-0 break-all ${linkHover}`}>
                     {institution.phone}
                   </a>
                 )}
               </li>
             )}
             {institution.email && (
-              <li className="flex items-center gap-2">
+              <li className="flex min-w-0 items-center gap-2">
                 <Mail className="h-4 w-4 shrink-0" style={{ color: primary }} />
                 {preview ? (
-                  institution.email
+                  <span className="break-all">{institution.email}</span>
                 ) : (
-                  <a href={`mailto:${institution.email}`} className={linkHover}>
+                  <a href={`mailto:${institution.email}`} className={`min-w-0 break-all ${linkHover}`}>
                     {institution.email}
                   </a>
                 )}
@@ -283,7 +299,7 @@ export function SharedLandingFooter({
         </div>
       </div>
 
-      <div className={`border-t py-4 text-center text-xs ${bar}`}>
+      <div className={`border-t px-4 py-4 text-center text-xs break-words ${bar}`}>
         © {year} {institution.name}
         <span className="mx-2 opacity-30">·</span>
         Powered by{' '}

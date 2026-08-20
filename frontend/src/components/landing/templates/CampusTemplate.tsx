@@ -27,16 +27,21 @@ export default function CampusTemplate(p: LandingTemplateProps) {
   } = p
 
   return (
-    <div className="min-h-screen bg-white font-sans text-slate-900">
+    <div className="min-h-screen overflow-x-hidden bg-white font-sans text-slate-900">
       <header className="sticky top-0 z-30 border-b border-slate-100 bg-white/95 backdrop-blur-md">
-        <div className="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-3 px-4 py-3 sm:px-6">
-          <div className="flex min-w-0 items-center gap-3">
+        <div className="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-2 px-4 py-2.5 sm:gap-3 sm:px-6 sm:py-3">
+          <div className="flex min-w-0 items-center gap-2.5 sm:gap-3">
             <BrandMark institution={institution} primary={primary} size="sm" rounded="xl" />
             <p className="truncate font-display text-sm font-bold tracking-tight sm:text-base">
               {institution.name}
             </p>
           </div>
-          <LandingPageNav primary={primary} preview={preview} tone="light" className="order-3 w-full md:order-none md:w-auto" />
+          <LandingPageNav
+            primary={primary}
+            preview={preview}
+            tone="light"
+            className="order-3 w-full justify-center md:order-none md:w-auto md:justify-start"
+          />
           <LandingHeaderActions
             primary={primary}
             verifyHref={verifyHref}
@@ -51,10 +56,10 @@ export default function CampusTemplate(p: LandingTemplateProps) {
       </header>
 
       <section id="home" className="relative grid scroll-mt-24 lg:min-h-[min(72vh,640px)] lg:grid-cols-2">
-        <div className="flex flex-col justify-center px-4 py-12 sm:px-10 lg:px-14 lg:py-16">
-          <div className="mx-auto w-full max-w-xl space-y-6">
+        <div className="flex flex-col justify-center px-4 py-10 sm:px-10 sm:py-12 lg:px-14 lg:py-16">
+          <div className="mx-auto w-full max-w-xl space-y-5 sm:space-y-6">
             <div className="h-1 w-12 rounded-full" style={{ backgroundColor: accent }} />
-            <h1 className="font-display text-3xl font-extrabold leading-[1.1] tracking-tight text-slate-900 sm:text-4xl lg:text-[2.75rem]">
+            <h1 className="break-words font-display text-2xl font-extrabold leading-[1.1] tracking-tight text-slate-900 sm:text-4xl lg:text-[2.75rem]">
               {headline}
             </h1>
             <p className="max-w-md text-[15px] leading-relaxed text-slate-600">{tagline}</p>
@@ -72,7 +77,7 @@ export default function CampusTemplate(p: LandingTemplateProps) {
           </div>
         </div>
 
-        <div className="relative min-h-[260px] sm:min-h-[320px] lg:min-h-full">
+        <div className="relative min-h-[220px] sm:min-h-[320px] lg:min-h-full">
           <img src={heroImage} alt="" className="absolute inset-0 h-full w-full object-cover" />
           <div
             className="absolute inset-y-0 left-0 hidden w-16 bg-gradient-to-r from-white to-transparent lg:block"

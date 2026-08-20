@@ -59,20 +59,23 @@ export default function NovaTemplate(p: LandingTemplateProps) {
             outlineClassName="rounded-xl border-white/25 bg-white/5 text-white hover:bg-white/10 hover:text-white"
           />
         </div>
+        <div className="mx-auto max-w-6xl px-4 pb-3 lg:hidden">
+          <LandingPageNav primary={primary} preview={preview} tone="dark" className="justify-center" />
+        </div>
       </header>
 
       <section
         id="home"
-        className="relative z-10 mx-auto grid max-w-6xl scroll-mt-24 items-center gap-10 px-4 py-12 sm:px-6 lg:grid-cols-12 lg:gap-12 lg:py-16"
+        className="relative z-10 mx-auto grid max-w-6xl scroll-mt-24 items-center gap-8 px-4 py-10 sm:gap-10 sm:px-6 sm:py-12 lg:grid-cols-12 lg:gap-12 lg:py-16"
       >
-        <div className="space-y-6 lg:col-span-5">
+        <div className="space-y-5 sm:space-y-6 lg:col-span-5">
           <p
             className="text-[11px] font-semibold uppercase tracking-[0.2em]"
             style={{ color: primary }}
           >
             Portal · {year}
           </p>
-          <h1 className="font-display text-3xl font-extrabold leading-[1.1] tracking-tight sm:text-4xl lg:text-[2.65rem]">
+          <h1 className="break-words font-display text-2xl font-extrabold leading-[1.1] tracking-tight sm:text-4xl lg:text-[2.65rem]">
             {headline}
           </h1>
           <p className="max-w-md text-[15px] leading-relaxed text-[#9bc4b8]">{tagline}</p>

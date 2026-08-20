@@ -27,12 +27,12 @@ export default function AtelierTemplate(p: LandingTemplateProps) {
   } = p
 
   return (
-    <div className="min-h-screen bg-[#F7F6F4] font-sans text-stone-900">
-      <header className="mx-auto max-w-6xl px-4 pt-6 sm:px-6">
-        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-stone-200/80 pb-5">
-          <div className="flex min-w-0 items-center gap-3">
+    <div className="min-h-screen overflow-x-hidden bg-[#F7F6F4] font-sans text-stone-900">
+      <header className="mx-auto max-w-6xl px-4 pt-5 sm:px-6 sm:pt-6">
+        <div className="flex flex-wrap items-center justify-between gap-2 border-b border-stone-200/80 pb-4 sm:gap-3 sm:pb-5">
+          <div className="flex min-w-0 items-center gap-2.5 sm:gap-3">
             <BrandMark institution={institution} primary={primary} size="sm" rounded="2xl" />
-            <p className="truncate font-display text-base font-semibold tracking-tight sm:text-lg">
+            <p className="truncate font-display text-sm font-semibold tracking-tight sm:text-lg">
               {institution.name}
             </p>
           </div>
@@ -48,17 +48,20 @@ export default function AtelierTemplate(p: LandingTemplateProps) {
             outlineClassName="rounded-full border-stone-300 bg-white"
           />
         </div>
+        <div className="mt-3 md:hidden">
+          <LandingPageNav primary={accent} preview={preview} tone="light" className="justify-center" />
+        </div>
       </header>
 
       <section
         id="home"
-        className="mx-auto grid max-w-6xl scroll-mt-24 items-center gap-10 px-4 py-12 sm:px-6 lg:grid-cols-2 lg:gap-16 lg:py-16"
+        className="mx-auto grid max-w-6xl scroll-mt-24 items-center gap-8 px-4 py-10 sm:gap-10 sm:px-6 sm:py-12 lg:grid-cols-2 lg:gap-16 lg:py-16"
       >
         <div className="relative order-2 lg:order-1">
           <img
             src={heroImage}
             alt=""
-            className="aspect-[5/5] w-full rounded-2xl object-cover shadow-[0_24px_60px_rgba(28,25,23,0.12)] sm:aspect-[4/5]"
+            className="aspect-[4/3] w-full rounded-2xl object-cover shadow-[0_24px_60px_rgba(28,25,23,0.12)] sm:aspect-[4/5]"
           />
           <div
             className="pointer-events-none absolute -bottom-3 -right-3 -z-10 hidden h-full w-full rounded-2xl sm:block"
@@ -67,15 +70,15 @@ export default function AtelierTemplate(p: LandingTemplateProps) {
           />
         </div>
 
-        <div className="order-1 space-y-6 lg:order-2">
+        <div className="order-1 space-y-5 sm:space-y-6 lg:order-2">
           <p className="text-[11px] font-medium uppercase tracking-[0.24em] text-stone-500">
             Community · {year}
           </p>
-          <h1 className="max-w-lg font-display text-3xl font-semibold leading-[1.14] tracking-tight text-stone-900 sm:text-4xl lg:text-[2.6rem]">
+          <h1 className="max-w-lg break-words font-display text-2xl font-semibold leading-[1.14] tracking-tight text-stone-900 sm:text-4xl lg:text-[2.6rem]">
             {headline}
           </h1>
           <p
-            className="max-w-md border-l-2 pl-4 text-[15px] leading-relaxed text-stone-600"
+            className="max-w-md border-l-2 pl-3 text-[15px] leading-relaxed text-stone-600 sm:pl-4"
             style={{ borderColor: accent }}
           >
             {tagline}

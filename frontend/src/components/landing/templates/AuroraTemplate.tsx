@@ -37,8 +37,8 @@ export default function AuroraTemplate(p: LandingTemplateProps) {
       />
 
       <div className="relative z-30 mx-auto max-w-6xl px-4 pt-5 sm:px-6">
-        <header className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-white/80 bg-white/80 px-4 py-3 shadow-[0_8px_30px_rgba(15,23,42,0.06)] backdrop-blur-xl sm:px-5">
-          <div className="flex min-w-0 items-center gap-3">
+        <header className="flex flex-wrap items-center justify-between gap-2 rounded-2xl border border-white/80 bg-white/80 px-3 py-2.5 shadow-[0_8px_30px_rgba(15,23,42,0.06)] backdrop-blur-xl sm:gap-3 sm:px-5 sm:py-3">
+          <div className="flex min-w-0 items-center gap-2.5 sm:gap-3">
             <BrandMark institution={institution} primary={primary} size="sm" />
             <p className="truncate font-display text-sm font-bold tracking-tight text-slate-900 sm:text-base">
               {institution.name}
@@ -60,13 +60,13 @@ export default function AuroraTemplate(p: LandingTemplateProps) {
 
       <section
         id="home"
-        className="relative z-10 mx-auto grid max-w-6xl scroll-mt-24 items-center gap-10 px-4 py-12 sm:px-6 lg:grid-cols-2 lg:gap-14 lg:py-16"
+        className="relative z-10 mx-auto grid max-w-6xl scroll-mt-24 items-center gap-8 px-4 py-10 sm:gap-10 sm:px-6 sm:py-12 lg:grid-cols-2 lg:gap-14 lg:py-16"
       >
-        <div className="space-y-6">
-          <p className="font-display text-2xl font-bold tracking-tight text-slate-900 sm:text-3xl">
+        <div className="space-y-5 sm:space-y-6">
+          <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-500">
             {institution.name}
           </p>
-          <h1 className="max-w-lg font-display text-3xl font-bold leading-[1.12] tracking-tight text-slate-800 sm:text-4xl lg:text-[2.65rem]">
+          <h1 className="max-w-lg break-words font-display text-2xl font-bold leading-[1.12] tracking-tight text-slate-800 sm:text-4xl lg:text-[2.65rem]">
             {headline}
           </h1>
           <p className="max-w-md text-[15px] leading-relaxed text-slate-600">{tagline}</p>
@@ -88,7 +88,7 @@ export default function AuroraTemplate(p: LandingTemplateProps) {
             className="relative overflow-hidden shadow-2xl shadow-slate-900/15"
             style={{ borderRadius: '1.75rem' }}
           >
-            <img src={heroImage} alt="" className="aspect-[4/5] w-full object-cover sm:aspect-[5/5]" />
+            <img src={heroImage} alt="" className="aspect-[4/3] max-h-[55vh] w-full object-cover sm:aspect-[5/5] sm:max-h-none" />
             <div
               className="pointer-events-none absolute inset-0"
               style={{ background: `linear-gradient(160deg, ${primary}28, transparent 45%)` }}
@@ -99,7 +99,7 @@ export default function AuroraTemplate(p: LandingTemplateProps) {
       </section>
 
       <div className="relative z-10 px-4 pb-2 lg:hidden">
-        <LandingPageNav primary={primary} preview={preview} tone="light" />
+        <LandingPageNav primary={primary} preview={preview} tone="light" className="justify-center" />
       </div>
 
       <LandingContentSections
