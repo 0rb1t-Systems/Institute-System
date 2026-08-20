@@ -14,6 +14,8 @@ import { getUserMessage } from '@/lib/mapError';
 import { MESSAGES } from '@/lib/messages';
 import { getRegistrationFeeAmount } from '@/lib/institution';
 import { computeStudentBalance } from '@/lib/finance';
+import { getInstitutionGradeScale } from '@/lib/gradingScale';
+import { getExamScorePercent, getExamTotalMarks, getLetterGrade } from '@/lib/examPass';
 import {
   BarChart,
   Bar,
@@ -29,10 +31,22 @@ import {
  */
 const DashboardPage = () => {
   const { user, institution } = useAuth();
-  const { students, classes, payments, enrollments, results, exams, loading, error } = useData();
+  const {
+    students,
+    classes,
+    payments,
+    enrollments,
+    results,
+    exams,
+    courses,
+    gradebookEntries,
+    loading,
+    error,
+  } = useData();
   const showFinance = user?.role === 'admin' || user?.role === 'staff';
   const isAdmin = user?.role === 'admin';
   const registrationFee = getRegistrationFeeAmount(institution);
+  const gradeScale = useMemo(() => getInstitutionGradeScale(institution), [institution]);
 
   const stats = useMemo(() => {
     const activeClasses = classes.filter((c) => c.is_active).length;
@@ -111,29 +125,60 @@ const DashboardPage = () => {
   );
 
   const latestResults = useMemo(() => {
-    const examById = Object.fromEntries((exams || []).map((e) => [e.id, e]));
     const studentById = Object.fromEntries((students || []).map((s) => [s.id, s]));
+    const courseById = Object.fromEntries((courses || []).map((c) => [c.id, c]));
+    const examById = Object.fromEntries((exams || []).map((e) => [e.id, e]));
+
+    const fromGradebook = [...(gradebookEntries || [])]
+      .filter((g) => g && g.final_mark != null)
+      .sort(
+        (a, b) =>
+          Number(new Date(b.synced_at || 0)) - Number(new Date(a.synced_at || 0)),
+      )
+      .slice(0, 5)
+      .map((g) => {
+        const student = studentById[g.student_id];
+        const course = courseById[g.course_id];
+        const percentage = Number(g.final_mark);
+        const letter =
+          g.letter_grade && g.letter_grade !== '-'
+            ? g.letter_grade
+            : getLetterGrade(percentage, gradeScale);
+        const name = student?.name || 'Unknown Student';
+        return {
+          id: `gb-${g.id}`,
+          name,
+          initial: (name.trim()[0] || '?').toUpperCase(),
+          subtitle: course?.name ? `Gradebook · ${course.name}` : 'Gradebook final',
+          scoreLabel: `${Math.round(percentage)}/100 (${letter})`,
+        };
+      });
+
+    if (fromGradebook.length > 0) return fromGradebook;
 
     return [...(results || [])]
       .sort(
         (a, b) =>
-          Number(new Date(b.graded_at || b.created_at || 0)) - Number(new Date(a.graded_at || a.created_at || 0))
+          Number(new Date(b.graded_at || b.created_at || 0)) -
+          Number(new Date(a.graded_at || a.created_at || 0)),
       )
       .slice(0, 5)
       .map((r) => {
         const student = studentById[r.student_id];
         const exam = examById[r.exam_id];
-        const score = Number(r.final_score ?? r.score ?? r.raw_score ?? 0);
-        const total = Number(exam?.total_marks ?? exam?.final_marks ?? 100);
+        const total = getExamTotalMarks(exam);
+        const percentage = getExamScorePercent(r.final_score ?? r.score, exam);
+        const letter = getLetterGrade(percentage, gradeScale);
         const name = student?.name || 'Unknown Student';
         return {
-          id: r.id,
+          id: `ex-${r.id}`,
           name,
           initial: (name.trim()[0] || '?').toUpperCase(),
-          scoreLabel: `${Math.round(score)}/${Math.round(total)}`,
+          subtitle: exam?.title ? `Exam · ${exam.title}` : 'Submitted exam',
+          scoreLabel: `${Math.round(Number(r.final_score ?? r.score ?? 0))}/${Math.round(total)} (${letter})`,
         };
       });
-  }, [results, exams, students]);
+  }, [gradebookEntries, results, exams, students, courses, gradeScale]);
 
   if (error) {
     return (
@@ -265,7 +310,7 @@ const DashboardPage = () => {
           <CardHeader>
             <CardTitle className="text-white text-lg">Latest Results</CardTitle>
             <CardDescription className="text-slate-400">
-              Real-time exam submissions.
+              Latest gradebook finals for your institution.
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
@@ -281,7 +326,7 @@ const DashboardPage = () => {
                   </Avatar>
                   <div className="flex-1 min-w-0">
                     <p className="text-sm font-medium text-white truncate">{item.name}</p>
-                    <p className="text-xs text-slate-500">Submitted exam</p>
+                    <p className="text-xs text-slate-500 truncate">{item.subtitle}</p>
                   </div>
                   <span className="text-sm font-semibold text-emerald-400 tabular-nums shrink-0">
                     {item.scoreLabel}
@@ -290,7 +335,7 @@ const DashboardPage = () => {
               ))
             ) : (
               <p className="text-sm text-slate-500 py-8 text-center">
-                No exam results yet. Grades will appear here after marking.
+                No gradebook results yet. Marks appear here after exams and assignments are graded.
               </p>
             )}
           </CardContent>

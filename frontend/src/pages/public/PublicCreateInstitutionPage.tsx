@@ -7,7 +7,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { Alert, AlertDescription } from '@/components/ui/alert'
-import { Loader2, ArrowLeft, ArrowRight } from 'lucide-react'
+import { Loader2, ArrowLeft, ArrowRight, Eye, EyeOff } from 'lucide-react'
 import { publicProvisionTenant } from '@/lib/publicTenantApi'
 import { isValidEmail } from '@/lib/utils'
 import { MESSAGES } from '@/lib/messages'
@@ -61,6 +61,8 @@ const PublicCreateInstitutionPage = () => {
   const [landing, setLanding] = useState<LandingCustomizeValues>(() => emptyLandingCustomize('aurora'))
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
+  const [showPassword, setShowPassword] = useState(false)
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false)
   const navigate = useNavigate()
 
   const setField = (key, value) => {
@@ -302,27 +304,53 @@ const PublicCreateInstitutionPage = () => {
                 <div className="grid gap-4 sm:grid-cols-2">
                   <div className="space-y-2">
                     <Label htmlFor="password">Password *</Label>
-                    <Input
-                      id="password"
-                      type="password"
-                      value={form.password}
-                      onChange={(e) => setField('password', e.target.value)}
-                      className="border-white/10 bg-[#061512]"
-                      autoComplete="new-password"
-                      disabled={saving}
-                    />
+                    <div className="relative">
+                      <Input
+                        id="password"
+                        type={showPassword ? 'text' : 'password'}
+                        value={form.password}
+                        onChange={(e) => setField('password', e.target.value)}
+                        className="border-white/10 bg-[#061512] pr-10"
+                        autoComplete="new-password"
+                        disabled={saving}
+                      />
+                      <button
+                        type="button"
+                        tabIndex={-1}
+                        onClick={() => setShowPassword((v) => !v)}
+                        className="absolute right-2 top-1/2 -translate-y-1/2 rounded-md p-1.5 text-slate-400 transition hover:bg-white/5 hover:text-white"
+                        aria-label={showPassword ? 'Hide password' : 'Show password'}
+                      >
+                        {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                      </button>
+                    </div>
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="confirm_password">Confirm password *</Label>
-                    <Input
-                      id="confirm_password"
-                      type="password"
-                      value={form.confirm_password}
-                      onChange={(e) => setField('confirm_password', e.target.value)}
-                      className="border-white/10 bg-[#061512]"
-                      autoComplete="new-password"
-                      disabled={saving}
-                    />
+                    <div className="relative">
+                      <Input
+                        id="confirm_password"
+                        type={showConfirmPassword ? 'text' : 'password'}
+                        value={form.confirm_password}
+                        onChange={(e) => setField('confirm_password', e.target.value)}
+                        className="border-white/10 bg-[#061512] pr-10"
+                        autoComplete="new-password"
+                        disabled={saving}
+                      />
+                      <button
+                        type="button"
+                        tabIndex={-1}
+                        onClick={() => setShowConfirmPassword((v) => !v)}
+                        className="absolute right-2 top-1/2 -translate-y-1/2 rounded-md p-1.5 text-slate-400 transition hover:bg-white/5 hover:text-white"
+                        aria-label={showConfirmPassword ? 'Hide password' : 'Show password'}
+                      >
+                        {showConfirmPassword ? (
+                          <EyeOff className="h-4 w-4" />
+                        ) : (
+                          <Eye className="h-4 w-4" />
+                        )}
+                      </button>
+                    </div>
                   </div>
                 </div>
               </div>
