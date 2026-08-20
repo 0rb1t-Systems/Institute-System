@@ -719,7 +719,15 @@ const ClassesPage = () => {
         if (diploma) displayProgram = `Diploma: ${diploma.name}`;
         else if (course) displayProgram = `Course: ${course.name}`;
 
-        return { ...c, displayProgram, instructorName: instructor?.name, studentCount, courseCount: assignedCourses.length };
+        const instructorName =
+          c.instructorName ||
+          c.instructor?.name ||
+          c.instructor?.full_name ||
+          instructor?.name ||
+          instructor?.full_name ||
+          null;
+
+        return { ...c, displayProgram, instructorName, studentCount, courseCount: assignedCourses.length };
     });
     }, [classes, courses, diplomas, users, enrollments, classCourses, user]);
 

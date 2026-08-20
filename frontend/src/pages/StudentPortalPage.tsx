@@ -44,16 +44,28 @@ const StudentPortalPage = () => {
     if (!classData) return null
     const course = classData.course_id ? courses.find((c) => c.id === classData.course_id) : null
     const diploma = classData.diploma_id ? diplomas.find((d) => d.id === classData.diploma_id) : null
-    const instructor = classData.instructor_id
+    const fromUsers = classData.instructor_id
       ? users.find((u) => u.id === classData.instructor_id)
       : null
+    const instructorName =
+      classData.instructor?.name ||
+      classData.instructor?.full_name ||
+      classData.instructorName ||
+      fromUsers?.name ||
+      fromUsers?.full_name ||
+      null
     return {
       ...classData,
       course: course || classData.course || null,
       diploma: diploma || classData.diploma || null,
-      instructor: instructor
-        ? { name: instructor.full_name || instructor.name }
-        : classData.instructor || null,
+      instructor: instructorName
+        ? {
+            id: classData.instructor_id || classData.instructor?.id || fromUsers?.id,
+            name: instructorName,
+            full_name: instructorName,
+          }
+        : null,
+      instructorName,
     }
   }
 

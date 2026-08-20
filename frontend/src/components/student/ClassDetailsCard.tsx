@@ -62,7 +62,12 @@ const ClassDetailsCard = ({ classData, enrollment, payments = [], results = [] }
               <span className="text-[11px] text-slate-500 uppercase tracking-wide">Instructor</span>
               <div className="flex items-center gap-1.5 text-sm text-slate-300">
                 <User className="h-3.5 w-3.5 text-slate-500 shrink-0" />
-                <span className="truncate">{classData.instructor?.name || 'Unassigned'}</span>
+                <span className="truncate">
+                  {classData.instructor?.name ||
+                    classData.instructor?.full_name ||
+                    classData.instructorName ||
+                    'Unassigned'}
+                </span>
               </div>
             </div>
             <div className="space-y-1">

@@ -66,6 +66,10 @@ function mapClass(row) {
       : parseInt(String(row.duration || '1').replace(/\D/g, ''), 10) || 1
   const settlementModel =
     row.settlement_model === 'fixed_fee' ? 'fixed_fee' : 'commission'
+  const instructorRow = row.instructor && typeof row.instructor === 'object' ? row.instructor : null
+  const instructorName = String(
+    instructorRow?.full_name || instructorRow?.name || row.instructor_name || '',
+  ).trim()
   return {
     ...row,
     fee: Number(row.total_fee ?? 0),
@@ -76,6 +80,16 @@ function mapClass(row) {
     commission_rate: Number(row.commission_rate ?? 0),
     settlement_model: settlementModel,
     instructor_fixed_fee: Number(row.instructor_fixed_fee ?? 0),
+    instructor: instructorRow
+      ? {
+          id: instructorRow.id,
+          name: instructorName || instructorRow.full_name || null,
+          full_name: instructorRow.full_name || instructorName || null,
+        }
+      : instructorName
+        ? { id: row.instructor_id, name: instructorName, full_name: instructorName }
+        : null,
+    instructorName: instructorName || null,
   }
 }
 
@@ -1695,7 +1709,10 @@ export const deleteDiploma = async (id) => {
 
 // --- Classes ---
 export const getClasses = async () => {
-  const { data, error } = await supabase.from('classes').select('*').order('created_at', { ascending: false })
+  const { data, error } = await supabase
+    .from('classes')
+    .select('*, instructor:profiles!classes_instructor_id_fkey(id, full_name, email)')
+    .order('created_at', { ascending: false })
   if (error) throw error
   return (data || []).map(mapClass)
 }
@@ -1708,7 +1725,10 @@ export const getActiveClasses = async () => {
 export const createClass = async (data) => {
   const me = await getMyProfile()
   const payload = { ...classPayloadFromUi(data), institution_id: me.institution_id }
-  const { data: row, error } = await supabase.from('classes').insert(payload).select().single()
+  const CLASS_SELECT =
+    '*, instructor:profiles!classes_instructor_id_fkey(id, full_name, email)'
+
+  const { data: row, error } = await supabase.from('classes').insert(payload).select(CLASS_SELECT).single()
   if (error) throw error
   return mapClass(row)
 }
@@ -1750,7 +1770,12 @@ export const updateClass = async (id, data) => {
     updates.instructor_fixed_fee = 0
   }
 
-  const { data: row, error } = await supabase.from('classes').update(updates).eq('id', id).select().single()
+  const { data: row, error } = await supabase
+    .from('classes')
+    .update(updates)
+    .eq('id', id)
+    .select('*, instructor:profiles!classes_instructor_id_fkey(id, full_name, email)')
+    .single()
   if (error) throw error
   return mapClass(row)
 }

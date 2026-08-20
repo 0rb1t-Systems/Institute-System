@@ -131,7 +131,7 @@ const SettlementReport = () => {
         schoolRevenue,
         classSummary: sortedClassSummary
     };
-  }, [payments, instructorEarnings, classes, selectedMonth, selectedClassId, affiliateSettlements]);
+  }, [payments, instructorEarnings, classes, users, selectedMonth, selectedClassId, affiliateSettlements]);
 
   // --- PDF Export ---
   const generatePDF = () => {
