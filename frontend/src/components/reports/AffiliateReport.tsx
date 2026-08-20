@@ -31,7 +31,7 @@ const AffiliateReport = () => {
   const { toast } = useToast();
   const isAdmin = user?.role === 'admin';
   const ratePct = rateToPercent(getAffiliateCommissionRate(institution), 1);
-  const referralLink = `${getTenantBaseUrl(institution)}/register?tenant=${encodeURIComponent(institution?.subdomain || '')}&ref=${user?.id || ''}`;
+  const referralLink = `${getTenantBaseUrl(institution)}/register${user?.id ? `?ref=${user.id}` : ''}`;
 
   const eligibleAffiliates = useMemo(() => {
     return (users || []).filter(
@@ -83,7 +83,7 @@ const AffiliateReport = () => {
         const pendingCount = (generalRegistrations || []).filter(
           (r) => r.status === 'pending' && r.affiliate_id === aff.id,
         ).length;
-        const link = `${getTenantBaseUrl(institution)}/register?tenant=${encodeURIComponent(institution?.subdomain || '')}&ref=${aff.id}`;
+        const link = `${getTenantBaseUrl(institution)}/register?ref=${aff.id}`;
 
         return {
           id: aff.id,

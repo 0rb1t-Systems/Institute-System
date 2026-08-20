@@ -8,7 +8,7 @@ import { Button } from '@/components/ui/button'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { useAuth } from '@/contexts/AuthContext'
 import { getMyInstitution, updateInstitution, uploadInstitutionAsset } from '@/lib/api'
-import { getInstitutionDisplayName, getTenantLandingPath } from '@/lib/institution'
+import { getInstitutionDisplayName, getTenantPortalUrl } from '@/lib/institution'
 import { getUserMessage } from '@/lib/mapError'
 import { MESSAGES } from '@/lib/messages'
 import LandingTemplatePicker, {
@@ -76,7 +76,7 @@ const LandingCustomizePage = () => {
     [inst, authInst, landing.logoPreviewUrl, landing.description],
   )
 
-  const landingPath = getTenantLandingPath(inst || authInst, 'admin')
+  const landingPath = getTenantPortalUrl(inst || authInst)
 
   const handleSave = async () => {
     setError('')
@@ -137,10 +137,10 @@ const LandingCustomizePage = () => {
       <div className="mx-auto max-w-5xl space-y-4">
         <div className="flex flex-wrap items-center gap-3">
           <Button asChild variant="outline" size="sm" className="border-slate-700">
-            <Link to={landingPath}>
+            <a href={landingPath} target="_blank" rel="noreferrer">
               <ArrowLeft className="mr-1.5 h-3.5 w-3.5" />
               View public landing
-            </Link>
+            </a>
           </Button>
           <Button asChild variant="ghost" size="sm">
             <Link to="/admin/profile">Institution settings</Link>

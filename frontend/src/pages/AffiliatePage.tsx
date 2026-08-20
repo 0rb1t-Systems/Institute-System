@@ -17,7 +17,7 @@ const AffiliatePage = () => {
   const { user, institution } = useAuth();
   const { students, payments, enrollments, classes, affiliateSettlements = [] } = useData();
   const ratePct = rateToPercent(getAffiliateCommissionRate(institution), 1);
-  const referralLink = `${getTenantBaseUrl(institution)}/register?tenant=${encodeURIComponent(institution?.subdomain || '')}&ref=${user?.id || ''}`;
+  const referralLink = `${getTenantBaseUrl(institution)}/register${user?.id ? `?ref=${user.id}` : ''}`;
 
   const myStudents = useMemo(() => {
     if (!user) return [];

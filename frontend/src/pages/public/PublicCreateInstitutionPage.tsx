@@ -1,6 +1,6 @@
 import React, { useMemo, useState } from 'react'
 import { Helmet } from 'react-helmet'
-import { Link, useNavigate } from 'react-router-dom'
+import { Link } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -18,6 +18,7 @@ import LandingTemplatePicker, {
 } from '@/components/landing/LandingTemplatePicker'
 import type { LandingInstitution } from '@/components/landing/types'
 import { getLandingTemplate } from '@/lib/landingTemplates'
+import { getAppRootDomain, getTenantPortalUrl, usesTenantSubdomainHosts } from '@/lib/institution'
 
 const empty = {
   institution_name: '',
@@ -63,7 +64,6 @@ const PublicCreateInstitutionPage = () => {
   const [error, setError] = useState('')
   const [showPassword, setShowPassword] = useState(false)
   const [showConfirmPassword, setShowConfirmPassword] = useState(false)
-  const navigate = useNavigate()
 
   const setField = (key, value) => {
     setForm((prev) => {
@@ -200,7 +200,10 @@ const PublicCreateInstitutionPage = () => {
         .trim()
         .toLowerCase()
 
-      navigate(`/?tenant=${encodeURIComponent(slug)}`, { replace: true })
+      // Production custom domain → https://{slug}.tvetflow.online
+      // Local / no root domain → /?tenant=slug fallback
+      window.location.replace(getTenantPortalUrl({ subdomain: slug }))
+      return
     } catch (err) {
       const msg = String(err?.message || '')
       if (msg === 'FILE_TOO_LARGE') {
@@ -405,7 +408,11 @@ const PublicCreateInstitutionPage = () => {
                     placeholder="e.g. mcc"
                     disabled={saving}
                   />
-                  <p className="text-xs text-[#5f857c]">Used as your institution link: ?tenant={form.institution_slug || 'slug'}</p>
+                  <p className="text-xs text-[#5f857c]">
+                    {usesTenantSubdomainHosts()
+                      ? `Used as your institution link: https://${form.institution_slug || 'slug'}.${getAppRootDomain()}`
+                      : `Used as your institution link: ?tenant=${form.institution_slug || 'slug'}`}
+                  </p>
                 </div>
                 <div className="grid gap-4 sm:grid-cols-2">
                   <div className="space-y-2">

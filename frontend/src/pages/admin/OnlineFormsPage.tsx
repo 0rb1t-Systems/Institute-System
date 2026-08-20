@@ -15,7 +15,7 @@ const OnlineFormsPage = () => {
     const { institution } = useAuth();
     const subdomain = institution?.subdomain || '';
     const generalLink = subdomain
-        ? `${getTenantBaseUrl(institution)}/register?tenant=${encodeURIComponent(subdomain)}`
+        ? `${getTenantBaseUrl(institution)}/register`
         : `${window.location.origin}/register`;
 
     const copyLink = () => {

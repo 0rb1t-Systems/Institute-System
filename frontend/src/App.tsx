@@ -7,6 +7,31 @@ import { Button } from '@/components/ui/button';
 import ErrorBoundary from '@/components/ui/ErrorBoundary';
 import { isInstitutionSettingsComplete, getTenantLandingPath } from '@/lib/institution';
 
+function TenantLandingRedirect({
+  institution,
+  role,
+  state,
+}: {
+  institution?: { subdomain?: string | null } | null
+  role?: string | null
+  state?: unknown
+}) {
+  const landing = getTenantLandingPath(institution, role)
+  useEffect(() => {
+    if (/^https?:\/\//i.test(landing)) {
+      window.location.replace(landing)
+    }
+  }, [landing])
+  if (/^https?:\/\//i.test(landing)) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-slate-950">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    )
+  }
+  return <Navigate to={landing} state={state} replace />
+}
+
 // Phase 1 — eager (core shell)
 import LoginPage from '@/pages/LoginPage';
 import SignupPage from '@/pages/SignupPage';
@@ -138,19 +163,18 @@ const ProtectedRoute = ({ children, roles }) => {
   }
 
   if (!user || tenantSuspended) {
-    const landing = getTenantLandingPath(institution, user?.role);
     return (
-      <Navigate
-        to={landing}
+      <TenantLandingRedirect
+        institution={institution}
+        role={user?.role}
         state={tenantSuspended ? { tenantSuspended: true, from: location } : { from: location }}
-        replace
       />
     );
   }
 
   // Defense-in-depth: never render app shell for non-approved profiles
   if (user.status !== 'approved') {
-    return <Navigate to={getTenantLandingPath(institution, user.role)} replace />;
+    return <TenantLandingRedirect institution={institution} role={user.role} />;
   }
 
   if (roles && !roles.includes(user.role)) {

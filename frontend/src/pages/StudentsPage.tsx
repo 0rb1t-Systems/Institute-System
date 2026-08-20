@@ -18,6 +18,7 @@ import {
   ShieldCheck,
 } from 'lucide-react';
 import { useData } from '@/contexts/DataContext';
+import { getTenantPortalUrl, usesTenantSubdomainHosts } from '@/lib/institution';
 import { useAuth } from '@/contexts/AuthContext';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -119,7 +120,9 @@ const StudentsPage = () => {
 
     const tenantSlug = String(institution?.subdomain || '').trim().toLowerCase();
     const verifyCredentialPath = tenantSlug
-        ? `/verify-credential?tenant=${encodeURIComponent(tenantSlug)}`
+        ? usesTenantSubdomainHosts()
+            ? `${getTenantPortalUrl(institution)}/verify-credential`
+            : `/verify-credential?tenant=${encodeURIComponent(tenantSlug)}`
         : '/verify-credential';
 
     const filteredStudents = useMemo(() => {
@@ -227,10 +230,10 @@ const StudentsPage = () => {
                         size="sm"
                         className="h-9 gap-2 border-blue-500/30 bg-blue-950/40 text-blue-300 hover:bg-blue-900/50 hover:text-blue-200 hover:border-blue-400/40 shadow-sm"
                     >
-                        <Link to={verifyCredentialPath} target="_blank" rel="noopener noreferrer">
+                        <a href={verifyCredentialPath} target="_blank" rel="noopener noreferrer">
                             <ShieldCheck className="h-4 w-4" />
                             Verify Credential
-                        </Link>
+                        </a>
                     </Button>
                 </div>
             ) : null}

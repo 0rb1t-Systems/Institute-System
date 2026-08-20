@@ -143,9 +143,49 @@ export function getRememberedTenantSubdomain(): string {
   return String(sessionStorage.getItem(LAST_TENANT_KEY) || '').trim().toLowerCase()
 }
 
+/** True when production custom domain hosts tenants as {slug}.{root}. */
+export function usesTenantSubdomainHosts(): boolean {
+  const root = String(import.meta.env.VITE_APP_ROOT_DOMAIN || '')
+    .trim()
+    .replace(/^https?:\/\//i, '')
+    .replace(/\/$/, '')
+    .toLowerCase()
+  if (!root) return false
+  if (root.startsWith('localhost') || root.startsWith('127.0.0.1')) return false
+  return true
+}
+
+/** True when the browser is already on this tenant's subdomain host. */
+export function isOnTenantHost(subdomain?: string | null): boolean {
+  if (typeof window === 'undefined') return false
+  const sub = String(subdomain || '').trim().toLowerCase()
+  if (!sub || !usesTenantSubdomainHosts()) return false
+  const root = getAppRootDomain().toLowerCase()
+  return window.location.hostname.toLowerCase() === `${sub}.${root}`
+}
+
 /**
- * Where to send users after logout.
- * Institution users → tenant landing; super_admin / unknown → platform /login.
+ * Public institution portal URL (prefer subdomain on custom domain).
+ * Localhost / no root domain → same origin with ?tenant=slug.
+ */
+export function getTenantPortalUrl(institution?: InstitutionBrand): string {
+  const subdomain = String(institution?.subdomain || '').trim().toLowerCase()
+  if (!subdomain) {
+    if (typeof window !== 'undefined') return window.location.origin
+    return '/'
+  }
+  if (usesTenantSubdomainHosts()) {
+    return getTenantBaseUrl({ subdomain })
+  }
+  const origin =
+    typeof window !== 'undefined' ? window.location.origin : `https://${getAppRootDomain()}`
+  return `${origin}/?tenant=${encodeURIComponent(subdomain)}`
+}
+
+/**
+ * Where to send users after logout / “view landing”.
+ * Custom domain → https://{sub}.{root} (or "/" if already there).
+ * Local / Vercel-only → /?tenant=slug (query fallback).
  */
 export function getTenantLandingPath(
   institution?: InstitutionBrand,
@@ -155,7 +195,27 @@ export function getTenantLandingPath(
   const subdomain =
     String(institution?.subdomain || '').trim().toLowerCase() || getRememberedTenantSubdomain()
   if (!subdomain) return '/login'
+  if (usesTenantSubdomainHosts()) {
+    if (isOnTenantHost(subdomain)) return '/'
+    return getTenantBaseUrl({ subdomain })
+  }
   return `/?tenant=${encodeURIComponent(subdomain)}`
+}
+
+/** Hard-navigate when landing is on another subdomain; otherwise use React Router. */
+export function goToTenantLanding(
+  institution?: InstitutionBrand,
+  role?: string | null,
+  navigate?: (to: string, opts?: { replace?: boolean }) => void,
+  replace = true,
+): void {
+  const to = getTenantLandingPath(institution, role)
+  if (/^https?:\/\//i.test(to)) {
+    window.location.assign(to)
+    return
+  }
+  if (navigate) navigate(to, { replace })
+  else window.location.assign(to)
 }
 
 /**
@@ -174,11 +234,14 @@ export function getVerificationUrl(
   if (kind === 'credential') {
     const params = new URLSearchParams()
     if (id && id !== 'unknown' && id !== '---') params.set('id', id)
-    const tenant =
-      String(institution?.subdomain || '').trim().toLowerCase() ||
-      resolvePublicTenantSubdomain() ||
-      ''
-    if (tenant) params.set('tenant', tenant)
+    // Query tenant only when not already on a dedicated tenant host URL
+    if (!usesTenantSubdomainHosts()) {
+      const tenant =
+        String(institution?.subdomain || '').trim().toLowerCase() ||
+        resolvePublicTenantSubdomain() ||
+        ''
+      if (tenant) params.set('tenant', tenant)
+    }
     const qs = params.toString()
     return qs ? `${base}/verify-credential?${qs}` : `${base}/verify-credential`
   }

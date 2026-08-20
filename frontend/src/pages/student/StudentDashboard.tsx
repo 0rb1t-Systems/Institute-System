@@ -11,7 +11,7 @@ import { BookOpen, Calendar, Clock, ArrowRight, Activity, TrendingUp, CheckCircl
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { getAttendanceEnriched } from '@/lib/api';
 import { formatCurrency, formatDate, getMonthsBetween } from '@/lib/utils';
-import { getTenantLandingPath } from '@/lib/institution';
+import { goToTenantLanding } from '@/lib/institution';
 import { computeStudentBalance, computeMonthlyFee } from '@/lib/finance';
 
 const formatMonthLabel = (ym: string) => {
@@ -35,7 +35,7 @@ const StudentDashboard = () => {
 
     useEffect(() => {
         if (!authLoading && !user) {
-            navigate(getTenantLandingPath(institution), { replace: true });
+            goToTenantLanding(institution, null, navigate);
         }
     }, [user, authLoading, navigate, institution]);
 
@@ -163,9 +163,8 @@ const StudentDashboard = () => {
     }, [activeClass, activeEnrollment, myPayments]);
 
     const handleLogout = async () => {
-        const path = getTenantLandingPath(institution, user?.role);
         await logout();
-        navigate(path, { replace: true });
+        goToTenantLanding(institution, user?.role, navigate);
     };
 
     if (authLoading || dataLoading || loadingAttendance) {

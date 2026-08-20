@@ -13,6 +13,8 @@ import { MESSAGES } from '@/lib/messages';
 import { getPublicInstitutionBySubdomain } from '@/lib/api';
 import {
   getInstitutionPrimary,
+  getTenantPortalUrl,
+  resolvePublicTenantSubdomain,
 } from '@/lib/institution';
 
 function dashboardPathForRole(role) {
@@ -41,8 +43,10 @@ const LoginPage = ({ initialError = '' }) => {
 
   const tenantFromQuery =
     searchParams.get('tenant') || searchParams.get('subdomain') || '';
-  // Platform /login must stay admin-only: ignore default env subdomain when no ?tenant=
-  const tenant = String(tenantFromQuery || '').trim().toLowerCase();
+  // Subdomain host (dhambaal.tvetflow.online) counts; platform apex stays admin-only when no tenant.
+  const tenant = String(tenantFromQuery || resolvePublicTenantSubdomain() || '')
+    .trim()
+    .toLowerCase();
 
   useEffect(() => {
     if (location.state?.tenantSuspended) {
@@ -74,7 +78,7 @@ const LoginPage = ({ initialError = '' }) => {
 
   const primary = getInstitutionPrimary(institution);
   const isTenantLogin = Boolean(tenant);
-  const tenantHomeHref = tenant ? `/?tenant=${encodeURIComponent(tenant)}` : '/';
+  const tenantHomeHref = tenant ? getTenantPortalUrl({ subdomain: tenant }) : '/';
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -269,13 +273,23 @@ const LoginPage = ({ initialError = '' }) => {
               <p className="text-center text-xs text-slate-400">
                 Only this institution’s accounts can sign in here.
               </p>
-              <Link
-                to={tenantHomeHref}
-                className="inline-flex items-center text-sm text-teal-400 hover:text-teal-300"
-              >
-                <ArrowLeft className="mr-1 h-4 w-4" />
-                Back to {institution?.name || 'institution'} page
-              </Link>
+              {/^https?:\/\//i.test(tenantHomeHref) ? (
+                <a
+                  href={tenantHomeHref}
+                  className="inline-flex items-center text-sm text-teal-400 hover:text-teal-300"
+                >
+                  <ArrowLeft className="mr-1 h-4 w-4" />
+                  Back to {institution?.name || 'institution'} page
+                </a>
+              ) : (
+                <Link
+                  to={tenantHomeHref}
+                  className="inline-flex items-center text-sm text-teal-400 hover:text-teal-300"
+                >
+                  <ArrowLeft className="mr-1 h-4 w-4" />
+                  Back to {institution?.name || 'institution'} page
+                </Link>
+              )}
             </>
           ) : (
             <>

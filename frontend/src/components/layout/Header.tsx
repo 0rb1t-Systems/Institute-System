@@ -18,7 +18,7 @@ import Logo from '@/components/Logo';
 import { cn } from '@/lib/utils';
 import { notify } from '@/lib/notify';
 import { getNavItemsForRole, resolveActiveNavHref } from '@/components/layout/navConfig';
-import { getTenantLandingPath } from '@/lib/institution';
+import { getTenantLandingPath, goToTenantLanding } from '@/lib/institution';
 
 const Header = () => {
   const { user, institution, logout } = useAuth();
@@ -31,10 +31,9 @@ const Header = () => {
   const navItems = getNavItemsForRole(user?.role);
 
   const handleLogout = async () => {
-    const path = getTenantLandingPath(institution, user?.role);
     setSheetOpen(false);
     await logout();
-    navigate(path, { replace: true });
+    goToTenantLanding(institution, user?.role, navigate);
   };
   const activeHref = resolveActiveNavHref(location.pathname, navItems);
 

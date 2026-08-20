@@ -3,7 +3,7 @@
  * Document-request workflow remains out of v1 scope and throws FEATURE_UNAVAILABLE.
  */
 import { supabase, getSupabaseUrl } from '@/lib/supabaseClient'
-import { resolvePublicTenantSubdomain } from '@/lib/institution'
+import { resolvePublicTenantSubdomain, getTenantPortalUrl } from '@/lib/institution'
 import { createDefaultUploadFieldLayout } from '@/lib/certificateBuilder'
 import { LANDING_TEMPLATE_IDS } from '@/lib/landingTemplates'
 
@@ -3141,7 +3141,9 @@ export const approveRegistrationInquiry = async (id) => {
       const subdomain = institution?.subdomain
       const loginUrl =
         typeof window !== 'undefined'
-          ? `${window.location.origin}/login${subdomain ? `?tenant=${encodeURIComponent(subdomain)}` : ''}`
+          ? subdomain
+            ? `${getTenantPortalUrl({ subdomain })}/login`
+            : `${window.location.origin}/login`
           : undefined
       const { sendWelcomeEmail } = await import('@/lib/emailjs')
       const emailResult = await sendWelcomeEmail({
