@@ -22,17 +22,15 @@ const InvoiceCanvas = ({ data, compact = false, className = '', id }: Props) => 
   const scale = compact ? 'text-[5px] leading-tight' : 'text-sm'
   const titleSize = compact ? 'text-[8px]' : 'text-3xl'
   const nameSize = compact ? 'text-[7px]' : 'text-2xl'
+  const hasLogo = showLogo && Boolean(String(data.logoUrl || '').trim())
+  const brandName = hasLogo ? '' : data.institutionName || ''
 
-  const logo = showLogo ? (
-    data.logoUrl ? (
-      <img
-        src={data.logoUrl}
-        alt=""
-        className={`${compact ? 'h-5' : 'h-12'} w-auto object-contain`}
-      />
-    ) : compact ? (
-      <div className="h-5 w-5 bg-slate-200 rounded-sm" />
-    ) : null
+  const logo = hasLogo ? (
+    <img
+      src={data.logoUrl!}
+      alt=""
+      className={`${compact ? 'h-5' : 'h-12'} w-auto object-contain`}
+    />
   ) : null
 
   const motto = data.motto ? (
@@ -48,12 +46,16 @@ const InvoiceCanvas = ({ data, compact = false, className = '', id }: Props) => 
       <div>
         <div className={`flex items-start ${compact ? 'gap-1 mb-0.5' : 'gap-3 mb-1'}`}>
           {logo}
-          <div>
-            <div className={`${nameSize} font-bold uppercase`} style={{ color: primary }}>
-              {data.institutionName}
+          {brandName || motto ? (
+            <div>
+              {brandName ? (
+                <div className={`${nameSize} font-bold uppercase`} style={{ color: primary }}>
+                  {brandName}
+                </div>
+              ) : null}
+              {motto}
             </div>
-            {motto}
-          </div>
+          ) : null}
         </div>
         {contact}
       </div>
@@ -75,12 +77,16 @@ const InvoiceCanvas = ({ data, compact = false, className = '', id }: Props) => 
       >
         <div className="flex items-start gap-2 min-w-0">
           {logo}
-          <div className="min-w-0">
-            <div className={`${nameSize} font-bold uppercase truncate`}>{data.institutionName}</div>
-            {data.motto ? (
-              <div className={`${compact ? 'text-[4px]' : 'text-sm'} text-white/80 italic`}>{data.motto}</div>
-            ) : null}
-          </div>
+          {brandName || data.motto ? (
+            <div className="min-w-0">
+              {brandName ? (
+                <div className={`${nameSize} font-bold uppercase truncate`}>{brandName}</div>
+              ) : null}
+              {data.motto ? (
+                <div className={`${compact ? 'text-[4px]' : 'text-sm'} text-white/80 italic`}>{data.motto}</div>
+              ) : null}
+            </div>
+          ) : null}
         </div>
         <div className="text-right shrink-0">
           <div className={`${titleSize} font-bold leading-none`}>INVOICE</div>
@@ -103,10 +109,14 @@ const InvoiceCanvas = ({ data, compact = false, className = '', id }: Props) => 
         <div className={`flex justify-between items-center ${compact ? 'px-2 py-2' : 'px-6 py-5'}`}>
           <div className="flex items-center gap-3 min-w-0">
             {logo}
-            <div className="min-w-0">
-              <div className={`${nameSize} font-black uppercase truncate`}>{data.institutionName}</div>
-              {contact ? <div className="text-white/80">{data.contactLine}</div> : null}
-            </div>
+            {brandName || (showContact && data.contactLine) ? (
+              <div className="min-w-0">
+                {brandName ? (
+                  <div className={`${nameSize} font-black uppercase truncate`}>{brandName}</div>
+                ) : null}
+                {contact ? <div className="text-white/80">{data.contactLine}</div> : null}
+              </div>
+            ) : null}
           </div>
           <div className={`${titleSize} font-black tracking-wide`}>INVOICE</div>
         </div>
@@ -130,13 +140,17 @@ const InvoiceCanvas = ({ data, compact = false, className = '', id }: Props) => 
         <div>
           <div className={`flex items-start ${compact ? 'gap-1' : 'gap-3'}`}>
             {logo}
-            <div>
-              <div className={`${nameSize} font-bold uppercase`} style={{ color: primary }}>
-                {data.institutionName}
+            {brandName || motto || contact ? (
+              <div>
+                {brandName ? (
+                  <div className={`${nameSize} font-bold uppercase`} style={{ color: primary }}>
+                    {brandName}
+                  </div>
+                ) : null}
+                {motto}
+                {contact}
               </div>
-              {motto}
-              {contact}
-            </div>
+            ) : null}
           </div>
         </div>
         <div className="text-right">

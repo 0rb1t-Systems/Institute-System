@@ -16,9 +16,10 @@ const CertificateAppreciationLayout = ({ data, compact = false }: Props) => {
   const primary = data.primary || '#001f3f'
   const accent = data.accent || '#c9a227'
   const dateLabel = data.dateIssued ? String(data.dateIssued).slice(0, 10) : ''
+  const hasLogo = Boolean(String(data.logoUrl || '').trim())
+  const brandName = hasLogo ? '' : data.institutionName || ''
   const bodyText =
     data.footerText ||
-    data.description ||
     data.motto ||
     'in recognition of outstanding dedication, professional growth, and valuable contribution to the programme.'
 
@@ -41,17 +42,26 @@ const CertificateAppreciationLayout = ({ data, compact = false }: Props) => {
           background: `radial-gradient(ellipse 80% 120% at 50% 40%, ${primary}cc 0%, ${primary} 70%)`,
         }}
       >
-        <p
-          className="uppercase truncate max-w-full"
-          style={{
-            fontSize: fs(11),
-            letterSpacing: '0.28em',
-            fontFamily: 'Montserrat, Arial, sans-serif',
-            fontWeight: 500,
-          }}
-        >
-          {data.institutionName}
-        </p>
+        {hasLogo ? (
+          <img
+            src={data.logoUrl!}
+            alt=""
+            className="object-contain mb-1"
+            style={{ maxHeight: fs(48), maxWidth: '72%' }}
+          />
+        ) : brandName ? (
+          <p
+            className="uppercase truncate max-w-full"
+            style={{
+              fontSize: fs(11),
+              letterSpacing: '0.28em',
+              fontFamily: 'Montserrat, Arial, sans-serif',
+              fontWeight: 500,
+            }}
+          >
+            {brandName}
+          </p>
+        ) : null}
         <h1
           style={{
             marginTop: 4,
@@ -202,13 +212,6 @@ const CertificateAppreciationLayout = ({ data, compact = false }: Props) => {
                 alt=""
                 className="object-contain"
                 style={{ width: fs(70), height: fs(70) }}
-              />
-            ) : data.logoUrl ? (
-              <img
-                src={data.logoUrl}
-                alt=""
-                className="object-contain"
-                style={{ width: fs(56), height: fs(56) }}
               />
             ) : (
               <div

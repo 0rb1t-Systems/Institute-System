@@ -67,6 +67,28 @@ export function getInstitutionDisplayName(institution?: InstitutionBrand, fallba
   return name || fallback
 }
 
+/** True when settings has a usable institution logo URL. */
+export function hasInstitutionLogo(
+  institutionOrUrl?: InstitutionBrand | string | null,
+): boolean {
+  if (typeof institutionOrUrl === 'string') {
+    return Boolean(String(institutionOrUrl || '').trim())
+  }
+  return Boolean(String(institutionOrUrl?.logo_url || '').trim())
+}
+
+/**
+ * Brand title for printed documents: show institution name ONLY when there is no logo.
+ * Logo and plain name must never appear together (logo often already includes the name).
+ */
+export function getDocumentInstitutionTitle(
+  institution?: InstitutionBrand,
+  fallback = 'Training Center',
+): string {
+  if (hasInstitutionLogo(institution)) return ''
+  return getInstitutionDisplayName(institution, fallback)
+}
+
 export function getInstitutionPrimary(institution?: InstitutionBrand): string {
   return String(institution?.theme_primary || '').trim() || DEFAULT_PRIMARY
 }

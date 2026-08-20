@@ -72,7 +72,6 @@ const CertificateTemplateLibrary = () => {
       primary: getInstitutionPrimary(institution),
       accent: getInstitutionAccent(institution),
       motto: String(institution?.motto || '').trim() || undefined,
-      description: String(institution?.description || '').trim() || undefined,
       logoUrl: institution?.logo_url,
       sealUrl: institution?.seal_url,
       signatureUrl: institution?.signature_url,

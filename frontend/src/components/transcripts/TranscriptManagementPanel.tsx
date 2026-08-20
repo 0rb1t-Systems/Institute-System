@@ -15,8 +15,7 @@ const TranscriptManagementPanel = () => {
       <div>
         <h2 className="text-lg font-semibold text-white">Transcript Management</h2>
         <p className="text-sm text-slate-400 mt-1">
-          Choose a library template, design a real transcript page, or upload an institution
-          transcript. Active designs apply to Report Center and student portal transcripts.
+          Library templates · Page Builder · Upload Own (upload → generate full editable transcript)
         </p>
       </div>
 

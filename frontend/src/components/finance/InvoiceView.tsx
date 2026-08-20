@@ -266,7 +266,7 @@ const InvoiceView = ({ student, payments, enrollment, activeClass, onEditPayment
 
       primary,
 
-      motto: institution?.motto || institution?.description || null,
+      motto: institution?.motto || null,
 
       contactLine: contactLine || hostLabel,
 
@@ -321,8 +321,6 @@ const InvoiceView = ({ student, payments, enrollment, activeClass, onEditPayment
     primary,
 
     institution?.motto,
-
-    institution?.description,
 
     institution?.logo_url,
 
@@ -380,8 +378,6 @@ const InvoiceView = ({ student, payments, enrollment, activeClass, onEditPayment
 
       motto: institution?.motto || undefined,
 
-      description: institution?.description || undefined,
-
       logoUrl: institution?.logo_url,
 
       sealUrl: institution?.seal_url,
@@ -427,6 +423,7 @@ const InvoiceView = ({ student, payments, enrollment, activeClass, onEditPayment
       customAspectRatio: customDesign?.customAspectRatio ?? null,
 
       customFieldLayout: customDesign?.customFieldLayout || null,
+      customPaperLayers: customDesign?.customPaperLayers || null,
 
     }
 

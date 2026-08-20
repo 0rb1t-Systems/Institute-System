@@ -4,6 +4,7 @@ import {
   resolveBuilderText,
   type BuilderElement,
   type LogoBuilderDesign,
+  type PaperContentLayer,
   type UploadFieldLayout,
   type UploadFieldSlot,
 } from '@/lib/certificateBuilder'
@@ -58,19 +59,28 @@ function fieldValue(slot: UploadFieldSlot, data: CertificateRenderData): string 
   }
 }
 
+function paperLayerText(layer: PaperContentLayer, data: CertificateRenderData): string {
+  const bind = layer.bind
+  if (!bind || bind === 'none') return layer.text || ''
+  const fakeSlot = { key: bind, x: 0, y: 0, w: 0, h: 0, fontSize: 14, color: '', enabled: true } as UploadFieldSlot
+  return fieldValue(fakeSlot, data) || layer.text || ''
+}
+
 /**
- * Renders Upload Own: 100% uploaded artwork + institution-matched student fields.
+ * Renders Upload Own: 100% uploaded artwork + editable paper layers + matched fields.
  */
 function UploadFieldOverlay({
   data,
   backgroundUrl,
   layout,
+  paperLayers = [],
   compact,
   forPdf = false,
 }: {
   data: CertificateRenderData
   backgroundUrl: string
   layout: UploadFieldLayout
+  paperLayers?: PaperContentLayer[]
   compact: boolean
   forPdf?: boolean
 }) {
@@ -105,6 +115,44 @@ function UploadFieldOverlay({
         crossOrigin="anonymous"
         draggable={false}
       />
+
+      {(paperLayers || [])
+        .filter((l) => l.enabled !== false)
+        .map((layer) => (
+          <div
+            key={layer.id}
+            style={{
+              position: 'absolute',
+              left: `${layer.x}%`,
+              top: `${layer.y}%`,
+              width: `${layer.w}%`,
+              height: `${layer.h}%`,
+              boxSizing: 'border-box',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent:
+                layer.align === 'left'
+                  ? 'flex-start'
+                  : layer.align === 'right'
+                    ? 'flex-end'
+                    : 'center',
+              background: layer.coverColor || '#ffffff',
+              color: layer.color || '#111827',
+              fontSize: s(layer.fontSize || 14),
+              fontWeight: layer.fontWeight || 'normal',
+              fontStyle: layer.fontStyle || 'normal',
+              textAlign: layer.align || 'center',
+              overflow: 'hidden',
+              lineHeight: 1.2,
+              whiteSpace: 'pre-wrap',
+              wordBreak: 'break-word',
+              padding: '0 4px',
+              pointerEvents: 'none',
+            }}
+          >
+            {paperLayerText(layer, data)}
+          </div>
+        ))}
 
       {(layout.fields || [])
         .filter((f) => f.enabled !== false)
@@ -186,6 +234,7 @@ const CertificateDesignRenderer = ({
           data={data}
           backgroundUrl={backgroundUrl}
           layout={data.customFieldLayout}
+          paperLayers={data.customPaperLayers || []}
           compact={compact}
           forPdf={forPdf}
         />
@@ -202,6 +251,7 @@ const CertificateDesignRenderer = ({
               fields: [],
             }
           }
+          paperLayers={data.customPaperLayers || []}
           compact={compact}
           forPdf={forPdf}
         />
@@ -253,6 +303,7 @@ const CertificateDesignRenderer = ({
         ) : null}
 
         {elements.map((el) => {
+          if (el.hidden) return null
           const style: React.CSSProperties = {
             position: 'absolute',
             left: `${(el.x / canvasW) * 100}%`,
@@ -300,12 +351,21 @@ const CertificateDesignRenderer = ({
           if (el.type === 'image' && el.src) {
             const isData = String(el.src).startsWith('data:')
             const isRemote = /^https?:\/\//i.test(el.src)
+            // Uploaded certificate paper must fill the canvas 100% (no letterboxing)
+            const isPaper =
+              el.text === '__upload_paper__' ||
+              el.text === 'background-art' ||
+              (el.locked &&
+                el.x === 0 &&
+                el.y === 0 &&
+                Math.abs(el.width - canvasW) < 2 &&
+                Math.abs(el.height - canvasH) < 2)
             return (
               <img
                 key={el.id}
                 src={el.src}
                 alt=""
-                style={{ ...style, objectFit: 'contain' }}
+                style={{ ...style, objectFit: isPaper ? 'fill' : 'contain' }}
                 {...(!isData && isRemote ? { crossOrigin: 'anonymous' as const } : {})}
               />
             )
@@ -331,7 +391,14 @@ const CertificateDesignRenderer = ({
             )
           }
 
+          // Logo XOR institution name — never both
+          if (el.bind === 'institutionName' && String(data.logoUrl || '').trim()) {
+            return null
+          }
+
           const text = resolveBuilderText(el, data)
+          const textFill =
+            el.fill && String(el.fill).toLowerCase() !== 'transparent' ? el.fill : undefined
           return (
             <div
               key={el.id}
@@ -357,6 +424,9 @@ const CertificateDesignRenderer = ({
                 overflow: 'hidden',
                 whiteSpace: 'pre-wrap',
                 wordBreak: 'break-word',
+                backgroundColor: textFill,
+                padding: textFill ? '0 4px' : undefined,
+                boxSizing: 'border-box',
               }}
             >
               {text}

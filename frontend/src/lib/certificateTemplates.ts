@@ -182,4 +182,6 @@ export type CertificateRenderData = {
   customAspectRatio?: number | null
   /** Matched field positions for Upload Own Certificate. */
   customFieldLayout?: import('@/lib/certificateBuilder').UploadFieldLayout | null
+  /** Editable text layers covering printed content on an uploaded paper. */
+  customPaperLayers?: import('@/lib/certificateBuilder').PaperContentLayer[] | null
 }

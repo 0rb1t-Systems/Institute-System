@@ -23,7 +23,7 @@ export function designPdfPayload(
     primary: data.primary,
     accent: data.accent,
     motto: data.motto,
-    description: data.description,
+    description: undefined,
     logoUrl: data.logoUrl,
     sealUrl: data.sealUrl,
     signatureUrl: data.signatureUrl,
@@ -51,6 +51,7 @@ export function designPdfPayload(
     customBackgroundUrl: data.customBackgroundUrl,
     customAspectRatio: data.customAspectRatio,
     customFieldLayout: data.customFieldLayout,
+    customPaperLayers: data.customPaperLayers,
   }
 }
 

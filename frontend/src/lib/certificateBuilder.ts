@@ -26,13 +26,15 @@ export const BUILDER_BINDINGS = [
   { key: 'none', label: 'Static text (free)' },
   { key: 'studentName', label: 'Student name' },
   { key: 'studentId', label: 'Student ID' },
-  { key: 'programName', label: 'Program / course' },
+  { key: 'programName', label: 'Course / program' },
   { key: 'className', label: 'Class name' },
   { key: 'certificateNumber', label: 'Document number' },
   { key: 'dateIssued', label: 'Date issued' },
   { key: 'institutionName', label: 'Institution name' },
   { key: 'leftName', label: 'Left signatory name' },
+  { key: 'leftTitle', label: 'Left signatory title' },
   { key: 'rightName', label: 'Right signatory name' },
+  { key: 'rightTitle', label: 'Right signatory title' },
   { key: 'verifyCode', label: 'Verification code' },
   { key: 'gpa', label: 'GPA' },
   { key: 'gradesSummary', label: 'Grades summary' },
@@ -82,13 +84,16 @@ export function getDocumentBuilderQuickFields(
   return [
     { key: 'studentName', label: 'Student name' },
     { key: 'studentId', label: 'Student ID' },
-    { key: 'programName', label: 'Program' },
+    { key: 'programName', label: 'Course / program' },
     { key: 'className', label: 'Class' },
     { key: 'certificateNumber', label: 'Cert No.' },
     { key: 'dateIssued', label: 'Date' },
+    { key: 'gpa', label: 'Grade / GPA' },
     { key: 'institutionName', label: 'Institution' },
     { key: 'leftName', label: 'Left name' },
+    { key: 'leftTitle', label: 'Left title' },
     { key: 'rightName', label: 'Right name' },
+    { key: 'rightTitle', label: 'Right title' },
   ]
 }
 
@@ -116,8 +121,15 @@ export type BuilderElement = {
   opacity?: number
   src?: string
   bind?: BuilderBinding
-  /** System-locked elements (QR) cannot be deleted or unbound. */
+  /** Locked elements cannot be moved/resized/deleted until unlocked. */
   locked?: boolean
+  /** Hidden elements are omitted from canvas/PDF until shown again. */
+  hidden?: boolean
+  /**
+   * Elements that visually belong together (e.g. a paragraph, logo cluster).
+   * Groups move together until the user enters the group to edit individuals.
+   */
+  groupId?: string
   /** Ready decorative ornament key — allows recolor while keeping the shape. */
   decorKey?: string
 }
@@ -138,6 +150,8 @@ export type CustomUploadMeta = {
   aspect_ratio?: number | null
   /** Matched field positions on the uploaded design (percent 0–100). */
   field_layout?: UploadFieldLayout | null
+  /** Editable text/cover layers extracted or drawn on the uploaded paper. */
+  paper_layers?: PaperContentLayer[] | null
 }
 
 /** Student data slots matched onto an uploaded document design. */
@@ -154,6 +168,53 @@ export type UploadFieldKey =
   | 'amountPaid'
   | 'balance'
   | 'lineItemsSummary'
+
+/** Editable block sitting on top of uploaded artwork (covers original pixels). */
+export type PaperContentLayer = {
+  id: string
+  /** Percent of paper width/height */
+  x: number
+  y: number
+  w: number
+  h: number
+  text: string
+  fontSize: number
+  color: string
+  /** Opaque cover so original printed text is hidden */
+  coverColor: string
+  align?: 'left' | 'center' | 'right'
+  fontWeight?: 'normal' | 'bold'
+  fontStyle?: 'normal' | 'italic'
+  /** Optional live student/system binding */
+  bind?: UploadFieldKey | 'none' | null
+  enabled?: boolean
+}
+
+export function createPaperLayerId() {
+  return `pl_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`
+}
+
+export function normalizePaperLayers(raw: unknown): PaperContentLayer[] {
+  if (!Array.isArray(raw)) return []
+  return raw
+    .filter((l) => l && typeof l === 'object')
+    .map((l: any) => ({
+      id: String(l.id || createPaperLayerId()),
+      x: Math.min(100, Math.max(0, Number(l.x) || 0)),
+      y: Math.min(100, Math.max(0, Number(l.y) || 0)),
+      w: Math.min(100, Math.max(2, Number(l.w) || 10)),
+      h: Math.min(100, Math.max(2, Number(l.h) || 4)),
+      text: String(l.text ?? ''),
+      fontSize: Math.min(72, Math.max(8, Number(l.fontSize) || 14)),
+      color: String(l.color || '#0f172a'),
+      coverColor: String(l.coverColor || '#ffffff'),
+      align: l.align === 'left' || l.align === 'right' ? l.align : 'center',
+      fontWeight: l.fontWeight === 'bold' ? 'bold' : 'normal',
+      fontStyle: l.fontStyle === 'italic' ? 'italic' : 'normal',
+      bind: l.bind || 'none',
+      enabled: l.enabled !== false,
+    }))
+}
 
 export type UploadFieldSlot = {
   key: UploadFieldKey
@@ -228,6 +289,25 @@ export function getUploadFieldLabels(
     dateIssued: 'Date issued',
     qr: 'Verification QR',
   }
+}
+
+/**
+ * System fields that must stay on the uploaded design (can move/resize, cannot remove).
+ * Others can be removed from the canvas and re-added later.
+ */
+export function getRequiredUploadFieldKeys(
+  kind: DocumentBuilderKind = 'certificate',
+): UploadFieldKey[] {
+  if (kind === 'invoice') return ['studentName', 'certificateNumber', 'totalDue']
+  if (kind === 'transcript') return ['studentName', 'certificateNumber']
+  return ['studentName', 'certificateNumber']
+}
+
+export function isRequiredUploadField(
+  key: UploadFieldKey,
+  kind: DocumentBuilderKind = 'certificate',
+): boolean {
+  return getRequiredUploadFieldKeys(kind).includes(key)
 }
 
 /** Keys shown in the Upload Own matcher for each document type. */
@@ -548,6 +628,13 @@ export function createElementId() {
   return `el_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`
 }
 
+export function createGroupId(prefix = 'grp') {
+  return `${prefix}_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 6)}`
+}
+
+/** Max elements persisted (must stay ≤ DB RPC limit). */
+export const MAX_BUILDER_ELEMENTS = 180
+
 export function getPaperSize(key?: string | null) {
   return PAPER_SIZES.find((p) => p.key === key) || PAPER_SIZES[0]
 }
@@ -594,6 +681,782 @@ export function createDefaultBuilderDesign(): LogoBuilderDesign {
   }
 }
 
+/** Marker text on the locked full-bleed uploaded paper image. */
+export const UPLOAD_PAPER_MARKER = '__upload_paper__'
+
+export function isUploadPaperElement(el?: BuilderElement | null): boolean {
+  if (!el || el.type !== 'image') return false
+  // Full-bleed paper from Upload Own (exact design match).
+  return el.text === UPLOAD_PAPER_MARKER || el.text === 'background-art'
+}
+
+/**
+ * Upload Own → template that LOOKS like the uploaded PDF (same design),
+ * with data slots cleared on the artwork itself so live student/institution
+ * data replaces sample text — no stacked white boxes on top of printed text.
+ */
+export function createDesignFromUploadedPaper(
+  backgroundPath: string,
+  aspectRatio?: number | null,
+  kind: DocumentBuilderKind = 'certificate',
+  options?: { slotsClearedOnPaper?: boolean },
+): LogoBuilderDesign {
+  const ar = aspectRatio && aspectRatio > 0 ? aspectRatio : 1.414
+  const paperKey: PaperSizeKey = ar >= 1 ? 'a4-landscape' : 'a4-portrait'
+  const paper = getPaperSize(paperKey)
+  const w = paper.width
+  const h = Math.max(400, Math.round(w / ar))
+  const canvas = { width: w, height: h }
+  const portrait = ar < 1.05
+  const cleared = options?.slotsClearedOnPaper === true
+  // Transparent when slots already cleared on the paper; white only as fallback cover
+  const fill = cleared ? 'transparent' : '#ffffff'
+  let z = 1
+
+  const paperEl: BuilderElement = {
+    id: createElementId(),
+    type: 'image',
+    x: 0,
+    y: 0,
+    width: w,
+    height: h,
+    rotation: 0,
+    zIndex: 0,
+    src: backgroundPath,
+    opacity: 1,
+    bind: 'none',
+    locked: true,
+    text: 'background-art',
+  }
+
+  const elements: BuilderElement[] = [paperEl]
+
+  const field = (
+    bind: Exclude<BuilderBinding, 'qr'>,
+    overrides: Partial<BuilderElement> = {},
+  ) =>
+    createBoundTextElement(bind, canvas, {
+      fill,
+      zIndex: z++,
+      locked: false,
+      ...overrides,
+    })
+
+  /** Default data-slot rectangles (percent of canvas) for clearing + field placement. */
+  const slots = getUploadDataSlots(w, h, kind, portrait)
+
+  if (kind === 'invoice') {
+    elements.push(
+      field('studentName', { ...slots.studentName, fontSize: 28 }),
+      field('invoiceNumber', {
+        ...slots.certificateNumber,
+        fontSize: 14,
+        fontWeight: 'normal',
+        fontStyle: 'normal',
+      }),
+      field('totalDue', {
+        ...slots.dateIssued,
+        fontSize: 16,
+        fontWeight: 'bold',
+        fontStyle: 'normal',
+        textAlign: 'right',
+      }),
+    )
+  } else if (kind === 'transcript') {
+    elements.push(
+      field('studentName', { ...slots.studentName, fontSize: 28 }),
+      field('programName', {
+        ...slots.programName,
+        fontSize: 16,
+        fontWeight: 'normal',
+        fontStyle: 'normal',
+      }),
+      field('certificateNumber', {
+        ...slots.certificateNumber,
+        fontSize: 12,
+        textAlign: 'left',
+        fontWeight: 'normal',
+        fontStyle: 'normal',
+      }),
+      field('dateIssued', {
+        ...slots.dateIssued,
+        fontSize: 12,
+        textAlign: 'right',
+        fontWeight: 'normal',
+        fontStyle: 'normal',
+      }),
+      {
+        ...createVerificationQrElement(canvas),
+        ...slots.qr,
+        zIndex: z++,
+        locked: false,
+      },
+    )
+  } else {
+    elements.push(
+      field('programName', {
+        ...slots.programName,
+        fontSize: portrait ? 24 : 20,
+        fontWeight: 'bold',
+        fontStyle: 'italic',
+        textAlign: 'center',
+      }),
+      field('studentName', {
+        ...slots.studentName,
+        fontSize: portrait ? 28 : 32,
+        fontWeight: 'bold',
+        fontStyle: 'italic',
+      }),
+      field('certificateNumber', {
+        ...slots.certificateNumber,
+        fontSize: 12,
+        textAlign: 'left',
+        fontWeight: 'normal',
+        fontStyle: 'normal',
+      }),
+      field('dateIssued', {
+        ...slots.dateIssued,
+        fontSize: 12,
+        textAlign: 'right',
+        fontWeight: 'normal',
+        fontStyle: 'normal',
+      }),
+      field('leftName', {
+        ...slots.leftName,
+        fontSize: 13,
+        fontWeight: 'bold',
+        fontStyle: 'normal',
+        textAlign: 'center',
+      }),
+      field('rightName', {
+        ...slots.rightName,
+        fontSize: 13,
+        fontWeight: 'bold',
+        fontStyle: 'normal',
+        textAlign: 'center',
+      }),
+      {
+        ...createVerificationQrElement(canvas),
+        ...slots.qr,
+        zIndex: z++,
+        locked: false,
+      },
+    )
+  }
+
+  return normalizeVerificationQr({
+    version: 1,
+    canvas: {
+      width: w,
+      height: h,
+      background: '#ffffff',
+      paperKey: paper.key,
+    },
+    elements,
+  })
+}
+
+export type UploadDataSlot = { x: number; y: number; width: number; height: number }
+
+/** Layout slots where sample PDF text is cleared and live data is placed. */
+export function getUploadDataSlots(
+  w: number,
+  h: number,
+  kind: DocumentBuilderKind,
+  portrait = h > w,
+): Record<string, UploadDataSlot> {
+  if (kind === 'invoice') {
+    return {
+      studentName: { x: w * 0.12, y: h * 0.28, width: w * 0.76, height: 40 },
+      programName: { x: w * 0.12, y: h * 0.4, width: w * 0.76, height: 36 },
+      certificateNumber: { x: w * 0.12, y: h * 0.12, width: w * 0.4, height: 28 },
+      dateIssued: { x: w * 0.45, y: h * 0.72, width: w * 0.43, height: 28 },
+      leftName: { x: w * 0.1, y: h * 0.82, width: w * 0.3, height: 28 },
+      rightName: { x: w * 0.6, y: h * 0.82, width: w * 0.3, height: 28 },
+      qr: { x: Math.max(16, w - 120), y: 28, width: 88, height: 88 },
+    }
+  }
+  if (kind === 'transcript') {
+    return {
+      studentName: { x: w * 0.12, y: h * 0.3, width: w * 0.76, height: 40 },
+      programName: { x: w * 0.12, y: h * 0.4, width: w * 0.76, height: 36 },
+      certificateNumber: { x: w * 0.12, y: h * 0.68, width: w * 0.4, height: 24 },
+      dateIssued: { x: w * 0.52, y: h * 0.68, width: w * 0.36, height: 24 },
+      leftName: { x: w * 0.1, y: h * 0.82, width: w * 0.3, height: 28 },
+      rightName: { x: w * 0.6, y: h * 0.82, width: w * 0.3, height: 28 },
+      qr: { x: Math.max(16, w - 120), y: 28, width: 88, height: 88 },
+    }
+  }
+  // Certificate — Benadir-style portrait defaults
+  return {
+    programName: {
+      x: w * 0.12,
+      y: portrait ? h * 0.24 : h * 0.28,
+      width: w * 0.76,
+      height: portrait ? 70 : 48,
+    },
+    studentName: {
+      x: w * 0.12,
+      y: portrait ? h * 0.42 : h * 0.4,
+      width: w * 0.76,
+      height: 44,
+    },
+    certificateNumber: {
+      x: w * 0.08,
+      y: portrait ? h * 0.68 : h * 0.72,
+      width: w * 0.42,
+      height: 26,
+    },
+    dateIssued: {
+      x: w * 0.52,
+      y: portrait ? h * 0.68 : h * 0.72,
+      width: w * 0.4,
+      height: 26,
+    },
+    leftName: {
+      x: w * 0.08,
+      y: portrait ? h * 0.8 : h * 0.82,
+      width: w * 0.32,
+      height: 28,
+    },
+    rightName: {
+      x: w * 0.6,
+      y: portrait ? h * 0.8 : h * 0.82,
+      width: w * 0.32,
+      height: 28,
+    },
+    qr: {
+      x: Math.max(16, w - 118),
+      y: 24,
+      width: 92,
+      height: 92,
+    },
+  }
+}
+
+/**
+ * Build a FULL constructed certificate (all elements: text, lines, bars, logo, seal, QR).
+ * Styled to resemble a professional uploaded certificate (Benadir-style): institution
+ * colors, green subtitle, course title, student name, seal, and signatory titles from Settings.
+ */
+export function createConstructedCertificateMatchingUpload(opts?: {
+  aspectRatio?: number | null
+  institutionName?: string
+  subtitle?: string
+  primary?: string
+  accent?: string
+  logoUrl?: string | null
+  sealUrl?: string | null
+  signatureUrl?: string | null
+  leftTitle?: string
+  rightTitle?: string
+  leftName?: string
+  rightName?: string
+  kind?: DocumentBuilderKind
+}): LogoBuilderDesign {
+  const kind = opts?.kind || 'certificate'
+  const arHint = opts?.aspectRatio && opts.aspectRatio > 0 ? opts.aspectRatio : null
+  const orientKey: PaperSizeKey = arHint != null && arHint >= 1 ? 'a4-landscape' : 'a4-portrait'
+  if (kind === 'transcript') {
+    return createStarterTranscriptDesign(orientKey, opts)
+  }
+  if (kind === 'invoice') {
+    return createStarterInvoiceDesign(orientKey, opts)
+  }
+
+  const ar = arHint && arHint > 0 ? arHint : 0.707
+  const paperKey: PaperSizeKey = ar >= 1 ? 'a4-landscape' : 'a4-portrait'
+  const paper = getPaperSize(paperKey)
+  const w = paper.width
+  const h = Math.max(520, Math.round(w / Math.max(0.55, Math.min(ar, 1.2))))
+  // Match typical uploaded certificate palette (navy + institutional green)
+  const primary = opts?.primary || '#1e40af'
+  const accent = opts?.accent || '#15803d'
+  const instName = String(opts?.institutionName || '').trim() || 'Institution Name'
+  const subtitle = String(opts?.subtitle || '').trim()
+  const leftTitle = String(opts?.leftTitle || '').trim() || 'Academic Registrar'
+  const rightTitle = String(opts?.rightTitle || '').trim() || 'Principal'
+  const leftName = String(opts?.leftName || '').trim()
+  const rightName = String(opts?.rightName || '').trim()
+  let z = 0
+  const nextZ = () => {
+    z += 1
+    return z
+  }
+
+  const elements: BuilderElement[] = []
+
+  // Soft page margin frame (subtle, like printed certificates)
+  elements.push({
+    id: createElementId(),
+    type: 'rect',
+    x: 22,
+    y: 22,
+    width: w - 44,
+    height: h - 44,
+    rotation: 0,
+    zIndex: nextZ(),
+    fill: 'transparent',
+    stroke: primary,
+    strokeWidth: 2,
+    opacity: 0.35,
+    bind: 'none',
+    text: 'page-frame',
+  })
+
+  if (opts?.logoUrl) {
+    elements.push({
+      id: createElementId(),
+      type: 'image',
+      x: w * 0.08,
+      y: h * 0.04,
+      width: 68,
+      height: 68,
+      rotation: 0,
+      zIndex: nextZ(),
+      src: opts.logoUrl,
+      opacity: 1,
+      bind: 'none',
+      text: 'logo',
+      locked: false,
+    })
+  } else {
+    // Name only when no logo (never both)
+    elements.push(
+      createBoundTextElement('institutionName', { width: w, height: h }, {
+        x: w * 0.1,
+        y: h * 0.045,
+        width: w * 0.58,
+        height: 36,
+        fontSize: 20,
+        fontWeight: 'bold',
+        fontStyle: 'normal',
+        fontFamily: BUILDER_FONT_FAMILIES[4],
+        textAlign: 'left',
+        color: primary,
+        text: instName,
+        zIndex: nextZ(),
+      }),
+    )
+  }
+
+  const headerX = opts?.logoUrl ? w * 0.2 : w * 0.1
+  const headerW = opts?.logoUrl ? w * 0.48 : w * 0.58
+
+  // Optional short motto only — never institution description
+  if (subtitle) {
+    elements.push({
+      id: createElementId(),
+      type: 'text',
+      x: headerX,
+      y: h * 0.09,
+      width: headerW,
+      height: 36,
+      rotation: 0,
+      zIndex: nextZ(),
+      text: subtitle,
+      fontFamily: BUILDER_FONT_FAMILIES[4],
+      fontSize: 12,
+      fontWeight: 'normal',
+      fontStyle: 'normal',
+      textAlign: 'left',
+      color: accent,
+      fill: 'transparent',
+      opacity: 1,
+      bind: 'none',
+      locked: false,
+    })
+  }
+
+  elements.push({
+    ...createVerificationQrElement({ width: w, height: h }),
+    x: Math.max(16, w - 108),
+    y: h * 0.035,
+    width: 82,
+    height: 82,
+    zIndex: nextZ(),
+    locked: false,
+  })
+
+  // Header rule (blue, like uploaded)
+  elements.push({
+    id: createElementId(),
+    type: 'line',
+    x: w * 0.1,
+    y: h * 0.16,
+    width: w * 0.8,
+    height: 3,
+    rotation: 0,
+    zIndex: nextZ(),
+    stroke: primary,
+    strokeWidth: 2,
+    fill: primary,
+    opacity: 1,
+    bind: 'none',
+    text: 'header-rule',
+  })
+
+  // Course / diploma — DYNAMIC
+  elements.push(
+    createBoundTextElement('programName', { width: w, height: h }, {
+      x: w * 0.1,
+      y: h * 0.2,
+      width: w * 0.8,
+      height: 64,
+      fontSize: 24,
+      fontWeight: 'bold',
+      fontStyle: 'italic',
+      textAlign: 'center',
+      color: '#0f172a',
+      zIndex: nextZ(),
+    }),
+  )
+
+  elements.push({
+    id: createElementId(),
+    type: 'text',
+    x: w * 0.15,
+    y: h * 0.32,
+    width: w * 0.7,
+    height: 26,
+    rotation: 0,
+    zIndex: nextZ(),
+    text: 'This is to certify that',
+    fontFamily: BUILDER_FONT_FAMILIES[0],
+    fontSize: 15,
+    fontWeight: 'normal',
+    fontStyle: 'italic',
+    textAlign: 'center',
+    color: '#334155',
+    fill: 'transparent',
+    opacity: 1,
+    bind: 'none',
+    locked: false,
+  })
+
+  elements.push(
+    createBoundTextElement('studentName', { width: w, height: h }, {
+      x: w * 0.1,
+      y: h * 0.37,
+      width: w * 0.8,
+      height: 46,
+      fontSize: 30,
+      fontWeight: 'bold',
+      fontStyle: 'italic',
+      textAlign: 'center',
+      color: '#0f172a',
+      zIndex: nextZ(),
+    }),
+  )
+
+  // Green name underline (uploaded look)
+  elements.push({
+    id: createElementId(),
+    type: 'line',
+    x: w * 0.22,
+    y: h * 0.44,
+    width: w * 0.56,
+    height: 2,
+    rotation: 0,
+    zIndex: nextZ(),
+    stroke: accent,
+    strokeWidth: 1.5,
+    fill: accent,
+    opacity: 1,
+    bind: 'none',
+    text: 'name-rule',
+  })
+
+  elements.push({
+    id: createElementId(),
+    type: 'text',
+    x: w * 0.12,
+    y: h * 0.47,
+    width: w * 0.76,
+    height: 88,
+    rotation: 0,
+    zIndex: nextZ(),
+    text: 'has successfully completed the approved programme of study and passed the prescribed examinations under the authority of the academic board.',
+    fontFamily: BUILDER_FONT_FAMILIES[0],
+    fontSize: 13,
+    fontWeight: 'normal',
+    fontStyle: 'italic',
+    textAlign: 'center',
+    color: '#334155',
+    fill: 'transparent',
+    opacity: 1,
+    bind: 'none',
+    locked: false,
+  })
+
+  // Cert No. label + value
+  elements.push(
+    {
+      id: createElementId(),
+      type: 'text',
+      x: w * 0.1,
+      y: h * 0.6,
+      width: w * 0.16,
+      height: 22,
+      rotation: 0,
+      zIndex: nextZ(),
+      text: 'Cert No.',
+      fontFamily: BUILDER_FONT_FAMILIES[0],
+      fontSize: 12,
+      fontWeight: 'bold',
+      fontStyle: 'normal',
+      textAlign: 'left',
+      color: '#475569',
+      fill: 'transparent',
+      opacity: 1,
+      bind: 'none',
+      locked: false,
+    },
+    createBoundTextElement('certificateNumber', { width: w, height: h }, {
+      x: w * 0.26,
+      y: h * 0.6,
+      width: w * 0.28,
+      height: 22,
+      fontSize: 12,
+      fontWeight: 'normal',
+      fontStyle: 'normal',
+      textAlign: 'left',
+      color: '#0f172a',
+      zIndex: nextZ(),
+    }),
+    createBoundTextElement('dateIssued', { width: w, height: h }, {
+      x: w * 0.55,
+      y: h * 0.6,
+      width: w * 0.35,
+      height: 22,
+      fontSize: 12,
+      fontWeight: 'normal',
+      fontStyle: 'normal',
+      textAlign: 'right',
+      color: '#0f172a',
+      zIndex: nextZ(),
+    }),
+  )
+
+  // Seal
+  if (opts?.sealUrl) {
+    elements.push({
+      id: createElementId(),
+      type: 'image',
+      x: w * 0.5 - 52,
+      y: h * 0.66,
+      width: 104,
+      height: 104,
+      rotation: 0,
+      zIndex: nextZ(),
+      src: opts.sealUrl,
+      opacity: 1,
+      bind: 'none',
+      text: 'institution-stamp',
+      locked: false,
+    })
+  } else {
+    const seal = createDecorativeShapeElement(
+      'seal_ring',
+      { width: w, height: h },
+      { primary: accent, accent: primary },
+    )
+    elements.push({
+      ...seal,
+      x: w * 0.5 - 48,
+      y: h * 0.68,
+      width: 96,
+      height: 96,
+      zIndex: nextZ(),
+      locked: false,
+    })
+  }
+
+  if (opts?.signatureUrl) {
+    elements.push({
+      id: createElementId(),
+      type: 'image',
+      x: w * 0.12,
+      y: h * 0.74,
+      width: 130,
+      height: 44,
+      rotation: 0,
+      zIndex: nextZ(),
+      src: opts.signatureUrl,
+      opacity: 1,
+      bind: 'none',
+      text: 'signature',
+      locked: false,
+    })
+  }
+
+  // Signature lines
+  elements.push(
+    {
+      id: createElementId(),
+      type: 'line',
+      x: w * 0.1,
+      y: h * 0.82,
+      width: w * 0.28,
+      height: 2,
+      rotation: 0,
+      zIndex: nextZ(),
+      stroke: primary,
+      strokeWidth: 1,
+      fill: primary,
+      opacity: 1,
+      bind: 'none',
+      text: 'signature-line-left',
+    },
+    {
+      id: createElementId(),
+      type: 'line',
+      x: w * 0.62,
+      y: h * 0.82,
+      width: w * 0.28,
+      height: 2,
+      rotation: 0,
+      zIndex: nextZ(),
+      stroke: primary,
+      strokeWidth: 1,
+      fill: primary,
+      opacity: 1,
+      bind: 'none',
+      text: 'signature-line-right',
+    },
+  )
+
+  // Names (optional from settings) then TITLES from Settings (required)
+  if (leftName) {
+    elements.push(
+      createBoundTextElement('leftName', { width: w, height: h }, {
+        x: w * 0.1,
+        y: h * 0.83,
+        width: w * 0.28,
+        height: 22,
+        fontSize: 12,
+        fontWeight: 'bold',
+        fontStyle: 'normal',
+        textAlign: 'center',
+        color: primary,
+        text: leftName,
+        zIndex: nextZ(),
+      }),
+    )
+  }
+  if (rightName) {
+    elements.push(
+      createBoundTextElement('rightName', { width: w, height: h }, {
+        x: w * 0.62,
+        y: h * 0.83,
+        width: w * 0.28,
+        height: 22,
+        fontSize: 12,
+        fontWeight: 'bold',
+        fontStyle: 'normal',
+        textAlign: 'center',
+        color: primary,
+        text: rightName,
+        zIndex: nextZ(),
+      }),
+    )
+  }
+
+  elements.push(
+    createBoundTextElement('leftTitle', { width: w, height: h }, {
+      x: w * 0.1,
+      y: leftName ? h * 0.865 : h * 0.835,
+      width: w * 0.28,
+      height: 24,
+      fontSize: 12,
+      fontWeight: 'normal',
+      fontStyle: 'normal',
+      textAlign: 'center',
+      color: '#334155',
+      text: leftTitle,
+      zIndex: nextZ(),
+    }),
+    createBoundTextElement('rightTitle', { width: w, height: h }, {
+      x: w * 0.62,
+      y: rightName ? h * 0.865 : h * 0.835,
+      width: w * 0.28,
+      height: 24,
+      fontSize: 12,
+      fontWeight: 'normal',
+      fontStyle: 'normal',
+      textAlign: 'center',
+      color: '#334155',
+      text: rightTitle,
+      zIndex: nextZ(),
+    }),
+  )
+
+  // Footer bar — institution primary color
+  elements.push({
+    id: createElementId(),
+    type: 'rect',
+    x: 0,
+    y: h - 26,
+    width: w,
+    height: 26,
+    rotation: 0,
+    zIndex: nextZ(),
+    fill: primary,
+    stroke: 'transparent',
+    strokeWidth: 0,
+    opacity: 1,
+    bind: 'none',
+    text: 'footer-bar',
+  })
+
+  return normalizeVerificationQr({
+    version: 1,
+    canvas: {
+      width: w,
+      height: h,
+      background: '#ffffff',
+      paperKey: paper.key,
+    },
+    elements,
+  })
+}
+
+/**
+ * Build a full constructed editable template from upload metadata (no image overlay).
+ */
+export async function buildTemplateFromUploadedCertificate(opts: {
+  imageUrl?: string
+  aspectRatio?: number | null
+  kind?: DocumentBuilderKind
+  uploadImageBlob?: (blob: Blob, fileName: string) => Promise<{ path: string }>
+  institutionName?: string
+  primary?: string
+  accent?: string
+  logoUrl?: string | null
+  sealUrl?: string | null
+  signatureUrl?: string | null
+}): Promise<LogoBuilderDesign> {
+  void opts.imageUrl
+  void opts.uploadImageBlob
+  return createConstructedCertificateMatchingUpload({
+    aspectRatio: opts.aspectRatio,
+    kind: opts.kind,
+    institutionName: opts.institutionName,
+    primary: opts.primary,
+    accent: opts.accent,
+    logoUrl: opts.logoUrl,
+    sealUrl: opts.sealUrl,
+    signatureUrl: opts.signatureUrl,
+  })
+}
+
+/** True when this image is residual/base art from an upload decomposition. */
+export function isBackgroundArtElement(el?: BuilderElement | null): boolean {
+  if (!el || el.type !== 'image') return false
+  const label = String(el.text || '')
+  return label === 'background-art' || label === UPLOAD_PAPER_MARKER || isUploadPaperElement(el)
+}
+
 /** One-click bound text field for the certificate builder. */
 export function createBoundTextElement(
   bind: Exclude<BuilderBinding, 'qr'>,
@@ -609,7 +1472,9 @@ export function createBoundTextElement(
     dateIssued: 'Date Issued',
     institutionName: 'Institution Name',
     leftName: 'Left Signatory Name',
+    leftTitle: 'Left Signatory Title',
     rightName: 'Right Signatory Name',
+    rightTitle: 'Right Signatory Title',
     verifyCode: 'Verification Code',
     gpa: 'GPA',
     gradesSummary: 'Course · Credits · Grade',
@@ -870,12 +1735,46 @@ export function createStarterCertificateDesign(paperKey: PaperSizeKey = 'a4-port
   })
 }
 
-/** Official academic transcript starter (not a certificate layout). */
-export function createStarterTranscriptDesign(paperKey: PaperSizeKey = 'a4-portrait'): LogoBuilderDesign {
+/** Branding applied when Upload Own / Page Builder builds a constructed document. */
+export type DocumentBrandOpts = {
+  institutionName?: string
+  subtitle?: string
+  primary?: string
+  accent?: string
+  logoUrl?: string | null
+  sealUrl?: string | null
+  signatureUrl?: string | null
+  leftTitle?: string
+  rightTitle?: string
+  leftName?: string
+  rightName?: string
+  aspectRatio?: number | null
+}
+
+function canvasSizeForUpload(
+  paperKey: PaperSizeKey,
+  aspectRatio?: number | null,
+): { w: number; h: number; paper: ReturnType<typeof getPaperSize> } {
   const paper = getPaperSize(paperKey)
   const w = paper.width
-  const h = paper.height
-  const primary = '#0f172a'
+  const ar = aspectRatio && aspectRatio > 0 ? aspectRatio : paper.width / paper.height
+  const h = Math.max(520, Math.round(w / Math.max(0.45, Math.min(ar, 2.2))))
+  return { w, h, paper }
+}
+
+/** Official academic transcript — full editable layers (Upload Own / starter). */
+export function createStarterTranscriptDesign(
+  paperKey: PaperSizeKey = 'a4-portrait',
+  brand?: DocumentBrandOpts,
+): LogoBuilderDesign {
+  const { w, h, paper } = canvasSizeForUpload(paperKey, brand?.aspectRatio)
+  const primary = brand?.primary || '#0f172a'
+  const accent = brand?.accent || '#15803d'
+  const instName = String(brand?.institutionName || '').trim() || 'Institution Name'
+  const leftTitle = String(brand?.leftTitle || '').trim() || 'Academic Registrar'
+  const rightTitle = String(brand?.rightTitle || '').trim() || 'Principal'
+  const leftName = String(brand?.leftName || '').trim()
+  const rightName = String(brand?.rightName || '').trim()
   let z = 1
   const nextZ = () => {
     z += 1
@@ -899,31 +1798,61 @@ export function createStarterTranscriptDesign(paperKey: PaperSizeKey = 'a4-portr
       bind: 'none',
       text: 'transcript-frame',
     },
-    createBoundTextElement('institutionName', { width: w, height: h }, {
-      y: h * 0.06,
-      fontSize: 20,
-      fontWeight: 'bold',
-      color: primary,
+  ]
+
+  if (brand?.logoUrl) {
+    elements.push({
+      id: createElementId(),
+      type: 'image',
+      x: w * 0.12,
+      y: h * 0.045,
+      width: 56,
+      height: 56,
+      rotation: 0,
       zIndex: nextZ(),
-    }),
+      src: brand.logoUrl,
+      opacity: 1,
+      bind: 'none',
+      text: 'logo',
+      locked: false,
+    })
+  } else {
+    elements.push(
+      createBoundTextElement('institutionName', { width: w, height: h }, {
+        x: w * 0.12,
+        y: h * 0.055,
+        width: w * 0.76,
+        height: 32,
+        fontSize: 18,
+        fontWeight: 'bold',
+        textAlign: 'center',
+        color: primary,
+        text: instName,
+        zIndex: nextZ(),
+      }),
+    )
+  }
+
+  elements.push(
     {
       id: createElementId(),
       type: 'text',
       x: w * 0.12,
-      y: h * 0.11,
+      y: h * 0.115,
       width: w * 0.76,
       height: 36,
       rotation: 0,
       zIndex: nextZ(),
       text: 'Official Academic Transcript',
       fontFamily: BUILDER_FONT_FAMILIES[0],
-      fontSize: 24,
+      fontSize: 22,
       fontWeight: 'bold',
       fontStyle: 'normal',
       textAlign: 'center',
       color: primary,
       opacity: 1,
       bind: 'none',
+      locked: false,
     },
     {
       id: createElementId(),
@@ -934,9 +1863,9 @@ export function createStarterTranscriptDesign(paperKey: PaperSizeKey = 'a4-portr
       height: 2,
       rotation: 0,
       zIndex: nextZ(),
-      stroke: primary,
+      stroke: accent,
       strokeWidth: 2,
-      fill: primary,
+      fill: accent,
       opacity: 1,
       bind: 'none',
       text: 'header-rule',
@@ -1012,6 +1941,7 @@ export function createStarterTranscriptDesign(paperKey: PaperSizeKey = 'a4-portr
       color: primary,
       opacity: 1,
       bind: 'none',
+      locked: false,
     },
     {
       id: createElementId(),
@@ -1060,6 +1990,27 @@ export function createStarterTranscriptDesign(paperKey: PaperSizeKey = 'a4-portr
       color: '#475569',
       zIndex: nextZ(),
     }),
+  )
+
+  if (brand?.signatureUrl) {
+    elements.push({
+      id: createElementId(),
+      type: 'image',
+      x: w * 0.14,
+      y: h * 0.76,
+      width: 90,
+      height: 36,
+      rotation: 0,
+      zIndex: nextZ(),
+      src: brand.signatureUrl,
+      opacity: 1,
+      bind: 'none',
+      text: 'signature',
+      locked: false,
+    })
+  }
+
+  elements.push(
     {
       id: createElementId(),
       type: 'line',
@@ -1096,25 +2047,76 @@ export function createStarterTranscriptDesign(paperKey: PaperSizeKey = 'a4-portr
       x: w * 0.12,
       y: h * 0.84,
       width: w * 0.28,
-      height: 24,
+      height: 22,
       fontSize: 12,
       fontWeight: 'bold',
       textAlign: 'center',
       color: primary,
+      text: leftName || 'Authorized Signatory',
       zIndex: nextZ(),
     }),
+    {
+      id: createElementId(),
+      type: 'text',
+      x: w * 0.12,
+      y: h * 0.865,
+      width: w * 0.28,
+      height: 20,
+      rotation: 0,
+      zIndex: nextZ(),
+      text: leftTitle,
+      fontFamily: BUILDER_FONT_FAMILIES[0],
+      fontSize: 11,
+      fontWeight: 'normal',
+      fontStyle: 'normal',
+      textAlign: 'center',
+      color: '#64748b',
+      opacity: 1,
+      bind: 'none',
+      locked: false,
+    },
     createBoundTextElement('rightName', { width: w, height: h }, {
       x: w * 0.6,
       y: h * 0.84,
       width: w * 0.28,
-      height: 24,
+      height: 22,
       fontSize: 12,
       fontWeight: 'bold',
       textAlign: 'center',
       color: primary,
+      text: rightName || 'Authorized Signatory',
       zIndex: nextZ(),
     }),
-  ]
+    {
+      id: createElementId(),
+      type: 'text',
+      x: w * 0.6,
+      y: h * 0.865,
+      width: w * 0.28,
+      height: 20,
+      rotation: 0,
+      zIndex: nextZ(),
+      text: rightTitle,
+      fontFamily: BUILDER_FONT_FAMILIES[0],
+      fontSize: 11,
+      fontWeight: 'normal',
+      fontStyle: 'normal',
+      textAlign: 'center',
+      color: '#64748b',
+      opacity: 1,
+      bind: 'none',
+      locked: false,
+    },
+    {
+      ...createVerificationQrElement({ width: w, height: h }),
+      x: Math.max(16, w - 100),
+      y: h * 0.045,
+      width: 72,
+      height: 72,
+      zIndex: nextZ(),
+      locked: false,
+    },
+  )
 
   return normalizeVerificationQr({
     version: 1,
@@ -1123,12 +2125,15 @@ export function createStarterTranscriptDesign(paperKey: PaperSizeKey = 'a4-portr
   })
 }
 
-/** Fee invoice / statement starter (not a certificate layout). */
-export function createStarterInvoiceDesign(paperKey: PaperSizeKey = 'a4-portrait'): LogoBuilderDesign {
-  const paper = getPaperSize(paperKey)
-  const w = paper.width
-  const h = paper.height
-  const primary = '#0f172a'
+/** Fee invoice / statement — full editable layers (Upload Own / starter). */
+export function createStarterInvoiceDesign(
+  paperKey: PaperSizeKey = 'a4-portrait',
+  brand?: DocumentBrandOpts,
+): LogoBuilderDesign {
+  const { w, h, paper } = canvasSizeForUpload(paperKey, brand?.aspectRatio)
+  const primary = brand?.primary || '#0f172a'
+  const accent = brand?.accent || '#b45309'
+  const instName = String(brand?.institutionName || '').trim() || 'Institution Name'
   let z = 1
   const nextZ = () => {
     z += 1
@@ -1152,13 +2157,42 @@ export function createStarterInvoiceDesign(paperKey: PaperSizeKey = 'a4-portrait
       bind: 'none',
       text: 'invoice-header-band',
     },
-    createBoundTextElement('institutionName', { width: w, height: h }, {
-      y: 22,
-      fontSize: 18,
-      fontWeight: 'bold',
-      color: '#ffffff',
+  ]
+
+  if (brand?.logoUrl) {
+    elements.push({
+      id: createElementId(),
+      type: 'image',
+      x: 28,
+      y: 12,
+      width: 48,
+      height: 48,
+      rotation: 0,
       zIndex: nextZ(),
-    }),
+      src: brand.logoUrl,
+      opacity: 1,
+      bind: 'none',
+      text: 'logo',
+      locked: false,
+    })
+  } else {
+    elements.push(
+      createBoundTextElement('institutionName', { width: w, height: h }, {
+        x: w * 0.12,
+        y: 22,
+        width: w * 0.76,
+        height: 32,
+        fontSize: 18,
+        fontWeight: 'bold',
+        textAlign: 'left',
+        color: '#ffffff',
+        text: instName,
+        zIndex: nextZ(),
+      }),
+    )
+  }
+
+  elements.push(
     {
       id: createElementId(),
       type: 'text',
@@ -1177,6 +2211,7 @@ export function createStarterInvoiceDesign(paperKey: PaperSizeKey = 'a4-portrait
       color: primary,
       opacity: 1,
       bind: 'none',
+      locked: false,
     },
     createBoundTextElement('invoiceNumber', { width: w, height: h }, {
       x: w * 0.5,
@@ -1216,6 +2251,7 @@ export function createStarterInvoiceDesign(paperKey: PaperSizeKey = 'a4-portrait
       color: '#64748b',
       opacity: 1,
       bind: 'none',
+      locked: false,
     },
     createBoundTextElement('studentName', { width: w, height: h }, {
       x: w * 0.12,
@@ -1267,6 +2303,7 @@ export function createStarterInvoiceDesign(paperKey: PaperSizeKey = 'a4-portrait
       color: primary,
       opacity: 1,
       bind: 'none',
+      locked: false,
     },
     {
       id: createElementId(),
@@ -1302,6 +2339,7 @@ export function createStarterInvoiceDesign(paperKey: PaperSizeKey = 'a4-portrait
       color: '#1e293b',
       opacity: 1,
       bind: 'lineItemsSummary',
+      locked: false,
     },
     createBoundTextElement('totalDue', { width: w, height: h }, {
       x: w * 0.45,
@@ -1332,7 +2370,7 @@ export function createStarterInvoiceDesign(paperKey: PaperSizeKey = 'a4-portrait
       fontSize: 13,
       fontWeight: 'bold',
       textAlign: 'right',
-      color: '#b45309',
+      color: accent,
       zIndex: nextZ(),
     }),
     {
@@ -1353,8 +2391,9 @@ export function createStarterInvoiceDesign(paperKey: PaperSizeKey = 'a4-portrait
       color: '#64748b',
       opacity: 1,
       bind: 'none',
+      locked: false,
     },
-  ]
+  )
 
   return normalizeVerificationQr({
     version: 1,
@@ -1803,6 +2842,20 @@ export function getBuilderLayerLabel(el: BuilderElement): string {
   return el.type
 }
 
+export function getGroupLabel(groupId: string, elements: BuilderElement[]): string {
+  const members = elements.filter((e) => e.groupId === groupId)
+  if (!members.length) return 'group'
+  if (members.every((e) => e.type === 'text')) {
+    const first = String(members[0].text || '').trim()
+    return first ? `¶ ${first.slice(0, 22)}${first.length > 22 ? '…' : ''}` : 'paragraph'
+  }
+  if (members.every((e) => e.type === 'image')) {
+    const labels = [...new Set(members.map((e) => String(e.text || 'image')))]
+    return labels[0] || 'images'
+  }
+  return `group (${members.length})`
+}
+
 export function hasVerificationQr(design: LogoBuilderDesign): boolean {
   return (design.elements || []).some((el) => isQrElement(el))
 }
@@ -1892,7 +2945,7 @@ export function normalizeLogoBuilderDesign(raw: unknown): LogoBuilderDesign {
     },
     elements: elements
       .filter((el): el is Record<string, unknown> => !!el && typeof el === 'object')
-      .slice(0, 80)
+      .slice(0, MAX_BUILDER_ELEMENTS)
       .map((el, index) => {
         const bindRaw = String(el.bind || 'none')
         const bind = (allowedBinds.has(bindRaw) ? bindRaw : 'none') as BuilderBinding
@@ -1900,6 +2953,10 @@ export function normalizeLogoBuilderDesign(raw: unknown): LogoBuilderDesign {
           bind === 'qr' ||
           String(el.id) === SYSTEM_QR_ID ||
           String(el.id) === 'system_qr_locked'
+        const groupId =
+          el.groupId != null && String(el.groupId).trim()
+            ? String(el.groupId).slice(0, 64)
+            : undefined
         return {
           id: isQr ? SYSTEM_QR_ID : String(el.id || createElementId()),
           type: (['text', 'image', 'rect', 'ellipse', 'line'].includes(String(el.type))
@@ -1925,7 +2982,9 @@ export function normalizeLogoBuilderDesign(raw: unknown): LogoBuilderDesign {
           opacity: Math.min(1, Math.max(0.1, Number(el.opacity) || 1)),
           src: el.src ? String(el.src) : undefined,
           bind: isQr ? 'qr' : bind,
-          locked: false,
+          locked: el.locked === true,
+          hidden: el.hidden === true,
+          groupId,
           decorKey: el.decorKey ? String(el.decorKey) : undefined,
         }
       }),
@@ -1954,6 +3013,7 @@ export function resolveBuilderText(
     certificateNumber?: string
     dateIssued?: string | null
     institutionName?: string
+    logoUrl?: string | null
     verifyCode?: string
     leftName?: string
     leftTitle?: string
@@ -1982,11 +3042,17 @@ export function resolveBuilderText(
     case 'dateIssued':
       return data.dateIssued ? String(data.dateIssued).slice(0, 10) : el.text || 'YYYY-MM-DD'
     case 'institutionName':
+      // Logo XOR name — never both on issued documents
+      if (String(data.logoUrl || '').trim()) return ''
       return data.institutionName || el.text || 'Institution'
     case 'leftName':
       return data.leftName || el.text || 'Signatory'
+    case 'leftTitle':
+      return data.leftTitle || el.text || 'Academic Registrar'
     case 'rightName':
       return data.rightName || el.text || 'Signatory'
+    case 'rightTitle':
+      return data.rightTitle || el.text || 'Principal'
     case 'verifyCode':
       return data.verifyCode || el.text || 'CODE'
     case 'gpa':

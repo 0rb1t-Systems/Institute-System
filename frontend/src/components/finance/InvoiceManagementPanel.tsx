@@ -15,8 +15,7 @@ const InvoiceManagementPanel = () => {
       <div>
         <h2 className="text-lg font-semibold text-white">Invoice Management</h2>
         <p className="text-sm text-slate-400 mt-1">
-          Choose a library template, design a real invoice page, or upload an institution
-          invoice. Active designs apply when Finance opens print/PDF invoices.
+          Library templates · Page Builder · Upload Own (upload → generate full editable invoice)
         </p>
       </div>
 

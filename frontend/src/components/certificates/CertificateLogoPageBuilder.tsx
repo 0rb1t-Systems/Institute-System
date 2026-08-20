@@ -8,12 +8,15 @@ import {
   Copy,
   Download,
   Eye,
+  EyeOff,
   FilePlus,
   Frame,
   ImagePlus,
   Italic,
   LayoutTemplate,
   Loader2,
+  Lock,
+  Unlock,
   Redo2,
   Save,
   SendToBack,
@@ -59,7 +62,10 @@ import {
   isDecorativeElement,
   isPrivateCertStoragePath,
   isQrElement,
+  isUploadPaperElement,
+  isBackgroundArtElement,
   getBuilderLayerLabel,
+  getGroupLabel,
   getDocumentBuilderQuickFields,
   normalizeLogoBuilderDesign,
   normalizeVerificationQr,
@@ -100,24 +106,39 @@ function cloneDesign(d: LogoBuilderDesign): LogoBuilderDesign {
 /**
  * Document Page Builder — design certificate / transcript / invoice layouts.
  * Stored on document_templates.config.logo_builder for the given documentType.
+ * variant "upload-edit": editing an uploaded paper (Text / Shapes / Images tabs).
  */
 const CertificateLogoPageBuilder = ({
   documentType = 'certificate',
+  variant = 'page-builder',
+  remountKey,
 }: {
   documentType?: DocumentTemplateType
+  variant?: 'page-builder' | 'upload-edit'
+  /** Change to force reload after a new upload seeds the design. */
+  remountKey?: string | number
 } = {}) => {
   const docType = (documentType || 'certificate') as DocumentTemplateType
   const docLabel =
     docType === 'transcript' ? 'Transcript' : docType === 'invoice' ? 'Invoice' : 'Certificate'
+  const isUploadEdit = variant === 'upload-edit'
   const { institution } = useAuth()
   const { toast } = useToast()
   const [design, setDesign] = useState<LogoBuilderDesign>(() => createDefaultBuilderDesign())
   const [selectedId, setSelectedId] = useState<string | null>(null)
+  /** When set, grouped elements move together until user enters the group. */
+  const [activeGroupId, setActiveGroupId] = useState<string | null>(null)
+  const [enteredGroupId, setEnteredGroupId] = useState<string | null>(null)
+  const enteredGroupIdRef = useRef<string | null>(null)
+  useEffect(() => {
+    enteredGroupIdRef.current = enteredGroupId
+  }, [enteredGroupId])
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [downloadingPdf, setDownloadingPdf] = useState(false)
   const [previewOpen, setPreviewOpen] = useState(false)
   const [shapesOpen, setShapesOpen] = useState(false)
+  const [insertTab, setInsertTab] = useState<'text' | 'shapes' | 'images'>('text')
   const [activeLayout, setActiveLayout] = useState<string>('classic')
   /** True when institution already has a Page Builder design saved (draft or active). */
   const [hasSavedDesign, setHasSavedDesign] = useState(false)
@@ -126,12 +147,15 @@ const CertificateLogoPageBuilder = ({
   const futureRef = useRef<LogoBuilderDesign[]>([])
   const dragRef = useRef<{
     id: string
+    groupId?: string | null
     startX: number
     startY: number
     origX: number
     origY: number
     origW: number
     origH: number
+    /** Snapshot of group member origins when moving a group */
+    groupOrigins?: Array<{ id: string; x: number; y: number }>
     mode: 'move' | 'resize'
   } | null>(null)
   const canvasRef = useRef<HTMLDivElement | null>(null)
@@ -145,6 +169,7 @@ const CertificateLogoPageBuilder = ({
     [design.elements, selectedId],
   )
   const selectedIsQr = isQrElement(selected)
+  const selectedIsPaper = isUploadPaperElement(selected)
 
   const clipboardRef = useRef<BuilderElement | null>(null)
   const designRef = useRef(design)
@@ -291,7 +316,7 @@ const CertificateLogoPageBuilder = ({
     return () => {
       cancelled = true
     }
-  }, [institution?.id, docType])
+  }, [institution?.id, docType, remountKey])
 
   const addElement = (type: BuilderElementType) => {
     const z = design.elements.reduce((m, e) => Math.max(m, e.zIndex || 0), 0) + 1
@@ -460,10 +485,8 @@ const CertificateLogoPageBuilder = ({
         bind: 'none',
         text: 'logo-image',
       })
-      // Keep institution name below the logo
-      starter.elements = starter.elements.map((el) =>
-        el.bind === 'institutionName' ? { ...el, y: Math.max(el.y, 150) } : el,
-      )
+      // Logo XOR name — drop institution name layers when logo is present
+      starter.elements = starter.elements.filter((el) => el.bind !== 'institutionName')
     }
     if (institution?.seal_url) {
       starter.elements.push({
@@ -627,10 +650,36 @@ const CertificateLogoPageBuilder = ({
     const id = selectedIdRef.current
     const current = selectedRef.current
     if (!id || !current) return
+    if (current.locked) {
+      toast({
+        title: 'Element locked',
+        description: 'Unlock the layer before deleting it.',
+        variant: 'destructive',
+      })
+      return
+    }
+    if (isUploadPaperElement(current)) {
+      toast({
+        title: 'Paper is locked',
+        description: 'Unlock this layer first, or delete other extracted elements.',
+        variant: 'destructive',
+      })
+      return
+    }
     const next = cloneDesign(designRef.current)
-    next.elements = next.elements.filter((e) => e.id !== id)
+    // Collapsed group (e.g. brand logo lockup) → delete the whole unit in one Delete key
+    if (
+      current.groupId &&
+      enteredGroupIdRef.current !== current.groupId &&
+      next.elements.filter((e) => e.groupId === current.groupId).length > 1
+    ) {
+      next.elements = next.elements.filter((e) => e.groupId !== current.groupId)
+    } else {
+      next.elements = next.elements.filter((e) => e.id !== id)
+    }
     pushHistory(next)
     setSelectedId(null)
+    setActiveGroupId(null)
     if (isQrElement(current)) {
       toast({
         title: 'Verification QR removed',
@@ -647,7 +696,24 @@ const CertificateLogoPageBuilder = ({
 
   const nudgeSelected = (dx: number, dy: number) => {
     const current = selectedRef.current
-    if (!current) return
+    if (!current || current.locked) return
+    if (
+      current.groupId &&
+      enteredGroupIdRef.current !== current.groupId &&
+      designRef.current.elements.filter((e) => e.groupId === current.groupId).length > 1
+    ) {
+      const next = cloneDesign(designRef.current)
+      next.elements = next.elements.map((el) => {
+        if (el.groupId !== current.groupId || el.locked) return el
+        return {
+          ...el,
+          x: Math.max(0, el.x + dx),
+          y: Math.max(0, el.y + dy),
+        }
+      })
+      pushHistory(next)
+      return
+    }
     updateSelected({
       x: Math.max(0, current.x + dx),
       y: Math.max(0, current.y + dy),
@@ -754,6 +820,8 @@ const CertificateLogoPageBuilder = ({
 
       if (e.key === 'Escape') {
         setSelectedId(null)
+        setActiveGroupId(null)
+        setEnteredGroupId(null)
         setShapesOpen(false)
         return
       }
@@ -831,18 +899,45 @@ const CertificateLogoPageBuilder = ({
   const onPointerDown = (e: React.PointerEvent, id: string, mode: 'move' | 'resize') => {
     e.stopPropagation()
     e.preventDefault()
+    // Keep keyboard focus on canvas so Delete/Backspace works without using Layers
+    canvasRef.current?.focus?.()
     const el = design.elements.find((x) => x.id === id)
-    if (!el || !canvasRef.current) return
+    if (!el || !canvasRef.current || el.hidden) return
     setSelectedId(id)
+
+    // Grouped: first click selects group (move together); Enter group for individuals
+    const inGroup =
+      !!el.groupId &&
+      enteredGroupId !== el.groupId &&
+      design.elements.filter((x) => x.groupId === el.groupId).length > 1
+    if (inGroup) {
+      setActiveGroupId(el.groupId!)
+    } else {
+      setActiveGroupId(null)
+    }
+
+    if (el.locked || isUploadPaperElement(el)) {
+      return
+    }
+
+    const groupOrigins =
+      inGroup && el.groupId
+        ? design.elements
+            .filter((x) => x.groupId === el.groupId && !x.locked)
+            .map((x) => ({ id: x.id, x: x.x, y: x.y }))
+        : undefined
+
     dragRef.current = {
       id,
+      groupId: inGroup ? el.groupId : null,
       startX: e.clientX,
       startY: e.clientY,
       origX: el.x,
       origY: el.y,
       origW: el.width,
       origH: el.height,
-      mode,
+      groupOrigins,
+      mode: inGroup && mode === 'resize' ? 'move' : mode,
     }
     ;(e.target as HTMLElement).setPointerCapture?.(e.pointerId)
   }
@@ -855,21 +950,35 @@ const CertificateLogoPageBuilder = ({
     const scaleY = design.canvas.height / rect.height
     const dx = (e.clientX - dragRef.current.startX) * scaleX
     const dy = (e.clientY - dragRef.current.startY) * scaleY
+    const drag = dragRef.current
     setDesign((prev) => {
       const next = cloneDesign(prev)
-      next.elements = next.elements.map((el) => {
-        if (el.id !== dragRef.current!.id) return el
-        if (dragRef.current!.mode === 'resize') {
+      if (drag.mode === 'move' && drag.groupOrigins?.length) {
+        const byId = new Map(drag.groupOrigins.map((g) => [g.id, g]))
+        next.elements = next.elements.map((el) => {
+          const orig = byId.get(el.id)
+          if (!orig) return el
           return {
             ...el,
-            width: Math.max(isQrElement(el) ? 64 : 16, dragRef.current!.origW + dx),
-            height: Math.max(isQrElement(el) ? 64 : 16, dragRef.current!.origH + dy),
+            x: Math.max(0, Math.min(prev.canvas.width - 20, orig.x + dx)),
+            y: Math.max(0, Math.min(prev.canvas.height - 20, orig.y + dy)),
+          }
+        })
+        return normalizeVerificationQr(next)
+      }
+      next.elements = next.elements.map((el) => {
+        if (el.id !== drag.id) return el
+        if (drag.mode === 'resize') {
+          return {
+            ...el,
+            width: Math.max(isQrElement(el) ? 64 : 16, drag.origW + dx),
+            height: Math.max(isQrElement(el) ? 64 : 16, drag.origH + dy),
           }
         }
         return {
           ...el,
-          x: Math.max(0, Math.min(prev.canvas.width - 20, dragRef.current!.origX + dx)),
-          y: Math.max(0, Math.min(prev.canvas.height - 20, dragRef.current!.origY + dy)),
+          x: Math.max(0, Math.min(prev.canvas.width - 20, drag.origX + dx)),
+          y: Math.max(0, Math.min(prev.canvas.height - 20, drag.origY + dy)),
         }
       })
       return normalizeVerificationQr(next)
@@ -1198,10 +1307,13 @@ const CertificateLogoPageBuilder = ({
       <CardHeader>
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div>
-            <CardTitle className="text-white text-base">{docLabel} Page Builder</CardTitle>
+            <CardTitle className="text-white text-base">
+              {isUploadEdit ? `Edit uploaded ${docLabel} template` : `${docLabel} Page Builder`}
+            </CardTitle>
             <CardDescription>
-              Design a real {docLabel.toLowerCase()} page — starter layout, {docLabel.toLowerCase()}{' '}
-              fields, branding, and shapes. Not a certificate template.
+              {isUploadEdit
+                ? 'Review the generated template: move, resize, and edit layers; bind course/student fields; replace images; then Save & use. Issued documents use real student and institution data.'
+                : `Design a real ${docLabel.toLowerCase()} page — starter layout, ${docLabel.toLowerCase()} fields, branding, and shapes.`}
             </CardDescription>
           </div>
           <div className="flex flex-wrap items-center gap-2">
@@ -1218,150 +1330,209 @@ const CertificateLogoPageBuilder = ({
         </div>
       </CardHeader>
       <CardContent className="space-y-3">
-        <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] text-slate-500">
-          <span>
+        {!isUploadEdit ? (
+          <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] text-slate-500">
+            <span>
+              Shortcuts:{' '}
+              <span className="text-slate-300">Del · Ctrl+C/X/V/D · Ctrl+Z/Y · arrows</span>
+            </span>
+            <span className="hidden sm:inline text-slate-700">|</span>
+            <span>
+              Saved design:{' '}
+              <button
+                type="button"
+                className="text-indigo-300 hover:text-indigo-200 underline-offset-2 hover:underline disabled:opacity-40"
+                disabled={loadingSaved || !hasSavedDesign}
+                onClick={() => loadSavedDesignFromServer()}
+              >
+                Open saved design
+              </button>
+            </span>
+          </div>
+        ) : (
+          <p className="text-[11px] text-slate-500">
             Shortcuts:{' '}
-            <span className="text-slate-300">Del · Ctrl+C/X/V/D · Ctrl+Z/Y · arrows</span>
-          </span>
-          <span className="hidden sm:inline text-slate-700">|</span>
-          <span>
-            Saved design:{' '}
-            <button
-              type="button"
-              className="text-indigo-300 hover:text-indigo-200 underline-offset-2 hover:underline disabled:opacity-40"
-              disabled={loadingSaved || !hasSavedDesign}
-              onClick={() => loadSavedDesignFromServer()}
-            >
-              Open saved design
-            </button>
-          </span>
-        </div>
+            <span className="text-slate-300">
+              click → Del removes · drag · Ctrl+Z · Esc exits group
+            </span>
+          </p>
+        )}
 
         <div className="space-y-2">
-          {/* Document */}
-          <div className="flex flex-wrap items-center gap-1.5 rounded-lg border border-slate-800 bg-slate-950/90 px-2 py-1.5">
-            <span className="text-[10px] uppercase tracking-wide text-slate-500 w-14 shrink-0">Doc</span>
-            <Button type="button" size="sm" variant="secondary" onClick={handleNewBlank}>
-              <FilePlus className="h-3.5 w-3.5 mr-1" /> New blank
-            </Button>
-            <Button type="button" size="sm" variant="secondary" onClick={applyStarterLayout}>
-              <LayoutTemplate className="h-3.5 w-3.5 mr-1" /> Starter layout
-            </Button>
-            <span className="w-px h-5 bg-slate-700 mx-0.5" />
-            <label className="flex items-center gap-1.5 text-xs text-slate-400">
-              Paper
-              <select
-                className="h-8 rounded-md bg-slate-900 border border-slate-700 text-sm text-white px-2"
-                value={design.canvas.paperKey || 'a4-portrait'}
-                onChange={(e) => changePaperSize(e.target.value as PaperSizeKey)}
-              >
-                {PAPER_SIZES.map((p) => (
-                  <option key={p.key} value={p.key}>
-                    {p.label}
-                  </option>
-                ))}
-              </select>
-            </label>
-          </div>
-
-          {/* Insert */}
-          <div className="flex flex-wrap items-center gap-1.5 rounded-lg border border-slate-800 bg-slate-950/90 px-2 py-1.5">
-            <span className="text-[10px] uppercase tracking-wide text-slate-500 w-14 shrink-0">Insert</span>
-            <Button type="button" size="sm" variant="secondary" onClick={addBorderFrame}>
-              <Frame className="h-3.5 w-3.5 mr-1" /> Border
-            </Button>
-            <Button type="button" size="sm" variant="secondary" onClick={() => addElement('text')}>
-              <Type className="h-3.5 w-3.5 mr-1" /> Text
-            </Button>
-            <div className="relative">
-              <Button
-                type="button"
-                size="sm"
-                variant="secondary"
-                onClick={() => setShapesOpen((v) => !v)}
-              >
-                <Shapes className="h-3.5 w-3.5 mr-1" /> Shapes
-                <ChevronDown className="h-3 w-3 ml-1 opacity-70" />
+          {/* Document / paper controls */}
+          {!isUploadEdit ? (
+            <div className="flex flex-wrap items-center gap-1.5 rounded-lg border border-slate-800 bg-slate-950/90 px-2 py-1.5">
+              <span className="text-[10px] uppercase tracking-wide text-slate-500 w-14 shrink-0">Doc</span>
+              <Button type="button" size="sm" variant="secondary" onClick={handleNewBlank}>
+                <FilePlus className="h-3.5 w-3.5 mr-1" /> New blank
               </Button>
-              {shapesOpen ? (
-                <div className="absolute left-0 top-full mt-1 z-30 w-72 max-h-80 overflow-y-auto rounded-md border border-slate-700 bg-slate-950 shadow-xl p-1">
-                  <p className="px-2 py-1 text-[10px] uppercase tracking-wide text-slate-500">Basic</p>
-                  <button
-                    type="button"
-                    className="w-full flex items-center gap-2 px-2 py-1.5 text-sm text-slate-200 hover:bg-slate-800 rounded"
-                    onClick={() => {
-                      addElement('rect')
-                      setShapesOpen(false)
-                    }}
-                  >
-                    <Square className="h-3.5 w-3.5" /> Box
-                  </button>
-                  <button
-                    type="button"
-                    className="w-full flex items-center gap-2 px-2 py-1.5 text-sm text-slate-200 hover:bg-slate-800 rounded"
-                    onClick={() => {
-                      addElement('ellipse')
-                      setShapesOpen(false)
-                    }}
-                  >
-                    <Circle className="h-3.5 w-3.5" /> Circle
-                  </button>
-                  <button
-                    type="button"
-                    className="w-full flex items-center gap-2 px-2 py-1.5 text-sm text-slate-200 hover:bg-slate-800 rounded"
-                    onClick={() => {
-                      addElement('line')
-                      setShapesOpen(false)
-                    }}
-                  >
-                    <Minus className="h-3.5 w-3.5" /> Line
-                  </button>
-                  {DECORATIVE_SHAPE_CATEGORIES.map((cat) => (
-                    <div key={cat.id}>
-                      <p className="px-2 pt-2 pb-1 text-[10px] uppercase tracking-wide text-amber-400/80">
-                        {cat.label}
-                      </p>
-                      {DECORATIVE_SHAPES.filter((s) => s.category === cat.id).map((s) => (
-                        <button
-                          key={s.key}
-                          type="button"
-                          className="w-full text-left px-2 py-1.5 text-sm text-slate-200 hover:bg-slate-800 rounded"
-                          onClick={() => addDecorativeShape(s.key)}
-                        >
-                          {s.label}
-                        </button>
-                      ))}
-                    </div>
+              <Button type="button" size="sm" variant="secondary" onClick={applyStarterLayout}>
+                <LayoutTemplate className="h-3.5 w-3.5 mr-1" /> Starter layout
+              </Button>
+              <span className="w-px h-5 bg-slate-700 mx-0.5" />
+              <label className="flex items-center gap-1.5 text-xs text-slate-400">
+                Paper
+                <select
+                  className="h-8 rounded-md bg-slate-900 border border-slate-700 text-sm text-white px-2"
+                  value={design.canvas.paperKey || 'a4-portrait'}
+                  onChange={(e) => changePaperSize(e.target.value as PaperSizeKey)}
+                >
+                  {PAPER_SIZES.map((p) => (
+                    <option key={p.key} value={p.key}>
+                      {p.label}
+                    </option>
                   ))}
-                </div>
+                </select>
+              </label>
+            </div>
+          ) : (
+            <div className="flex flex-wrap items-center gap-1.5 rounded-lg border border-indigo-500/30 bg-indigo-950/20 px-2 py-1.5">
+              <Badge className="bg-indigo-600/25 text-indigo-200 border-indigo-500/40">Editable template</Badge>
+              <span className="text-xs text-slate-400">
+                Select · drag · resize · fonts · layers · lock · undo — then Save & use
+              </span>
+            </div>
+          )}
+
+          {/* Tabs: Text | Shapes | Images */}
+          <div className="rounded-lg border border-slate-800 bg-slate-950/90 overflow-hidden">
+            <div className="flex border-b border-slate-800">
+              {(
+                [
+                  ['text', 'Text', Type],
+                  ['shapes', 'Shapes', Shapes],
+                  ['images', 'Images', ImagePlus],
+                ] as const
+              ).map(([key, label, Icon]) => (
+                <button
+                  key={key}
+                  type="button"
+                  onClick={() => {
+                    setInsertTab(key)
+                    setShapesOpen(false)
+                  }}
+                  className={`flex-1 flex items-center justify-center gap-1.5 px-3 py-2.5 text-sm font-medium transition-colors ${
+                    insertTab === key
+                      ? 'bg-indigo-600/25 text-indigo-200 border-b-2 border-indigo-400'
+                      : 'text-slate-400 hover:text-slate-200 hover:bg-slate-900/80'
+                  }`}
+                >
+                  <Icon className="h-4 w-4" />
+                  {label}
+                </button>
+              ))}
+            </div>
+            <div className="p-2.5 flex flex-wrap items-center gap-1.5">
+              {insertTab === 'text' ? (
+                <>
+                  <Button type="button" size="sm" variant="secondary" onClick={() => addElement('text')}>
+                    <Type className="h-3.5 w-3.5 mr-1" /> Free text
+                  </Button>
+                  {getDocumentBuilderQuickFields(docType).map((f) => (
+                    <Button
+                      key={f.key}
+                      type="button"
+                      size="sm"
+                      variant="outline"
+                      className="border-slate-700 text-slate-300"
+                      onClick={() => {
+                        const el = createBoundTextElement(f.key, design.canvas)
+                        const next = cloneDesign(design)
+                        const z = next.elements.reduce((m, e) => Math.max(m, e.zIndex || 0), 0) + 1
+                        next.elements.push({ ...el, zIndex: z })
+                        pushHistory(next)
+                        setSelectedId(el.id)
+                      }}
+                    >
+                      {f.label}
+                    </Button>
+                  ))}
+                </>
+              ) : null}
+              {insertTab === 'shapes' ? (
+                <>
+                  <Button type="button" size="sm" variant="secondary" onClick={addBorderFrame}>
+                    <Frame className="h-3.5 w-3.5 mr-1" /> Border
+                  </Button>
+                  <Button type="button" size="sm" variant="secondary" onClick={() => addElement('rect')}>
+                    <Square className="h-3.5 w-3.5 mr-1" /> Box
+                  </Button>
+                  <Button type="button" size="sm" variant="secondary" onClick={() => addElement('ellipse')}>
+                    <Circle className="h-3.5 w-3.5 mr-1" /> Circle
+                  </Button>
+                  <Button type="button" size="sm" variant="secondary" onClick={() => addElement('line')}>
+                    <Minus className="h-3.5 w-3.5 mr-1" /> Line
+                  </Button>
+                  <div className="relative">
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="secondary"
+                      onClick={() => setShapesOpen((v) => !v)}
+                    >
+                      More shapes
+                      <ChevronDown className="h-3 w-3 ml-1 opacity-70" />
+                    </Button>
+                    {shapesOpen ? (
+                      <div className="absolute left-0 top-full mt-1 z-30 w-72 max-h-80 overflow-y-auto rounded-md border border-slate-700 bg-slate-950 shadow-xl p-1">
+                        {DECORATIVE_SHAPE_CATEGORIES.map((cat) => (
+                          <div key={cat.id}>
+                            <p className="px-2 pt-2 pb-1 text-[10px] uppercase tracking-wide text-amber-400/80">
+                              {cat.label}
+                            </p>
+                            {DECORATIVE_SHAPES.filter((s) => s.category === cat.id).map((s) => (
+                              <button
+                                key={s.key}
+                                type="button"
+                                className="w-full text-left px-2 py-1.5 text-sm text-slate-200 hover:bg-slate-800 rounded"
+                                onClick={() => {
+                                  addDecorativeShape(s.key)
+                                  setShapesOpen(false)
+                                }}
+                              >
+                                {s.label}
+                              </button>
+                            ))}
+                          </div>
+                        ))}
+                      </div>
+                    ) : null}
+                  </div>
+                </>
+              ) : null}
+              {insertTab === 'images' ? (
+                <>
+                  <input
+                    ref={fileRef}
+                    type="file"
+                    accept="image/png,image/jpeg,image/webp"
+                    className="hidden"
+                    onChange={(e) => {
+                      handleImageUpload(e.target.files?.[0] || null)
+                      e.target.value = ''
+                    }}
+                  />
+                  <input
+                    ref={bgFileRef}
+                    type="file"
+                    accept="image/png,image/jpeg,image/webp"
+                    className="hidden"
+                    onChange={(e) => {
+                      handleBackgroundImage(e.target.files?.[0] || null)
+                      e.target.value = ''
+                    }}
+                  />
+                  <Button type="button" size="sm" variant="secondary" onClick={() => fileRef.current?.click()}>
+                    <ImagePlus className="h-3.5 w-3.5 mr-1" /> Add image
+                  </Button>
+                  {!isUploadEdit ? (
+                    <Button type="button" size="sm" variant="secondary" onClick={() => bgFileRef.current?.click()}>
+                      Background
+                    </Button>
+                  ) : null}
+                </>
               ) : null}
             </div>
-            <input
-              ref={fileRef}
-              type="file"
-              accept="image/png,image/jpeg,image/webp"
-              className="hidden"
-              onChange={(e) => {
-                handleImageUpload(e.target.files?.[0] || null)
-                e.target.value = ''
-              }}
-            />
-            <input
-              ref={bgFileRef}
-              type="file"
-              accept="image/png,image/jpeg,image/webp"
-              className="hidden"
-              onChange={(e) => {
-                handleBackgroundImage(e.target.files?.[0] || null)
-                e.target.value = ''
-              }}
-            />
-            <Button type="button" size="sm" variant="secondary" onClick={() => fileRef.current?.click()}>
-              <ImagePlus className="h-3.5 w-3.5 mr-1" /> Image
-            </Button>
-            <Button type="button" size="sm" variant="secondary" onClick={() => bgFileRef.current?.click()}>
-              Background
-            </Button>
           </div>
 
           {/* Branding — single place for logo / stamp / signature / QR */}
@@ -1452,9 +1623,13 @@ const CertificateLogoPageBuilder = ({
               type="button"
               size="sm"
               variant="ghost"
-              disabled={!selected}
+              disabled={!selected || selected?.locked || selectedIsPaper}
               onClick={deleteSelected}
-              title="Delete (Del / Backspace)"
+              title={
+                selected?.locked || selectedIsPaper
+                  ? 'Unlock before deleting'
+                  : 'Delete (Del / Backspace)'
+              }
             >
               <Trash2 className="h-3.5 w-3.5" />
             </Button>
@@ -1499,28 +1674,33 @@ const CertificateLogoPageBuilder = ({
             </Button>
           </div>
 
-          {/* Quick document-specific fields */}
-          <div className="flex flex-wrap items-center gap-1.5 rounded-lg border border-indigo-900/40 bg-indigo-950/15 px-2 py-1.5">
-            <span className="text-[10px] uppercase tracking-wide text-indigo-300/80 w-14 shrink-0">Fields</span>
-            {getDocumentBuilderQuickFields(docType).map(({ key, label }) => (
-              <Button
-                key={key}
-                type="button"
-                size="sm"
-                variant="outline"
-                className="h-7 text-[11px] border-slate-700 text-slate-200"
-                onClick={() => addBoundField(key)}
-              >
-                + {label}
-              </Button>
-            ))}
-          </div>
+          {/* Quick fields — page-builder only (upload-edit already has them under Text) */}
+          {!isUploadEdit ? (
+            <div className="flex flex-wrap items-center gap-1.5 rounded-lg border border-indigo-900/40 bg-indigo-950/15 px-2 py-1.5">
+              <span className="text-[10px] uppercase tracking-wide text-indigo-300/80 w-14 shrink-0">
+                Fields
+              </span>
+              {getDocumentBuilderQuickFields(docType).map(({ key, label }) => (
+                <Button
+                  key={key}
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  className="h-7 text-[11px] border-slate-700 text-slate-200"
+                  onClick={() => addBoundField(key)}
+                >
+                  + {label}
+                </Button>
+              ))}
+            </div>
+          ) : null}
         </div>
 
         <div className="grid gap-4 lg:grid-cols-[1fr_280px]">
           <div
             ref={canvasRef}
-            className="relative mx-auto w-full max-w-2xl rounded border border-slate-700 overflow-hidden touch-none shadow-inner bg-white"
+            tabIndex={0}
+            className="relative mx-auto w-full max-w-2xl rounded border border-slate-700 overflow-hidden touch-none shadow-inner bg-white outline-none focus:ring-2 focus:ring-indigo-500/40"
             style={{
               aspectRatio: `${design.canvas.width}/${design.canvas.height}`,
               backgroundColor: design.canvas.background || '#ffffff',
@@ -1530,29 +1710,42 @@ const CertificateLogoPageBuilder = ({
             onPointerLeave={onPointerUp}
             onClick={() => {
               setSelectedId(null)
+              setActiveGroupId(null)
               setShapesOpen(false)
             }}
           >
             {design.elements
               .slice()
               .sort((a, b) => (a.zIndex || 0) - (b.zIndex || 0))
+              .filter((el) => !el.hidden)
               .map((el) => {
                 const isSel = el.id === selectedId
+                const inActiveGroup = !!(
+                  activeGroupId &&
+                  el.groupId === activeGroupId &&
+                  enteredGroupId !== activeGroupId
+                )
                 const isQr = isQrElement(el)
                 const decorMeta = el.decorKey
                   ? DECORATIVE_SHAPES.find((s) => s.key === el.decorKey)
                   : undefined
                 const isFullPageDecor = !!(decorMeta && 'fullPage' in decorMeta && decorMeta.fullPage)
+                const isBgArt = isBackgroundArtElement(el)
                 return (
                   <div
                     key={el.id}
                     onPointerDown={(e) => onPointerDown(e, el.id, 'move')}
-                    className={`absolute cursor-move ${
+                    onClick={(e) => e.stopPropagation()}
+                    className={`absolute ${
+                      el.locked ? 'cursor-default' : 'cursor-move'
+                    } ${
                       isSel
                         ? isQr
                           ? 'ring-2 ring-amber-400'
                           : 'ring-2 ring-indigo-500'
-                        : 'ring-1 ring-transparent hover:ring-slate-300'
+                        : inActiveGroup
+                          ? 'ring-2 ring-sky-400/80'
+                          : 'ring-1 ring-transparent hover:ring-slate-300'
                     }`}
                     style={{
                       left: `${(el.x / design.canvas.width) * 100}%`,
@@ -1562,8 +1755,8 @@ const CertificateLogoPageBuilder = ({
                       transform: el.rotation ? `rotate(${el.rotation}deg)` : undefined,
                       zIndex: el.zIndex,
                       opacity: el.opacity ?? 1,
-                      // Full-page frames shouldn't steal clicks from text/fields unless selected
-                      pointerEvents: isFullPageDecor && !isSel ? 'none' : undefined,
+                      // Background art / full-page frames must not steal clicks from logo, seal, text
+                      pointerEvents: (isFullPageDecor || isBgArt) && !isSel ? 'none' : undefined,
                       background:
                         el.type === 'rect' || el.type === 'ellipse'
                           ? el.fill || 'transparent'
@@ -1618,7 +1811,7 @@ const CertificateLogoPageBuilder = ({
                         {editorLabelFor(el)}
                       </span>
                     ) : null}
-                    {isSel ? (
+                    {isSel && !el.locked ? (
                       <span
                         className={`absolute -bottom-1.5 -right-1.5 h-3.5 w-3.5 rounded-sm cursor-se-resize ${
                           isQr ? 'bg-amber-500' : 'bg-indigo-500'
@@ -1632,26 +1825,34 @@ const CertificateLogoPageBuilder = ({
           </div>
 
           <div className="space-y-3 rounded-lg border border-slate-800 bg-slate-950 p-3">
-            <div className="space-y-1">
-              <Label className="text-xs text-slate-400">Page background</Label>
-              <Input
-                type="color"
-                value={design.canvas.background || '#ffffff'}
-                onChange={(e) => {
-                  const next = cloneDesign(design)
-                  next.canvas.background = e.target.value
-                  pushHistory(next)
-                }}
-                className="bg-slate-900 border-slate-700 h-8 p-1"
-              />
-            </div>
+            {!isUploadEdit ? (
+              <div className="space-y-1">
+                <Label className="text-xs text-slate-400">Page background</Label>
+                <Input
+                  type="color"
+                  value={design.canvas.background || '#ffffff'}
+                  onChange={(e) => {
+                    const next = cloneDesign(design)
+                    next.canvas.background = e.target.value
+                    pushHistory(next)
+                  }}
+                  className="bg-slate-900 border-slate-700 h-8 p-1"
+                />
+              </div>
+            ) : null}
 
             <p className="text-xs font-medium text-slate-300">Selected</p>
             {!selected ? (
               <p className="text-xs text-slate-500 leading-relaxed">
-                Use <span className="text-slate-300">Starter layout</span> for a real{' '}
-                {docLabel.toLowerCase()} page, then add {docLabel.toLowerCase()} fields, logo, and
-                branding. Click any element to edit.
+                {isUploadEdit
+                  ? 'Click a text box, QR, stamp, or shape on the page, then drag it. Use Layers below to pick one.'
+                  : (
+                    <>
+                      Use <span className="text-slate-300">Starter layout</span> for a real{' '}
+                      {docLabel.toLowerCase()} page, then add {docLabel.toLowerCase()} fields, logo,
+                      and branding. Click any element to edit.
+                    </>
+                  )}
               </p>
             ) : selectedIsQr ? (
               <div className="space-y-2">
@@ -1834,6 +2035,50 @@ const CertificateLogoPageBuilder = ({
                   </div>
                 )}
 
+                {selected.type === 'image' && !selectedIsPaper ? (
+                  <div className="space-y-1">
+                    <Label className="text-xs text-slate-400">Image</Label>
+                    <input
+                      type="file"
+                      accept="image/png,image/jpeg,image/webp"
+                      className="hidden"
+                      id="replace-builder-image"
+                      onChange={async (e) => {
+                        const file = e.target.files?.[0]
+                        e.target.value = ''
+                        if (!file || !selectedId) return
+                        try {
+                          const { signedUrl, path } = await uploadCertificateBuilderImage(file)
+                          updateSelected({ src: path })
+                          if (signedUrl) {
+                            setResolvedImageUrls((prev) => ({ ...prev, [selectedId]: signedUrl }))
+                          }
+                        } catch (err) {
+                          toast({
+                            title: 'Replace failed',
+                            description: getUserMessage(err, {
+                              fallback: {
+                                title: 'Replace failed',
+                                description: 'Could not upload the new image.',
+                              },
+                            }),
+                            variant: 'destructive',
+                          })
+                        }
+                      }}
+                    />
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="secondary"
+                      className="w-full"
+                      onClick={() => document.getElementById('replace-builder-image')?.click()}
+                    >
+                      <ImagePlus className="h-3.5 w-3.5 mr-1" /> Replace image
+                    </Button>
+                  </div>
+                ) : null}
+
                 {isDecorativeElement(selected) ? (
                   <div className="space-y-2 rounded-md border border-amber-500/30 bg-amber-500/5 p-2">
                     <p className="text-[11px] text-amber-200/90">
@@ -1977,26 +2222,212 @@ const CertificateLogoPageBuilder = ({
               </>
             )}
 
-            <div className="pt-2 border-t border-slate-800">
-              <p className="text-xs text-slate-500 mb-2">Layers ({design.elements.length})</p>
-              <div className="max-h-52 overflow-auto space-y-1">
+            <div className="pt-2 border-t border-slate-800 space-y-2">
+              {selected?.groupId ? (
+                <div className="flex flex-wrap gap-1">
+                  {enteredGroupId === selected.groupId ? (
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="secondary"
+                      className="h-7 text-[11px]"
+                      onClick={() => {
+                        setEnteredGroupId(null)
+                        setActiveGroupId(selected.groupId!)
+                      }}
+                    >
+                      Exit group
+                    </Button>
+                  ) : (
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="secondary"
+                      className="h-7 text-[11px]"
+                      onClick={() => {
+                        setEnteredGroupId(selected.groupId!)
+                        setActiveGroupId(null)
+                      }}
+                    >
+                      Enter group
+                    </Button>
+                  )}
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    className="h-7 text-[11px] border-slate-700"
+                    onClick={() => {
+                      const next = cloneDesign(design)
+                      next.elements = next.elements.map((e) =>
+                        e.id === selected.id ? { ...e, groupId: undefined } : e,
+                      )
+                      pushHistory(next)
+                    }}
+                  >
+                    Ungroup item
+                  </Button>
+                </div>
+              ) : null}
+
+              <div className="flex items-center justify-between gap-2">
+                <p className="text-xs text-slate-500">Layers ({design.elements.length})</p>
+                {selected ? (
+                  <div className="flex gap-0.5">
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="ghost"
+                      className="h-7 w-7 p-0"
+                      title={selected.hidden ? 'Show' : 'Hide'}
+                      onClick={() => updateSelected({ hidden: !selected.hidden })}
+                    >
+                      {selected.hidden ? (
+                        <EyeOff className="h-3.5 w-3.5" />
+                      ) : (
+                        <Eye className="h-3.5 w-3.5" />
+                      )}
+                    </Button>
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="ghost"
+                      className="h-7 w-7 p-0"
+                      title={selected.locked ? 'Unlock' : 'Lock'}
+                      onClick={() => updateSelected({ locked: !selected.locked })}
+                    >
+                      {selected.locked ? (
+                        <Lock className="h-3.5 w-3.5" />
+                      ) : (
+                        <Unlock className="h-3.5 w-3.5" />
+                      )}
+                    </Button>
+                  </div>
+                ) : null}
+              </div>
+              <div className="max-h-56 overflow-auto space-y-1">
                 {design.elements
                   .slice()
                   .sort((a, b) => (b.zIndex || 0) - (a.zIndex || 0))
-                  .map((el) => (
-                    <button
-                      key={el.id}
-                      type="button"
-                      onClick={() => setSelectedId(el.id)}
-                      className={`w-full text-left text-[11px] px-2 py-1.5 rounded font-mono ${
-                        el.id === selectedId
-                          ? 'bg-indigo-600/30 text-white'
-                          : 'bg-slate-900 text-slate-400 hover:text-slate-200'
-                      }`}
-                    >
-                      {getBuilderLayerLabel(el)}
-                    </button>
-                  ))}
+                  .map((el) => {
+                    const groupMembers = el.groupId
+                      ? design.elements.filter((e) => e.groupId === el.groupId)
+                      : []
+                    const topInGroup =
+                      groupMembers.length > 1
+                        ? [...groupMembers].sort((a, b) => (b.zIndex || 0) - (a.zIndex || 0))[0]
+                        : null
+                    const isGroupRep =
+                      !!el.groupId &&
+                      !!topInGroup &&
+                      topInGroup.id === el.id &&
+                      enteredGroupId !== el.groupId
+                    if (
+                      el.groupId &&
+                      groupMembers.length > 1 &&
+                      enteredGroupId !== el.groupId &&
+                      !isGroupRep
+                    ) {
+                      return null
+                    }
+                    const label = isGroupRep
+                      ? getGroupLabel(el.groupId!, design.elements)
+                      : getBuilderLayerLabel(el)
+                    return (
+                      <div
+                        key={el.id}
+                        className={`flex items-center gap-1 rounded px-1 py-0.5 ${
+                          el.id === selectedId ||
+                          (isGroupRep && activeGroupId === el.groupId)
+                            ? 'bg-indigo-600/30'
+                            : 'bg-slate-900 hover:bg-slate-800/80'
+                        }`}
+                      >
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setSelectedId(el.id)
+                            if (isGroupRep) {
+                              setActiveGroupId(el.groupId!)
+                              setEnteredGroupId(null)
+                            } else if (el.groupId && enteredGroupId === el.groupId) {
+                              setActiveGroupId(null)
+                            } else {
+                              setActiveGroupId(null)
+                            }
+                          }}
+                          className={`flex-1 min-w-0 text-left text-[11px] px-1 py-1 font-mono truncate ${
+                            el.id === selectedId ? 'text-white' : 'text-slate-400'
+                          } ${el.hidden ? 'opacity-40 line-through' : ''}`}
+                        >
+                          {isGroupRep ? `▸ ${label}` : label}
+                          {el.locked ? ' 🔒' : ''}
+                        </button>
+                        <button
+                          type="button"
+                          className="p-1 text-slate-500 hover:text-slate-200"
+                          title={el.hidden ? 'Show' : 'Hide'}
+                          onClick={() => {
+                            const next = cloneDesign(design)
+                            if (isGroupRep && el.groupId) {
+                              next.elements = next.elements.map((e) =>
+                                e.groupId === el.groupId ? { ...e, hidden: !el.hidden } : e,
+                              )
+                            } else {
+                              next.elements = next.elements.map((e) =>
+                                e.id === el.id ? { ...e, hidden: !e.hidden } : e,
+                              )
+                            }
+                            pushHistory(next)
+                          }}
+                        >
+                          {el.hidden ? (
+                            <EyeOff className="h-3 w-3" />
+                          ) : (
+                            <Eye className="h-3 w-3" />
+                          )}
+                        </button>
+                        <button
+                          type="button"
+                          className="p-1 text-slate-500 hover:text-slate-200"
+                          title={el.locked ? 'Unlock' : 'Lock'}
+                          onClick={() => {
+                            const next = cloneDesign(design)
+                            next.elements = next.elements.map((e) =>
+                              e.id === el.id ? { ...e, locked: !e.locked } : e,
+                            )
+                            pushHistory(next)
+                            if (selectedId === el.id) setSelectedId(el.id)
+                          }}
+                        >
+                          {el.locked ? (
+                            <Lock className="h-3 w-3" />
+                          ) : (
+                            <Unlock className="h-3 w-3" />
+                          )}
+                        </button>
+                        <button
+                          type="button"
+                          className="p-1 text-slate-500 hover:text-red-300"
+                          title="Delete"
+                          disabled={el.locked}
+                          onClick={() => {
+                            if (el.locked) return
+                            const next = cloneDesign(design)
+                            if (isGroupRep && el.groupId) {
+                              next.elements = next.elements.filter((e) => e.groupId !== el.groupId)
+                            } else {
+                              next.elements = next.elements.filter((e) => e.id !== el.id)
+                            }
+                            pushHistory(next)
+                            if (selectedId === el.id) setSelectedId(null)
+                          }}
+                        >
+                          <Trash2 className="h-3 w-3" />
+                        </button>
+                      </div>
+                    )
+                  })}
               </div>
             </div>
           </div>

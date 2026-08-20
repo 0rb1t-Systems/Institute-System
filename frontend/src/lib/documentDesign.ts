@@ -6,9 +6,11 @@ import { getCertificateTemplateSignedUrl } from '@/lib/api'
 import {
   extractCertStoragePath,
   normalizeLogoBuilderDesign,
+  normalizePaperLayers,
   normalizeUploadFieldLayout,
   normalizeVerificationQr,
   type LogoBuilderDesign,
+  type PaperContentLayer,
   type UploadFieldLayout,
 } from '@/lib/certificateBuilder'
 
@@ -18,6 +20,7 @@ export type HydratedDocumentDesign = {
   customBackgroundUrl: string | null
   customAspectRatio: number | null
   customFieldLayout: UploadFieldLayout | null
+  customPaperLayers: PaperContentLayer[] | null
   showLogo: boolean
   showContact: boolean
 }
@@ -88,6 +91,7 @@ export async function hydrateDocumentDesignFromTemplate(
       customBackgroundUrl: null,
       customAspectRatio: null,
       customFieldLayout: null,
+      customPaperLayers: null,
       showLogo,
       showContact,
     }
@@ -119,6 +123,7 @@ export async function hydrateDocumentDesignFromTemplate(
       customBackgroundUrl: url,
       customAspectRatio: aspect && aspect > 0 ? aspect : null,
       customFieldLayout: normalizeUploadFieldLayout(upload.field_layout, aspect, kind),
+      customPaperLayers: normalizePaperLayers(upload.paper_layers),
       showLogo,
       showContact,
     }
@@ -130,6 +135,7 @@ export async function hydrateDocumentDesignFromTemplate(
     customBackgroundUrl: null,
     customAspectRatio: null,
     customFieldLayout: null,
+    customPaperLayers: null,
     showLogo,
     showContact,
   }

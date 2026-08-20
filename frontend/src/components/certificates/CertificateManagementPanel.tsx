@@ -6,7 +6,7 @@ import CertificateUploadOwn from '@/components/certificates/CertificateUploadOwn
 
 /**
  * Institution Settings → Certificate Management
- * Library templates, Certificate Page Builder, and Upload Own Certificate.
+ * Library · Page Builder (from scratch) · Upload Own (PDF → editable reusable template).
  */
 const CertificateManagementPanel = () => {
   return (
@@ -14,8 +14,7 @@ const CertificateManagementPanel = () => {
       <div>
         <h2 className="text-lg font-semibold text-white">Certificate Management</h2>
         <p className="text-sm text-slate-400 mt-1">
-          Choose a library template, design your own certificate layout, or upload an institution
-          template.
+          Library templates · Page Builder · Upload Own (upload → generate editable template)
         </p>
       </div>
 
@@ -29,7 +28,7 @@ const CertificateManagementPanel = () => {
           <CertificateTemplateLibrary />
         </TabsContent>
         <TabsContent value="builder">
-          <CertificateLogoPageBuilder />
+          <CertificateLogoPageBuilder variant="page-builder" />
         </TabsContent>
         <TabsContent value="upload">
           <CertificateUploadOwn />

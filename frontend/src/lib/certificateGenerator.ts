@@ -27,6 +27,7 @@ import {
 import {
   extractCertStoragePath,
   normalizeLogoBuilderDesign,
+  normalizePaperLayers,
   normalizeVerificationQr,
   normalizeUploadFieldLayout,
   type LogoBuilderDesign,
@@ -212,7 +213,8 @@ export function toCertificateRenderData(certificateData: Record<string, any>): C
     primary: getInstitutionPrimary(brand),
     accent: getInstitutionAccent(brand),
     motto: String(brand?.motto || '').trim() || undefined,
-    description: String(brand?.description || '').trim() || undefined,
+    // Institution description is for landing/settings only — never print on documents
+    description: undefined,
     logoUrl: brand?.logo_url,
     sealUrl: brand?.seal_url,
     signatureUrl: brand?.signature_url,
@@ -260,6 +262,11 @@ export function toCertificateRenderData(certificateData: Record<string, any>): C
             tplConfig.custom_upload.field_layout,
             tplConfig.custom_upload.aspect_ratio,
           )
+        : null),
+    customPaperLayers:
+      certificateData.customPaperLayers ||
+      (tplConfig?.custom_upload
+        ? normalizePaperLayers(tplConfig.custom_upload.paper_layers)
         : null),
   }
 }
@@ -331,6 +338,7 @@ export async function hydrateCertificateRenderData(
     customBackgroundUrl: url,
     customAspectRatio: aspect && aspect > 0 ? aspect : null,
     customFieldLayout: normalizeUploadFieldLayout(upload?.field_layout, aspect),
+    customPaperLayers: normalizePaperLayers(upload?.paper_layers),
   }
 }
 

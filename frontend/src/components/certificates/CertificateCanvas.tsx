@@ -111,8 +111,10 @@ const CertificateCanvas = ({ data: rawData, compact = false, forPdf = false }: P
       ? String(rawData.primary)
       : '#002147'
   const data = rawData.primary === primary ? rawData : { ...rawData, primary }
-  const tagline = data.motto || data.description || ''
+  const tagline = data.motto || ''
   const layout = data.layoutKey
+  const hasLogo = Boolean(String(data.logoUrl || '').trim())
+  const brandName = hasLogo ? '' : data.institutionName || ''
 
   if (layout === 'logo_builder' || layout === 'custom_upload') {
     return (
@@ -164,7 +166,7 @@ const CertificateCanvas = ({ data: rawData, compact = false, forPdf = false }: P
           <div className="flex gap-3 items-start">
             {data.logoUrl ? <img src={data.logoUrl} alt="" className="h-11 w-auto object-contain bg-white/10 rounded p-1" /> : null}
             <div>
-              <p className="text-sm font-bold uppercase tracking-wide">{data.institutionName}</p>
+              <p className="text-sm font-bold uppercase tracking-wide">{brandName}</p>
               {tagline ? <p className="text-[10px] opacity-90 mt-0.5 line-clamp-2">{tagline}</p> : null}
             </div>
           </div>
@@ -198,7 +200,7 @@ const CertificateCanvas = ({ data: rawData, compact = false, forPdf = false }: P
               <div className="flex gap-2 items-center">
                 {data.logoUrl ? <img src={data.logoUrl} alt="" className="h-10 w-auto object-contain" /> : null}
                 <div>
-                  <p className="text-sm font-serif font-bold" style={{ color: data.primary }}>{data.institutionName}</p>
+                  <p className="text-sm font-serif font-bold" style={{ color: data.primary }}>{brandName}</p>
                   {tagline ? <p className="text-[9px] italic text-slate-500">{tagline}</p> : null}
                 </div>
               </div>
@@ -224,7 +226,7 @@ const CertificateCanvas = ({ data: rawData, compact = false, forPdf = false }: P
     return shell(
       <div className="h-full flex flex-col items-center px-8 py-8 text-center">
         {data.logoUrl ? <img src={data.logoUrl} alt="" className="h-12 w-auto object-contain mb-2" /> : null}
-        <p className="font-serif text-base tracking-wide" style={{ color: data.primary }}>{data.institutionName}</p>
+        <p className="font-serif text-base tracking-wide" style={{ color: data.primary }}>{brandName}</p>
         <div className="w-24 h-px my-3" style={{ backgroundColor: data.primary }} />
         {tagline ? <p className="text-[10px] italic text-slate-500 mb-4">{tagline}</p> : null}
         <p className="text-[10px] uppercase tracking-[0.35em] text-slate-400">Certificate</p>
@@ -250,7 +252,7 @@ const CertificateCanvas = ({ data: rawData, compact = false, forPdf = false }: P
         <div className="flex justify-between items-center">
           <div className="flex items-center gap-2">
             {data.logoUrl ? <img src={data.logoUrl} alt="" className="h-8 w-auto object-contain" /> : null}
-            <p className="text-xs font-medium tracking-wide text-slate-700">{data.institutionName}</p>
+            <p className="text-xs font-medium tracking-wide text-slate-700">{brandName}</p>
           </div>
           <QrBlock url={data.verificationUrl} primary="#334155" sizeMm={compact ? 14 : 20} />
         </div>
@@ -275,7 +277,7 @@ const CertificateCanvas = ({ data: rawData, compact = false, forPdf = false }: P
             <div className="flex gap-3 items-start">
               {data.logoUrl ? <img src={data.logoUrl} alt="" className="h-10 w-auto object-contain" /> : null}
               <div>
-                <p className="text-sm font-semibold tracking-wide" style={{ color: '#C9A227' }}>{data.institutionName}</p>
+                <p className="text-sm font-semibold tracking-wide" style={{ color: '#C9A227' }}>{brandName}</p>
                 {tagline ? <p className="text-[9px] text-slate-400 mt-1">{tagline}</p> : null}
               </div>
             </div>
@@ -303,7 +305,7 @@ const CertificateCanvas = ({ data: rawData, compact = false, forPdf = false }: P
       <div className="h-full flex flex-col px-7 py-6">
         <div className="text-center">
           {data.logoUrl ? <img src={data.logoUrl} alt="" className="h-12 w-auto object-contain mx-auto mb-2" /> : null}
-          <p className="text-sm font-bold uppercase tracking-wider" style={{ color: data.primary }}>{data.institutionName}</p>
+          <p className="text-sm font-bold uppercase tracking-wider" style={{ color: data.primary }}>{brandName}</p>
           {tagline ? <p className="text-[9px] text-slate-500 mt-1">{tagline}</p> : null}
         </div>
         <div className="my-3 border-y-2 py-1" style={{ borderColor: data.primary }}>
@@ -351,7 +353,7 @@ const CertificateCanvas = ({ data: rawData, compact = false, forPdf = false }: P
             <div className="flex gap-2">
               {data.logoUrl ? <img src={data.logoUrl} alt="" className="h-10 w-auto object-contain" /> : null}
               <div>
-                <p className="text-sm font-bold uppercase" style={{ color: data.primary }}>{data.institutionName}</p>
+                <p className="text-sm font-bold uppercase" style={{ color: data.primary }}>{brandName}</p>
                 {tagline ? <p className="text-[9px] text-slate-500">{tagline}</p> : null}
               </div>
             </div>
@@ -379,7 +381,7 @@ const CertificateCanvas = ({ data: rawData, compact = false, forPdf = false }: P
           <div className="flex justify-between items-start">
             <div>
               {data.logoUrl ? <img src={data.logoUrl} alt="" className="h-10 w-auto object-contain mb-2" /> : null}
-              <p className="text-sm font-bold" style={{ color: data.primary }}>{data.institutionName}</p>
+              <p className="text-sm font-bold" style={{ color: data.primary }}>{brandName}</p>
               {tagline ? <p className="text-[9px] text-slate-500">{tagline}</p> : null}
             </div>
             <QrBlock url={data.verificationUrl} primary={data.primary} sizeMm={compact ? 16 : 22} />
@@ -408,7 +410,7 @@ const CertificateCanvas = ({ data: rawData, compact = false, forPdf = false }: P
           <QrBlock url={data.verificationUrl} primary={data.primary} sizeMm={compact ? 16 : 22} />
         </div>
         <div className="mt-4 text-center">
-          <p className="text-sm font-serif font-bold" style={{ color: data.primary }}>{data.institutionName}</p>
+          <p className="text-sm font-serif font-bold" style={{ color: data.primary }}>{brandName}</p>
           {tagline ? <p className="text-[9px] italic text-slate-500 mt-1">{tagline}</p> : null}
         </div>
         <div
@@ -448,7 +450,7 @@ const CertificateCanvas = ({ data: rawData, compact = false, forPdf = false }: P
             className="text-lg font-serif italic font-semibold truncate"
             style={{ color: data.primary }}
           >
-            {data.institutionName}
+            {brandName}
           </h2>
         </div>
         <QrBlock url={data.verificationUrl} primary={data.primary} sizeMm={compact ? 18 : 28} />

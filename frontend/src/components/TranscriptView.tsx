@@ -406,6 +406,7 @@ const TranscriptView = ({ studentId, onClose }: any) => {
         customBackgroundUrl: customDesign?.customBackgroundUrl || null,
         customAspectRatio: customDesign?.customAspectRatio ?? null,
         customFieldLayout: customDesign?.customFieldLayout || null,
+        customPaperLayers: customDesign?.customPaperLayers || null,
       };
     }, [
       useCustomLayout,
@@ -621,10 +622,16 @@ const TranscriptView = ({ studentId, onClose }: any) => {
                             <div className="shrink-0">
                                 <Logo className="h-20 w-auto print:h-20 text-black" />
                             </div>
+                            {!brand?.logo_url ? (
                             <div className="space-y-0">
                                 <h1 className="text-xl font-black tracking-tight uppercase text-black leading-tight max-w-lg">{institutionName}</h1>
                                 <p className="text-xs font-bold text-black mt-1">{contactLine}</p>
                             </div>
+                            ) : contactLine ? (
+                              <div className="space-y-0">
+                                <p className="text-xs font-bold text-black mt-1">{contactLine}</p>
+                              </div>
+                            ) : null}
                         </div>
                         <div className="text-right hidden md:block print:block shrink-0 mt-2 mr-2">
                             <div

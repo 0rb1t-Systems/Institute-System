@@ -1246,10 +1246,47 @@ async function rasterizePdfFirstPage(file) {
   const ctx = canvas.getContext('2d')
   if (!ctx) throw new Error('UPLOAD_FAILED')
   await page.render({ canvasContext: ctx, viewport }).promise
-  const blob = await new Promise<Blob>((resolve, reject) => {
+  const blob = await new Promise((resolve, reject) => {
     canvas.toBlob((b) => (b ? resolve(b) : reject(new Error('UPLOAD_FAILED'))), 'image/png')
   })
   return blob
+}
+
+/** Reject spoofed Content-Type by checking file magic bytes. */
+async function assertCertTemplateMagicBytes(file) {
+  const head = new Uint8Array(await file.slice(0, 12).arrayBuffer())
+  const isPdf = head[0] === 0x25 && head[1] === 0x50 && head[2] === 0x44 && head[3] === 0x46
+  const isPng = head[0] === 0x89 && head[1] === 0x50 && head[2] === 0x4e && head[3] === 0x47
+  const isJpeg = head[0] === 0xff && head[1] === 0xd8 && head[2] === 0xff
+  const isWebp =
+    head[0] === 0x52 &&
+    head[1] === 0x49 &&
+    head[2] === 0x46 &&
+    head[3] === 0x46 &&
+    head[8] === 0x57 &&
+    head[9] === 0x45 &&
+    head[10] === 0x42 &&
+    head[11] === 0x50
+  if (!isPdf && !isPng && !isJpeg && !isWebp) throw new Error('INVALID_CERT_TEMPLATE_TYPE')
+
+  const mime = String(file.type || '').toLowerCase()
+  if (mime === 'application/pdf' && !isPdf) throw new Error('INVALID_CERT_TEMPLATE_TYPE')
+  if (mime === 'image/png' && !isPng) throw new Error('INVALID_CERT_TEMPLATE_TYPE')
+  if ((mime === 'image/jpeg' || mime === 'image/jpg') && !isJpeg) {
+    throw new Error('INVALID_CERT_TEMPLATE_TYPE')
+  }
+  if (mime === 'image/webp' && !isWebp) throw new Error('INVALID_CERT_TEMPLATE_TYPE')
+}
+
+/** Best-effort remove prior template objects after a successful replace. */
+async function removeOrphanCertTemplatePaths(paths) {
+  const unique = [...new Set((paths || []).map((p) => String(p || '').trim()).filter(Boolean))]
+  if (!unique.length) return
+  try {
+    await supabase.storage.from(CERT_TEMPLATE_BUCKET).remove(unique)
+  } catch {
+    /* non-fatal — new upload already succeeded */
+  }
 }
 
 /**
@@ -1270,17 +1307,23 @@ export const uploadOwnDocumentTemplate = async (
   if (!file) throw new Error('MISSING_FILE')
   if (file.size > MAX_CERT_TEMPLATE_BYTES) throw new Error('CERT_TEMPLATE_TOO_LARGE')
 
-  // Preserve matched field positions across re-uploads of the same document type
   let previousFieldLayout = null
+  let orphanPaths = []
   try {
     const prevTpl = await getDocumentTemplate(type)
-    previousFieldLayout = prevTpl?.config?.custom_upload?.field_layout || null
+    const prevUpload = prevTpl?.config?.custom_upload
+    previousFieldLayout = prevUpload?.field_layout || null
+    if (prevUpload?.storage_path) orphanPaths.push(prevUpload.storage_path)
+    if (prevUpload?.preview_path && prevUpload.preview_path !== prevUpload.storage_path) {
+      orphanPaths.push(prevUpload.preview_path)
+    }
   } catch {
     previousFieldLayout = null
   }
 
   const mime = String(file.type || '').toLowerCase()
   if (!ALLOWED_CERT_TEMPLATE_MIME.has(mime)) throw new Error('INVALID_CERT_TEMPLATE_TYPE')
+  await assertCertTemplateMagicBytes(file)
 
   const extFromName = String(file.name || '').split('.').pop()?.toLowerCase() || ''
   const safeExt =
@@ -1364,7 +1407,16 @@ export const uploadOwnDocumentTemplate = async (
     p_preview_path: previewPath,
     p_activate: Boolean(activate),
   })
-  if (error) throw error
+  if (error) {
+    // Roll back the just-uploaded objects if DB registration failed
+    await removeOrphanCertTemplatePaths([path, previewPath].filter(Boolean))
+    throw error
+  }
+
+  // Drop superseded files only after the new paths are registered
+  await removeOrphanCertTemplatePaths(
+    orphanPaths.filter((p) => p !== path && p !== previewPath),
+  )
 
   if (data?.config?.custom_upload) {
     const nextConfig = {
@@ -1376,6 +1428,8 @@ export const uploadOwnDocumentTemplate = async (
           previousFieldLayout ||
           data.config.custom_upload.field_layout ||
           createDefaultUploadFieldLayout(aspectRatio, type),
+        // New artwork — paper text layers must be re-scanned
+        paper_layers: [],
       },
     }
     const { data: updated, error: cfgErr } = await supabase
@@ -1394,10 +1448,11 @@ export const uploadOwnDocumentTemplate = async (
 export const uploadOwnCertificateTemplate = async (file, activate = true) =>
   uploadOwnDocumentTemplate('certificate', file, activate)
 
-/** Save matched field positions on the institution’s uploaded document template. */
+/** Save matched field positions and/or editable paper text layers on uploaded template. */
 export const saveCustomUploadFieldLayout = async (
   fieldLayout,
   documentType: DocumentTemplateType = 'certificate',
+  paperLayers = undefined,
 ) => {
   const type = String(documentType || 'certificate').trim().toLowerCase() as DocumentTemplateType
   if (!['certificate', 'transcript', 'invoice'].includes(type)) {
@@ -1413,7 +1468,8 @@ export const saveCustomUploadFieldLayout = async (
     ...(tpl.config || {}),
     custom_upload: {
       ...upload,
-      field_layout: fieldLayout,
+      ...(fieldLayout !== undefined ? { field_layout: fieldLayout } : {}),
+      ...(paperLayers !== undefined ? { paper_layers: paperLayers } : {}),
     },
   }
   const { data, error } = await supabase
@@ -1429,6 +1485,13 @@ export const saveCustomUploadFieldLayout = async (
     .maybeSingle()
   if (error) throw error
   return data
+}
+
+export const saveCustomUploadPaperLayers = async (
+  paperLayers,
+  documentType: DocumentTemplateType = 'certificate',
+) => {
+  return saveCustomUploadFieldLayout(undefined, documentType, paperLayers)
 }
 
 /** Register an already-uploaded custom template path (admin RPC; validates tenant path). */
