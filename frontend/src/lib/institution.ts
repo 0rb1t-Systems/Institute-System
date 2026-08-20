@@ -185,9 +185,32 @@ export function getVerificationUrl(
   return `${base}/verify/${encodeURIComponent(id)}`
 }
 
+/** Hosts that are the platform itself — never treat the first DNS label as a tenant. */
+function isPlatformDeploymentHost(host: string): boolean {
+  const h = host.toLowerCase()
+  if (
+    h.endsWith('.vercel.app') ||
+    h.endsWith('.netlify.app') ||
+    h.endsWith('.pages.dev') ||
+    h.endsWith('.web.app')
+  ) {
+    return true
+  }
+  const root = String(import.meta.env.VITE_APP_ROOT_DOMAIN || '')
+    .trim()
+    .replace(/^https?:\/\//i, '')
+    .replace(/\/$/, '')
+    .toLowerCase()
+  if (root && (h === root || h === `www.${root}`)) return true
+  return false
+}
+
 /**
  * Resolve tenant subdomain for public (anon) pages.
- * Priority: ?tenant= / ?subdomain= → hostname label → VITE_DEFAULT_TENANT_SUBDOMAIN.
+ * Priority: ?tenant= / ?subdomain= → hostname label (custom domain only) → VITE_DEFAULT_TENANT_SUBDOMAIN.
+ *
+ * On Vercel/Netlify apex hosts (e.g. institute-system.vercel.app), hostname is NOT a tenant —
+ * use ?tenant=slug or a real custom domain like brce.yourdomain.com.
  */
 export function resolvePublicTenantSubdomain(): string {
   if (typeof window !== 'undefined') {
@@ -198,9 +221,25 @@ export function resolvePublicTenantSubdomain(): string {
     if (fromQuery) return fromQuery
 
     const host = window.location.hostname
-    if (host && host !== 'localhost' && host !== '127.0.0.1' && !/^\d+\.\d+\.\d+\.\d+$/.test(host)) {
-      const parts = host.split('.')
-      if (parts.length >= 3) return parts[0].toLowerCase()
+    if (
+      host &&
+      host !== 'localhost' &&
+      host !== '127.0.0.1' &&
+      !/^\d+\.\d+\.\d+\.\d+$/.test(host) &&
+      !isPlatformDeploymentHost(host)
+    ) {
+      const root = String(import.meta.env.VITE_APP_ROOT_DOMAIN || '')
+        .trim()
+        .replace(/^https?:\/\//i, '')
+        .replace(/\/$/, '')
+        .toLowerCase()
+      if (root && host.toLowerCase().endsWith(`.${root}`)) {
+        const sub = host.slice(0, -(root.length + 1)).toLowerCase()
+        if (sub && !sub.includes('.')) return sub
+      } else if (!root) {
+        const parts = host.split('.')
+        if (parts.length >= 3) return parts[0].toLowerCase()
+      }
     }
   }
   return String(import.meta.env.VITE_DEFAULT_TENANT_SUBDOMAIN || '').trim().toLowerCase()
