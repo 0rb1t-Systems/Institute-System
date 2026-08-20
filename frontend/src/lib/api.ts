@@ -3,7 +3,7 @@
  * Document-request workflow remains out of v1 scope and throws FEATURE_UNAVAILABLE.
  */
 import { supabase, getSupabaseUrl } from '@/lib/supabaseClient'
-import { resolvePublicTenantSubdomain, getTenantPortalUrl } from '@/lib/institution'
+import { resolvePublicTenantSubdomain, getTenantLoginUrl } from '@/lib/institution'
 import { createDefaultUploadFieldLayout } from '@/lib/certificateBuilder'
 import { LANDING_TEMPLATE_IDS } from '@/lib/landingTemplates'
 
@@ -331,15 +331,20 @@ export const createNewUser = async (data) => {
     let emailError = null
 
     if (!skipWelcomeEmail) {
-      // Welcome email via EmailJS — only after successful create; never rolls back the user
+      // Welcome email via EmailJS — login link = this institution's subdomain /login
+      const institution = await getMyInstitution().catch(() => null)
       const { sendWelcomeEmail } = await import('@/lib/emailjs')
       const emailResult = await sendWelcomeEmail({
         fullName: payload.full_name || full_name,
         role: createdRole,
         email: payload.email || email,
         password: payload.password,
-        institutionName: payload.institution_name || 'Training Center',
-        loginUrl: typeof window !== 'undefined' ? `${window.location.origin}/login` : undefined,
+        institutionName: payload.institution_name || institution?.name || 'Training Center',
+        institutionEmail: institution?.email || undefined,
+        loginUrl: getTenantLoginUrl({
+          subdomain: institution?.subdomain || payload.institution_subdomain,
+          name: payload.institution_name || institution?.name,
+        }),
       })
 
       if (!emailResult.ok) {
@@ -3138,13 +3143,7 @@ export const approveRegistrationInquiry = async (id) => {
   if (payload.password && payload.email && !payload.already_approved) {
     try {
       const institution = await getMyInstitution()
-      const subdomain = institution?.subdomain
-      const loginUrl =
-        typeof window !== 'undefined'
-          ? subdomain
-            ? `${getTenantPortalUrl({ subdomain })}/login`
-            : `${window.location.origin}/login`
-          : undefined
+      const loginUrl = getTenantLoginUrl(institution)
       const { sendWelcomeEmail } = await import('@/lib/emailjs')
       const emailResult = await sendWelcomeEmail({
         fullName: payload.name || 'Student',

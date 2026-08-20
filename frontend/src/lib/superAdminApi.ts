@@ -547,13 +547,27 @@ export async function createTenantAdmin(form) {
   if (payload?.ok && payload?.id) {
     let emailed = false
     try {
+      let subdomain = payload.institution_slug || form.institution_slug || ''
+      if (!subdomain && form.institution_id) {
+        const { data: inst } = await supabase
+          .from('institutions')
+          .select('subdomain, name')
+          .eq('id', form.institution_id)
+          .maybeSingle()
+        subdomain = inst?.subdomain || ''
+        if (!payload.institution_name && inst?.name) payload.institution_name = inst.name
+      }
+      const loginUrl = getTenantLoginUrl({
+        subdomain,
+        name: payload.institution_name,
+      })
       const emailResult = await sendWelcomeEmail({
         fullName: payload.full_name,
         role: 'admin',
         email: payload.email,
         password: payload.password,
         institutionName: payload.institution_name,
-        loginUrl: typeof window !== 'undefined' ? `${window.location.origin}/login` : undefined,
+        loginUrl,
       })
       emailed = Boolean(emailResult.ok)
     } catch {

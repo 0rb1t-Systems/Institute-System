@@ -124,8 +124,23 @@ export function getTenantBaseUrl(institution?: InstitutionBrand): string {
   return `https://${root}`
 }
 
+/**
+ * Tenant login URL for emails and share links.
+ * Production: https://{sub}.{root}/login
+ * Local / no root: https://origin/login?tenant={sub}
+ */
 export function getTenantLoginUrl(institution?: InstitutionBrand): string {
-  return `${getTenantBaseUrl(institution)}/login`
+  const subdomain = String(institution?.subdomain || '').trim().toLowerCase()
+  if (usesTenantSubdomainHosts() && subdomain) {
+    return `${getTenantBaseUrl({ subdomain })}/login`
+  }
+  if (subdomain) {
+    const origin =
+      typeof window !== 'undefined' ? window.location.origin : `https://${getAppRootDomain()}`
+    return `${origin}/login?tenant=${encodeURIComponent(subdomain)}`
+  }
+  if (typeof window !== 'undefined') return `${window.location.origin}/login`
+  return '/login'
 }
 
 const LAST_TENANT_KEY = 'tvetflow_last_tenant'
