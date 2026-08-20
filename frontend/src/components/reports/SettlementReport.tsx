@@ -65,7 +65,12 @@ const SettlementReport = () => {
         classSummary[c.id] = {
             id: c.id,
             name: c.name,
-            instructorName: c.instructor?.name || 'Unassigned',
+            instructorName:
+              users.find((u) => u.id === c.instructor_id)?.name ||
+              users.find((u) => u.id === c.instructor_id)?.full_name ||
+              c.instructor?.name ||
+              c.instructor?.full_name ||
+              (c.instructor_id ? 'Unknown instructor' : 'Unassigned'),
             totalCollected: 0,
             tuitionCollected: 0,
             registrationCollected: 0,
