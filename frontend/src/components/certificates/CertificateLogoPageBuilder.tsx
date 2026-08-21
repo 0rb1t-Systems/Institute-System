@@ -1304,399 +1304,357 @@ const CertificateLogoPageBuilder = ({
 
   return (
     <Card className="bg-slate-900 border-slate-800">
-      <CardHeader>
-        <div className="flex flex-wrap items-start justify-between gap-3">
-          <div>
+      <CardHeader className="pb-2 pt-4 px-4 space-y-0">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <div className="min-w-0 flex items-center gap-2 flex-wrap">
             <CardTitle className="text-white text-base">
-              {isUploadEdit ? `Edit uploaded ${docLabel} template` : `${docLabel} Page Builder`}
+              {isUploadEdit ? `Edit uploaded ${docLabel}` : `${docLabel} Page Builder`}
             </CardTitle>
-            <CardDescription>
-              {isUploadEdit
-                ? 'Review the generated template: move, resize, and edit layers; bind course/student fields; replace images; then Save & use. Issued documents use real student and institution data.'
-                : `Design a real ${docLabel.toLowerCase()} page — starter layout, ${docLabel.toLowerCase()} fields, branding, and shapes.`}
-            </CardDescription>
-          </div>
-          <div className="flex flex-wrap items-center gap-2">
             {activeLayout === 'logo_builder' ? (
-              <Badge className="bg-emerald-600/20 text-emerald-300 border-emerald-700/40">
-                Active for institution
+              <Badge className="bg-emerald-600/20 text-emerald-300 border-emerald-700/40 text-[10px]">
+                Active
               </Badge>
             ) : hasSavedDesign ? (
-              <Badge className="bg-amber-600/20 text-amber-200 border-amber-700/40">
-                Draft saved (not active)
+              <Badge className="bg-amber-600/20 text-amber-200 border-amber-700/40 text-[10px]">
+                Draft
+              </Badge>
+            ) : null}
+            {isUploadEdit ? (
+              <Badge className="bg-indigo-600/25 text-indigo-200 border-indigo-500/40 text-[10px]">
+                Editable template
               </Badge>
             ) : null}
           </div>
-        </div>
-      </CardHeader>
-      <CardContent className="space-y-3">
-        {!isUploadEdit ? (
-          <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] text-slate-500">
-            <span>
-              Shortcuts:{' '}
-              <span className="text-slate-300">Del · Ctrl+C/X/V/D · Ctrl+Z/Y · arrows</span>
-            </span>
-            <span className="hidden sm:inline text-slate-700">|</span>
-            <span>
-              Saved design:{' '}
-              <button
-                type="button"
-                className="text-indigo-300 hover:text-indigo-200 underline-offset-2 hover:underline disabled:opacity-40"
-                disabled={loadingSaved || !hasSavedDesign}
-                onClick={() => loadSavedDesignFromServer()}
-              >
-                Open saved design
-              </button>
-            </span>
-          </div>
-        ) : (
-          <p className="text-[11px] text-slate-500">
-            Shortcuts:{' '}
-            <span className="text-slate-300">
-              click → Del removes · drag · Ctrl+Z · Esc exits group
-            </span>
-          </p>
-        )}
-
-        <div className="space-y-2">
-          {/* Document / paper controls */}
-          {!isUploadEdit ? (
-            <div className="flex flex-wrap items-center gap-1.5 rounded-lg border border-slate-800 bg-slate-950/90 px-2 py-1.5">
-              <span className="text-[10px] uppercase tracking-wide text-slate-500 w-14 shrink-0">Doc</span>
-              <Button type="button" size="sm" variant="secondary" onClick={handleNewBlank}>
-                <FilePlus className="h-3.5 w-3.5 mr-1" /> New blank
-              </Button>
-              <Button type="button" size="sm" variant="secondary" onClick={applyStarterLayout}>
-                <LayoutTemplate className="h-3.5 w-3.5 mr-1" /> Starter layout
-              </Button>
-              <span className="w-px h-5 bg-slate-700 mx-0.5" />
-              <label className="flex items-center gap-1.5 text-xs text-slate-400">
-                Paper
-                <select
-                  className="h-8 rounded-md bg-slate-900 border border-slate-700 text-sm text-white px-2"
-                  value={design.canvas.paperKey || 'a4-portrait'}
-                  onChange={(e) => changePaperSize(e.target.value as PaperSizeKey)}
-                >
-                  {PAPER_SIZES.map((p) => (
-                    <option key={p.key} value={p.key}>
-                      {p.label}
-                    </option>
-                  ))}
-                </select>
-              </label>
-            </div>
-          ) : (
-            <div className="flex flex-wrap items-center gap-1.5 rounded-lg border border-indigo-500/30 bg-indigo-950/20 px-2 py-1.5">
-              <Badge className="bg-indigo-600/25 text-indigo-200 border-indigo-500/40">Editable template</Badge>
-              <span className="text-xs text-slate-400">
-                Select · drag · resize · fonts · layers · lock · undo — then Save & use
-              </span>
-            </div>
-          )}
-
-          {/* Tabs: Text | Shapes | Images */}
-          <div className="rounded-lg border border-slate-800 bg-slate-950/90 overflow-hidden">
-            <div className="flex border-b border-slate-800">
-              {(
-                [
-                  ['text', 'Text', Type],
-                  ['shapes', 'Shapes', Shapes],
-                  ['images', 'Images', ImagePlus],
-                ] as const
-              ).map(([key, label, Icon]) => (
-                <button
-                  key={key}
-                  type="button"
-                  onClick={() => {
-                    setInsertTab(key)
-                    setShapesOpen(false)
-                  }}
-                  className={`flex-1 flex items-center justify-center gap-1.5 px-3 py-2.5 text-sm font-medium transition-colors ${
-                    insertTab === key
-                      ? 'bg-indigo-600/25 text-indigo-200 border-b-2 border-indigo-400'
-                      : 'text-slate-400 hover:text-slate-200 hover:bg-slate-900/80'
-                  }`}
-                >
-                  <Icon className="h-4 w-4" />
-                  {label}
-                </button>
-              ))}
-            </div>
-            <div className="p-2.5 flex flex-wrap items-center gap-1.5">
-              {insertTab === 'text' ? (
-                <>
-                  <Button type="button" size="sm" variant="secondary" onClick={() => addElement('text')}>
-                    <Type className="h-3.5 w-3.5 mr-1" /> Free text
-                  </Button>
-                  {getDocumentBuilderQuickFields(docType).map((f) => (
-                    <Button
-                      key={f.key}
-                      type="button"
-                      size="sm"
-                      variant="outline"
-                      className="border-slate-700 text-slate-300"
-                      onClick={() => {
-                        const el = createBoundTextElement(f.key, design.canvas)
-                        const next = cloneDesign(design)
-                        const z = next.elements.reduce((m, e) => Math.max(m, e.zIndex || 0), 0) + 1
-                        next.elements.push({ ...el, zIndex: z })
-                        pushHistory(next)
-                        setSelectedId(el.id)
-                      }}
-                    >
-                      {f.label}
-                    </Button>
-                  ))}
-                </>
-              ) : null}
-              {insertTab === 'shapes' ? (
-                <>
-                  <Button type="button" size="sm" variant="secondary" onClick={addBorderFrame}>
-                    <Frame className="h-3.5 w-3.5 mr-1" /> Border
-                  </Button>
-                  <Button type="button" size="sm" variant="secondary" onClick={() => addElement('rect')}>
-                    <Square className="h-3.5 w-3.5 mr-1" /> Box
-                  </Button>
-                  <Button type="button" size="sm" variant="secondary" onClick={() => addElement('ellipse')}>
-                    <Circle className="h-3.5 w-3.5 mr-1" /> Circle
-                  </Button>
-                  <Button type="button" size="sm" variant="secondary" onClick={() => addElement('line')}>
-                    <Minus className="h-3.5 w-3.5 mr-1" /> Line
-                  </Button>
-                  <div className="relative">
-                    <Button
-                      type="button"
-                      size="sm"
-                      variant="secondary"
-                      onClick={() => setShapesOpen((v) => !v)}
-                    >
-                      More shapes
-                      <ChevronDown className="h-3 w-3 ml-1 opacity-70" />
-                    </Button>
-                    {shapesOpen ? (
-                      <div className="absolute left-0 top-full mt-1 z-30 w-72 max-h-80 overflow-y-auto rounded-md border border-slate-700 bg-slate-950 shadow-xl p-1">
-                        {DECORATIVE_SHAPE_CATEGORIES.map((cat) => (
-                          <div key={cat.id}>
-                            <p className="px-2 pt-2 pb-1 text-[10px] uppercase tracking-wide text-amber-400/80">
-                              {cat.label}
-                            </p>
-                            {DECORATIVE_SHAPES.filter((s) => s.category === cat.id).map((s) => (
-                              <button
-                                key={s.key}
-                                type="button"
-                                className="w-full text-left px-2 py-1.5 text-sm text-slate-200 hover:bg-slate-800 rounded"
-                                onClick={() => {
-                                  addDecorativeShape(s.key)
-                                  setShapesOpen(false)
-                                }}
-                              >
-                                {s.label}
-                              </button>
-                            ))}
-                          </div>
-                        ))}
-                      </div>
-                    ) : null}
-                  </div>
-                </>
-              ) : null}
-              {insertTab === 'images' ? (
-                <>
-                  <input
-                    ref={fileRef}
-                    type="file"
-                    accept="image/png,image/jpeg,image/webp"
-                    className="hidden"
-                    onChange={(e) => {
-                      handleImageUpload(e.target.files?.[0] || null)
-                      e.target.value = ''
-                    }}
-                  />
-                  <input
-                    ref={bgFileRef}
-                    type="file"
-                    accept="image/png,image/jpeg,image/webp"
-                    className="hidden"
-                    onChange={(e) => {
-                      handleBackgroundImage(e.target.files?.[0] || null)
-                      e.target.value = ''
-                    }}
-                  />
-                  <Button type="button" size="sm" variant="secondary" onClick={() => fileRef.current?.click()}>
-                    <ImagePlus className="h-3.5 w-3.5 mr-1" /> Add image
-                  </Button>
-                  {!isUploadEdit ? (
-                    <Button type="button" size="sm" variant="secondary" onClick={() => bgFileRef.current?.click()}>
-                      Background
-                    </Button>
-                  ) : null}
-                </>
-              ) : null}
-            </div>
-          </div>
-
-          {/* Branding — single place for logo / stamp / signature / QR */}
-          <div className="flex flex-wrap items-center gap-1.5 rounded-lg border border-slate-800 bg-slate-950/90 px-2 py-1.5">
-            <span className="text-[10px] uppercase tracking-wide text-slate-500 w-14 shrink-0">Brand</span>
-            <Button type="button" size="sm" variant="secondary" onClick={() => addInstitutionAsset('logo')}>
-              Logo
-            </Button>
-            <Button type="button" size="sm" variant="secondary" onClick={() => addInstitutionAsset('seal')}>
-              Stamp
-            </Button>
-            <Button
-              type="button"
-              size="sm"
-              variant="secondary"
-              onClick={() => addInstitutionAsset('signature')}
-            >
-              Signature
-            </Button>
-            <Button
-              type="button"
-              size="sm"
-              variant={hasVerificationQr(design) ? 'outline' : 'secondary'}
-              className={
-                hasVerificationQr(design)
-                  ? 'border-amber-700/60 text-amber-200'
-                  : undefined
-              }
-              onClick={() => {
-                if (hasVerificationQr(design)) {
-                  const existing = design.elements.find((e) => isQrElement(e))
-                  if (existing) setSelectedId(existing.id)
-                  return
-                }
-                addVerificationQr()
-              }}
-              title={
-                hasVerificationQr(design)
-                  ? 'QR already on page — click to select'
-                  : 'Add system verification QR'
-              }
-            >
-              <QrCode className="h-3.5 w-3.5 mr-1" />
-              {hasVerificationQr(design) ? 'QR on page' : 'Add QR'}
-            </Button>
-          </div>
-
-          {/* Edit + save */}
-          <div className="flex flex-wrap items-center gap-1.5 rounded-lg border border-slate-800 bg-slate-950/90 px-2 py-1.5">
-            <span className="text-[10px] uppercase tracking-wide text-slate-500 w-14 shrink-0">Edit</span>
-            <Button type="button" size="sm" variant="ghost" onClick={undo} title="Undo (Ctrl+Z)">
-              <Undo2 className="h-3.5 w-3.5" />
-            </Button>
-            <Button type="button" size="sm" variant="ghost" onClick={redo} title="Redo (Ctrl+Y)">
-              <Redo2 className="h-3.5 w-3.5" />
-            </Button>
-            <Button
-              type="button"
-              size="sm"
-              variant="ghost"
-              disabled={!selected || selectedIsQr}
-              onClick={duplicateSelected}
-              title="Duplicate (Ctrl+D)"
-            >
-              <Copy className="h-3.5 w-3.5" />
-            </Button>
-            <Button
-              type="button"
-              size="sm"
-              variant="ghost"
-              disabled={!selected}
-              onClick={() => bring('front')}
-              title="Bring to front"
-            >
-              <BringToFront className="h-3.5 w-3.5" />
-            </Button>
-            <Button
-              type="button"
-              size="sm"
-              variant="ghost"
-              disabled={!selected}
-              onClick={() => bring('back')}
-              title="Send to back"
-            >
-              <SendToBack className="h-3.5 w-3.5" />
-            </Button>
-            <Button
-              type="button"
-              size="sm"
-              variant="ghost"
-              disabled={!selected || selected?.locked || selectedIsPaper}
-              onClick={deleteSelected}
-              title={
-                selected?.locked || selectedIsPaper
-                  ? 'Unlock before deleting'
-                  : 'Delete (Del / Backspace)'
-              }
-            >
-              <Trash2 className="h-3.5 w-3.5" />
-            </Button>
-            <span className="w-px h-5 bg-slate-700 mx-0.5" />
-            <Button type="button" size="sm" variant="ghost" onClick={() => setPreviewOpen((v) => !v)}>
-              <Eye className="h-3.5 w-3.5 mr-1" /> Preview
-            </Button>
-            <Button
-              type="button"
-              size="sm"
-              variant="secondary"
-              disabled={downloadingPdf}
-              onClick={() => handleDownloadPdf()}
-            >
-              {downloadingPdf ? (
-                <Loader2 className="h-3.5 w-3.5 animate-spin mr-1" />
-              ) : (
-                <Download className="h-3.5 w-3.5 mr-1" />
-              )}
-              PDF
-            </Button>
+          <div className="flex flex-wrap items-center gap-1.5">
             <Button
               type="button"
               size="sm"
               variant="outline"
               disabled={saving}
               onClick={() => handleSave(false)}
-              className="border-slate-600 text-slate-200"
+              className="h-8 border-slate-600 text-slate-200"
             >
               {saving ? <Loader2 className="h-3.5 w-3.5 animate-spin mr-1" /> : <Save className="h-3.5 w-3.5 mr-1" />}
-              Save draft
+              Draft
             </Button>
             <Button
               type="button"
               size="sm"
               disabled={saving}
               onClick={() => handleSave(true)}
-              className="bg-indigo-600 hover:bg-indigo-500"
+              className="h-8 bg-indigo-600 hover:bg-indigo-500"
             >
               {saving ? <Loader2 className="h-3.5 w-3.5 animate-spin mr-1" /> : <Save className="h-3.5 w-3.5 mr-1" />}
               Save & use
             </Button>
           </div>
-
-          {/* Quick fields — page-builder only (upload-edit already has them under Text) */}
+        </div>
+        <CardDescription className="text-xs text-slate-500 mt-1">
+          {isUploadEdit
+            ? 'Drag · resize · bind fields · then Save & use'
+            : 'Paper · insert · brand · edit — canvas is the page'}
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-2 px-4 pb-4 pt-0">
+        {/* Compact tools: Page + Brand + Edit */}
+        <div
+          className="flex flex-wrap items-center gap-1 rounded-lg border border-slate-800 bg-slate-950/90 px-1.5 py-1"
+          title={
+            isUploadEdit
+              ? 'Del · drag · Ctrl+Z · Esc exits group'
+              : 'Del · Ctrl+C/X/V/D · Ctrl+Z/Y · arrows'
+          }
+        >
           {!isUploadEdit ? (
-            <div className="flex flex-wrap items-center gap-1.5 rounded-lg border border-indigo-900/40 bg-indigo-950/15 px-2 py-1.5">
-              <span className="text-[10px] uppercase tracking-wide text-indigo-300/80 w-14 shrink-0">
-                Fields
-              </span>
-              {getDocumentBuilderQuickFields(docType).map(({ key, label }) => (
-                <Button
-                  key={key}
-                  type="button"
-                  size="sm"
-                  variant="outline"
-                  className="h-7 text-[11px] border-slate-700 text-slate-200"
-                  onClick={() => addBoundField(key)}
-                >
-                  + {label}
-                </Button>
-              ))}
-            </div>
+            <>
+              <select
+                className="h-7 rounded-md bg-slate-900 border border-slate-700 text-xs text-white px-1.5 max-w-[9rem]"
+                value={design.canvas.paperKey || 'a4-portrait'}
+                onChange={(e) => changePaperSize(e.target.value as PaperSizeKey)}
+                title="Paper size"
+              >
+                {PAPER_SIZES.map((p) => (
+                  <option key={p.key} value={p.key}>
+                    {p.label}
+                  </option>
+                ))}
+              </select>
+              <Button type="button" size="sm" variant="ghost" className="h-7 px-2" onClick={handleNewBlank} title="New blank">
+                <FilePlus className="h-3.5 w-3.5" />
+              </Button>
+              <Button type="button" size="sm" variant="ghost" className="h-7 px-2" onClick={applyStarterLayout} title="Starter layout">
+                <LayoutTemplate className="h-3.5 w-3.5" />
+              </Button>
+              <Button
+                type="button"
+                size="sm"
+                variant="ghost"
+                className="h-7 px-2 text-xs text-indigo-300"
+                disabled={loadingSaved || !hasSavedDesign}
+                onClick={() => loadSavedDesignFromServer()}
+                title="Open saved design"
+              >
+                Saved
+              </Button>
+              <span className="w-px h-4 bg-slate-700 mx-0.5" />
+            </>
           ) : null}
+
+          <Button type="button" size="sm" variant="ghost" className="h-7 px-2" onClick={() => addInstitutionAsset('logo')} title="Logo">
+            Logo
+          </Button>
+          <Button type="button" size="sm" variant="ghost" className="h-7 px-2" onClick={() => addInstitutionAsset('seal')} title="Stamp">
+            Stamp
+          </Button>
+          <Button type="button" size="sm" variant="ghost" className="h-7 px-2" onClick={() => addInstitutionAsset('signature')} title="Signature">
+            Sign
+          </Button>
+          <Button
+            type="button"
+            size="sm"
+            variant="ghost"
+            className={`h-7 px-2 ${hasVerificationQr(design) ? 'text-amber-200' : ''}`}
+            onClick={() => {
+              if (hasVerificationQr(design)) {
+                const existing = design.elements.find((e) => isQrElement(e))
+                if (existing) setSelectedId(existing.id)
+                return
+              }
+              addVerificationQr()
+            }}
+            title={
+              hasVerificationQr(design)
+                ? 'QR already on page — click to select'
+                : 'Add verification QR'
+            }
+          >
+            <QrCode className="h-3.5 w-3.5" />
+          </Button>
+
+          <span className="w-px h-4 bg-slate-700 mx-0.5" />
+
+          <Button type="button" size="sm" variant="ghost" className="h-7 w-7 p-0" onClick={undo} title="Undo (Ctrl+Z)">
+            <Undo2 className="h-3.5 w-3.5" />
+          </Button>
+          <Button type="button" size="sm" variant="ghost" className="h-7 w-7 p-0" onClick={redo} title="Redo (Ctrl+Y)">
+            <Redo2 className="h-3.5 w-3.5" />
+          </Button>
+          <Button
+            type="button"
+            size="sm"
+            variant="ghost"
+            className="h-7 w-7 p-0"
+            disabled={!selected || selectedIsQr}
+            onClick={duplicateSelected}
+            title="Duplicate (Ctrl+D)"
+          >
+            <Copy className="h-3.5 w-3.5" />
+          </Button>
+          <Button
+            type="button"
+            size="sm"
+            variant="ghost"
+            className="h-7 w-7 p-0"
+            disabled={!selected}
+            onClick={() => bring('front')}
+            title="Bring to front"
+          >
+            <BringToFront className="h-3.5 w-3.5" />
+          </Button>
+          <Button
+            type="button"
+            size="sm"
+            variant="ghost"
+            className="h-7 w-7 p-0"
+            disabled={!selected}
+            onClick={() => bring('back')}
+            title="Send to back"
+          >
+            <SendToBack className="h-3.5 w-3.5" />
+          </Button>
+          <Button
+            type="button"
+            size="sm"
+            variant="ghost"
+            className="h-7 w-7 p-0"
+            disabled={!selected || selected?.locked || selectedIsPaper}
+            onClick={deleteSelected}
+            title={
+              selected?.locked || selectedIsPaper
+                ? 'Unlock before deleting'
+                : 'Delete (Del / Backspace)'
+            }
+          >
+            <Trash2 className="h-3.5 w-3.5" />
+          </Button>
+
+          <span className="w-px h-4 bg-slate-700 mx-0.5" />
+
+          <Button
+            type="button"
+            size="sm"
+            variant="ghost"
+            className="h-7 px-2"
+            onClick={() => setPreviewOpen((v) => !v)}
+            title="Preview"
+          >
+            <Eye className="h-3.5 w-3.5 mr-1" />
+            Preview
+          </Button>
+          <Button
+            type="button"
+            size="sm"
+            variant="secondary"
+            className="h-7 px-2"
+            disabled={downloadingPdf}
+            onClick={() => handleDownloadPdf()}
+            title="Download PDF"
+          >
+            {downloadingPdf ? (
+              <Loader2 className="h-3.5 w-3.5 animate-spin" />
+            ) : (
+              <Download className="h-3.5 w-3.5 mr-1" />
+            )}
+            PDF
+          </Button>
         </div>
 
-        <div className="grid gap-4 lg:grid-cols-[1fr_280px]">
+        {/* Insert: Text | Shapes | Images */}
+        <div className="rounded-lg border border-slate-800 bg-slate-950/90 overflow-hidden">
+          <div className="flex border-b border-slate-800">
+            {(
+              [
+                ['text', 'Text', Type],
+                ['shapes', 'Shapes', Shapes],
+                ['images', 'Images', ImagePlus],
+              ] as const
+            ).map(([key, label, Icon]) => (
+              <button
+                key={key}
+                type="button"
+                onClick={() => {
+                  setInsertTab(key)
+                  setShapesOpen(false)
+                }}
+                className={`flex-1 flex items-center justify-center gap-1 px-2 py-1.5 text-xs font-medium transition-colors ${
+                  insertTab === key
+                    ? 'bg-indigo-600/25 text-indigo-200 border-b-2 border-indigo-400'
+                    : 'text-slate-400 hover:text-slate-200 hover:bg-slate-900/80'
+                }`}
+              >
+                <Icon className="h-3.5 w-3.5" />
+                {label}
+              </button>
+            ))}
+          </div>
+          <div className="p-1.5 flex flex-wrap items-center gap-1">
+            {insertTab === 'text' ? (
+              <>
+                <Button type="button" size="sm" variant="secondary" className="h-7 text-xs" onClick={() => addElement('text')}>
+                  <Type className="h-3.5 w-3.5 mr-1" /> Free text
+                </Button>
+                {getDocumentBuilderQuickFields(docType).map((f) => (
+                  <Button
+                    key={f.key}
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    className="h-7 text-[11px] border-slate-700 text-slate-300"
+                    onClick={() => addBoundField(f.key)}
+                  >
+                    {f.label}
+                  </Button>
+                ))}
+              </>
+            ) : null}
+            {insertTab === 'shapes' ? (
+              <>
+                <Button type="button" size="sm" variant="secondary" className="h-7 text-xs" onClick={addBorderFrame}>
+                  <Frame className="h-3.5 w-3.5 mr-1" /> Border
+                </Button>
+                <Button type="button" size="sm" variant="secondary" className="h-7 text-xs" onClick={() => addElement('rect')}>
+                  <Square className="h-3.5 w-3.5 mr-1" /> Box
+                </Button>
+                <Button type="button" size="sm" variant="secondary" className="h-7 text-xs" onClick={() => addElement('ellipse')}>
+                  <Circle className="h-3.5 w-3.5 mr-1" /> Circle
+                </Button>
+                <Button type="button" size="sm" variant="secondary" className="h-7 text-xs" onClick={() => addElement('line')}>
+                  <Minus className="h-3.5 w-3.5 mr-1" /> Line
+                </Button>
+                <div className="relative">
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="secondary"
+                    className="h-7 text-xs"
+                    onClick={() => setShapesOpen((v) => !v)}
+                  >
+                    More
+                    <ChevronDown className="h-3 w-3 ml-1 opacity-70" />
+                  </Button>
+                  {shapesOpen ? (
+                    <div className="absolute left-0 top-full mt-1 z-30 w-72 max-h-80 overflow-y-auto rounded-md border border-slate-700 bg-slate-950 shadow-xl p-1">
+                      {DECORATIVE_SHAPE_CATEGORIES.map((cat) => (
+                        <div key={cat.id}>
+                          <p className="px-2 pt-2 pb-1 text-[10px] uppercase tracking-wide text-amber-400/80">
+                            {cat.label}
+                          </p>
+                          {DECORATIVE_SHAPES.filter((s) => s.category === cat.id).map((s) => (
+                            <button
+                              key={s.key}
+                              type="button"
+                              className="w-full text-left px-2 py-1.5 text-sm text-slate-200 hover:bg-slate-800 rounded"
+                              onClick={() => {
+                                addDecorativeShape(s.key)
+                                setShapesOpen(false)
+                              }}
+                            >
+                              {s.label}
+                            </button>
+                          ))}
+                        </div>
+                      ))}
+                    </div>
+                  ) : null}
+                </div>
+              </>
+            ) : null}
+            {insertTab === 'images' ? (
+              <>
+                <input
+                  ref={fileRef}
+                  type="file"
+                  accept="image/png,image/jpeg,image/webp"
+                  className="hidden"
+                  onChange={(e) => {
+                    handleImageUpload(e.target.files?.[0] || null)
+                    e.target.value = ''
+                  }}
+                />
+                <input
+                  ref={bgFileRef}
+                  type="file"
+                  accept="image/png,image/jpeg,image/webp"
+                  className="hidden"
+                  onChange={(e) => {
+                    handleBackgroundImage(e.target.files?.[0] || null)
+                    e.target.value = ''
+                  }}
+                />
+                <Button type="button" size="sm" variant="secondary" className="h-7 text-xs" onClick={() => fileRef.current?.click()}>
+                  <ImagePlus className="h-3.5 w-3.5 mr-1" /> Image
+                </Button>
+                {!isUploadEdit ? (
+                  <Button type="button" size="sm" variant="secondary" className="h-7 text-xs" onClick={() => bgFileRef.current?.click()}>
+                    Background
+                  </Button>
+                ) : null}
+              </>
+            ) : null}
+          </div>
+        </div>
+
+        <div className="grid gap-3 lg:grid-cols-[1fr_260px]">
           <div
             ref={canvasRef}
             tabIndex={0}
@@ -1824,7 +1782,7 @@ const CertificateLogoPageBuilder = ({
               })}
           </div>
 
-          <div className="space-y-3 rounded-lg border border-slate-800 bg-slate-950 p-3">
+          <div className="space-y-2 rounded-lg border border-slate-800 bg-slate-950 p-2.5">
             {!isUploadEdit ? (
               <div className="space-y-1">
                 <Label className="text-xs text-slate-400">Page background</Label>
@@ -1836,7 +1794,7 @@ const CertificateLogoPageBuilder = ({
                     next.canvas.background = e.target.value
                     pushHistory(next)
                   }}
-                  className="bg-slate-900 border-slate-700 h-8 p-1"
+                  className="bg-slate-900 border-slate-700 h-7 p-0.5"
                 />
               </div>
             ) : null}
@@ -2305,7 +2263,7 @@ const CertificateLogoPageBuilder = ({
                   </div>
                 ) : null}
               </div>
-              <div className="max-h-56 overflow-auto space-y-1">
+              <div className="max-h-48 overflow-auto space-y-0.5">
                 {design.elements
                   .slice()
                   .sort((a, b) => (b.zIndex || 0) - (a.zIndex || 0))
@@ -2434,12 +2392,12 @@ const CertificateLogoPageBuilder = ({
         </div>
 
         {previewOpen ? (
-          <div className="rounded-lg border border-slate-800 bg-slate-950 p-4 space-y-2">
+          <div className="rounded-lg border border-slate-800 bg-slate-950 p-3 space-y-2">
             <div className="flex items-center justify-between gap-2 flex-wrap">
-              <p className="text-sm text-slate-300">Final preview (sample student data)</p>
+              <p className="text-sm text-slate-300">Preview</p>
               <div className="flex items-center gap-2">
                 <Badge variant="outline" className="border-slate-700 text-slate-400 text-[10px]">
-                  Same look as issued {docLabel.toLowerCase()}s
+                  Same as issued
                 </Badge>
                 <Button
                   type="button"
