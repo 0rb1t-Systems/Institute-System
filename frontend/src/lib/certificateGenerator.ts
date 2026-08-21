@@ -559,6 +559,32 @@ export async function generateCertificatePDF(certificateData: Record<string, any
         cloned.style.width = `${pageWpx}px`
         cloned.style.height = `${pageHpx}px`
         cloned.style.overflow = 'hidden'
+        // Strip accidental text highlight boxes (legacy fill defaults / selection paint)
+        cloned.querySelectorAll('[data-cert-mode="logo-builder"] [style]').forEach((node) => {
+          const el = node as HTMLElement
+          if (el.tagName === 'IMG' || el.querySelector('img, svg, canvas')) return
+          const bg = (el.style.backgroundColor || el.style.background || '').toLowerCase()
+          if (
+            !bg ||
+            bg === 'transparent' ||
+            bg === 'rgba(0, 0, 0, 0)' ||
+            bg.includes('255, 255, 255')
+          ) {
+            return
+          }
+          // Light slate/blue-grey fills that were never meant as text backgrounds
+          if (
+            bg.includes('226, 232, 240') || // #e2e8f0
+            bg.includes('203, 213, 225') || // #cbd5e1
+            bg.includes('241, 245, 249') || // #f1f5f9
+            bg === '#e2e8f0' ||
+            bg === '#cbd5e1' ||
+            bg === '#f1f5f9'
+          ) {
+            el.style.background = 'transparent'
+            el.style.backgroundColor = 'transparent'
+          }
+        })
         // Rasterize QR SVG → canvas so it is not missing in PDF
         cloned.querySelectorAll('svg').forEach((svg) => {
           try {

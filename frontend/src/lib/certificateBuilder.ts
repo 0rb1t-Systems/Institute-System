@@ -2976,7 +2976,20 @@ export function normalizeLogoBuilderDesign(raw: unknown): LogoBuilderDesign {
           textAlign:
             el.textAlign === 'left' || el.textAlign === 'right' ? el.textAlign : 'center',
           color: String(el.color || '#0f172a'),
-          fill: el.fill != null ? String(el.fill) : '#e2e8f0',
+          // Text/image never use fill as a painted background in the editor —
+          // defaulting missing fill to slate (#e2e8f0) made PDF/print show
+          // accidental highlight boxes behind static copy.
+          fill: (() => {
+            const elType = String(el.type || 'text')
+            const raw = el.fill != null ? String(el.fill).trim() : ''
+            if (elType === 'text' || elType === 'image') {
+              if (!raw || raw.toLowerCase() === 'transparent' || raw.toLowerCase() === '#e2e8f0') {
+                return 'transparent'
+              }
+              return raw
+            }
+            return raw || '#e2e8f0'
+          })(),
           stroke: el.stroke != null ? String(el.stroke) : '#002147',
           strokeWidth: Math.max(0, Number(el.strokeWidth) || 1),
           opacity: Math.min(1, Math.max(0.1, Number(el.opacity) || 1)),

@@ -397,8 +397,9 @@ const CertificateDesignRenderer = ({
           }
 
           const text = resolveBuilderText(el, data)
-          const textFill =
-            el.fill && String(el.fill).toLowerCase() !== 'transparent' ? el.fill : undefined
+          // Text fill is unused in the page builder (always transparent there).
+          // Never paint it as a highlight box in preview/PDF — that caused the
+          // light blue/grey rectangles behind titles and body copy.
           return (
             <div
               key={el.id}
@@ -424,8 +425,7 @@ const CertificateDesignRenderer = ({
                 overflow: 'hidden',
                 whiteSpace: 'pre-wrap',
                 wordBreak: 'break-word',
-                backgroundColor: textFill,
-                padding: textFill ? '0 4px' : undefined,
+                backgroundColor: 'transparent',
                 boxSizing: 'border-box',
               }}
             >
