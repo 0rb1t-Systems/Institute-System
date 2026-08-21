@@ -54,21 +54,24 @@ const VerificationPage = () => {
   const accent = documentData?.themePrimary || '#2563eb';
 
   return (
-    <div className="min-h-screen bg-slate-50 flex flex-col items-center p-4 pt-12 font-sans">
+    <div className="min-h-screen bg-slate-950 flex flex-col items-center p-4 pt-12 font-sans text-slate-100">
       <Helmet><title>Document Verification - Portal</title></Helmet>
       
       <div className="mb-8 scale-125">
          {documentData?.logoUrl ? (
            <img src={documentData.logoUrl} alt="" className="h-12 w-auto object-contain mx-auto" />
          ) : (
-           <Logo />
+           <Logo className="brightness-0 invert" />
          )}
       </div>
 
-      <Card className="w-full max-w-md shadow-xl border-t-4" style={{ borderTopColor: accent }}>
+      <Card
+        className="w-full max-w-md shadow-xl border border-slate-800 bg-slate-900 text-slate-100 border-t-4"
+        style={{ borderTopColor: accent }}
+      >
         <CardHeader className="text-center pb-2">
-          <CardTitle className="text-xl">Credential Verification</CardTitle>
-          <CardDescription>Official training center credential registry</CardDescription>
+          <CardTitle className="text-xl text-white">Credential Verification</CardTitle>
+          <CardDescription className="text-slate-400">Official training center credential registry</CardDescription>
         </CardHeader>
         <CardContent className="space-y-6 pt-6">
             {loading ? (
@@ -76,66 +79,66 @@ const VerificationPage = () => {
             ) : error ? (
                 <div className="text-center py-6 space-y-3">
                     <XCircle className="h-16 w-16 text-red-500 mx-auto" />
-                    <h3 className="text-lg font-semibold text-red-600">Invalid Document</h3>
-                    <p className="text-slate-500 text-sm">{error}</p>
+                    <h3 className="text-lg font-semibold text-red-400">Invalid Document</h3>
+                    <p className="text-slate-400 text-sm">{error}</p>
                 </div>
             ) : (
                 <div className="space-y-6">
-                    <div className="flex flex-col items-center space-y-2 pb-4 border-b border-slate-100">
+                    <div className="flex flex-col items-center space-y-2 pb-4 border-b border-slate-800">
                         <CheckCircle2 className="h-16 w-16 text-green-500" />
-                        <h3 className="text-lg font-bold text-green-700">Verified Authentic</h3>
+                        <h3 className="text-lg font-bold text-green-400">Verified Authentic</h3>
                         <p className="text-xs text-slate-400 uppercase tracking-widest">Official Record Found</p>
                     </div>
 
                     <div className="space-y-4">
                         {documentData.institutionName && (
                           <div className="flex items-start gap-3">
-                            <Building2 className="h-5 w-5 text-slate-400 mt-0.5" />
-                            <div>
-                              <p className="text-xs text-slate-500 uppercase">Institution</p>
-                              <p className="font-semibold text-slate-900">{documentData.institutionName}</p>
+                            <Building2 className="h-5 w-5 text-slate-400 mt-0.5 shrink-0" />
+                            <div className="min-w-0">
+                              <p className="text-xs text-slate-400 uppercase tracking-wide">Institution</p>
+                              <p className="font-semibold text-white break-words">{documentData.institutionName}</p>
                             </div>
                           </div>
                         )}
 
                         <div className="flex items-start gap-3">
-                            <User className="h-5 w-5 text-slate-400 mt-0.5" />
-                            <div>
-                                <p className="text-xs text-slate-500 uppercase">Student</p>
-                                <p className="font-semibold text-slate-900">{documentData.studentName}</p>
+                            <User className="h-5 w-5 text-slate-400 mt-0.5 shrink-0" />
+                            <div className="min-w-0">
+                                <p className="text-xs text-slate-400 uppercase tracking-wide">Student</p>
+                                <p className="font-semibold text-white break-words">{documentData.studentName}</p>
                             </div>
                         </div>
 
                         <div className="flex items-start gap-3">
-                            <GraduationCap className="h-5 w-5 text-slate-400 mt-0.5" />
-                            <div>
-                                <p className="text-xs text-slate-500 uppercase">Credential</p>
-                                <p className="font-semibold text-slate-900 capitalize">{documentData.type}</p>
-                                <p className="text-sm" style={{ color: accent }}>{documentData.title}</p>
+                            <GraduationCap className="h-5 w-5 text-slate-400 mt-0.5 shrink-0" />
+                            <div className="min-w-0">
+                                <p className="text-xs text-slate-400 uppercase tracking-wide">Credential</p>
+                                <p className="font-semibold text-white capitalize">{documentData.type}</p>
+                                <p className="text-sm font-medium break-words" style={{ color: accent }}>{documentData.title}</p>
                                 {documentData.certificateNumber && (
-                                  <p className="text-xs text-slate-400 font-mono mt-1">{documentData.certificateNumber}</p>
+                                  <p className="text-xs text-slate-300 font-mono mt-1 break-all">{documentData.certificateNumber}</p>
                                 )}
                             </div>
                         </div>
 
                         <div className="flex items-start gap-3">
-                             <Calendar className="h-5 w-5 text-slate-400 mt-0.5" />
-                             <div>
-                                 <p className="text-xs text-slate-500 uppercase">Issue Date</p>
-                                 <p className="font-medium text-slate-900">{formatDate(documentData.date)}</p>
+                             <Calendar className="h-5 w-5 text-slate-400 mt-0.5 shrink-0" />
+                             <div className="min-w-0">
+                                 <p className="text-xs text-slate-400 uppercase tracking-wide">Issue Date</p>
+                                 <p className="font-medium text-white">{formatDate(documentData.date)}</p>
                              </div>
                         </div>
                     </div>
 
                     <div className="pt-4 text-center">
-                        <p className="text-[10px] text-slate-400">
+                        <p className="text-[10px] text-slate-400 leading-relaxed">
                             This digital record confirms that the individual named above has completed the requirements for the stated credential.
                         </p>
                     </div>
                 </div>
             )}
             <div className="pt-2">
-                <Button asChild variant="outline" className="w-full">
+                <Button asChild variant="outline" className="w-full border-slate-700 bg-slate-950 text-white hover:bg-slate-800 hover:text-white">
                     <Link to="/login">Login to Portal</Link>
                 </Button>
             </div>
