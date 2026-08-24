@@ -29,9 +29,10 @@ const Sidebar = () => {
         'flex items-center gap-3 px-3 py-2 text-sm font-medium rounded-md mb-1 relative overflow-hidden',
         'outline-none focus-visible:ring-2 focus-visible:ring-slate-600',
         active
-          ? 'bg-slate-800 text-white pointer-events-none border-l-2 border-blue-500 pl-[10px]'
+          ? 'bg-slate-800 text-white pointer-events-none border-l-2 pl-[10px]'
           : 'text-slate-300 hover:bg-slate-800/80 hover:text-slate-100'
       )}
+      style={active ? { borderLeftColor: 'var(--brand-primary)' } : undefined}
     >
       <Icon className="h-4 w-4 shrink-0 text-current opacity-90" />
       <span className="truncate">{label}</span>

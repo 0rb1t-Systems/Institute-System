@@ -37,6 +37,9 @@
 
     --radius: 0.5rem;
 
+    --brand-primary: #002147;
+    --brand-accent: #D32F2F;
+
     /* Certificate Design Tokens - Exact Reference Colors */
     --cert-primary: #0066CC;
     --cert-text: #000000;

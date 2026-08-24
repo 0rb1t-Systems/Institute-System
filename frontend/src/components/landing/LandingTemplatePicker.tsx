@@ -1,15 +1,17 @@
-import React, { useEffect, useMemo } from 'react'
+import React, { useEffect, useMemo, useState } from 'react'
 import { Check, ImagePlus, Upload } from 'lucide-react'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import TenantLandingRenderer from '@/components/landing/TenantLandingRenderer'
+import LogoBrandColorPicker from '@/components/admin/LogoBrandColorPicker'
 import type { LandingInstitution } from '@/components/landing/types'
 import {
   LANDING_TEMPLATES,
   getLandingTemplate,
   type LandingTemplateId,
 } from '@/lib/landingTemplates'
+import { extractLogoBrandPalette } from '@/lib/logoBrandColors'
 
 export type LandingCustomizeValues = {
   landing_template_id: LandingTemplateId
@@ -42,6 +44,8 @@ function fileToObjectUrl(file: File | null, prev: string | null) {
  */
 export default function LandingTemplatePicker({ baseInstitution, values, onChange }: Props) {
   const meta = getLandingTemplate(values.landing_template_id)
+  const [logoSwatches, setLogoSwatches] = useState<string[]>([])
+  const [detectingColors, setDetectingColors] = useState(false)
 
   const previewInstitution: LandingInstitution = useMemo(
     () => ({
@@ -66,9 +70,41 @@ export default function LandingTemplatePicker({ baseInstitution, values, onChang
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
+  useEffect(() => {
+    const src = values.logoFile || values.logoPreviewUrl
+    if (!src) {
+      setLogoSwatches([])
+      return
+    }
+    let cancelled = false
+    extractLogoBrandPalette(src).then((palette) => {
+      if (!cancelled && palette?.swatches?.length) setLogoSwatches(palette.swatches)
+    })
+    return () => {
+      cancelled = true
+    }
+  }, [values.logoFile, values.logoPreviewUrl])
+
   const onLogo = (file: File | null) => {
     const url = fileToObjectUrl(file, values.logoPreviewUrl)
     onChange({ logoFile: file, logoPreviewUrl: url })
+    if (!file) {
+      setLogoSwatches([])
+      return
+    }
+    setDetectingColors(true)
+    extractLogoBrandPalette(file)
+      .then((palette) => {
+        if (!palette) return
+        setLogoSwatches(palette.swatches)
+        onChange({
+          logoFile: file,
+          logoPreviewUrl: url,
+          theme_primary: palette.primary,
+          theme_accent: palette.accent,
+        })
+      })
+      .finally(() => setDetectingColors(false))
   }
 
   const onHero = (file: File | null) => {
@@ -78,10 +114,11 @@ export default function LandingTemplatePicker({ baseInstitution, values, onChang
 
   const selectTemplate = (id: LandingTemplateId) => {
     const t = getLandingTemplate(id)
+    const keepBrand = Boolean(values.logoFile || values.logoPreviewUrl)
     onChange({
       landing_template_id: id,
-      theme_primary: t.defaultPrimary,
-      theme_accent: t.defaultAccent,
+      theme_primary: keepBrand ? values.theme_primary : t.defaultPrimary,
+      theme_accent: keepBrand ? values.theme_accent : t.defaultAccent,
       hero_headline: values.hero_headline?.trim() ? values.hero_headline : t.defaultHeadline,
     })
   }
@@ -165,7 +202,9 @@ export default function LandingTemplatePicker({ baseInstitution, values, onChang
                   className="border-white/10 bg-[#061512] text-sm file:mr-3 file:rounded file:border-0 file:bg-teal-500/20 file:px-2 file:py-1 file:text-teal-200"
                   onChange={(e) => onLogo(e.target.files?.[0] || null)}
                 />
-                <p className="mt-1 text-[11px] text-slate-500">PNG, JPG, WebP or SVG · max 5MB</p>
+                <p className="mt-1 text-[11px] text-slate-500">
+                  PNG, JPG, WebP or SVG · max 5MB. Brand colors are detected from the logo.
+                </p>
               </div>
             </div>
           </div>
@@ -189,26 +228,16 @@ export default function LandingTemplatePicker({ baseInstitution, values, onChang
             </div>
           </div>
 
-          <div className="grid gap-3 sm:grid-cols-2">
-            <div className="space-y-2">
-              <Label className="text-slate-200">Primary color</Label>
-              <Input
-                type="color"
-                value={values.theme_primary || meta.defaultPrimary}
-                onChange={(e) => onChange({ theme_primary: e.target.value })}
-                className="h-10 cursor-pointer border-white/10 bg-[#061512] p-1"
-              />
-            </div>
-            <div className="space-y-2">
-              <Label className="text-slate-200">Accent color</Label>
-              <Input
-                type="color"
-                value={values.theme_accent || meta.defaultAccent}
-                onChange={(e) => onChange({ theme_accent: e.target.value })}
-                className="h-10 cursor-pointer border-white/10 bg-[#061512] p-1"
-              />
-            </div>
-          </div>
+          <LogoBrandColorPicker
+            primary={values.theme_primary || meta.defaultPrimary}
+            accent={values.theme_accent || meta.defaultAccent}
+            swatches={logoSwatches}
+            detecting={detectingColors}
+            onPrimaryChange={(hex) => onChange({ theme_primary: hex })}
+            onAccentChange={(hex) => onChange({ theme_accent: hex })}
+            primaryId="landing_theme_primary"
+            accentId="landing_theme_accent"
+          />
         </div>
 
         <div className="space-y-4">

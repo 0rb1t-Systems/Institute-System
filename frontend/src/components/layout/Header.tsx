@@ -91,9 +91,10 @@ const Header = () => {
                     className={cn(
                       'flex items-center gap-3 px-3 py-2.5 rounded-md transition-colors',
                       active
-                        ? 'bg-slate-800 text-white border-l-2 border-blue-500 pl-[10px]'
+                        ? 'bg-slate-800 text-white border-l-2 pl-[10px]'
                         : 'bg-transparent text-slate-300 hover:bg-slate-800 hover:text-slate-100'
                     )}
+                    style={active ? { borderLeftColor: 'var(--brand-primary)' } : undefined}
                   >
                     <item.icon className="h-5 w-5 shrink-0" />
                     <span className="font-medium truncate">{item.label}</span>
@@ -126,7 +127,7 @@ const Header = () => {
           className="text-slate-300 hover:text-slate-100 hover:bg-slate-800"
           title="Refresh System Data"
         >
-          <RefreshCw className={cn('h-5 w-5', isRefreshing && 'animate-spin text-blue-500')} />
+          <RefreshCw className={cn('h-5 w-5', isRefreshing && 'animate-spin text-primary')} />
         </Button>
 
         <Button variant="ghost" size="icon" className="text-slate-300 hover:text-slate-100 hover:bg-slate-800 relative hidden sm:inline-flex">
@@ -148,7 +149,7 @@ const Header = () => {
               </div>
               <Avatar className="h-8 w-8 sm:h-9 sm:w-9 border-2 border-slate-800 shrink-0">
                 <AvatarImage src={user?.avatar_url} alt={user?.name} />
-                <AvatarFallback className="bg-indigo-600 text-white font-bold">
+                <AvatarFallback className="bg-primary text-primary-foreground font-bold">
                   {user?.name ? user.name.charAt(0).toUpperCase() : 'U'}
                 </AvatarFallback>
               </Avatar>

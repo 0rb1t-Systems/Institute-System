@@ -5,6 +5,7 @@ import App from '@/App';
 import { Toaster } from '@/components/ui/toaster';
 import { DataProvider } from '@/contexts/DataContext';
 import { AuthProvider } from '@/contexts/AuthContext';
+import InstitutionBrandTheme from '@/components/InstitutionBrandTheme';
 import '@/index.css';
 
 // Simple Error Boundary for Auth Context failures
@@ -54,6 +55,7 @@ ReactDOM.createRoot(document.getElementById('root')).render(
     <ErrorBoundary>
       <BrowserRouter>
         <AuthProvider>
+          <InstitutionBrandTheme />
           <DataProvider>
             <App />
             <Toaster />

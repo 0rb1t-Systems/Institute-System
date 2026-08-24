@@ -19,6 +19,7 @@ import LandingTemplatePicker, {
 import type { LandingInstitution } from '@/components/landing/types'
 import { getLandingTemplate } from '@/lib/landingTemplates'
 import { getAppRootDomain, getTenantPortalUrl, usesTenantSubdomainHosts } from '@/lib/institution'
+import { normalizeHexColor } from '@/lib/logoBrandColors'
 
 const empty = {
   institution_name: '',
@@ -190,8 +191,8 @@ const PublicCreateInstitutionPage = () => {
         hero_headline: landing.hero_headline.trim() || null,
         footer_text: landing.footer_text.trim() || null,
         description: landing.description.trim() || null,
-        theme_primary: landing.theme_primary || null,
-        theme_accent: landing.theme_accent || null,
+        theme_primary: normalizeHexColor(landing.theme_primary),
+        theme_accent: normalizeHexColor(landing.theme_accent, '#D32F2F'),
         logo_data_url,
         hero_data_url,
       })

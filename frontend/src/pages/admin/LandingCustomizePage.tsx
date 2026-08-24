@@ -16,6 +16,7 @@ import LandingTemplatePicker, {
   type LandingCustomizeValues,
 } from '@/components/landing/LandingTemplatePicker'
 import { getLandingTemplate } from '@/lib/landingTemplates'
+import { normalizeHexColor } from '@/lib/logoBrandColors'
 
 /**
  * Admin page — change landing template, logo, hero, headline, footer.
@@ -98,8 +99,8 @@ const LandingCustomizePage = () => {
         hero_headline: landing.hero_headline.trim() || null,
         footer_text: landing.footer_text.trim() || null,
         description: landing.description.trim() || null,
-        theme_primary: landing.theme_primary,
-        theme_accent: landing.theme_accent,
+        theme_primary: normalizeHexColor(landing.theme_primary),
+        theme_accent: normalizeHexColor(landing.theme_accent, '#D32F2F'),
         logo_url: logo_url || null,
         hero_image_url: hero_image_url || null,
       })

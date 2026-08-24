@@ -22,6 +22,8 @@ import { useToast } from '@/components/ui/use-toast'
 import { getUserMessage } from '@/lib/mapError'
 import { MESSAGES } from '@/lib/messages'
 import GradingSystemSettings from '@/components/admin/GradingSystemSettings'
+import LogoBrandColorPicker from '@/components/admin/LogoBrandColorPicker'
+import { extractLogoBrandPalette, normalizeHexColor } from '@/lib/logoBrandColors'
 
 const CURRENCY_OPTIONS = [
   { code: 'USD', symbol: '$', label: 'USD — US Dollar' },
@@ -123,6 +125,8 @@ const InstitutionSettingsForm = ({ onUpdated }) => {
   const [form, setForm] = useState(empty)
   const [saving, setSaving] = useState(false)
   const [uploading, setUploading] = useState(null)
+  const [logoSwatches, setLogoSwatches] = useState([])
+  const [detectingColors, setDetectingColors] = useState(false)
 
   useEffect(() => {
     if (!institution) return
@@ -158,6 +162,13 @@ const InstitutionSettingsForm = ({ onUpdated }) => {
       invoice_footer_text: institution.invoice_footer_text || '',
     })
     setAppCurrency(currency, symbol)
+    if (institution.logo_url) {
+      extractLogoBrandPalette(institution.logo_url).then((palette) => {
+        if (palette?.swatches?.length) setLogoSwatches(palette.swatches)
+      })
+    } else {
+      setLogoSwatches([])
+    }
   }, [institution])
 
   const setField = (key, value) => setForm((prev) => ({ ...prev, [key]: value }))
@@ -177,8 +188,26 @@ const InstitutionSettingsForm = ({ onUpdated }) => {
     setUploading(kind)
     try {
       const url = await uploadInstitutionAsset(file, kind)
-      setField(field, url)
-      toast({ title: 'Success', description: 'File uploaded. Save settings to apply.' })
+      if (kind === 'logo') {
+        setDetectingColors(true)
+        const palette = await extractLogoBrandPalette(file)
+        setForm((prev) => ({
+          ...prev,
+          logo_url: url,
+          theme_primary: palette?.primary || prev.theme_primary,
+          theme_accent: palette?.accent || prev.theme_accent,
+        }))
+        setLogoSwatches(palette?.swatches || [])
+        toast({
+          title: 'Success',
+          description: palette?.primary
+            ? 'Logo uploaded. Brand colors were detected from the image — save settings to apply.'
+            : 'Logo uploaded. Save settings to apply.',
+        })
+      } else {
+        setField(field, url)
+        toast({ title: 'Success', description: 'File uploaded. Save settings to apply.' })
+      }
     } catch (err) {
       toast({
         title: 'Error',
@@ -187,6 +216,7 @@ const InstitutionSettingsForm = ({ onUpdated }) => {
       })
     } finally {
       setUploading(null)
+      setDetectingColors(false)
       e.target.value = ''
     }
   }
@@ -233,8 +263,8 @@ const InstitutionSettingsForm = ({ onUpdated }) => {
         address: form.address.trim() || null,
         website: form.website.trim() || null,
         motto: form.motto.trim() || null,
-        theme_primary: form.theme_primary || '#002147',
-        theme_accent: form.theme_accent || '#D32F2F',
+        theme_primary: normalizeHexColor(form.theme_primary),
+        theme_accent: normalizeHexColor(form.theme_accent, '#D32F2F'),
         currency,
         currency_symbol: symbol,
         affiliate_commission_rate: Math.min(1, Math.max(0, Number(form.affiliate_commission_rate || 0) / 100)),
@@ -383,8 +413,12 @@ const InstitutionSettingsForm = ({ onUpdated }) => {
               <AssetUploadField
                 id="inst_logo"
                 label="Logo"
+                hint="Brand colors are detected automatically from this image."
                 value={form.logo_url}
-                onUrlChange={(v) => setField('logo_url', v)}
+                onUrlChange={(v) => {
+                  setField('logo_url', v)
+                  if (!v) setLogoSwatches([])
+                }}
                 onFile={(e) => handleAssetFile(e, 'logo', 'logo_url')}
                 uploading={uploading === 'logo'}
               />
@@ -409,40 +443,15 @@ const InstitutionSettingsForm = ({ onUpdated }) => {
                 uploading={uploading === 'signature'}
               />
 
-              <div className="space-y-2">
-                <Label htmlFor="theme_primary">Primary Color</Label>
-                <div className="flex gap-2">
-                  <Input
-                    id="theme_primary"
-                    type="color"
-                    value={form.theme_primary || '#002147'}
-                    onChange={(e) => setField('theme_primary', e.target.value)}
-                    className="h-10 w-14 p-1 bg-slate-950 border-slate-800"
-                  />
-                  <Input
-                    value={form.theme_primary}
-                    onChange={(e) => setField('theme_primary', e.target.value)}
-                    className="bg-slate-950 border-slate-800 font-mono"
-                  />
-                </div>
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="theme_accent">Secondary Color</Label>
-                <div className="flex gap-2">
-                  <Input
-                    id="theme_accent"
-                    type="color"
-                    value={form.theme_accent || '#D32F2F'}
-                    onChange={(e) => setField('theme_accent', e.target.value)}
-                    className="h-10 w-14 p-1 bg-slate-950 border-slate-800"
-                  />
-                  <Input
-                    value={form.theme_accent}
-                    onChange={(e) => setField('theme_accent', e.target.value)}
-                    className="bg-slate-950 border-slate-800 font-mono"
-                  />
-                </div>
+              <div className="sm:col-span-2">
+                <LogoBrandColorPicker
+                  primary={form.theme_primary}
+                  accent={form.theme_accent}
+                  swatches={logoSwatches}
+                  detecting={detectingColors}
+                  onPrimaryChange={(hex) => setField('theme_primary', hex)}
+                  onAccentChange={(hex) => setField('theme_accent', hex)}
+                />
               </div>
 
               <div className="space-y-2">
@@ -650,7 +659,7 @@ const InstitutionSettingsForm = ({ onUpdated }) => {
             type="submit"
             form="institution-settings-form"
             disabled={saving}
-            className="bg-indigo-600 hover:bg-indigo-500 mt-4"
+            className="mt-4"
           >
             {saving ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
             Save institution settings
