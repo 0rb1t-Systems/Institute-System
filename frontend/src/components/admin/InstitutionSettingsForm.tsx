@@ -47,6 +47,7 @@ const empty = {
   motto: '',
   theme_primary: '#002147',
   theme_accent: '#D32F2F',
+  theme_tertiary: '',
   subdomain: '',
   currency: 'USD',
   currency_symbol: '$',
@@ -145,6 +146,7 @@ const InstitutionSettingsForm = ({ onUpdated }) => {
       motto: institution.motto || '',
       theme_primary: institution.theme_primary || '#002147',
       theme_accent: institution.theme_accent || '#D32F2F',
+      theme_tertiary: institution.theme_tertiary || '',
       subdomain: institution.subdomain || '',
       currency,
       currency_symbol: symbol,
@@ -196,12 +198,13 @@ const InstitutionSettingsForm = ({ onUpdated }) => {
           logo_url: url,
           theme_primary: palette?.primary || prev.theme_primary,
           theme_accent: palette?.accent || prev.theme_accent,
+          theme_tertiary: palette?.tertiary || '',
         }))
         setLogoSwatches(palette?.swatches || [])
         toast({
           title: 'Success',
           description: palette?.primary
-            ? 'Logo uploaded. Brand colors were detected from the image — save settings to apply.'
+            ? 'Logo uploaded. Primary, secondary, and a third color were taken from the image — save settings to apply.'
             : 'Logo uploaded. Save settings to apply.',
         })
       } else {
@@ -265,6 +268,9 @@ const InstitutionSettingsForm = ({ onUpdated }) => {
         motto: form.motto.trim() || null,
         theme_primary: normalizeHexColor(form.theme_primary),
         theme_accent: normalizeHexColor(form.theme_accent, '#D32F2F'),
+        theme_tertiary: String(form.theme_tertiary || '').trim()
+          ? normalizeHexColor(form.theme_tertiary, '#0EA5E9')
+          : null,
         currency,
         currency_symbol: symbol,
         affiliate_commission_rate: Math.min(1, Math.max(0, Number(form.affiliate_commission_rate || 0) / 100)),
@@ -447,10 +453,12 @@ const InstitutionSettingsForm = ({ onUpdated }) => {
                 <LogoBrandColorPicker
                   primary={form.theme_primary}
                   accent={form.theme_accent}
+                  tertiary={form.theme_tertiary}
                   swatches={logoSwatches}
                   detecting={detectingColors}
                   onPrimaryChange={(hex) => setField('theme_primary', hex)}
                   onAccentChange={(hex) => setField('theme_accent', hex)}
+                  onTertiaryChange={(hex) => setField('theme_tertiary', hex)}
                 />
               </div>
 

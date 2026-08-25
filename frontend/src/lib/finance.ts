@@ -38,9 +38,13 @@ export type FinanceEnrollment = {
 export type FinancePayment = {
   id?: string
   student_id?: string
+  class_id?: string | null
   amount?: number | null
   status?: string | null
   is_registration_fee?: boolean | null
+  month_paid?: string | null
+  note?: string | null
+  notes?: string | null
 }
 
 function isCompletedPayment(p: FinancePayment): boolean {
@@ -211,4 +215,52 @@ export function computeStudentBalance(input: StudentBalanceInput): StudentBalanc
     regBalance,
     balance,
   }
+}
+
+/** Billing month key YYYY-MM from payment note / month_paid. */
+export function getPaymentBillingMonth(p?: FinancePayment | null): string | null {
+  if (!p || p.is_registration_fee === true) return null
+  const fromField = String(p.month_paid || '').trim()
+  if (/^\d{4}-\d{2}/.test(fromField)) return fromField.slice(0, 7)
+  const note = String(p.note || p.notes || '').trim()
+  if (/^\d{4}-\d{2}/.test(note)) return note.slice(0, 7)
+  return null
+}
+
+/**
+ * Sum of completed tuition already recorded for a billing month (YYYY-MM).
+ * Pass `excludePaymentId` when editing so the current row is not double-counted.
+ */
+export function sumPaidForBillingMonth(input: {
+  payments?: FinancePayment[] | null
+  month: string
+  studentId?: string | null
+  classId?: string | null
+  excludePaymentId?: string | null
+}): number {
+  const month = String(input.month || '').slice(0, 7)
+  if (!/^\d{4}-\d{2}$/.test(month)) return 0
+  return (input.payments || []).reduce((sum, p) => {
+    if (input.excludePaymentId && p.id === input.excludePaymentId) return sum
+    if (p.is_registration_fee === true) return sum
+    if (!isCompletedPayment(p)) return sum
+    if (input.studentId && p.student_id && p.student_id !== input.studentId) return sum
+    if (input.classId && p.class_id && p.class_id !== input.classId) return sum
+    if (getPaymentBillingMonth(p) !== month) return sum
+    return sum + Number(p.amount || 0)
+  }, 0)
+}
+
+/** Remaining amount still allowed for a billing month (never above monthly fee). */
+export function remainingForBillingMonth(input: {
+  monthlyFee: number
+  payments?: FinancePayment[] | null
+  month: string
+  studentId?: string | null
+  classId?: string | null
+  excludePaymentId?: string | null
+}): number {
+  const due = Math.max(0, Number(input.monthlyFee) || 0)
+  const paid = sumPaidForBillingMonth(input)
+  return Math.max(0, Math.round((due - paid) * 100) / 100)
 }

@@ -15,6 +15,7 @@ export type InstitutionBrand = {
   motto?: string | null
   theme_primary?: string | null
   theme_accent?: string | null
+  theme_tertiary?: string | null
   status?: string | null
   affiliate_commission_rate?: number | null
   registration_fee_amount?: number | null
@@ -95,6 +96,10 @@ export function getInstitutionPrimary(institution?: InstitutionBrand): string {
 
 export function getInstitutionAccent(institution?: InstitutionBrand): string {
   return String(institution?.theme_accent || '').trim() || DEFAULT_ACCENT
+}
+
+export function getInstitutionTertiary(institution?: InstitutionBrand): string {
+  return String(institution?.theme_tertiary || '').trim()
 }
 
 /**

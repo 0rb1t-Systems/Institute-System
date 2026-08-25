@@ -8,32 +8,40 @@ import { normalizeHexColor } from '@/lib/logoBrandColors'
 type Props = {
   primary: string
   accent: string
+  tertiary?: string | null
   swatches?: string[]
   detecting?: boolean
   onPrimaryChange: (hex: string) => void
   onAccentChange: (hex: string) => void
+  onTertiaryChange: (hex: string) => void
   className?: string
   primaryId?: string
   accentId?: string
+  tertiaryId?: string
 }
 
 const LogoBrandColorPicker = ({
   primary,
   accent,
+  tertiary = '',
   swatches = [],
   detecting = false,
   onPrimaryChange,
   onAccentChange,
+  onTertiaryChange,
   className,
   primaryId = 'theme_primary',
   accentId = 'theme_accent',
+  tertiaryId = 'theme_tertiary',
 }: Props) => {
   const safePrimary = normalizeHexColor(primary)
   const safeAccent = normalizeHexColor(accent, '#D32F2F')
+  const hasTertiary = Boolean(String(tertiary || '').trim())
+  const safeTertiary = hasTertiary ? normalizeHexColor(tertiary, '#0EA5E9') : '#0EA5E9'
 
   return (
     <div className={cn('space-y-3', className)}>
-      <div className="grid gap-3 sm:grid-cols-2">
+      <div className="grid gap-3 sm:grid-cols-3">
         <div className="space-y-2">
           <Label htmlFor={primaryId}>Primary color</Label>
           <div className="flex gap-2">
@@ -68,6 +76,24 @@ const LogoBrandColorPicker = ({
             />
           </div>
         </div>
+        <div className="space-y-2">
+          <Label htmlFor={tertiaryId}>Third color</Label>
+          <div className="flex gap-2">
+            <Input
+              id={tertiaryId}
+              type="color"
+              value={safeTertiary}
+              onChange={(e) => onTertiaryChange(e.target.value)}
+              className="h-10 w-14 cursor-pointer p-1 bg-slate-950 border-slate-800"
+            />
+            <Input
+              value={tertiary || ''}
+              onChange={(e) => onTertiaryChange(e.target.value)}
+              placeholder="optional"
+              className="bg-slate-950 border-slate-800 font-mono"
+            />
+          </div>
+        </div>
       </div>
 
       {detecting ? (
@@ -80,30 +106,44 @@ const LogoBrandColorPicker = ({
       {swatches.length > 0 ? (
         <div className="space-y-1.5">
           <p className="text-xs text-slate-400">
-            Detected from logo — click a color to use it as the primary brand color. Secondary can still be edited above.
+            Colors from the logo are applied automatically: 1st = primary, 2nd = secondary, 3rd = third color.
+            Click a swatch if you want to override primary.
           </p>
           <div className="flex flex-wrap gap-2">
             {swatches.map((hex) => {
-              const selected = hex.toUpperCase() === safePrimary
+              const role =
+                hex.toUpperCase() === safePrimary
+                  ? '1'
+                  : hex.toUpperCase() === safeAccent
+                    ? '2'
+                    : hasTertiary && hex.toUpperCase() === safeTertiary
+                      ? '3'
+                      : null
               return (
                 <button
                   key={hex}
                   type="button"
-                  title={`Use ${hex} as primary`}
+                  title={hex}
                   onClick={() => onPrimaryChange(hex)}
                   className={cn(
-                    'h-8 w-8 rounded-md border-2 transition',
-                    selected ? 'border-white ring-2 ring-white/40' : 'border-slate-700 hover:border-slate-400',
+                    'relative h-8 w-8 rounded-md border-2 transition',
+                    role ? 'border-white ring-2 ring-white/40' : 'border-slate-700 hover:border-slate-400',
                   )}
                   style={{ backgroundColor: hex }}
-                />
+                >
+                  {role ? (
+                    <span className="absolute -right-1 -top-1 flex h-4 w-4 items-center justify-center rounded-full bg-white text-[9px] font-bold text-slate-900">
+                      {role}
+                    </span>
+                  ) : null}
+                </button>
               )
             })}
           </div>
         </div>
       ) : (
         <p className="text-xs text-slate-500">
-          Upload a logo to auto-fill these colors from the image. You can override them anytime.
+          Upload a logo to auto-fill primary, secondary, and a third color when the logo has them.
         </p>
       )}
     </div>

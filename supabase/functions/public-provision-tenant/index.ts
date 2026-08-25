@@ -180,8 +180,10 @@ Deno.serve(async (req) => {
     const description = String(body.description || '').trim() || null
     let theme_primary = String(body.theme_primary || '').trim()
     let theme_accent = String(body.theme_accent || '').trim()
+    let theme_tertiary = String(body.theme_tertiary || '').trim()
     if (theme_primary && !isHexColor(theme_primary)) theme_primary = ''
     if (theme_accent && !isHexColor(theme_accent)) theme_accent = ''
+    if (theme_tertiary && !isHexColor(theme_tertiary)) theme_tertiary = ''
 
     const logo_data_url = body.logo_data_url ? String(body.logo_data_url) : null
     const hero_data_url = body.hero_data_url ? String(body.hero_data_url) : null
@@ -288,6 +290,7 @@ Deno.serve(async (req) => {
     }
     if (theme_primary) branding.theme_primary = theme_primary
     if (theme_accent) branding.theme_accent = theme_accent
+    if (theme_tertiary) branding.theme_tertiary = theme_tertiary
     if (logo_url) branding.logo_url = logo_url
     if (hero_image_url) branding.hero_image_url = hero_image_url
 

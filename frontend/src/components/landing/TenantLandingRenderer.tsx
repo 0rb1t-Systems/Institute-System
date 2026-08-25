@@ -67,10 +67,12 @@ export default function TenantLandingRenderer({
     ...institution,
     landing_template_id: meta.id,
   })
+  const aboutBody = String(institution.landing_content?.about_body || '').trim()
   const tagline =
+    aboutBody ||
     String(institution.description || '').trim() ||
     'A trusted place for training, credentials, and academic excellence.'
-  const shortTagline = tagline.length > 220 ? `${tagline.slice(0, 217)}…` : tagline
+  const shortTagline = tagline.length > 180 ? `${tagline.slice(0, 177)}…` : tagline
 
   return (
     <Template

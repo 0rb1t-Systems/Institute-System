@@ -21,7 +21,7 @@ import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { formatCurrency, formatDate, getMonthsBetween } from '@/lib/utils';
 import { getRegistrationFeeAmount } from '@/lib/institution';
-import { computeStudentBalance, mustPayRegistrationFirst } from '@/lib/finance';
+import { computeStudentBalance, mustPayRegistrationFirst, remainingForBillingMonth } from '@/lib/finance';
 
 // --- Payment Form Component ---
 const PaymentForm = ({ closeDialog, preSelectedStudentId, existingPayment, financials, initialMode = 'payment' }) => {
@@ -75,20 +75,52 @@ const PaymentForm = ({ closeDialog, preSelectedStudentId, existingPayment, finan
       return getMonthsBetween(activeClass.start_date, activeClass.end_date);
   }, [activeClass]);
 
-  const paidMonths = useMemo(() => {
-      if (!targetStudentId || !formData.class_id) return new Set();
-      return new Set(
-          payments
-            .filter(p => 
-                p.student_id === targetStudentId && 
-                p.class_id === formData.class_id && 
-                p.month_paid && 
-                p.id !== existingPayment?.id
-            )
-            .map(p => p.month_paid)
-      );
-  }, [payments, targetStudentId, formData.class_id, existingPayment]);
-  
+  const paidByMonth = useMemo(() => {
+      const map = new Map<string, number>()
+      if (!targetStudentId || !formData.class_id) return map
+      payments
+        .filter(
+          (p) =>
+            p.student_id === targetStudentId &&
+            p.class_id === formData.class_id &&
+            !p.is_registration_fee &&
+            (p.status === 'completed' || !p.status) &&
+            p.id !== existingPayment?.id,
+        )
+        .forEach((p) => {
+          const key = p.month_paid ? String(p.month_paid).slice(0, 7) : null
+          if (!key || !/^\d{4}-\d{2}$/.test(key)) return
+          map.set(key, (map.get(key) || 0) + Number(p.amount || 0))
+        })
+      return map
+  }, [payments, targetStudentId, formData.class_id, existingPayment])
+
+  const remainingForSelectedMonth = useMemo(() => {
+      if (formData.type !== 'tuition' || !formData.month_paid) return discountedMonthlyFee
+      return remainingForBillingMonth({
+        monthlyFee: discountedMonthlyFee,
+        payments,
+        month: formData.month_paid,
+        studentId: targetStudentId || formData.student_id,
+        classId: formData.class_id,
+        excludePaymentId: existingPayment?.id,
+      })
+  }, [
+    formData.type,
+    formData.month_paid,
+    formData.student_id,
+    formData.class_id,
+    discountedMonthlyFee,
+    payments,
+    targetStudentId,
+    existingPayment?.id,
+  ])
+
+  const isMonthFullyPaid = (month: string) => {
+      const paid = paidByMonth.get(month) || 0
+      return discountedMonthlyFee > 0 && paid >= discountedMonthlyFee - 0.001
+  }
+
   const hasExistingRegFee = useMemo(() => {
       if (!targetStudentId) return false;
       return payments.some(p => 
@@ -121,7 +153,7 @@ const PaymentForm = ({ closeDialog, preSelectedStudentId, existingPayment, finan
   const getNextMonth = () => {
       if (!validMonths.length) return new Date().toISOString().slice(0, 7);
       for (const m of validMonths) {
-          if (!paidMonths.has(m)) return m;
+          if (!isMonthFullyPaid(m)) return m;
       }
       return '';
   };
@@ -136,7 +168,7 @@ const PaymentForm = ({ closeDialog, preSelectedStudentId, existingPayment, finan
          let month = type === 'tuition' ? getNextMonth() : '';
          setFormData(prev => ({ ...prev, type, amount, month_paid: month }));
       }
-  }, [isEditing, hasExistingRegFee, requiresRegistrationFirst, preSelectedStudentId, discountedMonthlyFee, validMonths, paidMonths, registrationFee]);
+  }, [isEditing, hasExistingRegFee, requiresRegistrationFirst, preSelectedStudentId, discountedMonthlyFee, validMonths, paidByMonth, registrationFee]);
 
   useEffect(() => {
       if (!isEditing && requiresRegistrationFirst && formData.type !== 'registration') {
@@ -154,10 +186,43 @@ const PaymentForm = ({ closeDialog, preSelectedStudentId, existingPayment, finan
           if (formData.type === 'registration') {
               setFormData(prev => ({ ...prev, amount: String(registrationFee), month_paid: '' }));
           } else if (formData.type === 'tuition') {
-               setFormData(prev => ({ ...prev, amount: discountedMonthlyFee.toFixed(2), month_paid: getNextMonth() }));
+               const month = formData.month_paid || getNextMonth()
+               const remaining = remainingForBillingMonth({
+                 monthlyFee: discountedMonthlyFee,
+                 payments,
+                 month,
+                 studentId: targetStudentId || formData.student_id,
+                 classId: formData.class_id || activeClass?.id,
+                 excludePaymentId: existingPayment?.id,
+               })
+               setFormData(prev => ({
+                 ...prev,
+                 amount: remaining.toFixed(2),
+                 month_paid: month,
+               }));
           }
       }
   }, [formData.type, discountedMonthlyFee]);
+
+  // When billing month changes, cap amount to what is still due for that month
+  useEffect(() => {
+      if (isEditing || formData.type !== 'tuition' || !formData.month_paid) return
+      setFormData((prev) => {
+        const rem = remainingForBillingMonth({
+          monthlyFee: discountedMonthlyFee,
+          payments,
+          month: formData.month_paid,
+          studentId: targetStudentId || prev.student_id,
+          classId: prev.class_id,
+          excludePaymentId: existingPayment?.id,
+        })
+        const current = Number(prev.amount)
+        if (!Number.isFinite(current) || current > rem || current <= 0) {
+          return { ...prev, amount: rem > 0 ? rem.toFixed(2) : '0' }
+        }
+        return prev
+      })
+  }, [formData.month_paid, discountedMonthlyFee, payments, targetStudentId, existingPayment?.id, isEditing, formData.type]);
 
   const handleStudentChange = (sid) => {
       if (isEditing) return; 
@@ -208,6 +273,17 @@ const PaymentForm = ({ closeDialog, preSelectedStudentId, existingPayment, finan
           if (!formData.class_id) {
               return { valid: false, error: 'Select the class/enrollment for this registration payment.' };
           }
+          const amt = Number(formData.amount)
+          if (!Number.isFinite(amt) || amt <= 0) {
+              return { valid: false, error: 'Enter a valid amount.' }
+          }
+          if (amt > registrationFee + 0.001) {
+              return {
+                valid: false,
+                error: `Registration fee cannot exceed ${formatCurrency(registrationFee)}.`,
+                isOverAmount: true,
+              }
+          }
       }
       if (formData.type === 'tuition') {
           if (!formData.student_id) return { valid: false };
@@ -216,12 +292,51 @@ const PaymentForm = ({ closeDialog, preSelectedStudentId, existingPayment, finan
           if (validMonths.length > 0 && !validMonths.includes(formData.month_paid)) {
               return { valid: false, error: "Selected month is outside of the class duration.", isInvalidMonth: true };
           }
-          if (paidMonths.has(formData.month_paid)) {
-              return { valid: false, error: `A payment for ${formData.month_paid} is already recorded.`, isDuplicate: true };
+          const rem = remainingForBillingMonth({
+            monthlyFee: discountedMonthlyFee,
+            payments,
+            month: formData.month_paid,
+            studentId: targetStudentId || formData.student_id,
+            classId: formData.class_id,
+            excludePaymentId: existingPayment?.id,
+          })
+          if (rem <= 0) {
+              return {
+                valid: false,
+                error: `${formData.month_paid} is already fully paid (${formatCurrency(discountedMonthlyFee)}).`,
+                isDuplicate: true,
+              };
+          }
+          const amt = Number(formData.amount)
+          if (!Number.isFinite(amt) || amt <= 0) {
+              return { valid: false, error: 'Enter a valid amount.' }
+          }
+          if (amt > rem + 0.001) {
+              return {
+                valid: false,
+                error: `Amount cannot exceed ${formatCurrency(rem)} remaining for ${formData.month_paid} (monthly due ${formatCurrency(discountedMonthlyFee)}).`,
+                isOverAmount: true,
+              }
+          }
+          if (amt > discountedMonthlyFee + 0.001) {
+              return {
+                valid: false,
+                error: `Amount cannot exceed the monthly fee of ${formatCurrency(discountedMonthlyFee)}.`,
+                isOverAmount: true,
+              }
           }
       }
       return { valid: true };
-  }, [formData, paidMonths, validMonths, requiresRegistrationFirst]);
+  }, [
+    formData,
+    validMonths,
+    requiresRegistrationFirst,
+    discountedMonthlyFee,
+    payments,
+    targetStudentId,
+    existingPayment?.id,
+    registrationFee,
+  ]);
 
   const handleSubmit = async (e) => {
       e.preventDefault();
@@ -254,7 +369,17 @@ const PaymentForm = ({ closeDialog, preSelectedStudentId, existingPayment, finan
               month_paid: isRegistration ? null : formData.month_paid,
               is_registration_fee: isRegistration,
               notes: formData.notes,
-              note: formData.notes || formData.month_paid || null,
+              // Always keep YYYY-MM as the note prefix for tuition so month caps stay reliable
+              note: isRegistration
+                ? (formData.notes || 'Registration Fee')
+                : (() => {
+                    const month = String(formData.month_paid || '').slice(0, 7)
+                    const extra = String(formData.notes || '').trim()
+                    if (!/^\d{4}-\d{2}$/.test(month)) return extra || null
+                    if (!extra || extra === month) return month
+                    const cleaned = extra.replace(/^\d{4}-\d{2}\s*[—\-–]?\s*/, '')
+                    return cleaned ? `${month} — ${cleaned}` : month
+                  })(),
               payment_date: new Date(formData.payment_date).toISOString(),
               status: formData.status
           };
@@ -342,21 +467,43 @@ const PaymentForm = ({ closeDialog, preSelectedStudentId, existingPayment, finan
                     <div className="space-y-2">
                         <Label>For Month</Label>
                         {activeClass && validMonths.length > 0 ? (
-                            <Select value={formData.month_paid} onValueChange={v => setFormData({...formData, month_paid: v})}>
-                                <SelectTrigger className={validation.isDuplicate || validation.isInvalidMonth ? "border-red-500 focus:ring-red-500" : ""}>
+                            <Select
+                              value={formData.month_paid}
+                              onValueChange={(v) => {
+                                const rem = remainingForBillingMonth({
+                                  monthlyFee: discountedMonthlyFee,
+                                  payments,
+                                  month: v,
+                                  studentId: targetStudentId || formData.student_id,
+                                  classId: formData.class_id,
+                                  excludePaymentId: existingPayment?.id,
+                                })
+                                setFormData({
+                                  ...formData,
+                                  month_paid: v,
+                                  amount: rem > 0 ? rem.toFixed(2) : '0',
+                                })
+                              }}
+                            >
+                                <SelectTrigger className={validation.isDuplicate || validation.isInvalidMonth || validation.isOverAmount ? "border-red-500 focus:ring-red-500" : ""}>
                                     <SelectValue placeholder="Select billing month" />
                                 </SelectTrigger>
                                 <SelectContent>
-                                    {validMonths.map(m => (
+                                    {validMonths.map(m => {
+                                        const paidAmt = paidByMonth.get(m) || 0
+                                        const rem = Math.max(0, discountedMonthlyFee - paidAmt)
+                                        const full = isMonthFullyPaid(m) && m !== existingPayment?.month_paid
+                                        return (
                                         <SelectItem 
                                             key={m} 
                                             value={m} 
-                                            disabled={paidMonths.has(m) && m !== existingPayment?.month_paid} 
-                                            className={paidMonths.has(m) ? "opacity-50" : ""}
+                                            disabled={full} 
+                                            className={full ? "opacity-50" : ""}
                                         >
-                                            {m} {paidMonths.has(m) && m !== existingPayment?.month_paid ? '(Paid)' : ''}
+                                            {m}{full ? ' (Paid)' : rem < discountedMonthlyFee - 0.001 ? ` · ${formatCurrency(rem)} left` : ''}
                                         </SelectItem>
-                                    ))}
+                                        )
+                                    })}
                                 </SelectContent>
                             </Select>
                         ) : (
@@ -383,12 +530,28 @@ const PaymentForm = ({ closeDialog, preSelectedStudentId, existingPayment, finan
                <div className="space-y-2">
                   <Label>Amount ($)</Label>
                   <Input 
-                    type="number" 
+                    type="number"
+                    step="0.01"
+                    min="0.01"
+                    max={
+                      formData.type === 'tuition'
+                        ? remainingForSelectedMonth
+                        : formData.type === 'registration'
+                          ? registrationFee
+                          : undefined
+                    }
                     value={formData.amount} 
                     onChange={e => setFormData({...formData, amount: e.target.value})} 
                     required 
                     readOnly={formData.type === 'registration' && !isEditing}
+                    className={validation.isOverAmount ? 'border-red-500 focus-visible:ring-red-500' : undefined}
                   />
+                  {formData.type === 'tuition' && formData.month_paid ? (
+                     <div className="text-[10px] text-slate-400 text-right">
+                        Max for {formData.month_paid}: {formatCurrency(remainingForSelectedMonth)}
+                        {discountedMonthlyFee > 0 ? ` · monthly due ${formatCurrency(discountedMonthlyFee)}` : ''}
+                     </div>
+                  ) : null}
                   {monthlyDiscount > 0 && formData.type === 'tuition' && (
                      <div className="text-[10px] text-green-500 text-right">
                         Discount applied: -{formatCurrency(monthlyDiscount)}
@@ -440,7 +603,7 @@ const PaymentForm = ({ closeDialog, preSelectedStudentId, existingPayment, finan
                 className={`w-full disabled:opacity-50 disabled:cursor-not-allowed ${formData.status === 'pending' ? 'bg-orange-600 hover:bg-orange-700' : 'bg-green-600 hover:bg-green-700'}`}
                 disabled={!validation.valid}
               >
-                {validation.isDuplicate ? "Record Exists" : (isEditing ? "Update Record" : (initialMode === 'charge' ? "Create Charge" : "Record Payment"))}
+                {validation.isDuplicate ? "Month fully paid" : validation.isOverAmount ? "Amount too high" : (isEditing ? "Update Record" : (initialMode === 'charge' ? "Create Charge" : "Record Payment"))}
               </Button>
           </DialogFooter>
       </form>

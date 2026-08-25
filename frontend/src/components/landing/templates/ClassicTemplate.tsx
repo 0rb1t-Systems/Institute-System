@@ -99,6 +99,7 @@ export default function ClassicTemplate(p: LandingTemplateProps) {
         accent={accent}
         tagline={tagline}
         tone="dark"
+        preview={preview}
       />
       <SharedLandingFooter
         institution={institution}

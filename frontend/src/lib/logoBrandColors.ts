@@ -5,6 +5,7 @@
 
 export const DEFAULT_BRAND_PRIMARY = '#002147'
 export const DEFAULT_BRAND_ACCENT = '#D32F2F'
+export const DEFAULT_BRAND_TERTIARY = '#0EA5E9'
 
 const HEX6 = /^#([0-9a-f]{6})$/i
 
@@ -96,11 +97,24 @@ export function hexForegroundChannels(hex: string): string {
   return l > 0.62 ? '222 47% 11%' : '210 40% 98%'
 }
 
-export function complementaryHex(hex: string): string {
+export function shadeHex(hex: string, deltaL: number): string {
   const { r, g, b } = hexToRgb(hex)
   const { h, s, l } = rgbToHsl(r, g, b)
-  const rgb = hslToRgb(h + 180, Math.max(s, 0.42), Math.min(0.52, Math.max(0.32, l)))
+  const next = Math.max(0.12, Math.min(0.88, l + deltaL))
+  const rgb = hslToRgb(h, s, next)
   return rgbToHex(rgb.r, rgb.g, rgb.b)
+}
+
+function pickDistinctSwatches(swatches: string[], max = 3): string[] {
+  const picked: string[] = []
+  for (const hex of swatches) {
+    const far = picked.every((p) => colorDistance(hex, p) > 32 || hueDistance(hex, p) > 14)
+    if (!picked.length || far) {
+      picked.push(hex)
+      if (picked.length >= max) break
+    }
+  }
+  return picked
 }
 
 function colorDistance(a: string, b: string): number {
@@ -200,6 +214,7 @@ function drawToCanvas(img: HTMLImageElement): ImageData | null {
 export type LogoBrandPalette = {
   primary: string
   accent: string
+  tertiary: string | null
   swatches: string[]
 }
 
@@ -227,13 +242,17 @@ export async function extractLogoBrandPalette(
     const swatches = paletteFromImageData(imageData.data)
     if (!swatches.length) return null
 
-    const primary = swatches[0]
-    const accentCandidate = swatches.find((c) => hueDistance(c, primary) > 28 && colorDistance(c, primary) > 48)
-    const accent = accentCandidate || complementaryHex(primary)
+    const distinct = pickDistinctSwatches(swatches, 3)
+    const primary = normalizeHexColor(distinct[0])
+    const accent = distinct[1]
+      ? normalizeHexColor(distinct[1], DEFAULT_BRAND_ACCENT)
+      : shadeHex(primary, 0.16)
+    const tertiary = distinct[2] ? normalizeHexColor(distinct[2], DEFAULT_BRAND_TERTIARY) : null
 
     return {
-      primary: normalizeHexColor(primary),
-      accent: normalizeHexColor(accent, DEFAULT_BRAND_ACCENT),
+      primary,
+      accent,
+      tertiary,
       swatches: swatches.slice(0, 6).map((c) => normalizeHexColor(c)),
     }
   } catch {
@@ -246,13 +265,19 @@ export async function extractLogoBrandPalette(
 export function applyInstitutionBrandCss(
   primaryInput?: string | null,
   accentInput?: string | null,
+  tertiaryInput?: string | null,
 ): void {
   if (typeof document === 'undefined') return
   const root = document.documentElement
   const primary = normalizeHexColor(primaryInput, DEFAULT_BRAND_PRIMARY)
   const accent = normalizeHexColor(accentInput, DEFAULT_BRAND_ACCENT)
+  const tertiary = String(tertiaryInput || '').trim()
+    ? normalizeHexColor(tertiaryInput, DEFAULT_BRAND_TERTIARY)
+    : ''
   root.style.setProperty('--brand-primary', primary)
   root.style.setProperty('--brand-accent', accent)
+  if (tertiary) root.style.setProperty('--brand-tertiary', tertiary)
+  else root.style.removeProperty('--brand-tertiary')
   root.style.setProperty('--primary', hexToHslChannels(primary))
   root.style.setProperty('--primary-foreground', hexForegroundChannels(primary))
   root.style.setProperty('--ring', hexToHslChannels(primary))
@@ -263,6 +288,7 @@ export function clearInstitutionBrandCss(): void {
   const root = document.documentElement
   root.style.removeProperty('--brand-primary')
   root.style.removeProperty('--brand-accent')
+  root.style.removeProperty('--brand-tertiary')
   root.style.removeProperty('--primary')
   root.style.removeProperty('--primary-foreground')
   root.style.removeProperty('--ring')

@@ -111,6 +111,7 @@ export default function CrestTemplate(p: LandingTemplateProps) {
           accent={accent}
           tagline={tagline}
           tone="dark"
+          preview={preview}
         />
         <SharedLandingFooter
           institution={institution}

@@ -232,6 +232,11 @@ export function SharedLandingFooter({
               </button>
             </li>
             <li>
+              <button type="button" onClick={() => scrollToLandingSection('programs', preview)} className={linkHover}>
+                Programs
+              </button>
+            </li>
+            <li>
               <button type="button" onClick={() => !preview && onOpenLogin()} className={linkHover}>
                 Portal Login
               </button>

@@ -1,4 +1,5 @@
 import type { LandingTemplateId } from '@/lib/landingTemplates'
+import type { LandingContent } from '@/lib/landingContent'
 
 export type LandingInstitution = {
   id?: string
@@ -13,10 +14,12 @@ export type LandingInstitution = {
   website?: string | null
   theme_primary?: string | null
   theme_accent?: string | null
+  theme_tertiary?: string | null
   landing_template_id?: LandingTemplateId | string | null
   hero_image_url?: string | null
   hero_headline?: string | null
   footer_text?: string | null
+  landing_content?: LandingContent | null
 }
 
 export type LandingTemplateProps = {

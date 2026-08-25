@@ -38,6 +38,11 @@ import SignupPage from '@/pages/SignupPage';
 import WelcomePage from '@/pages/WelcomePage';
 import PrivacyPage from '@/pages/public/PrivacyPage';
 import TermsPage from '@/pages/public/TermsPage';
+import PlatformFeaturesPage from '@/pages/public/PlatformFeaturesPage';
+import PlatformAboutPage from '@/pages/public/PlatformAboutPage';
+import PlatformContactPage from '@/pages/public/PlatformContactPage';
+import PlatformPlansPage from '@/pages/public/PlatformPlansPage';
+import PlatformSupportPage from '@/pages/public/PlatformSupportPage';
 import NotFoundPage from '@/pages/NotFoundPage';
 import DashboardPage from '@/pages/DashboardPage';
 import CoursesPage from '@/pages/CoursesPage';
@@ -249,6 +254,11 @@ const App = () => {
     <ErrorBoundary>
       <Routes>
           <Route path="/" element={<WelcomePage />} />
+          <Route path="/features" element={<PlatformFeaturesPage />} />
+          <Route path="/plans" element={<PlatformPlansPage />} />
+          <Route path="/support" element={<PlatformSupportPage />} />
+          <Route path="/about" element={<PlatformAboutPage />} />
+          <Route path="/contact" element={<PlatformContactPage />} />
           <Route path="/login" element={<PlatformLoginRoute />} />
           <Route path="/signup" element={user ? <Navigate to={getRootRedirect()} replace /> : <SignupPage />} />
           <Route

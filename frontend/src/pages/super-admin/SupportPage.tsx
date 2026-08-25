@@ -23,7 +23,7 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
-import { AlertCircle, Loader2, Plus } from 'lucide-react'
+import { AlertCircle, Loader2, Plus, LifeBuoy, Clock, CheckCircle2, Inbox } from 'lucide-react'
 import {
   listSupportTickets,
   createSupportTicket,
@@ -78,6 +78,13 @@ const SupportPage = () => {
   useEffect(() => {
     load()
   }, [])
+
+  const counts = useMemo(() => {
+    const open = tickets.filter((t) => t.status === 'open' || t.status === 'new').length
+    const progress = tickets.filter((t) => t.status === 'in_progress').length
+    const done = tickets.filter((t) => t.status === 'resolved' || t.status === 'closed').length
+    return { open, progress, done, total: tickets.length }
+  }, [tickets])
 
   const tenantName = useMemo(() => {
     const map: any = {}
@@ -163,7 +170,30 @@ const SupportPage = () => {
         </Alert>
       )}
 
-      <div className="rounded-lg border border-slate-800 overflow-hidden">
+      <div className="mb-6 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        {[
+          { label: 'All tickets', value: loading ? '…' : counts.total, icon: Inbox },
+          { label: 'Open', value: loading ? '…' : counts.open, icon: LifeBuoy },
+          { label: 'In progress', value: loading ? '…' : counts.progress, icon: Clock },
+          { label: 'Resolved', value: loading ? '…' : counts.done, icon: CheckCircle2 },
+        ].map((item) => {
+          const Icon = item.icon
+          return (
+            <div
+              key={item.label}
+              className="rounded-xl border border-[var(--pf-line)] bg-[var(--pf-surface)] p-4 transition-all duration-300 hover:-translate-y-1 hover:border-teal-500/35"
+            >
+              <div className="flex items-center justify-between">
+                <p className="text-sm text-[var(--pf-muted)]">{item.label}</p>
+                <Icon className="h-4 w-4 text-teal-600" />
+              </div>
+              <p className="mt-2 font-display text-2xl font-semibold text-[var(--pf-text)]">{item.value}</p>
+            </div>
+          )
+        })}
+      </div>
+
+      <div className="overflow-x-auto rounded-xl border border-[var(--pf-line)] bg-[var(--pf-surface)]">
         <Table>
           <TableHeader>
             <TableRow className="border-slate-800 hover:bg-transparent">

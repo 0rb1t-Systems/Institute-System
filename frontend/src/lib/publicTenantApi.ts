@@ -62,6 +62,7 @@ export async function publicProvisionTenant(form) {
       description: form.description || null,
       theme_primary: form.theme_primary || null,
       theme_accent: form.theme_accent || null,
+      theme_tertiary: form.theme_tertiary || null,
       logo_data_url: form.logo_data_url || null,
       hero_data_url: form.hero_data_url || null,
     },

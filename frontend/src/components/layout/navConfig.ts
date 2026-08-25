@@ -43,12 +43,12 @@ export function getNavItemsForRole(role?: string | null): NavItem[] {
         { href: '/super-admin', icon: LayoutDashboard, label: 'Overview' },
         { href: '/super-admin/tenants', icon: Building2, label: 'Tenants' },
         { href: '/super-admin/tenant-admins', icon: UserCog, label: 'Tenant Admins' },
-        { href: '/super-admin/plans', icon: Package, label: 'Plans & Subscriptions' },
-        { href: '/super-admin/revenue', icon: DollarSign, label: 'Revenue & Payments' },
+        { href: '/super-admin/plans', icon: Package, label: 'Plans' },
+        { href: '/super-admin/revenue', icon: DollarSign, label: 'Revenue' },
         { href: '/super-admin/analytics', icon: BarChart3, label: 'Analytics' },
         { href: '/super-admin/support', icon: LifeBuoy, label: 'Support' },
         { href: '/super-admin/audit-logs', icon: ScrollText, label: 'Audit Logs' },
-        { href: '/super-admin/settings', icon: Settings, label: 'Platform Settings' },
+        { href: '/super-admin/settings', icon: Settings, label: 'Settings' },
         { href: '/super-admin/profile', icon: User, label: 'Profile' },
       ];
     case 'admin':

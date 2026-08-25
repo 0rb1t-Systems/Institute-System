@@ -1,19 +1,17 @@
 import React from 'react';
-import { Link } from 'react-router-dom';
 import { Helmet } from 'react-helmet';
-import { Button } from '@/components/ui/button';
+import PlatformLayout from '@/components/platform/PlatformLayout';
 
 export default function TermsPage() {
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-200 p-6 md:p-12">
-      <Helmet><title>Terms of Service</title></Helmet>
-      <div className="max-w-3xl mx-auto space-y-6">
-        <Button asChild variant="outline" className="border-slate-700">
-          <Link to="/login">Back to login</Link>
-        </Button>
-        <h1 className="text-3xl font-bold text-white">Terms of Service</h1>
-        <p className="text-slate-400 text-sm">Last updated: July 2026</p>
-        <div className="space-y-4 text-slate-300 leading-relaxed">
+    <PlatformLayout>
+      <Helmet>
+        <title>Terms of Service — TvetFlow</title>
+      </Helmet>
+      <article className="mx-auto max-w-3xl space-y-6 px-5 py-14 sm:px-8">
+        <h1 className="font-display text-3xl font-semibold text-[var(--pf-text)]">Terms of Service</h1>
+        <p className="text-sm text-[var(--pf-faint)]">Last updated: July 2026</p>
+        <div className="space-y-4 text-[15px] leading-relaxed text-[var(--pf-muted)]">
           <p>
             By using this multi-tenant training center platform, you agree to use the service
             lawfully and only for managing your institution’s students, classes, attendance,
@@ -28,7 +26,7 @@ export default function TermsPage() {
             provider’s terms in addition to these Terms.
           </p>
         </div>
-      </div>
-    </div>
+      </article>
+    </PlatformLayout>
   );
 }

@@ -1,6 +1,6 @@
 import { useEffect } from 'react'
 import { useAuth } from '@/contexts/AuthContext'
-import { getInstitutionAccent, getInstitutionPrimary } from '@/lib/institution'
+import { getInstitutionAccent, getInstitutionPrimary, getInstitutionTertiary } from '@/lib/institution'
 import { applyInstitutionBrandCss, clearInstitutionBrandCss } from '@/lib/logoBrandColors'
 
 /**
@@ -15,7 +15,11 @@ export default function InstitutionBrandTheme() {
       clearInstitutionBrandCss()
       return
     }
-    applyInstitutionBrandCss(getInstitutionPrimary(institution), getInstitutionAccent(institution))
+    applyInstitutionBrandCss(
+      getInstitutionPrimary(institution),
+      getInstitutionAccent(institution),
+      getInstitutionTertiary(institution),
+    )
     return () => clearInstitutionBrandCss()
   }, [institution, user?.role])
 

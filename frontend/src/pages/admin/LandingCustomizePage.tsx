@@ -17,6 +17,7 @@ import LandingTemplatePicker, {
 } from '@/components/landing/LandingTemplatePicker'
 import { getLandingTemplate } from '@/lib/landingTemplates'
 import { normalizeHexColor } from '@/lib/logoBrandColors'
+import { sanitizeLandingContent } from '@/lib/landingContent'
 
 /**
  * Admin page — change landing template, logo, hero, headline, footer.
@@ -46,10 +47,12 @@ const LandingCustomizePage = () => {
           description: data?.description || '',
           theme_primary: data?.theme_primary || meta.defaultPrimary,
           theme_accent: data?.theme_accent || meta.defaultAccent,
+          theme_tertiary: data?.theme_tertiary || '',
           logoPreviewUrl: data?.logo_url || null,
           heroPreviewUrl: data?.hero_image_url || null,
           logoFile: null,
           heroFile: null,
+          landing_content: sanitizeLandingContent(data?.landing_content),
         })
       } catch (err) {
         if (!cancelled) {
@@ -73,8 +76,9 @@ const LandingCustomizePage = () => {
       address: inst?.address,
       logo_url: landing.logoPreviewUrl || inst?.logo_url,
       description: landing.description || inst?.description,
+      landing_content: landing.landing_content,
     }),
-    [inst, authInst, landing.logoPreviewUrl, landing.description],
+    [inst, authInst, landing.logoPreviewUrl, landing.description, landing.landing_content],
   )
 
   const landingPath = getTenantPortalUrl(inst || authInst)
@@ -101,8 +105,12 @@ const LandingCustomizePage = () => {
         description: landing.description.trim() || null,
         theme_primary: normalizeHexColor(landing.theme_primary),
         theme_accent: normalizeHexColor(landing.theme_accent, '#D32F2F'),
+        theme_tertiary: String(landing.theme_tertiary || '').trim()
+          ? normalizeHexColor(landing.theme_tertiary, '#0EA5E9')
+          : null,
         logo_url: logo_url || null,
         hero_image_url: hero_image_url || null,
+        landing_content: landing.landing_content,
       })
 
       setInst(updated)
@@ -132,7 +140,7 @@ const LandingCustomizePage = () => {
 
       <PageHeader
         title="Landing page templates"
-        subtitle="Choose a template, upload your logo & hero image, and edit headline or footer. Changes appear on your public institution portal."
+        subtitle="Choose a template, then fill About and Programs so each page has balanced, custom copy. Changes appear on your public institution portal."
       />
 
       <div className="mx-auto max-w-5xl space-y-4">

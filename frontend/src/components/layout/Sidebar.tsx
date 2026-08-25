@@ -12,6 +12,7 @@ const Sidebar = () => {
   const { user, institution, logout } = useAuth();
   const location = useLocation();
   const navigate = useNavigate();
+  const isPlatform = user?.role === 'super_admin';
 
   const handleLogout = async () => {
     await logout();
@@ -26,13 +27,17 @@ const Sidebar = () => {
         if (active) e.preventDefault();
       }}
       className={cn(
-        'flex items-center gap-3 px-3 py-2 text-sm font-medium rounded-md mb-1 relative overflow-hidden',
-        'outline-none focus-visible:ring-2 focus-visible:ring-slate-600',
+        'flex items-center gap-2.5 px-3 py-1.5 text-[13px] font-medium rounded-lg mb-0.5',
+        'outline-none focus-visible:ring-2 focus-visible:ring-teal-700/50',
         active
-          ? 'bg-slate-800 text-white pointer-events-none border-l-2 pl-[10px]'
-          : 'text-slate-300 hover:bg-slate-800/80 hover:text-slate-100'
+          ? isPlatform
+            ? 'bg-teal-500/15 text-[var(--pf-text)] pointer-events-none'
+            : 'bg-slate-800 text-white pointer-events-none border-l-2 pl-[10px]'
+          : isPlatform
+            ? 'text-[var(--pf-muted)] hover:bg-[var(--pf-hover)] hover:text-[var(--pf-text)]'
+            : 'text-slate-300 hover:bg-slate-800/80 hover:text-slate-100'
       )}
-      style={active ? { borderLeftColor: 'var(--brand-primary)' } : undefined}
+      style={!isPlatform && active ? { borderLeftColor: 'var(--brand-primary)' } : undefined}
     >
       <Icon className="h-4 w-4 shrink-0 text-current opacity-90" />
       <span className="truncate">{label}</span>
@@ -44,21 +49,42 @@ const Sidebar = () => {
   const isActive = (href: string) => href === activeHref;
 
   return (
-    <div className="hidden lg:flex flex-col h-full bg-slate-950 border-r border-slate-800 w-64 shrink-0">
-      <div className="h-16 flex items-center px-6 border-b border-slate-800/50">
+    <div
+      className={cn(
+        'hidden lg:flex flex-col h-full shrink-0 border-r',
+        isPlatform
+          ? 'w-[13.5rem] bg-[var(--pf-bg)] border-[var(--pf-line)]'
+          : 'w-64 bg-slate-950 border-slate-800',
+      )}
+    >
+      <div
+        className={cn(
+          'h-[4.25rem] flex items-center px-4 border-b',
+          isPlatform ? 'border-[var(--pf-line)]' : 'border-slate-800/50',
+        )}
+      >
         <Logo className="h-8 w-auto" />
       </div>
 
-      <div className="flex-1 overflow-y-auto px-3 py-6 space-y-1 custom-scrollbar">
-        <div className="text-[10px] font-bold text-slate-500 uppercase tracking-wider px-3 mb-2 mt-1">
-          {user?.role === 'super_admin' ? 'Platform' : 'Main Menu'}
+      <div className={cn('flex-1 overflow-y-auto px-2 py-4 space-y-0.5 custom-scrollbar', isPlatform && 'pt-5')}>
+        {isPlatform ? null : (
+        <div
+          className="text-[10px] font-bold uppercase tracking-wider text-slate-500 px-3 mb-2 mt-1"
+        >
+          Main Menu
         </div>
+        )}
         {navItems.map((item) => (
           <NavItem key={item.href} {...item} active={isActive(item.href)} />
         ))}
       </div>
 
-      <div className="p-3 border-t border-slate-800 bg-slate-900/30">
+      <div
+        className={cn(
+          'p-3 border-t',
+          isPlatform ? 'border-[var(--pf-line)] bg-[var(--pf-bg-2)]' : 'border-slate-800 bg-slate-900/30',
+        )}
+      >
         <Button
           variant="ghost"
           className="w-full justify-start gap-3 pl-3 text-sm text-red-400 hover:text-red-300 hover:bg-red-950/40"

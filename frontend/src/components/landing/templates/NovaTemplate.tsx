@@ -114,6 +114,7 @@ export default function NovaTemplate(p: LandingTemplateProps) {
         accent={accent}
         tagline={tagline}
         tone="dark"
+        preview={preview}
       />
       <SharedLandingFooter
         institution={institution}

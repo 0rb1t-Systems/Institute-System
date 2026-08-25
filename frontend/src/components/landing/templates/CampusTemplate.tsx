@@ -92,6 +92,7 @@ export default function CampusTemplate(p: LandingTemplateProps) {
         accent={accent}
         tagline={tagline}
         tone="light"
+        preview={preview}
       />
       <SharedLandingFooter
         institution={institution}

@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react'
 import { Helmet } from 'react-helmet'
+import { Link } from 'react-router-dom'
 import AnimatedPage from '@/components/AnimatedPage'
 import PageHeader from '@/components/PageHeader'
 import { Button } from '@/components/ui/button'
@@ -24,7 +25,7 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
-import { AlertCircle, Loader2, Plus } from 'lucide-react'
+import { AlertCircle, Loader2, Plus, LifeBuoy, Ticket } from 'lucide-react'
 import {
   listPlans,
   upsertPlan,
@@ -196,42 +197,47 @@ const PlansPage = () => {
         </Alert>
       )}
 
-      <div className="grid gap-4 md:grid-cols-3 mb-8">
+      <div className="mb-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
         {loading ? (
-          <p className="text-slate-500 text-sm col-span-3">Loading plans…</p>
+          <p className="col-span-full text-sm text-[var(--pf-muted)]">Loading plans…</p>
+        ) : plans.length === 0 ? (
+          <p className="col-span-full text-sm text-[var(--pf-muted)]">No plans yet.</p>
         ) : (
           plans.map((plan) => (
-            <Card key={plan.id} className="bg-slate-900 border-slate-800">
+            <Card
+              key={plan.id}
+              className="border-[var(--pf-line)] bg-[var(--pf-surface)] transition-all duration-300 hover:-translate-y-1 hover:border-teal-500/35 hover:shadow-[0_14px_36px_rgba(6,21,18,0.14)]"
+            >
               <CardHeader className="pb-2">
                 <div className="flex items-start justify-between gap-2">
-                  <CardTitle className="text-white text-base">{plan.name}</CardTitle>
+                  <CardTitle className="text-base text-[var(--pf-text)]">{plan.name}</CardTitle>
                   <Badge
                     variant="outline"
                     className={
                       plan.is_active
-                        ? 'border-emerald-700 text-emerald-400'
-                        : 'border-slate-700 text-slate-400'
+                        ? 'border-emerald-700/60 text-emerald-500'
+                        : 'border-[var(--pf-line)] text-[var(--pf-faint)]'
                     }
                   >
                     {plan.is_active ? 'Active' : 'Inactive'}
                   </Badge>
                 </div>
-                <CardDescription>{plan.description || '—'}</CardDescription>
+                <CardDescription className="text-[var(--pf-muted)]">{plan.description || '—'}</CardDescription>
               </CardHeader>
               <CardContent className="space-y-3 text-sm">
-                <div className="flex justify-between text-slate-300">
-                  <span>Monthly</span>
+                <div className="flex justify-between text-[var(--pf-text)]">
+                  <span className="text-[var(--pf-muted)]">Monthly</span>
                   <span className="font-medium">${Number(plan.price_monthly).toFixed(0)}</span>
                 </div>
-                <div className="flex justify-between text-slate-300">
-                  <span>Yearly</span>
+                <div className="flex justify-between text-[var(--pf-text)]">
+                  <span className="text-[var(--pf-muted)]">Yearly</span>
                   <span className="font-medium">${Number(plan.price_yearly).toFixed(0)}</span>
                 </div>
-                <div className="flex justify-between text-slate-400">
+                <div className="flex justify-between text-[var(--pf-muted)]">
                   <span>Max students</span>
                   <span>{plan.max_students ?? 'Unlimited'}</span>
                 </div>
-                <Button variant="ghost" size="sm" className="px-0" onClick={() => openEditPlan(plan)}>
+                <Button variant="ghost" size="sm" className="px-0 text-teal-600 hover:text-teal-500" onClick={() => openEditPlan(plan)}>
                   Edit plan
                 </Button>
               </CardContent>
@@ -240,8 +246,8 @@ const PlansPage = () => {
         )}
       </div>
 
-      <h2 className="text-sm font-semibold text-slate-200 mb-3">Tenant subscriptions</h2>
-      <div className="rounded-lg border border-slate-800 overflow-hidden">
+      <h2 className="mb-3 text-sm font-semibold text-[var(--pf-text)]">Tenant subscriptions</h2>
+      <div className="overflow-hidden rounded-xl border border-[var(--pf-line)] bg-[var(--pf-surface)]">
         <Table>
           <TableHeader>
             <TableRow className="border-slate-800 hover:bg-transparent">
@@ -289,6 +295,27 @@ const PlansPage = () => {
           </TableBody>
         </Table>
       </div>
+
+      <Link
+        to="/super-admin/support"
+        className="mt-8 flex flex-col gap-3 rounded-xl border border-[var(--pf-line)] bg-[var(--pf-surface)] p-5 transition-all duration-300 hover:-translate-y-0.5 hover:border-teal-500/35 sm:flex-row sm:items-center sm:justify-between"
+      >
+        <div className="flex items-start gap-3">
+          <span className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-teal-500/12 text-teal-600">
+            <LifeBuoy className="h-5 w-5" />
+          </span>
+          <div>
+            <p className="font-medium text-[var(--pf-text)]">Support</p>
+            <p className="mt-0.5 text-sm text-[var(--pf-muted)]">
+              Billing questions, plan disputes, and tenant tickets live on the Support inbox.
+            </p>
+          </div>
+        </div>
+        <span className="inline-flex items-center gap-1 text-sm font-medium text-teal-600">
+          <Ticket className="h-4 w-4" />
+          Open Support
+        </span>
+      </Link>
 
       <Dialog open={planOpen} onOpenChange={setPlanOpen}>
         <DialogContent className="bg-slate-900 border-slate-800 text-slate-100 max-h-[90vh] overflow-y-auto">

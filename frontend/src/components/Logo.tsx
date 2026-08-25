@@ -12,7 +12,7 @@ const Logo = ({ className = 'h-12', institution: institutionProp = undefined }) 
   const institution = institutionProp !== undefined ? institutionProp : ctxInstitution
   const isPlatform = user?.role === 'super_admin' || !institution
 
-  const name = getInstitutionDisplayName(institution, isPlatform ? 'Platform' : 'Training Center')
+  const name = getInstitutionDisplayName(institution, isPlatform ? 'TvetFlow' : 'Training Center')
   const logoUrl = institution?.logo_url
 
   if (logoUrl) {
@@ -23,6 +23,19 @@ const Logo = ({ className = 'h-12', institution: institutionProp = undefined }) 
         className={`w-auto object-contain ${className}`}
         crossOrigin="anonymous"
       />
+    )
+  }
+
+  if (user?.role === 'super_admin') {
+    return (
+      <div className={`flex items-center gap-2 min-w-0 ${className}`}>
+        <span className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-teal-500/15 text-teal-500 ring-1 ring-teal-500/25">
+          <GraduationCap className="h-4 w-4" />
+        </span>
+        <span className="font-display text-base font-bold text-[var(--pf-text)] truncate">
+          Tvet<span className="text-teal-500">Flow</span>
+        </span>
+      </div>
     )
   }
 

@@ -6,11 +6,12 @@ import { supabase, getSupabaseUrl } from '@/lib/supabaseClient'
 import { resolvePublicTenantSubdomain, getTenantLoginUrl } from '@/lib/institution'
 import { createDefaultUploadFieldLayout } from '@/lib/certificateBuilder'
 import { LANDING_TEMPLATE_IDS } from '@/lib/landingTemplates'
+import { landingContentForSave } from '@/lib/landingContent'
 
 const notReady = (_feature) => new Error('FEATURE_UNAVAILABLE')
 
 const INST_SELECT =
-  'id, name, subdomain, logo_url, description, email, phone, address, website, motto, theme_primary, theme_accent, status, created_at, affiliate_commission_rate, registration_fee_amount, default_instructor_commission_rate, currency, currency_symbol, signatory_left_title, signatory_right_title, signatory_left_name, signatory_right_name, seal_url, signature_url, certificate_footer_text, transcript_footer_text, invoice_footer_text, settings_completed_at, landing_template_id, hero_image_url, hero_headline, footer_text, grading_scale'
+  'id, name, subdomain, logo_url, description, email, phone, address, website, motto, theme_primary, theme_accent, theme_tertiary, status, created_at, affiliate_commission_rate, registration_fee_amount, default_instructor_commission_rate, currency, currency_symbol, signatory_left_title, signatory_right_title, signatory_left_name, signatory_right_name, seal_url, signature_url, certificate_footer_text, transcript_footer_text, invoice_footer_text, settings_completed_at, landing_template_id, hero_image_url, hero_headline, footer_text, landing_content, grading_scale'
 
 async function requireUser() {
   const { data, error } = await supabase.auth.getUser()
@@ -734,21 +735,21 @@ export const verifyStudentProfile = async (identifier, subdomain) => {
   const raw = String(identifier || '').trim()
   if (raw.length < 3) return { valid: false, data: null }
 
-  // Public verify is tenant-scoped only (student code, never email/UUID).
-  const slug = String(subdomain || resolvePublicTenantSubdomain() || '').trim().toLowerCase()
-  if (!slug) throw new Error('SUBDOMAIN_REQUIRED')
+  // Student code only — never email or UUID on the public verify path.
   if (raw.includes('@')) return { valid: false, data: null }
+  if (/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(raw)) {
+    return { valid: false, data: null }
+  }
+
+  const slug = String(subdomain || '').trim().toLowerCase()
 
   const { data, error } = await supabase.rpc('verify_student_identity', {
     p_identifier: raw,
-    p_subdomain: slug,
+    p_subdomain: slug || null,
   })
   if (error) throw error
 
-  if (!data?.valid) {
-    if (data?.error === 'SUBDOMAIN_REQUIRED') throw new Error('SUBDOMAIN_REQUIRED')
-    return { valid: false, data: null }
-  }
+  if (!data?.valid) return { valid: false, data: null }
 
   return {
     valid: true,
@@ -766,7 +767,7 @@ export const verifyStudentProfile = async (identifier, subdomain) => {
       class_name: data.class_name,
       program_name: data.program_name || data.class_name,
       program_type: data.program_type,
-      avatar_url: null,
+      avatar_url: data.avatar_url || null,
     },
   }
 }
@@ -1020,6 +1021,10 @@ export const updateInstitution = async (updates) => {
   }
   if (updates.theme_primary !== undefined) allowed.theme_primary = updates.theme_primary
   if (updates.theme_accent !== undefined) allowed.theme_accent = updates.theme_accent
+  if (updates.theme_tertiary !== undefined) {
+    const t = String(updates.theme_tertiary || '').trim()
+    allowed.theme_tertiary = t || null
+  }
   if (updates.landing_template_id !== undefined) {
     const tid = String(updates.landing_template_id || '').trim().toLowerCase()
     if (!LANDING_TEMPLATE_IDS.includes(tid as (typeof LANDING_TEMPLATE_IDS)[number])) {
@@ -1033,6 +1038,9 @@ export const updateInstitution = async (updates) => {
   }
   if (updates.footer_text !== undefined) {
     allowed.footer_text = String(updates.footer_text || '').trim() || null
+  }
+  if (updates.landing_content !== undefined) {
+    allowed.landing_content = landingContentForSave(updates.landing_content)
   }
   if (updates.affiliate_commission_rate !== undefined) {
     const rate = Number(updates.affiliate_commission_rate)
@@ -1921,11 +1929,18 @@ export const createPayment = async (data) => {
   const method = ['cash', 'bank', 'other'].includes(data.method) ? data.method : 'cash'
   const isRegistration = Boolean(data.is_registration_fee)
   const status = ['pending', 'completed', 'failed'].includes(data.status) ? data.status : 'completed'
-  const note =
-    data.note ||
-    data.notes ||
-    (isRegistration ? 'Registration Fee' : data.month_paid) ||
-    null
+
+  const monthKey = String(data.month_paid || '').trim().slice(0, 7)
+  const extraNote = String(data.notes || data.note || '').trim()
+  let note: string | null = null
+  if (isRegistration) {
+    note = extraNote || 'Registration Fee'
+  } else if (/^\d{4}-\d{2}$/.test(monthKey)) {
+    const cleaned = extraNote.replace(/^\d{4}-\d{2}\s*[—\-–]?\s*/, '')
+    note = cleaned && cleaned !== monthKey ? `${monthKey} — ${cleaned}` : monthKey
+  } else {
+    note = extraNote || null
+  }
 
   const amount = Number(data.amount)
   if (!Number.isFinite(amount) || amount <= 0) throw new Error('INVALID_AMOUNT')
@@ -1954,6 +1969,7 @@ export const createPayment = async (data) => {
   if (error) {
     const msg = String(error.message || '')
     if (/REGISTRATION_FEE_REQUIRED/i.test(msg)) throw new Error('REGISTRATION_FEE_REQUIRED')
+    if (/PAYMENT_EXCEEDS_MONTHLY_DUE/i.test(msg)) throw new Error('PAYMENT_EXCEEDS_MONTHLY_DUE')
     if (/PAYMENT_EXCEEDS_BALANCE/i.test(msg)) throw new Error('PAYMENT_EXCEEDS_BALANCE')
     if (/REGISTRATION_FEE_DISABLED/i.test(msg)) throw new Error('REGISTRATION_FEE_DISABLED')
     throw error
@@ -1974,9 +1990,6 @@ export const updatePayment = async (id, data) => {
   const updates: any = {}
   if (data.amount !== undefined) updates.amount = Number(data.amount)
   if (data.method) updates.method = data.method
-  if (data.note !== undefined) updates.note = data.note
-  else if (data.notes !== undefined) updates.note = data.notes
-  else if (data.month_paid !== undefined) updates.note = data.month_paid
   if (data.status !== undefined) updates.status = data.status
   if (data.is_registration_fee !== undefined) {
     updates.is_registration_fee = Boolean(data.is_registration_fee)
@@ -1984,9 +1997,27 @@ export const updatePayment = async (id, data) => {
   if (data.payment_date || data.paid_at) {
     updates.paid_at = data.payment_date || data.paid_at
   }
+
+  const isRegistration = data.is_registration_fee === true
+  const monthKey = String(data.month_paid || '').trim().slice(0, 7)
+  const extraNote = String(data.notes ?? data.note ?? '').trim()
+  if (data.note !== undefined || data.notes !== undefined || data.month_paid !== undefined) {
+    if (isRegistration || data.is_registration_fee === true) {
+      updates.note = extraNote || 'Registration Fee'
+    } else if (/^\d{4}-\d{2}$/.test(monthKey)) {
+      const cleaned = extraNote.replace(/^\d{4}-\d{2}\s*[—\-–]?\s*/, '')
+      updates.note = cleaned && cleaned !== monthKey ? `${monthKey} — ${cleaned}` : monthKey
+    } else if (data.note !== undefined) {
+      updates.note = data.note
+    } else if (data.notes !== undefined) {
+      updates.note = data.notes
+    }
+  }
+
   const { data: row, error } = await supabase.from('payments').update(updates).eq('id', id).select().single()
   if (error) {
     const msg = String(error.message || '')
+    if (/PAYMENT_EXCEEDS_MONTHLY_DUE/i.test(msg)) throw new Error('PAYMENT_EXCEEDS_MONTHLY_DUE')
     if (/PAYMENT_EXCEEDS_BALANCE/i.test(msg)) throw new Error('PAYMENT_EXCEEDS_BALANCE')
     if (/REGISTRATION_FEE_DISABLED/i.test(msg)) throw new Error('REGISTRATION_FEE_DISABLED')
     throw error

@@ -11,6 +11,7 @@ import { Loader2, AlertCircle, LogIn, GraduationCap, ArrowLeft } from 'lucide-re
 import { getUserMessage } from '@/lib/mapError';
 import { MESSAGES } from '@/lib/messages';
 import { getPublicInstitutionBySubdomain } from '@/lib/api';
+import ThemeToggle from '@/components/platform/ThemeToggle';
 import {
   getInstitutionPrimary,
   getTenantPortalUrl,
@@ -126,12 +127,24 @@ const LoginPage = ({ initialError = '' }) => {
   };
 
   return (
-    <div className="relative flex min-h-screen items-center justify-center overflow-hidden bg-slate-950 p-4">
+    <div
+      className={
+        isTenantLogin
+          ? 'relative flex min-h-screen items-center justify-center overflow-hidden bg-slate-950 p-4'
+          : 'platform-public relative flex min-h-screen items-center justify-center overflow-hidden p-4'
+      }
+    >
       <Helmet>
         <title>
           {institution?.name ? `Sign in · ${institution.name}` : isTenantLogin ? 'Portal Sign in' : 'TvetFlow Sign in'}
         </title>
       </Helmet>
+
+      {!isTenantLogin ? (
+        <div className="absolute right-4 top-4 z-20">
+          <ThemeToggle />
+        </div>
+      ) : null}
 
       <div className="pointer-events-none absolute inset-0 overflow-hidden" aria-hidden>
         <div
@@ -141,7 +154,13 @@ const LoginPage = ({ initialError = '' }) => {
         <div className="absolute bottom-[10%] right-[10%] h-[30%] w-[30%] rounded-full bg-teal-500/5 blur-[100px]" />
       </div>
 
-      <Card className="relative z-10 w-full max-w-md border-slate-800 bg-slate-900/80 shadow-2xl backdrop-blur-sm">
+      <Card
+        className={
+          isTenantLogin
+            ? 'relative z-10 w-full max-w-md border-slate-800 bg-slate-900/80 shadow-2xl backdrop-blur-sm'
+            : 'relative z-10 w-full max-w-md border-[var(--pf-line)] bg-[var(--pf-surface)] shadow-xl'
+        }
+      >
         <CardHeader className="space-y-3 pb-6 text-center">
           {isTenantLogin ? (
             <div className="flex flex-col items-center gap-3">
@@ -172,12 +191,12 @@ const LoginPage = ({ initialError = '' }) => {
             </div>
           ) : (
             <>
-              <Link to="/" className="font-display text-2xl font-bold tracking-tight text-white">
-                Tvet<span className="text-teal-300">Flow</span>
+              <Link to="/" className="font-display text-2xl font-bold tracking-tight text-[var(--pf-text)]">
+                Tvet<span className="text-teal-500">Flow</span>
               </Link>
-              <CardTitle className="text-2xl font-bold text-white">Sign in</CardTitle>
-              <CardDescription className="text-slate-400">
-                Admin sign in
+              <CardTitle className="text-2xl font-bold text-[var(--pf-text)]">Sign in</CardTitle>
+              <CardDescription className="text-[var(--pf-muted)]">
+                Institution admin sign in
               </CardDescription>
             </>
           )}
@@ -191,7 +210,7 @@ const LoginPage = ({ initialError = '' }) => {
               </Alert>
             )}
             <div className="space-y-2">
-              <Label htmlFor="identifier" className="text-slate-200">
+              <Label htmlFor="identifier" className={isTenantLogin ? 'text-slate-200' : 'text-[var(--pf-text)]'}>
                 {isTenantLogin ? 'Email or Student ID' : 'Admin email'}
               </Label>
               <Input
@@ -207,7 +226,11 @@ const LoginPage = ({ initialError = '' }) => {
                   setIdentifier(e.target.value);
                   setError('');
                 }}
-                className="border-slate-700 bg-slate-950 text-white placeholder:text-slate-500"
+                className={
+                  isTenantLogin
+                    ? 'border-slate-700 bg-slate-950 text-white placeholder:text-slate-500'
+                    : 'border-[var(--pf-line)] bg-[var(--pf-bg)] text-[var(--pf-text)] placeholder:text-[var(--pf-faint)]'
+                }
                 style={{ ['--tw-ring-color']: primary }}
                 disabled={isLoading}
                 required
@@ -215,7 +238,7 @@ const LoginPage = ({ initialError = '' }) => {
             </div>
             <div className="space-y-2">
               <div className="flex items-center justify-between">
-                <Label htmlFor="password" className="text-slate-200">
+                <Label htmlFor="password" className={isTenantLogin ? 'text-slate-200' : 'text-[var(--pf-text)]'}>
                   Password
                 </Label>
                 <Link
@@ -238,7 +261,11 @@ const LoginPage = ({ initialError = '' }) => {
                   setPassword(e.target.value);
                   setError('');
                 }}
-                className="border-slate-700 bg-slate-950 text-white placeholder:text-slate-500"
+                className={
+                  isTenantLogin
+                    ? 'border-slate-700 bg-slate-950 text-white placeholder:text-slate-500'
+                    : 'border-[var(--pf-line)] bg-[var(--pf-bg)] text-[var(--pf-text)] placeholder:text-[var(--pf-faint)]'
+                }
                 disabled={isLoading}
                 required
               />
@@ -249,7 +276,7 @@ const LoginPage = ({ initialError = '' }) => {
                 className={
                   isTenantLogin
                     ? 'w-full text-white transition-all hover:opacity-90'
-                    : 'w-full bg-teal-600 text-[#04201c] transition-all hover:bg-teal-500'
+                    : 'w-full bg-[var(--pf-accent)] font-semibold text-[var(--pf-accent-fg)] hover:opacity-90'
                 }
                 style={isTenantLogin ? { backgroundColor: primary } : undefined}
                 disabled={isLoading}
@@ -267,7 +294,13 @@ const LoginPage = ({ initialError = '' }) => {
             </div>
           </form>
         </CardContent>
-        <CardFooter className="flex flex-col items-center space-y-3 border-t border-slate-800 pt-6">
+        <CardFooter
+          className={
+            isTenantLogin
+              ? 'flex flex-col items-center space-y-3 border-t border-slate-800 pt-6'
+              : 'flex flex-col items-center space-y-3 border-t border-[var(--pf-line)] pt-6'
+          }
+        >
           {isTenantLogin ? (
             <>
               <p className="text-center text-xs text-slate-400">
@@ -293,12 +326,12 @@ const LoginPage = ({ initialError = '' }) => {
             </>
           ) : (
             <>
-              <p className="text-center text-xs text-slate-400">
+              <p className="text-center text-xs text-[var(--pf-muted)]">
                 Institution accounts must sign in from their own landing page.
               </p>
-              <p className="text-center text-sm text-slate-300">
+              <p className="text-center text-sm text-[var(--pf-text)]">
                 New institution?{' '}
-                <Link to="/create-institution" className="font-medium text-teal-400 hover:text-teal-300">
+                <Link to="/create-institution" className="font-medium text-teal-600 hover:underline">
                   Create institution admin
                 </Link>
               </p>

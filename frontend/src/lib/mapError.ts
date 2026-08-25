@@ -45,6 +45,10 @@ const CODE_MAP = {
     title: 'Amount too high',
     description: 'Payment cannot exceed the remaining balance for this enrollment.',
   },
+  PAYMENT_EXCEEDS_MONTHLY_DUE: {
+    title: 'Amount too high for this month',
+    description: 'Payment cannot exceed the remaining amount due for the selected billing month.',
+  },
   WITHDRAWAL_EXCEEDS_BALANCE: {
     title: 'Insufficient balance',
     description: 'Withdrawal amount exceeds the available instructor balance.',
@@ -355,6 +359,13 @@ const MESSAGE_REWRITES = [
     mapped: {
       title: 'Institution required',
       description: 'Open verification from your institution link (?tenant=subdomain) or ID-card QR.',
+    },
+  },
+  {
+    test: /PAYMENT_EXCEEDS_MONTHLY_DUE/i,
+    mapped: {
+      title: 'Amount too high for this month',
+      description: 'Payment cannot exceed the remaining amount due for the selected billing month.',
     },
   },
   {
