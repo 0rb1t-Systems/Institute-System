@@ -1,11 +1,10 @@
 import React from 'react'
 import {
-  BrandMark,
   LandingCtas,
-  LandingHeaderActions,
+  LandingHeaderBar,
   SharedLandingFooter,
 } from '@/components/landing/LandingShared'
-import { LandingContentSections, LandingPageNav } from '@/components/landing/LandingSections'
+import { LandingContentSections } from '@/components/landing/LandingSections'
 import type { LandingTemplateProps } from '@/components/landing/types'
 
 /** Modern dark teal — bold type left, large media right on mesh background. */
@@ -40,27 +39,19 @@ export default function NovaTemplate(p: LandingTemplateProps) {
       </div>
 
       <header className="relative z-30 border-b border-white/10 bg-[#061816]/80 backdrop-blur-xl">
-        <div className="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-3 px-4 py-3 sm:px-6">
-          <div className="flex min-w-0 flex-1 items-center gap-3">
-            <BrandMark institution={institution} primary={primary} size="sm" rounded="xl" />
-            <p className="truncate font-display text-sm font-bold tracking-tight sm:text-base">
-              {institution.name}
-            </p>
-          </div>
-          <LandingPageNav institution={institution} primary={primary} preview={preview} tone="dark" className="hidden lg:flex" />
-          <LandingHeaderActions
+        <div className="mx-auto flex max-w-6xl flex-wrap items-center gap-x-4 gap-y-2 md:gap-x-7 px-4 py-3 sm:px-6">
+          <LandingHeaderBar
+            institution={institution}
             primary={primary}
             verifyHref={verifyHref}
             sameTenant={sameTenant}
             userRole={userRole}
             onOpenLogin={onOpenLogin}
             preview={preview}
+            tone="dark"
             solidClassName="rounded-xl px-4 font-semibold text-[#04201c]"
             outlineClassName="rounded-xl border-white/25 bg-white/5 text-white hover:bg-white/10 hover:text-white"
           />
-        </div>
-        <div className="mx-auto max-w-6xl px-4 pb-3 lg:hidden">
-          <LandingPageNav institution={institution} primary={primary} preview={preview} tone="dark" className="justify-center" />
         </div>
       </header>
 

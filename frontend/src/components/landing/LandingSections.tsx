@@ -1,106 +1,21 @@
-import React, { useEffect, useState } from 'react'
+import React from 'react'
 import { motion } from 'framer-motion'
 import { Award, BookOpen, GraduationCap, ShieldCheck, Sparkles, Users } from 'lucide-react'
 import type { LandingInstitution } from '@/components/landing/types'
 import {
+  DEFAULT_ABOUT_HIGHLIGHTS,
+  DEFAULT_PROGRAMS,
   filledAboutHighlights,
   filledLandingPrograms,
-  landingAboutVisible,
-  landingProgramsVisible,
   sanitizeLandingContent,
 } from '@/lib/landingContent'
 
-export const LANDING_NAV_ITEMS = [
-  { id: 'home', label: 'Home' },
-  { id: 'about', label: 'About' },
-  { id: 'programs', label: 'Programs' },
-  { id: 'contact', label: 'Contact' },
-] as const
-
-export function scrollToLandingSection(id: string, preview?: boolean) {
-  if (preview || typeof document === 'undefined') return
-  const el = document.getElementById(id)
-  if (!el) return
-  el.scrollIntoView({ behavior: 'smooth', block: 'start' })
-}
-
-function useLandingActiveSection(preview?: boolean) {
-  const [activeId, setActiveId] = useState('home')
-
-  useEffect(() => {
-    if (preview || typeof document === 'undefined') return undefined
-    const els = LANDING_NAV_ITEMS.map((item) => document.getElementById(item.id)).filter(
-      (el): el is HTMLElement => Boolean(el),
-    )
-    if (!els.length) return undefined
-
-    const obs = new IntersectionObserver(
-      (entries) => {
-        const visible = entries
-          .filter((e) => e.isIntersecting)
-          .sort((a, b) => b.intersectionRatio - a.intersectionRatio)
-        const id = visible[0]?.target?.id
-        if (id) setActiveId(id)
-      },
-      { rootMargin: '-28% 0px -55% 0px', threshold: [0.12, 0.35, 0.6] },
-    )
-    els.forEach((el) => obs.observe(el))
-    return () => obs.disconnect()
-  }, [preview])
-
-  return activeId
-}
-
-type NavProps = {
-  primary: string
-  preview?: boolean
-  tone?: 'light' | 'dark'
-  className?: string
-  institution?: LandingInstitution
-}
-
-export function landingNavItemsFor(institution?: LandingInstitution) {
-  const content = sanitizeLandingContent(institution?.landing_content)
-  return LANDING_NAV_ITEMS.filter((item) => {
-    if (item.id === 'about') return landingAboutVisible(content)
-    if (item.id === 'programs') return landingProgramsVisible(content)
-    return true
-  })
-}
-
-export function LandingPageNav({ primary, preview, tone = 'light', className = '', institution }: NavProps) {
-  const activeId = useLandingActiveSection(preview)
-  const idle = tone === 'dark' ? 'text-white/70 hover:text-white' : 'text-slate-500 hover:text-slate-900'
-  const items = landingNavItemsFor(institution)
-
-  return (
-    <nav
-      className={`flex max-w-full flex-nowrap items-center justify-center gap-x-3 overflow-x-auto overscroll-x-contain py-0.5 text-[11px] font-medium [scrollbar-width:none] [-ms-overflow-style:none] sm:gap-x-5 sm:text-[13px] sm:tracking-wide md:justify-start [&::-webkit-scrollbar]:hidden ${className}`}
-      aria-label="Page sections"
-    >
-      {items.map((item) => {
-        const active = activeId === item.id
-        return (
-          <button
-            key={item.id}
-            type="button"
-            onClick={() => scrollToLandingSection(item.id, preview)}
-            className={`relative shrink-0 whitespace-nowrap py-1 transition ${active ? 'font-semibold' : idle}`}
-            style={active ? { color: primary } : undefined}
-          >
-            {item.label}
-            {active && (
-              <span
-                className="absolute -bottom-0.5 left-1/2 h-0.5 w-5 -translate-x-1/2 rounded-full"
-                style={{ backgroundColor: primary }}
-              />
-            )}
-          </button>
-        )
-      })}
-    </nav>
-  )
-}
+export {
+  LANDING_NAV_ITEMS,
+  LandingPageNav,
+  landingNavItemsFor,
+  scrollToLandingSection,
+} from '@/components/landing/LandingNav'
 
 const PROGRAM_ICONS = [GraduationCap, BookOpen, ShieldCheck, Users, Sparkles]
 const HIGHLIGHT_ICONS = [Sparkles, GraduationCap, Users, Award]
@@ -118,17 +33,25 @@ export function LandingContentSections({
   institution,
   primary,
   accent,
+  tagline,
   tone = 'light',
 }: SectionsProps) {
   const dark = tone === 'dark'
   const content = sanitizeLandingContent(institution.landing_content)
-  const highlights = filledAboutHighlights(content)
-  const programs = filledLandingPrograms(content)
-  const showAbout = landingAboutVisible(content)
-  const showPrograms = landingProgramsVisible(content)
-  const aboutTitle = content.about_title.trim()
-  const aboutBody = content.about_body.trim()
-  const programsIntro = content.programs_intro.trim()
+  const customHighlights = filledAboutHighlights(content)
+  const customPrograms = filledLandingPrograms(content)
+  const highlights = customHighlights.length ? customHighlights : DEFAULT_ABOUT_HIGHLIGHTS
+  const programs = customPrograms.length ? customPrograms : DEFAULT_PROGRAMS
+  const aboutTitle = content.about_title.trim() || 'About us'
+  const aboutBody =
+    content.about_body.trim() ||
+    String(institution.description || '').trim() ||
+    String(institution.motto || '').trim() ||
+    String(tagline || '').trim() ||
+    'Learn more about our institution, training, and how we support students.'
+  const programsIntro =
+    content.programs_intro.trim() ||
+    'Structured training and credentials designed around student progress.'
 
   const surface = dark ? 'border-white/10' : 'border-slate-200/80'
   const titleCls = dark ? 'text-white' : 'text-slate-900'
@@ -137,12 +60,9 @@ export function LandingContentSections({
     ? 'border-white/10 bg-white/[0.04]'
     : 'border-slate-200 bg-white shadow-sm shadow-slate-900/5'
 
-  if (!showAbout && !showPrograms) return null
-
   return (
     <>
-      {showAbout ? (
-        <section
+      <section
           id="about"
           className={`scroll-mt-24 border-t ${surface} ${dark ? 'bg-[#0a1220]' : 'bg-slate-50'}`}
         >
@@ -151,14 +71,10 @@ export function LandingContentSections({
               <p className="text-[11px] font-semibold uppercase tracking-[0.2em]" style={{ color: primary }}>
                 About
               </p>
-              {aboutTitle ? (
-                <h2 className={`mt-2 max-w-3xl break-words font-display text-2xl font-bold tracking-tight sm:text-3xl ${titleCls}`}>
-                  {aboutTitle}
-                </h2>
-              ) : null}
-              {aboutBody ? (
-                <p className={`mt-4 max-w-3xl text-sm leading-relaxed sm:text-[15px] ${bodyCls}`}>{aboutBody}</p>
-              ) : null}
+              <h2 className={`mt-2 max-w-3xl break-words font-display text-2xl font-bold tracking-tight sm:text-3xl ${titleCls}`}>
+                {aboutTitle}
+              </h2>
+              <p className={`mt-4 max-w-3xl text-sm leading-relaxed sm:text-[15px] ${bodyCls}`}>{aboutBody}</p>
             </div>
             {highlights.length ? (
               <ul
@@ -212,10 +128,8 @@ export function LandingContentSections({
             ) : null}
           </div>
         </section>
-      ) : null}
 
-      {showPrograms ? (
-        <section
+      <section
           id="programs"
           className={`scroll-mt-24 border-t ${surface} ${dark ? 'bg-[#070d18]' : 'bg-white'}`}
         >
@@ -260,7 +174,6 @@ export function LandingContentSections({
             ) : null}
           </div>
         </section>
-      ) : null}
     </>
   )
 }

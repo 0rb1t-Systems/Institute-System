@@ -2,8 +2,17 @@ import React from 'react'
 import { Link } from 'react-router-dom'
 import { ArrowRight, LogIn, Mail, MapPin, Phone, ShieldCheck } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import { brandInitial, dashboardPathForRole, type LandingInstitution } from '@/components/landing/types'
-import { landingNavItemsFor, scrollToLandingSection } from '@/components/landing/LandingSections'
+import {
+  brandInitial,
+  dashboardPathForRole,
+  type LandingInstitution,
+} from '@/components/landing/types'
+import { institutionLogoUrl } from '@/lib/institution'
+import {
+  LandingPageNav,
+  landingNavItemsFor,
+  scrollToLandingSection,
+} from '@/components/landing/LandingNav'
 
 /** Shared brand mark — logo or initial. */
 export function BrandMark({
@@ -19,13 +28,14 @@ export function BrandMark({
 }) {
   const dim = size === 'sm' ? 'h-9 w-9' : size === 'lg' ? 'h-12 w-12' : 'h-10 w-10'
   const radius = rounded === '2xl' ? 'rounded-2xl' : rounded === 'xl' ? 'rounded-xl' : 'rounded-full'
-  if (institution.logo_url) {
+  const logoUrl = institutionLogoUrl(institution)
+  if (logoUrl) {
     return (
-      <img
-        src={institution.logo_url}
-        alt=""
-        className={`${dim} ${radius} shrink-0 bg-white/10 object-contain p-0.5 ring-1 ring-black/5`}
-      />
+      <span
+        className={`inline-flex ${dim} ${radius} shrink-0 items-center justify-center bg-white p-1.5 shadow-sm ring-1 ring-black/5`}
+      >
+        <img src={logoUrl} alt="" className="h-full w-full object-contain" />
+      </span>
     )
   }
   return (
@@ -34,6 +44,131 @@ export function BrandMark({
       style={{ backgroundColor: primary }}
     >
       {brandInitial(institution.name)}
+    </div>
+  )
+}
+
+/** Header lockup: logo alone when uploaded, otherwise name (and optional tagline). */
+export function LandingHeaderBrand({
+  institution,
+  primary,
+  nameClassName = 'font-display text-[13px] font-semibold leading-snug tracking-tight text-slate-900 sm:text-[15px]',
+  tagline,
+  taglineClassName = 'mt-0.5 hidden text-[11px] leading-snug text-slate-500 sm:block',
+  className = '',
+  tone = 'light',
+}: {
+  institution: LandingInstitution
+  primary: string
+  nameClassName?: string
+  tagline?: string | null
+  taglineClassName?: string
+  className?: string
+  tone?: 'light' | 'dark'
+}) {
+  const logoUrl = institutionLogoUrl(institution)
+  if (logoUrl) {
+    return (
+      <div className={`flex items-center ${className}`}>
+        <span
+          className={
+            tone === 'dark'
+              ? 'inline-flex items-center rounded-2xl bg-white px-3.5 py-2.5 shadow-[0_8px_24px_rgba(0,0,0,0.2)]'
+              : 'inline-flex items-center rounded-2xl bg-white px-3 py-2 shadow-sm ring-1 ring-black/[0.06]'
+          }
+        >
+          <img
+            src={logoUrl}
+            alt={institution.name || 'Institution'}
+            className="h-12 w-auto max-w-[16rem] object-contain object-left md:h-14 md:max-w-[18rem]"
+          />
+        </span>
+      </div>
+    )
+  }
+
+  return (
+    <div className={`flex max-w-[22rem] items-center gap-3 sm:gap-3.5 ${className}`}>
+      <BrandMark institution={institution} primary={primary} size="lg" rounded="xl" />
+      <div className="min-w-0">
+        <p className={`${nameClassName} line-clamp-2 break-words`}>{institution.name}</p>
+        {tagline ? <p className={taglineClassName}>{tagline}</p> : null}
+      </div>
+    </div>
+  )
+}
+
+/** Logo left, tabs centered, actions right. */
+export function LandingHeaderBar({
+  institution,
+  primary,
+  navPrimary,
+  verifyHref,
+  sameTenant,
+  userRole,
+  onOpenLogin,
+  preview,
+  tone = 'light',
+  brandNameClassName,
+  brandTagline,
+  solidClassName,
+  outlineClassName,
+}: {
+  institution: LandingInstitution
+  primary: string
+  navPrimary?: string
+  verifyHref: string
+  sameTenant: boolean
+  userRole?: string | null
+  onOpenLogin: () => void
+  preview?: boolean
+  tone?: 'light' | 'dark'
+  brandNameClassName?: string
+  brandTagline?: string | null
+  solidClassName?: string
+  outlineClassName?: string
+}) {
+  const navColor = navPrimary ?? primary
+  return (
+    <div className="grid w-full min-w-0 grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-x-3 gap-y-2">
+      <div className="col-start-1 row-start-1 justify-self-start pr-3">
+        <LandingHeaderBrand
+          institution={institution}
+          primary={primary}
+          className="shrink-0"
+          nameClassName={brandNameClassName}
+          tagline={brandTagline}
+          tone={tone}
+        />
+      </div>
+      <LandingPageNav
+        institution={institution}
+        primary={navColor}
+        preview={preview}
+        tone={tone}
+        className="col-start-2 row-start-1 hidden justify-center md:flex"
+      />
+      <div className="col-start-3 row-start-1 justify-self-end">
+        <LandingHeaderActions
+          primary={primary}
+          verifyHref={verifyHref}
+          sameTenant={sameTenant}
+          userRole={userRole}
+          onOpenLogin={onOpenLogin}
+          preview={preview}
+          solidClassName={solidClassName}
+          outlineClassName={outlineClassName}
+        />
+      </div>
+      <div className="col-span-3 row-start-2 md:hidden">
+        <LandingPageNav
+          institution={institution}
+          primary={navColor}
+          preview={preview}
+          tone={tone}
+          className="justify-center"
+        />
+      </div>
     </div>
   )
 }

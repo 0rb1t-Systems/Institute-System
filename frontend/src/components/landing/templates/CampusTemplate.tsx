@@ -1,11 +1,10 @@
 import React from 'react'
 import {
-  BrandMark,
   LandingCtas,
-  LandingHeaderActions,
+  LandingHeaderBar,
   SharedLandingFooter,
 } from '@/components/landing/LandingShared'
-import { LandingContentSections, LandingPageNav } from '@/components/landing/LandingSections'
+import { LandingContentSections } from '@/components/landing/LandingSections'
 import type { LandingTemplateProps } from '@/components/landing/types'
 
 /** Architectural split — copy left, full-bleed campus photo right. */
@@ -29,21 +28,9 @@ export default function CampusTemplate(p: LandingTemplateProps) {
   return (
     <div className="min-h-screen overflow-x-hidden bg-white font-sans text-slate-900">
       <header className="sticky top-0 z-30 border-b border-slate-100 bg-white/95 backdrop-blur-md">
-        <div className="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-2 px-4 py-2.5 sm:gap-3 sm:px-6 sm:py-3">
-          <div className="flex min-w-0 flex-1 items-center gap-2.5 sm:gap-3">
-            <BrandMark institution={institution} primary={primary} size="sm" rounded="xl" />
-            <p className="truncate font-display text-sm font-bold tracking-tight sm:text-base">
-              {institution.name}
-            </p>
-          </div>
-          <LandingPageNav
+        <div className="mx-auto flex max-w-6xl flex-wrap items-center gap-x-4 gap-y-2 md:gap-x-7 px-4 py-2.5 sm:px-6 sm:py-3">
+          <LandingHeaderBar
             institution={institution}
-            primary={primary}
-            preview={preview}
-            tone="light"
-            className="order-3 w-full justify-center lg:order-none lg:w-auto lg:justify-start"
-          />
-          <LandingHeaderActions
             primary={primary}
             verifyHref={verifyHref}
             sameTenant={sameTenant}

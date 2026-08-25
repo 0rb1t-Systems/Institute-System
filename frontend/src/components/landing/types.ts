@@ -40,6 +40,8 @@ export type LandingTemplateProps = {
   onChangeTemplate?: () => void
 }
 
+export { hasInstitutionLogo, institutionLogoUrl } from '@/lib/institution'
+
 export function brandInitial(name?: string | null) {
   const n = String(name || '').trim()
   return n ? n.charAt(0).toUpperCase() : 'I'

@@ -167,11 +167,13 @@ const LoginPage = ({ initialError = '' }) => {
               {loadingTenant ? (
                 <Loader2 className="h-8 w-8 animate-spin text-slate-400" />
               ) : institution?.logo_url ? (
-                <img
-                  src={institution.logo_url}
-                  alt=""
-                  className="h-12 w-12 rounded-xl bg-white/5 object-contain p-1"
-                />
+                <div className="rounded-2xl bg-white px-5 py-4 shadow-md ring-1 ring-white/10">
+                  <img
+                    src={institution.logo_url}
+                    alt={institution.name || 'Institution'}
+                    className="mx-auto h-[4.5rem] w-auto max-w-[13.5rem] object-contain"
+                  />
+                </div>
               ) : (
                 <div
                   className="flex h-12 w-12 items-center justify-center rounded-xl"
@@ -181,10 +183,12 @@ const LoginPage = ({ initialError = '' }) => {
                 </div>
               )}
               <div>
-                <CardTitle className="text-xl font-bold text-white sm:text-2xl">
-                  {institution?.name || 'Institution portal'}
-                </CardTitle>
-                <CardDescription className="mt-1 text-slate-400">
+                {institution?.logo_url ? null : (
+                  <CardTitle className="text-xl font-bold text-white sm:text-2xl">
+                    {institution?.name || 'Institution portal'}
+                  </CardTitle>
+                )}
+                <CardDescription className={`text-slate-400 ${institution?.logo_url ? '' : 'mt-1'}`}>
                   Sign in to open your dashboard
                 </CardDescription>
               </div>

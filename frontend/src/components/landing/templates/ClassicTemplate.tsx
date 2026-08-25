@@ -1,11 +1,10 @@
 import React from 'react'
 import {
-  BrandMark,
   LandingCtas,
-  LandingHeaderActions,
+  LandingHeaderBar,
   SharedLandingFooter,
 } from '@/components/landing/LandingShared'
-import { LandingContentSections, LandingPageNav } from '@/components/landing/LandingSections'
+import { LandingContentSections } from '@/components/landing/LandingSections'
 import type { LandingTemplateProps } from '@/components/landing/types'
 
 /** Cinematic dark — full-bleed photo hero with left-aligned copy. */
@@ -43,27 +42,21 @@ export default function ClassicTemplate(p: LandingTemplateProps) {
       </div>
 
       <header className="relative z-20 border-b border-white/10 bg-black/20 backdrop-blur-xl">
-        <div className="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-2 px-4 py-2.5 sm:gap-3 sm:px-8 sm:py-3">
-          <div className="flex min-w-0 flex-1 items-center gap-2.5 sm:gap-3">
-            <BrandMark institution={institution} primary={primary} size="sm" />
-            <p className="truncate text-sm font-bold uppercase tracking-[0.08em] text-white">
-              {institution.name}
-            </p>
-          </div>
-          <LandingPageNav institution={institution} primary={accent} preview={preview} tone="dark" className="hidden min-w-0 lg:flex" />
-          <LandingHeaderActions
+        <div className="mx-auto flex max-w-6xl flex-wrap items-center gap-x-4 gap-y-2 md:gap-x-7 px-4 py-2.5 sm:px-8 sm:py-3">
+          <LandingHeaderBar
+            institution={institution}
             primary={primary}
+            navPrimary={accent}
             verifyHref={verifyHref}
             sameTenant={sameTenant}
             userRole={userRole}
             onOpenLogin={onOpenLogin}
             preview={preview}
+            tone="dark"
+            brandNameClassName="text-[13px] font-semibold leading-snug tracking-tight text-white sm:text-[15px]"
             solidClassName="rounded-lg px-4 text-white"
             outlineClassName="rounded-lg border-white/25 bg-white/5 text-white hover:bg-white/10 hover:text-white"
           />
-        </div>
-        <div className="mx-auto max-w-6xl px-4 pb-3 lg:hidden">
-          <LandingPageNav institution={institution} primary={accent} preview={preview} tone="dark" className="justify-center" />
         </div>
       </header>
 

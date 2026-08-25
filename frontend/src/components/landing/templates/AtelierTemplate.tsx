@@ -1,11 +1,10 @@
 import React from 'react'
 import {
-  BrandMark,
   LandingCtas,
-  LandingHeaderActions,
+  LandingHeaderBar,
   SharedLandingFooter,
 } from '@/components/landing/LandingShared'
-import { LandingContentSections, LandingPageNav } from '@/components/landing/LandingSections'
+import { LandingContentSections } from '@/components/landing/LandingSections'
 import type { LandingTemplateProps } from '@/components/landing/types'
 
 /** Editorial warm — image left, refined typography right. */
@@ -29,27 +28,20 @@ export default function AtelierTemplate(p: LandingTemplateProps) {
   return (
     <div className="min-h-screen overflow-x-hidden bg-[#F7F6F4] font-sans text-stone-900">
       <header className="mx-auto max-w-6xl px-4 pt-5 sm:px-6 sm:pt-6">
-        <div className="flex flex-wrap items-center justify-between gap-2 border-b border-stone-200/80 pb-4 sm:gap-3 sm:pb-5">
-          <div className="flex min-w-0 flex-1 items-center gap-2.5 sm:gap-3">
-            <BrandMark institution={institution} primary={primary} size="sm" rounded="2xl" />
-            <p className="truncate font-display text-sm font-semibold tracking-tight sm:text-lg">
-              {institution.name}
-            </p>
-          </div>
-          <LandingPageNav institution={institution} primary={accent} preview={preview} tone="light" className="hidden min-w-0 lg:flex" />
-          <LandingHeaderActions
+        <div className="flex flex-wrap items-center gap-x-4 gap-y-2 md:gap-x-7 border-b border-stone-200/80 pb-4 sm:pb-5">
+          <LandingHeaderBar
+            institution={institution}
             primary={primary}
+            navPrimary={accent}
             verifyHref={verifyHref}
             sameTenant={sameTenant}
             userRole={userRole}
             onOpenLogin={onOpenLogin}
             preview={preview}
+            brandNameClassName="font-display text-[13px] font-semibold leading-snug tracking-tight sm:text-[15px]"
             solidClassName="rounded-full px-4 text-white"
             outlineClassName="rounded-full border-stone-300 bg-white"
           />
-        </div>
-        <div className="mt-3 lg:hidden">
-          <LandingPageNav institution={institution} primary={accent} preview={preview} tone="light" className="justify-center" />
         </div>
       </header>
 

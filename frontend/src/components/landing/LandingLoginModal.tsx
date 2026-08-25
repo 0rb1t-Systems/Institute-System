@@ -114,16 +114,18 @@ export default function LandingLoginModal({
                   className="relative mb-4"
                 >
                   <div
-                    className="absolute inset-0 rounded-2xl opacity-50 blur-xl"
+                    className="absolute inset-0 rounded-[1.35rem] opacity-50 blur-xl"
                     style={{ backgroundColor: primary }}
                     aria-hidden
                   />
                   {logoUrl ? (
-                    <img
-                      src={logoUrl}
-                      alt=""
-                      className="relative h-16 w-16 rounded-2xl border border-white/15 bg-white object-contain p-1.5 shadow-lg"
-                    />
+                    <div className="relative rounded-[1.35rem] border border-white/15 bg-white px-5 py-4 shadow-lg sm:px-6 sm:py-5">
+                      <img
+                        src={logoUrl}
+                        alt={brand}
+                        className="mx-auto h-[4.5rem] w-auto max-w-[13.5rem] object-contain sm:h-20 sm:max-w-[15rem]"
+                      />
+                    </div>
                   ) : (
                     <div
                       className="relative flex h-16 w-16 items-center justify-center rounded-2xl text-xl font-bold text-white shadow-lg ring-1 ring-white/20"
@@ -139,10 +141,15 @@ export default function LandingLoginModal({
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: 0.1 }}
                 >
-                  <p className="font-display text-[1.35rem] font-bold leading-tight tracking-tight text-white sm:text-[1.5rem]">
-                    {brand}
-                  </p>
-                  <p id="tenant-login-title" className="mt-1.5 text-sm font-medium text-slate-300">
+                  {logoUrl ? null : (
+                    <p className="font-display text-[1.35rem] font-bold leading-tight tracking-tight text-white sm:text-[1.5rem]">
+                      {brand}
+                    </p>
+                  )}
+                  <p
+                    id="tenant-login-title"
+                    className={`${logoUrl ? '' : 'mt-1.5'} text-sm font-medium text-slate-300`}
+                  >
                     Sign in to your portal
                   </p>
                   <p className="mt-1 flex items-center justify-center gap-1.5 text-[11px] text-slate-500">

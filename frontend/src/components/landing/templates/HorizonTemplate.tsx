@@ -1,11 +1,10 @@
 import React from 'react'
 import {
-  BrandMark,
   LandingCtas,
-  LandingHeaderActions,
+  LandingHeaderBar,
   SharedLandingFooter,
 } from '@/components/landing/LandingShared'
-import { LandingContentSections, LandingPageNav } from '@/components/landing/LandingSections'
+import { LandingContentSections } from '@/components/landing/LandingSections'
 import type { LandingTemplateProps } from '@/components/landing/types'
 
 /** Airy centered light — brand first, wide campus band below. */
@@ -35,26 +34,19 @@ export default function HorizonTemplate(p: LandingTemplateProps) {
       />
 
       <header className="relative z-20 mx-auto max-w-5xl px-4 pt-5 sm:px-6 sm:pt-6">
-        <div className="flex flex-wrap items-center justify-between gap-2 sm:gap-3">
-          <div className="flex min-w-0 flex-1 items-center gap-2.5 sm:gap-3">
-            <BrandMark institution={institution} primary={primary} size="sm" rounded="xl" />
-            <p className="truncate font-display text-sm font-bold tracking-tight sm:text-lg">
-              {institution.name}
-            </p>
-          </div>
-          <LandingHeaderActions
+        <div className="flex flex-wrap items-center gap-x-4 gap-y-2 md:gap-x-7">
+          <LandingHeaderBar
+            institution={institution}
             primary={primary}
             verifyHref={verifyHref}
             sameTenant={sameTenant}
             userRole={userRole}
             onOpenLogin={onOpenLogin}
             preview={preview}
+            brandNameClassName="font-display text-[13px] font-semibold leading-snug tracking-tight sm:text-[15px]"
             solidClassName="rounded-xl px-4 text-white"
             outlineClassName="rounded-xl border-slate-200 bg-white"
           />
-        </div>
-        <div className="mt-4 flex justify-center sm:mt-5">
-          <LandingPageNav institution={institution} primary={primary} preview={preview} tone="light" className="justify-center" />
         </div>
       </header>
 

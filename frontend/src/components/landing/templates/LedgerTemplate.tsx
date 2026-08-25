@@ -1,11 +1,10 @@
 import React from 'react'
 import {
-  BrandMark,
   LandingCtas,
-  LandingHeaderActions,
+  LandingHeaderBar,
   SharedLandingFooter,
 } from '@/components/landing/LandingShared'
-import { LandingContentSections, LandingPageNav } from '@/components/landing/LandingSections'
+import { LandingContentSections } from '@/components/landing/LandingSections'
 import type { LandingTemplateProps } from '@/components/landing/types'
 
 /** Sharp corporate light — accent bar, structured two-column. */
@@ -34,30 +33,20 @@ export default function LedgerTemplate(p: LandingTemplateProps) {
       />
 
       <header className="border-b border-slate-200 bg-white">
-        <div className="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-2 px-4 py-2.5 sm:gap-3 sm:px-6 sm:py-3">
-          <div className="flex min-w-0 flex-1 items-center gap-2.5 sm:gap-3">
-            <BrandMark institution={institution} primary={primary} size="sm" rounded="xl" />
-            <div className="min-w-0">
-              <p className="truncate text-sm font-bold tracking-tight text-slate-900 sm:text-base">
-                {institution.name}
-              </p>
-              <p className="hidden text-[11px] text-slate-500 sm:block">Official institution portal</p>
-            </div>
-          </div>
-          <LandingPageNav institution={institution} primary={accent} preview={preview} tone="light" className="hidden min-w-0 lg:flex" />
-          <LandingHeaderActions
+        <div className="mx-auto flex max-w-6xl flex-wrap items-center gap-x-4 gap-y-2 md:gap-x-7 px-4 py-2.5 sm:px-6 sm:py-3">
+          <LandingHeaderBar
+            institution={institution}
             primary={primary}
+            navPrimary={accent}
             verifyHref={verifyHref}
             sameTenant={sameTenant}
             userRole={userRole}
             onOpenLogin={onOpenLogin}
             preview={preview}
+            brandTagline="Official institution portal"
             solidClassName="rounded-md px-4 text-white"
             outlineClassName="rounded-md border-slate-300 bg-white"
           />
-        </div>
-        <div className="mx-auto max-w-6xl px-4 pb-3 lg:hidden">
-          <LandingPageNav institution={institution} primary={accent} preview={preview} tone="light" className="justify-center" />
         </div>
       </header>
 

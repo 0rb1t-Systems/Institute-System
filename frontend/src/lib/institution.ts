@@ -68,14 +68,20 @@ export function getInstitutionDisplayName(institution?: InstitutionBrand, fallba
   return name || fallback
 }
 
+/** Public logo URL from settings (supports a few field names from RPC/API). */
+export function institutionLogoUrl(
+  institutionOrUrl?: InstitutionBrand | string | null,
+): string {
+  if (typeof institutionOrUrl === 'string') return String(institutionOrUrl || '').trim()
+  const row = institutionOrUrl as { logo_url?: string | null; logo?: string | null; logoUrl?: string | null } | null
+  return String(row?.logo_url || row?.logo || row?.logoUrl || '').trim()
+}
+
 /** True when settings has a usable institution logo URL. */
 export function hasInstitutionLogo(
   institutionOrUrl?: InstitutionBrand | string | null,
 ): boolean {
-  if (typeof institutionOrUrl === 'string') {
-    return Boolean(String(institutionOrUrl || '').trim())
-  }
-  return Boolean(String(institutionOrUrl?.logo_url || '').trim())
+  return Boolean(institutionLogoUrl(institutionOrUrl))
 }
 
 /**
