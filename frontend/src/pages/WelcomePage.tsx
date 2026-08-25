@@ -236,7 +236,7 @@ const WelcomePage = () => {
       </section>
 
       <Dialog open={verifyOpen} onOpenChange={setVerifyOpen}>
-        <DialogContent className="max-w-lg border-[var(--pf-line)] bg-[var(--pf-surface)] p-5 text-[var(--pf-text)] sm:p-6">
+        <DialogContent className="max-w-lg rounded-2xl border-[var(--pf-line)] bg-[var(--pf-surface)] p-5 text-[var(--pf-text)] shadow-[0_24px_60px_rgba(6,21,18,0.35)] sm:p-6">
           <StudentIdentityVerify variant="platform" accent="#14b8a6" />
         </DialogContent>
       </Dialog>

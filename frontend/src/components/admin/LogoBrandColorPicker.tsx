@@ -106,11 +106,10 @@ const LogoBrandColorPicker = ({
       {swatches.length > 0 ? (
         <div className="space-y-1.5">
           <p className="text-xs text-slate-400">
-            Colors from the logo are applied automatically: 1st = primary, 2nd = secondary, 3rd = third color.
-            Click a swatch if you want to override primary.
+            Colors from the logo: 1 = primary, 2 = secondary, 3 = third color.
           </p>
           <div className="flex flex-wrap gap-2">
-            {swatches.map((hex) => {
+            {swatches.slice(0, 3).map((hex) => {
               const role =
                 hex.toUpperCase() === safePrimary
                   ? '1'

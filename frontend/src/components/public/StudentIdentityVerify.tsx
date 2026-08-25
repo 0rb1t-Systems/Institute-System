@@ -22,12 +22,22 @@ import { verifyStudentProfile } from '@/lib/api'
 import { MESSAGES } from '@/lib/messages'
 import { cn } from '@/lib/utils'
 
-const academicStatusTone = (status?: string) => {
+const academicStatusTone = (status?: string, platform?: boolean) => {
   const s = String(status || '').toLowerCase()
-  if (s === 'completed') return 'bg-emerald-600/25 text-emerald-300 border-emerald-500/40'
-  if (s === 'enrolled' || s === 'verified') return 'bg-sky-600/20 text-sky-300 border-sky-500/40'
+  if (s === 'completed') {
+    return platform
+      ? 'bg-teal-500/15 text-teal-600 border-teal-500/35'
+      : 'bg-emerald-600/25 text-emerald-300 border-emerald-500/40'
+  }
+  if (s === 'enrolled' || s === 'verified') {
+    return platform
+      ? 'bg-teal-500/12 text-[var(--pf-text)] border-teal-500/30'
+      : 'bg-sky-600/20 text-sky-300 border-sky-500/40'
+  }
   if (s === 'inactive') return 'bg-amber-600/20 text-amber-300 border-amber-500/40'
-  return 'bg-slate-700/50 text-slate-300 border-slate-600/50'
+  return platform
+    ? 'bg-[var(--pf-hover)] text-[var(--pf-muted)] border-[var(--pf-line)]'
+    : 'bg-slate-700/50 text-slate-300 border-slate-600/50'
 }
 
 type Props = {
@@ -93,7 +103,7 @@ export default function StudentIdentityVerify({
 
   const institutionName = student?.institution_name || tenantName || 'Training Center'
   const logoUrl = student?.institution_logo_url || null
-  const recordAccent = student?.theme_primary || brand
+  const recordAccent = isPlatform ? brand : student?.theme_primary || brand
   const programLabel = student?.program_name || student?.class_name || '—'
   const academicStatus = student?.academic_status || 'Verified'
   const initials =
@@ -106,10 +116,10 @@ export default function StudentIdentityVerify({
       .toUpperCase() || 'ST'
 
   return (
-    <div className="w-full max-w-lg mx-auto space-y-8">
-      <div className="text-center space-y-4">
+    <div className="mx-auto w-full max-w-lg space-y-8">
+      <div className="space-y-4 text-center">
         <div
-          className="w-16 h-16 rounded-full flex items-center justify-center mx-auto border shadow-lg"
+          className="mx-auto flex h-16 w-16 items-center justify-center rounded-full border shadow-lg"
           style={{
             backgroundColor: `${brand}18`,
             borderColor: `${brand}40`,
@@ -119,8 +129,10 @@ export default function StudentIdentityVerify({
           <ShieldCheck className="h-8 w-8" style={{ color: brand }} />
         </div>
         <div>
-          <h2 className="text-2xl font-bold text-white">Verify Identity</h2>
-          <p className="text-slate-400 mt-2 text-sm">
+          <h2 className={cn('font-display text-2xl font-bold', isPlatform ? 'text-[var(--pf-text)]' : 'text-white')}>
+            Verify Identity
+          </h2>
+          <p className={cn('mt-2 text-sm', isPlatform ? 'text-[var(--pf-muted)]' : 'text-slate-400')}>
             {isPlatform
               ? 'Enter a Student ID to confirm the official academic record at any institution on TvetFlow.'
               : `Enter a Student ID to confirm the official academic record${tenantName ? ` at ${tenantName}` : ''}.`}
@@ -128,14 +140,19 @@ export default function StudentIdentityVerify({
         </div>
       </div>
 
-      <Card className="shadow-2xl border-slate-800 bg-[#0c1628]/80 sm:bg-slate-900 overflow-hidden">
+      <Card
+        className={cn(
+          'overflow-hidden shadow-2xl',
+          isPlatform
+            ? 'border-[var(--pf-line)] bg-[var(--pf-bg)]'
+            : 'border-slate-800 bg-[#0c1628]/80 sm:bg-slate-900',
+        )}
+      >
         <div className="h-1 w-full" style={{ backgroundColor: brand }} />
-        <CardHeader className="text-center pb-2">
-          <CardTitle className="text-white">Student Verification</CardTitle>
-          <CardDescription className="text-slate-400">
-            {isPlatform
-              ? 'Secure check against the platform registry'
-              : 'Secure check against the institution registry'}
+        <CardHeader className="pb-2 text-center">
+          <CardTitle className={isPlatform ? 'text-[var(--pf-text)]' : 'text-white'}>Student Verification</CardTitle>
+          <CardDescription className={isPlatform ? 'text-[var(--pf-muted)]' : 'text-slate-400'}>
+            {isPlatform ? 'Secure check against TvetFlow records' : 'Secure check against the institution registry'}
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -148,11 +165,21 @@ export default function StudentIdentityVerify({
                 Student ID
               </Label>
               <div className="relative">
-                <User className="absolute left-3 top-3 h-4 w-4 text-slate-500" />
+                <User
+                  className={cn(
+                    'absolute left-3 top-3 h-4 w-4',
+                    isPlatform ? 'text-teal-600' : 'text-slate-500',
+                  )}
+                />
                 <Input
                   id="studentId"
                   placeholder="e.g. BRCE01106"
-                  className="pl-9 h-11 bg-slate-950 border-slate-800 text-white placeholder:text-slate-600"
+                  className={cn(
+                    'h-11 pl-9',
+                    isPlatform
+                      ? 'border-teal-500/45 bg-[var(--pf-bg-2)] text-[var(--pf-text)] placeholder:text-[var(--pf-faint)] shadow-[0_0_0_1px_rgba(20,184,166,0.12)] focus-visible:ring-teal-500'
+                      : 'border-slate-800 bg-slate-950 text-white placeholder:text-slate-600',
+                  )}
                   style={{ ['--tw-ring-color' as string]: brand }}
                   {...register('studentId', { required: MESSAGES.VALIDATION.STUDENT_ID })}
                 />
@@ -164,8 +191,11 @@ export default function StudentIdentityVerify({
 
             <Button
               type="submit"
-              className="w-full h-11 text-white shadow-lg transition-all hover:opacity-90"
-              style={{ backgroundColor: brand }}
+              className={cn(
+                'h-11 w-full shadow-lg transition-all hover:opacity-90',
+                isPlatform ? 'bg-[var(--pf-accent)] font-semibold text-[var(--pf-accent-fg)]' : 'text-white',
+              )}
+              style={isPlatform ? undefined : { backgroundColor: brand }}
               disabled={isLoading}
             >
               {isLoading ? (
@@ -183,76 +213,182 @@ export default function StudentIdentityVerify({
       </Card>
 
       <Dialog open={isOpen} onOpenChange={setIsOpen}>
-        <DialogContent className="sm:max-w-lg p-0 overflow-hidden bg-[#121826] border-slate-800 text-slate-100 gap-0">
+        <DialogContent
+          className={cn(
+            'gap-0 overflow-hidden p-0 sm:max-w-lg',
+            isPlatform
+              ? 'border-[var(--pf-line)] bg-[var(--pf-surface)] text-[var(--pf-text)]'
+              : 'border-slate-800 bg-[#121826] text-slate-100',
+          )}
+        >
           {status === 'success' && student ? (
             <div className="flex flex-col">
               <div className="h-1 w-full" style={{ backgroundColor: recordAccent }} />
 
-              <div className="px-5 pt-5 pb-4 flex items-start justify-between gap-3">
-                <div className="flex items-start gap-3 min-w-0">
-                  <div className="h-10 w-10 rounded-lg bg-slate-800 border border-slate-700 flex items-center justify-center shrink-0 overflow-hidden">
+              <div className="flex items-start justify-between gap-3 px-5 pb-4 pt-5">
+                <div className="flex min-w-0 items-start gap-3">
+                  <div
+                    className={cn(
+                      'flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-lg border',
+                      isPlatform ? 'border-[var(--pf-line)] bg-[var(--pf-bg)]' : 'border-slate-700 bg-slate-800',
+                    )}
+                  >
                     {logoUrl ? (
                       <img src={logoUrl} alt="" className="h-full w-full object-contain p-1" />
                     ) : (
-                      <Award className="h-5 w-5 text-slate-300" />
+                      <Award className={cn('h-5 w-5', isPlatform ? 'text-teal-600' : 'text-slate-300')} />
                     )}
                   </div>
                   <div className="min-w-0 text-left">
-                    <p className="text-[11px] font-bold uppercase tracking-[0.14em] text-white">Official Record</p>
-                    <p className="text-xs text-slate-400 mt-0.5 leading-snug line-clamp-2">{institutionName}</p>
+                    <p
+                      className={cn(
+                        'text-[11px] font-bold uppercase tracking-[0.14em]',
+                        isPlatform ? 'text-[var(--pf-text)]' : 'text-white',
+                      )}
+                    >
+                      Official Record
+                    </p>
+                    <p
+                      className={cn(
+                        'mt-0.5 line-clamp-2 text-xs leading-snug',
+                        isPlatform ? 'text-[var(--pf-muted)]' : 'text-slate-400',
+                      )}
+                    >
+                      {institutionName}
+                    </p>
                   </div>
                 </div>
-                <div className="shrink-0 inline-flex items-center gap-1.5 rounded-md border border-emerald-500/50 px-2.5 py-1.5 text-[10px] font-bold uppercase tracking-wide text-emerald-400">
+                <div
+                  className={cn(
+                    'inline-flex shrink-0 items-center gap-1.5 rounded-md border px-2.5 py-1.5 text-[10px] font-bold uppercase tracking-wide',
+                    isPlatform
+                      ? 'border-teal-500/40 text-teal-600'
+                      : 'border-emerald-500/50 text-emerald-400',
+                  )}
+                >
                   <CheckCircle2 className="h-3.5 w-3.5" />
                   Verified Credential
                 </div>
               </div>
 
-              <div className="px-5 pb-5 flex items-center gap-4">
+              <div className="flex items-center gap-4 px-5 pb-5">
                 <div className="relative shrink-0">
-                  <Avatar className="h-20 w-20 border-2 border-slate-700 shadow-lg">
+                  <Avatar
+                    className={cn(
+                      'h-20 w-20 border-2 shadow-lg',
+                      isPlatform ? 'border-[var(--pf-line)]' : 'border-slate-700',
+                    )}
+                  >
                     <AvatarImage src={student.avatar_url || undefined} alt="" />
-                    <AvatarFallback className="bg-slate-800 text-slate-300 text-xl font-bold">
+                    <AvatarFallback
+                      className={cn(
+                        'text-xl font-bold',
+                        isPlatform
+                          ? 'bg-[var(--pf-bg)] text-[var(--pf-text)]'
+                          : 'bg-slate-800 text-slate-300',
+                      )}
+                    >
                       {initials}
                     </AvatarFallback>
                   </Avatar>
-                  <span className="absolute -bottom-0.5 -right-0.5 h-6 w-6 rounded-full bg-amber-400 border-2 border-[#121826] flex items-center justify-center">
-                    <BadgeCheck className="h-3.5 w-3.5 text-slate-900" />
+                  <span
+                    className={cn(
+                      'absolute -bottom-0.5 -right-0.5 flex h-6 w-6 items-center justify-center rounded-full border-2',
+                      isPlatform ? 'border-[var(--pf-surface)] bg-teal-500' : 'border-[#121826] bg-amber-400',
+                    )}
+                  >
+                    <BadgeCheck className={cn('h-3.5 w-3.5', isPlatform ? 'text-[#04201c]' : 'text-slate-900')} />
                   </span>
                 </div>
-                <div className="min-w-0 text-left space-y-2">
-                  <h3 className="text-xl font-bold text-white leading-tight truncate">{student.name}</h3>
-                  <span className="inline-flex items-center rounded-full bg-slate-800 border border-slate-700 px-3 py-1 font-mono text-sm text-white tracking-wide">
+                <div className="min-w-0 space-y-2 text-left">
+                  <h3
+                    className={cn(
+                      'truncate text-xl font-bold leading-tight',
+                      isPlatform ? 'text-[var(--pf-text)]' : 'text-white',
+                    )}
+                  >
+                    {student.name}
+                  </h3>
+                  <span
+                    className={cn(
+                      'inline-flex items-center rounded-full border px-3 py-1 font-mono text-sm tracking-wide',
+                      isPlatform
+                        ? 'border-[var(--pf-line)] bg-[var(--pf-bg)] text-[var(--pf-text)]'
+                        : 'border-slate-700 bg-slate-800 text-white',
+                    )}
+                  >
                     {student.student_code}
                   </span>
                 </div>
               </div>
 
-              <div className="px-5 pb-5 grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <div className="rounded-xl bg-slate-900/80 border border-slate-800 p-3.5 text-left sm:col-span-2">
-                  <div className="flex items-center gap-1.5 mb-2">
+              <div className="grid grid-cols-1 gap-3 px-5 pb-5 sm:grid-cols-2">
+                <div
+                  className={cn(
+                    'rounded-xl border p-3.5 text-left sm:col-span-2',
+                    isPlatform
+                      ? 'border-[var(--pf-line)] bg-[var(--pf-bg)]'
+                      : 'border-slate-800 bg-slate-900/80',
+                  )}
+                >
+                  <div className="mb-2 flex items-center gap-1.5">
                     <Building2 className="h-3.5 w-3.5" style={{ color: recordAccent }} />
-                    <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-500">Institution</p>
+                    <p
+                      className={cn(
+                        'text-[10px] font-semibold uppercase tracking-wider',
+                        isPlatform ? 'text-[var(--pf-faint)]' : 'text-slate-500',
+                      )}
+                    >
+                      Institution
+                    </p>
                   </div>
-                  <p className="text-sm font-semibold text-white leading-snug">{institutionName}</p>
+                  <p className={cn('text-sm font-semibold leading-snug', isPlatform ? 'text-[var(--pf-text)]' : 'text-white')}>
+                    {institutionName}
+                  </p>
                 </div>
-                <div className="rounded-xl bg-slate-900/80 border border-slate-800 p-3.5 text-left">
-                  <div className="flex items-center gap-1.5 mb-2">
-                    <BookOpen className="h-3.5 w-3.5 text-sky-400" />
-                    <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-500">
+                <div
+                  className={cn(
+                    'rounded-xl border p-3.5 text-left',
+                    isPlatform
+                      ? 'border-[var(--pf-line)] bg-[var(--pf-bg)]'
+                      : 'border-slate-800 bg-slate-900/80',
+                  )}
+                >
+                  <div className="mb-2 flex items-center gap-1.5">
+                    <BookOpen className={cn('h-3.5 w-3.5', isPlatform ? 'text-teal-600' : 'text-sky-400')} />
+                    <p
+                      className={cn(
+                        'text-[10px] font-semibold uppercase tracking-wider',
+                        isPlatform ? 'text-[var(--pf-faint)]' : 'text-slate-500',
+                      )}
+                    >
                       Program / Course
                     </p>
                   </div>
-                  <p className="text-sm font-semibold text-white leading-snug">{programLabel}</p>
+                  <p className={cn('text-sm font-semibold leading-snug', isPlatform ? 'text-[var(--pf-text)]' : 'text-white')}>
+                    {programLabel}
+                  </p>
                 </div>
-                <div className="rounded-xl bg-slate-900/80 border border-slate-800 p-3.5 text-left">
-                  <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-500 mb-2">
+                <div
+                  className={cn(
+                    'rounded-xl border p-3.5 text-left',
+                    isPlatform
+                      ? 'border-[var(--pf-line)] bg-[var(--pf-bg)]'
+                      : 'border-slate-800 bg-slate-900/80',
+                  )}
+                >
+                  <p
+                    className={cn(
+                      'mb-2 text-[10px] font-semibold uppercase tracking-wider',
+                      isPlatform ? 'text-[var(--pf-faint)]' : 'text-slate-500',
+                    )}
+                  >
                     Academic Status
                   </p>
                   <span
                     className={cn(
                       'inline-flex items-center rounded-full border px-3 py-1 text-xs font-semibold',
-                      academicStatusTone(academicStatus),
+                      academicStatusTone(academicStatus, isPlatform),
                     )}
                   >
                     {academicStatus}
@@ -260,7 +396,12 @@ export default function StudentIdentityVerify({
                 </div>
               </div>
 
-              <p className="px-5 pb-5 text-center text-[11px] leading-relaxed text-slate-500">
+              <p
+                className={cn(
+                  'px-5 pb-5 text-center text-[11px] leading-relaxed',
+                  isPlatform ? 'text-[var(--pf-faint)]' : 'text-slate-500',
+                )}
+              >
                 This verification confirms the authenticity of the student&apos;s academic record at {institutionName}.
               </p>
 
@@ -268,24 +409,38 @@ export default function StudentIdentityVerify({
                 <Button
                   variant="outline"
                   onClick={() => setIsOpen(false)}
-                  className="w-full border-slate-700 hover:bg-slate-800 text-slate-200"
+                  className={
+                    isPlatform
+                      ? 'w-full border-[var(--pf-line)] bg-transparent text-[var(--pf-text)] hover:bg-[var(--pf-hover)]'
+                      : 'w-full border-slate-700 text-slate-200 hover:bg-slate-800'
+                  }
                 >
                   Close
                 </Button>
               </div>
             </div>
           ) : (
-            <div className="px-5 py-8 text-center space-y-4">
-              <XCircle className="h-12 w-12 text-red-500 mx-auto" />
+            <div className="space-y-4 px-5 py-8 text-center">
+              <XCircle className="mx-auto h-12 w-12 text-red-500" />
               <div>
-                <h3 className="text-xl font-bold text-white">Not Verified</h3>
-                <p className="text-slate-400 mt-2 text-sm">{MESSAGES.DOMAIN.STUDENT_NOT_FOUND}</p>
-                <p className="text-sm mt-1 text-slate-500">Please check the ID and try again.</p>
+                <h3 className={cn('text-xl font-bold', isPlatform ? 'text-[var(--pf-text)]' : 'text-white')}>
+                  Not Verified
+                </h3>
+                <p className={cn('mt-2 text-sm', isPlatform ? 'text-[var(--pf-muted)]' : 'text-slate-400')}>
+                  {MESSAGES.DOMAIN.STUDENT_NOT_FOUND}
+                </p>
+                <p className={cn('mt-1 text-sm', isPlatform ? 'text-[var(--pf-faint)]' : 'text-slate-500')}>
+                  Please check the ID and try again.
+                </p>
               </div>
               <Button
                 variant="outline"
                 onClick={() => setIsOpen(false)}
-                className="w-full border-slate-700 hover:bg-slate-800 text-slate-300"
+                className={
+                  isPlatform
+                    ? 'w-full border-[var(--pf-line)] bg-transparent text-[var(--pf-text)] hover:bg-[var(--pf-hover)]'
+                    : 'w-full border-slate-700 text-slate-300 hover:bg-slate-800'
+                }
               >
                 Close
               </Button>

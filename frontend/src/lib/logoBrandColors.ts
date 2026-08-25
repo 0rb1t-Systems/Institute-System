@@ -253,7 +253,7 @@ export async function extractLogoBrandPalette(
       primary,
       accent,
       tertiary,
-      swatches: swatches.slice(0, 6).map((c) => normalizeHexColor(c)),
+      swatches: distinct.map((c) => normalizeHexColor(c)),
     }
   } catch {
     return null
