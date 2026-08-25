@@ -7,12 +7,39 @@ import {
   dashboardPathForRole,
   type LandingInstitution,
 } from '@/components/landing/types'
-import { institutionLogoUrl } from '@/lib/institution'
+import { brandedImageSrc, institutionLogoUrl } from '@/lib/institution'
 import {
   LandingPageNav,
   landingNavItemsFor,
   scrollToLandingSection,
 } from '@/components/landing/LandingNav'
+
+const HEADER_LOGO_CLASS =
+  'h-12 w-auto max-w-[16rem] object-contain md:h-14 md:max-w-[18rem]'
+
+/** Same logo file + size for header, login form, and footer. */
+export function LandingLogo({
+  institution,
+  className = HEADER_LOGO_CLASS,
+  align = 'left',
+}: {
+  institution?: { logo_url?: string | null; name?: string | null } | string | null
+  className?: string
+  align?: 'left' | 'center'
+}) {
+  const logoUrl = institutionLogoUrl(institution)
+  if (!logoUrl) return null
+  const name = typeof institution === 'object' ? String(institution?.name || '').trim() : ''
+  return (
+    <img
+      key={logoUrl}
+      src={brandedImageSrc(logoUrl)}
+      alt={name || 'Institution'}
+      className={`${className} ${align === 'center' ? 'mx-auto object-center' : 'object-left'}`}
+      crossOrigin="anonymous"
+    />
+  )
+}
 
 /** Shared brand mark — logo or initial. */
 export function BrandMark({
@@ -34,7 +61,7 @@ export function BrandMark({
       <span
         className={`inline-flex ${dim} ${radius} shrink-0 items-center justify-center bg-white p-1.5 shadow-sm ring-1 ring-black/5`}
       >
-        <img src={logoUrl} alt="" className="h-full w-full object-contain" />
+        <img key={logoUrl} src={brandedImageSrc(logoUrl)} alt="" className="h-full w-full object-contain" />
       </span>
     )
   }
@@ -70,18 +97,8 @@ export function LandingHeaderBrand({
   if (logoUrl) {
     return (
       <div className={`flex items-center ${className}`}>
-        <span
-          className={
-            tone === 'dark'
-              ? 'inline-flex items-center rounded-2xl bg-white px-3.5 py-2.5 shadow-[0_8px_24px_rgba(0,0,0,0.2)]'
-              : 'inline-flex items-center rounded-2xl bg-white px-3 py-2 shadow-sm ring-1 ring-black/[0.06]'
-          }
-        >
-          <img
-            src={logoUrl}
-            alt={institution.name || 'Institution'}
-            className="h-12 w-auto max-w-[16rem] object-contain object-left md:h-14 md:max-w-[18rem]"
-          />
+        <span className="inline-flex items-center">
+          <LandingLogo institution={institution} />
         </span>
       </div>
     )
@@ -347,8 +364,14 @@ export function SharedLandingFooter({
       <div className="mx-auto grid max-w-6xl gap-6 px-4 py-7 sm:px-6 md:grid-cols-[1.2fr_1fr_1fr] md:px-8">
         <div className="min-w-0">
           <div className="flex min-w-0 items-center gap-2.5">
-            <BrandMark institution={institution} primary={primary} size="sm" />
-            <p className={`truncate font-display text-sm font-semibold ${title}`}>{institution.name}</p>
+            {institutionLogoUrl(institution) ? (
+              <LandingLogo institution={institution} className="h-10 w-auto max-w-[14rem] object-contain md:h-12" />
+            ) : (
+              <>
+                <BrandMark institution={institution} primary={primary} size="sm" />
+                <p className={`truncate font-display text-sm font-semibold ${title}`}>{institution.name}</p>
+              </>
+            )}
           </div>
           <p className={`mt-3 max-w-xs break-words text-sm leading-relaxed ${muted}`}>{footerNote}</p>
         </div>

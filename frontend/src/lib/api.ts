@@ -962,6 +962,7 @@ export const uploadInstitutionAsset = async (file, kind = 'logo') => {
 
   const { error } = await supabase.storage.from('institution-assets').upload(path, file, {
     upsert: true,
+    cacheControl: '0',
     contentType: mime || `image/${safeExt === 'jpg' ? 'jpeg' : safeExt}`,
   })
   if (error) throw error
@@ -3028,7 +3029,16 @@ export const getPublicInstitutionBySubdomain = async (subdomain) => {
   if (!slug) return null
   const { data, error } = await supabase.rpc('get_public_institution', { p_subdomain: slug })
   if (error) throw error
-  return data || null
+  const raw = Array.isArray(data) ? data[0] : data
+  if (!raw) return null
+  if (typeof raw === 'string') {
+    try {
+      return JSON.parse(raw)
+    } catch {
+      return null
+    }
+  }
+  return raw
 }
 
 /**

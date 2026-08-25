@@ -8,7 +8,7 @@ import { Button } from '@/components/ui/button'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { useAuth } from '@/contexts/AuthContext'
 import { getMyInstitution, updateInstitution, uploadInstitutionAsset } from '@/lib/api'
-import { getInstitutionDisplayName, getTenantPortalUrl } from '@/lib/institution'
+import { getInstitutionDisplayName, getTenantPortalUrl, publishInstitutionBrand } from '@/lib/institution'
 import { getUserMessage } from '@/lib/mapError'
 import { MESSAGES } from '@/lib/messages'
 import LandingTemplatePicker, {
@@ -81,6 +81,17 @@ const LandingCustomizePage = () => {
     [inst, authInst, landing.logoPreviewUrl, landing.description, landing.landing_content],
   )
 
+  useEffect(() => {
+    const url = String(authInst?.logo_url || '').trim()
+    if (!url) return
+    setLanding((prev) => {
+      if (prev.logoFile) return prev
+      if (prev.logoPreviewUrl === url) return prev
+      return { ...prev, logoPreviewUrl: url }
+    })
+    setInst((prev) => (prev ? { ...prev, logo_url: url } : prev))
+  }, [authInst?.logo_url])
+
   const landingPath = getTenantPortalUrl(inst || authInst)
 
   const handleSave = async () => {
@@ -93,6 +104,9 @@ const LandingCustomizePage = () => {
 
       if (landing.logoFile) {
         logo_url = await uploadInstitutionAsset(landing.logoFile, 'logo')
+      } else {
+        const fresh = await getMyInstitution()
+        logo_url = fresh?.logo_url || landing.logoPreviewUrl
       }
       if (landing.heroFile) {
         hero_image_url = await uploadInstitutionAsset(landing.heroFile, 'hero')
@@ -122,6 +136,11 @@ const LandingCustomizePage = () => {
         heroPreviewUrl: updated?.hero_image_url || prev.heroPreviewUrl,
       }))
       await refreshUser?.()
+      publishInstitutionBrand({
+        id: updated?.id || inst?.id || authInst?.id,
+        logo_url: updated?.logo_url || logo_url,
+        name: updated?.name || inst?.name || authInst?.name,
+      })
       setSuccess('Landing page updated. Open your public landing to review.')
     } catch (err) {
       setError(getUserMessage(err, { context: 'LandingCustomizeSave', fallback: MESSAGES.UNEXPECTED }))

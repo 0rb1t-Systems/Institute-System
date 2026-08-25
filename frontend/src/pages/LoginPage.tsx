@@ -12,10 +12,16 @@ import { getUserMessage } from '@/lib/mapError';
 import { MESSAGES } from '@/lib/messages';
 import { getPublicInstitutionBySubdomain } from '@/lib/api';
 import ThemeToggle from '@/components/platform/ThemeToggle';
+import { LandingLogo } from '@/components/landing/LandingShared';
 import {
   getInstitutionPrimary,
   getTenantPortalUrl,
+  institutionLogoUrl,
+  applyBrandPatch,
+  mergeInstitutionWithPublishedBrand,
+  coalesceLogoUrl,
   resolvePublicTenantSubdomain,
+  subscribeInstitutionBrand,
 } from '@/lib/institution';
 
 function dashboardPathForRole(role) {
@@ -56,28 +62,53 @@ const LoginPage = ({ initialError = '' }) => {
   }, [location.state]);
 
   useEffect(() => {
+    if (!tenant) {
+      setInstitution(null);
+      return undefined;
+    }
     let cancelled = false;
-    (async () => {
-      if (!tenant) {
-        setInstitution(null);
-        return;
-      }
-      setLoadingTenant(true);
+    const load = async (silent = false) => {
+      if (!silent) setLoadingTenant(true);
       try {
         const inst = await getPublicInstitutionBySubdomain(tenant);
-        if (!cancelled) setInstitution(inst || null);
+        if (cancelled) return
+        const merged = mergeInstitutionWithPublishedBrand(inst || null)
+        setInstitution((prev) => {
+          if (!silent || !prev || !merged) return merged
+          return {
+            ...merged,
+            logo_url: coalesceLogoUrl(merged.logo_url, prev.logo_url),
+            name: merged.name || prev.name,
+          }
+        })
       } catch {
-        if (!cancelled) setInstitution(null);
+        if (!cancelled && !silent) setInstitution(null);
       } finally {
-        if (!cancelled) setLoadingTenant(false);
+        if (!cancelled && !silent) setLoadingTenant(false);
       }
-    })();
+    };
+    void load(false);
+    const onFocus = () => void load(true);
+    const onVis = () => {
+      if (document.visibilityState === 'visible') void load(true);
+    };
+    window.addEventListener('focus', onFocus);
+    document.addEventListener('visibilitychange', onVis);
     return () => {
       cancelled = true;
+      window.removeEventListener('focus', onFocus);
+      document.removeEventListener('visibilitychange', onVis);
     };
   }, [tenant]);
 
+  useEffect(() => {
+    return subscribeInstitutionBrand((patch) => {
+      setInstitution((prev) => applyBrandPatch(prev, patch) ?? prev)
+    })
+  }, []);
+
   const primary = getInstitutionPrimary(institution);
+  const tenantLogo = institutionLogoUrl(institution);
   const isTenantLogin = Boolean(tenant);
   const tenantHomeHref = tenant ? getTenantPortalUrl({ subdomain: tenant }) : '/';
 
@@ -164,16 +195,10 @@ const LoginPage = ({ initialError = '' }) => {
         <CardHeader className="space-y-3 pb-6 text-center">
           {isTenantLogin ? (
             <div className="flex flex-col items-center gap-3">
-              {loadingTenant ? (
+              {loadingTenant && !tenantLogo ? (
                 <Loader2 className="h-8 w-8 animate-spin text-slate-400" />
-              ) : institution?.logo_url ? (
-                <div className="rounded-2xl bg-white px-5 py-4 shadow-md ring-1 ring-white/10">
-                  <img
-                    src={institution.logo_url}
-                    alt={institution.name || 'Institution'}
-                    className="mx-auto h-[4.5rem] w-auto max-w-[13.5rem] object-contain"
-                  />
-                </div>
+              ) : tenantLogo ? (
+                <LandingLogo institution={institution} align="center" />
               ) : (
                 <div
                   className="flex h-12 w-12 items-center justify-center rounded-xl"
@@ -183,12 +208,12 @@ const LoginPage = ({ initialError = '' }) => {
                 </div>
               )}
               <div>
-                {institution?.logo_url ? null : (
+                {tenantLogo ? null : (
                   <CardTitle className="text-xl font-bold text-white sm:text-2xl">
                     {institution?.name || 'Institution portal'}
                   </CardTitle>
                 )}
-                <CardDescription className={`text-slate-400 ${institution?.logo_url ? '' : 'mt-1'}`}>
+                <CardDescription className={`text-slate-400 ${tenantLogo ? '' : 'mt-1'}`}>
                   Sign in to open your dashboard
                 </CardDescription>
               </div>

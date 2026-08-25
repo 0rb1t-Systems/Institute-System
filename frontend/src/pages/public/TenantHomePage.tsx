@@ -1,12 +1,20 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Helmet } from 'react-helmet';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { LayoutTemplate, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { getPublicInstitutionBySubdomain, setLandingTemplate } from '@/lib/api';
+import { supabase } from '@/lib/supabaseClient';
 import {
   resolvePublicTenantSubdomain,
   getInstitutionPrimary,
+  institutionLogoUrl,
+  pickLiveLogoUrl,
+  coalesceLogoUrl,
+  applyBrandPatch,
+  mergeInstitutionWithPublishedBrand,
+  readPublishedInstitutionBrand,
+  subscribeInstitutionBrand,
 } from '@/lib/institution';
 import { useAuth } from '@/contexts/AuthContext';
 import { getUserMessage } from '@/lib/mapError';
@@ -27,7 +35,7 @@ import {
 const TenantHomePage = ({ subdomain: subdomainProp }) => {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
-  const { user, login, refreshUser } = useAuth();
+  const { user, login, refreshUser, institution: authInstitution } = useAuth();
   const subdomain =
     subdomainProp ||
     searchParams.get('tenant') ||
@@ -52,39 +60,117 @@ const TenantHomePage = ({ subdomain: subdomainProp }) => {
   const pendingSaveIdRef = useRef<LandingTemplateId | null>(null);
   const [loginForTemplateSave, setLoginForTemplateSave] = useState(false);
 
-  useEffect(() => {
-    let cancelled = false;
-    (async () => {
+  const loadInstitution = useCallback(
+    async (opts?: { silent?: boolean }) => {
       if (!subdomain) {
         setLoading(false);
         setError('missing');
         return;
       }
-      setLoading(true);
+      if (!opts?.silent) setLoading(true);
       try {
         const inst = await getPublicInstitutionBySubdomain(subdomain);
-        if (cancelled) return;
         if (!inst) {
           setError('not_found');
           setInstitution(null);
         } else {
-          setInstitution(inst);
-          setActiveTemplateId(getLandingTemplate(inst.landing_template_id).id);
+          setInstitution((prev) => {
+            const merged = mergeInstitutionWithPublishedBrand(inst) || inst
+            if (!opts?.silent || !prev || String(prev.id) !== String(merged.id)) return merged
+            const published = readPublishedInstitutionBrand()
+            const publishedCleared =
+              published &&
+              (!published.id || String(published.id) === String(merged.id)) &&
+              (published.logo_url === '' || published.logo_url === null) &&
+              published.at &&
+              Date.now() - published.at < 15 * 60 * 1000
+            return {
+              ...merged,
+              logo_url: publishedCleared ? '' : coalesceLogoUrl(merged.logo_url, prev.logo_url),
+              name: prev.name || merged.name,
+            }
+          });
+          if (!opts?.silent) {
+            setActiveTemplateId(getLandingTemplate(inst.landing_template_id).id);
+          }
           setError(null);
         }
       } catch {
-        if (!cancelled) {
+        if (!opts?.silent) {
           setError('load_failed');
           setInstitution(null);
         }
       } finally {
-        if (!cancelled) setLoading(false);
+        if (!opts?.silent) setLoading(false);
       }
-    })();
-    return () => {
-      cancelled = true;
+    },
+    [subdomain],
+  );
+
+  useEffect(() => {
+    loadInstitution();
+  }, [loadInstitution]);
+
+  useEffect(() => {
+    return subscribeInstitutionBrand((patch) => {
+      setInstitution((prev) => applyBrandPatch(prev, patch) ?? prev)
+    })
+  }, []);
+
+  useEffect(() => {
+    const refresh = () => {
+      if (document.visibilityState === 'visible') loadInstitution({ silent: true });
     };
-  }, [subdomain]);
+    window.addEventListener('focus', refresh);
+    document.addEventListener('visibilitychange', refresh);
+    return () => {
+      window.removeEventListener('focus', refresh);
+      document.removeEventListener('visibilitychange', refresh);
+    };
+  }, [loadInstitution]);
+
+  useEffect(() => {
+    if (!institution?.id) return undefined
+    const channel = supabase
+      .channel(`landing-institution-${institution.id}`)
+      .on(
+        'postgres_changes',
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'institutions',
+          filter: `id=eq.${institution.id}`,
+        },
+        (payload) => {
+          const row = payload.new as Record<string, unknown> | undefined
+          if (!row) return
+          setInstitution((prev) =>
+            prev
+              ? {
+                  ...prev,
+                  logo_url:
+                    row.logo_url === undefined
+                      ? prev.logo_url
+                      : pickLiveLogoUrl(prev.logo_url, row.logo_url as string | null, Date.now()),
+                  name: row.name ?? prev.name,
+                  theme_primary: row.theme_primary ?? prev.theme_primary,
+                  theme_accent: row.theme_accent ?? prev.theme_accent,
+                  theme_tertiary: row.theme_tertiary ?? prev.theme_tertiary,
+                  description: row.description ?? prev.description,
+                  hero_image_url: row.hero_image_url ?? prev.hero_image_url,
+                  hero_headline: row.hero_headline ?? prev.hero_headline,
+                  footer_text: row.footer_text ?? prev.footer_text,
+                  landing_template_id: row.landing_template_id ?? prev.landing_template_id,
+                }
+              : prev,
+          )
+        },
+      )
+      .subscribe()
+    return () => {
+      supabase.removeChannel(channel)
+    }
+  }, [institution?.id]);
 
   useEffect(() => {
     if (!loginOpen) return undefined;
@@ -99,7 +185,6 @@ const TenantHomePage = ({ subdomain: subdomainProp }) => {
     };
   }, [loginOpen]);
 
-  const primary = getInstitutionPrimary(institution);
   const q = encodeURIComponent(subdomain || '');
   const verifyHref = `/verify-credential?tenant=${q}`;
   const sameTenant =
@@ -107,6 +192,32 @@ const TenantHomePage = ({ subdomain: subdomainProp }) => {
     institution &&
     user.institution_id &&
     String(user.institution_id) === String(institution.id);
+
+  const landingInstitution = useMemo(() => {
+    if (!institution) return null
+    const sameAuth =
+      authInstitution?.id && String(authInstitution.id) === String(institution.id)
+    if (!sameAuth) {
+      return { ...institution, landing_template_id: activeTemplateId }
+    }
+    const publicLogo = institutionLogoUrl(institution)
+    const authLogo = institutionLogoUrl(authInstitution)
+    return {
+      ...institution,
+      landing_template_id: activeTemplateId,
+      logo_url: coalesceLogoUrl(publicLogo, authLogo),
+      name: authInstitution.name || institution.name,
+      theme_primary: authInstitution.theme_primary || institution.theme_primary,
+      theme_accent: authInstitution.theme_accent || institution.theme_accent,
+      theme_tertiary: authInstitution.theme_tertiary || institution.theme_tertiary,
+      description: authInstitution.description || institution.description,
+      hero_image_url: authInstitution.hero_image_url || institution.hero_image_url,
+      hero_headline: authInstitution.hero_headline || institution.hero_headline,
+      footer_text: authInstitution.footer_text || institution.footer_text,
+    }
+  }, [institution, authInstitution, activeTemplateId]);
+
+  const primary = getInstitutionPrimary(landingInstitution || institution);
 
   const canSaveTemplate = !!(sameTenant && user?.role === 'admin');
 
@@ -308,11 +419,11 @@ const TenantHomePage = ({ subdomain: subdomainProp }) => {
   return (
     <>
       <Helmet>
-        <title>{institution.name}</title>
+        <title>{landingInstitution.name}</title>
       </Helmet>
 
       <TenantLandingRenderer
-        institution={{ ...institution, landing_template_id: activeTemplateId }}
+        institution={landingInstitution}
         templateId={activeTemplateId}
         verifyHref={verifyHref}
         sameTenant={!!sameTenant}
@@ -334,7 +445,7 @@ const TenantHomePage = ({ subdomain: subdomainProp }) => {
         open={switcherOpen}
         onClose={handleCancelTemplates}
         onDone={handleDoneTemplates}
-        institution={institution}
+        institution={landingInstitution}
         activeId={activeTemplateId}
         onSelect={handleSelectTemplate}
         canSave={canSaveTemplate}
@@ -344,8 +455,7 @@ const TenantHomePage = ({ subdomain: subdomainProp }) => {
 
       <LandingLoginModal
         open={loginOpen}
-        institutionName={institution.name}
-        logoUrl={institution.logo_url}
+        institution={landingInstitution}
         primary={primary}
         identifier={identifier}
         password={password}

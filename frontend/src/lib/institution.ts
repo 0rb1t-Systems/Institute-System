@@ -84,6 +84,188 @@ export function hasInstitutionLogo(
   return Boolean(institutionLogoUrl(institutionOrUrl))
 }
 
+/** Timestamp baked into storage filenames: `{id}/logo-{Date.now()}.png`. */
+export function logoUrlVersion(url?: string | null): number {
+  const m = String(url || '').match(/-(\d{10,})\.[a-z0-9]+(?:\?|$)/i)
+  return m ? Number(m[1]) : 0
+}
+
+/**
+ * Prefer the incoming logo (settings upload) over a stale cached URL.
+ * Filename timestamps win; a just-published URL still wins even without a stamp.
+ * Empty `incoming` only clears when `incomingAt` is set (explicit publish/remove).
+ */
+export function pickLiveLogoUrl(
+  current?: string | null,
+  incoming?: string | null,
+  incomingAt?: number | null,
+): string {
+  if (incoming === undefined) return institutionLogoUrl(current)
+  if (incoming === null || incoming === '') {
+    if (incomingAt) return ''
+    return institutionLogoUrl(current)
+  }
+  const next = institutionLogoUrl(incoming)
+  const prev = institutionLogoUrl(current)
+  if (!next) return prev
+  if (!prev) return next
+  if (prev === next) return next
+  const nextV = logoUrlVersion(next)
+  const prevV = logoUrlVersion(prev)
+  if (nextV > prevV) return next
+  if (prevV > nextV) {
+    const recent = Boolean(incomingAt) && Date.now() - Number(incomingAt) < 15 * 60 * 1000
+    return recent ? next : prev
+  }
+  return next
+}
+
+/** Combine server + in-memory logos without treating a missing URL as a delete. */
+export function coalesceLogoUrl(a?: string | null, b?: string | null): string {
+  const A = institutionLogoUrl(a)
+  const B = institutionLogoUrl(b)
+  if (!A) return B
+  if (!B) return A
+  return pickLiveLogoUrl(A, B)
+}
+
+/** Keep the newer uploaded logo when two URLs disagree (stale auth vs fresh public). */
+export function preferNewerLogoUrl(
+  a?: string | null,
+  b?: string | null,
+): string {
+  return pickLiveLogoUrl(a, b)
+}
+
+const BRAND_SYNC_KEY = 'tvetflow_institution_brand'
+const BRAND_SYNC_EVENT = 'tvetflow-institution-brand'
+const BRAND_SYNC_CHANNEL = 'tvetflow-institution-brand'
+
+export type InstitutionBrandPatch = {
+  id?: string | null
+  logo_url?: string | null
+  name?: string | null
+  at?: number
+}
+
+export function readPublishedInstitutionBrand(): InstitutionBrandPatch | null {
+  if (typeof window === 'undefined') return null
+  try {
+    const raw = localStorage.getItem(BRAND_SYNC_KEY)
+    if (!raw) return null
+    const parsed = JSON.parse(raw)
+    if (!parsed || typeof parsed !== 'object') return null
+    return parsed as InstitutionBrandPatch
+  } catch {
+    return null
+  }
+}
+
+type Brandable = {
+  id?: unknown
+  logo_url?: string | null
+  name?: string | null
+}
+
+/** Apply a settings save onto an institution row (header / login / footer). */
+export function applyBrandPatch<T extends Brandable>(
+  prev: T | null | undefined,
+  patch: InstitutionBrandPatch | null | undefined,
+): T | null | undefined {
+  if (!prev || !patch) return prev
+  if (patch.id && prev.id != null && String(patch.id) !== String(prev.id)) return prev
+  const next = { ...prev }
+  if (patch.logo_url !== undefined) {
+    const cleared = patch.logo_url === '' || patch.logo_url === null
+    next.logo_url = cleared ? patch.logo_url : pickLiveLogoUrl(prev.logo_url, patch.logo_url, patch.at)
+  }
+  if (patch.name) next.name = patch.name
+  return next
+}
+
+export function mergeInstitutionWithPublishedBrand<T extends Brandable>(inst: T | null): T | null {
+  if (!inst) return inst
+  return (applyBrandPatch(inst, readPublishedInstitutionBrand()) as T) || inst
+}
+
+/** Same-browser tabs: settings save → landing/login pick up the new logo immediately. */
+export function publishInstitutionBrand(patch: InstitutionBrandPatch): void {
+  if (typeof window === 'undefined') return
+  const payload: InstitutionBrandPatch = { ...patch, at: Date.now() }
+  try {
+    localStorage.setItem(BRAND_SYNC_KEY, JSON.stringify(payload))
+  } catch {
+    /* quota / private mode */
+  }
+  window.dispatchEvent(new CustomEvent(BRAND_SYNC_EVENT, { detail: payload }))
+  try {
+    const ch = new BroadcastChannel(BRAND_SYNC_CHANNEL)
+    ch.postMessage(payload)
+    ch.close()
+  } catch {
+    /* unsupported */
+  }
+}
+
+export function subscribeInstitutionBrand(
+  onBrand: (patch: InstitutionBrandPatch) => void,
+): () => void {
+  if (typeof window === 'undefined') return () => {}
+  const apply = (raw: unknown) => {
+    if (!raw || typeof raw !== 'object') return
+    onBrand(raw as InstitutionBrandPatch)
+  }
+  const onStorage = (e: StorageEvent) => {
+    if (e.key !== BRAND_SYNC_KEY || !e.newValue) return
+    try {
+      apply(JSON.parse(e.newValue))
+    } catch {
+      /* ignore */
+    }
+  }
+  const onCustom = (e: Event) => apply((e as CustomEvent).detail)
+  window.addEventListener('storage', onStorage)
+  window.addEventListener(BRAND_SYNC_EVENT, onCustom)
+  let channel: BroadcastChannel | null = null
+  try {
+    channel = new BroadcastChannel(BRAND_SYNC_CHANNEL)
+    channel.onmessage = (e) => apply(e.data)
+  } catch {
+    channel = null
+  }
+  const stored = readPublishedInstitutionBrand()
+  if (stored) {
+    queueMicrotask(() => apply(stored))
+  }
+  return () => {
+    window.removeEventListener('storage', onStorage)
+    window.removeEventListener(BRAND_SYNC_EVENT, onCustom)
+    try {
+      channel?.close()
+    } catch {
+      /* ignore */
+    }
+  }
+}
+
+/** Display URL so a replaced logo is not stuck behind CDN/browser cache. */
+export function brandedImageSrc(url?: string | null): string {
+  const src = String(url || '').trim()
+  if (!src || src.startsWith('blob:') || src.startsWith('data:')) return src
+  const [base, existing] = src.split('?')
+  const stamp = base.match(/-(\d{10,})\.[a-z0-9]+$/i)?.[1]
+  const published = readPublishedInstitutionBrand()
+  const publishedSame =
+    published?.logo_url && institutionLogoUrl(published.logo_url).split('?')[0] === base
+  const v =
+    (publishedSame && published?.at ? String(published.at) : '') ||
+    stamp ||
+    base.replace(/^.*\//, '').slice(-24)
+  const params = new URLSearchParams(existing || '')
+  params.set('v', v)
+  return `${base}?${params.toString()}`
+}
+
 /**
  * Brand title for printed documents: show institution name ONLY when there is no logo.
  * Logo and plain name must never appear together (logo often already includes the name).

@@ -1,6 +1,6 @@
 import React from 'react'
 import { useAuth } from '@/contexts/AuthContext'
-import { getInstitutionDisplayName } from '@/lib/institution'
+import { brandedImageSrc, getInstitutionDisplayName, institutionLogoUrl } from '@/lib/institution'
 import { GraduationCap } from 'lucide-react'
 
 /**
@@ -13,12 +13,13 @@ const Logo = ({ className = 'h-12', institution: institutionProp = undefined }) 
   const isPlatform = user?.role === 'super_admin' || !institution
 
   const name = getInstitutionDisplayName(institution, isPlatform ? 'TvetFlow' : 'Training Center')
-  const logoUrl = institution?.logo_url
+  const logoUrl = institutionLogoUrl(institution)
 
   if (logoUrl) {
     return (
       <img
-        src={logoUrl}
+        key={logoUrl}
+        src={brandedImageSrc(logoUrl)}
         alt={`${name} logo`}
         className={`w-auto object-contain ${className}`}
         crossOrigin="anonymous"

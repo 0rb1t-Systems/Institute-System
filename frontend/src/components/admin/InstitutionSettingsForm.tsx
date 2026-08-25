@@ -10,8 +10,11 @@ import { Loader2, Building2, Upload, Wallet, FileText, AlertCircle } from 'lucid
 import { useAuth } from '@/contexts/AuthContext'
 import { updateInstitution, uploadInstitutionAsset } from '@/lib/api'
 import {
+  brandedImageSrc,
   getTenantBaseUrl,
   getTenantLoginUrl,
+  getTenantPortalUrl,
+  publishInstitutionBrand,
   rateToPercent,
   getInstitutionCurrency,
   getInstitutionCurrencySymbol,
@@ -77,7 +80,7 @@ const AssetUploadField = ({
     <div className="flex flex-col sm:flex-row gap-3 items-start">
       <div className="h-20 w-28 shrink-0 rounded border border-slate-800 bg-slate-950 flex items-center justify-center overflow-hidden p-1">
         {value ? (
-          <img src={value} alt="" className="max-h-full max-w-full object-contain" />
+          <img src={brandedImageSrc(value)} alt="" className="max-h-full max-w-full object-contain" />
         ) : (
           <span className="text-[11px] text-slate-600 text-center px-1">No image</span>
         )}
@@ -193,19 +196,35 @@ const InstitutionSettingsForm = ({ onUpdated }) => {
       if (kind === 'logo') {
         setDetectingColors(true)
         const palette = await extractLogoBrandPalette(file)
+        const theme_primary = palette?.primary || form.theme_primary
+        const theme_accent = palette?.accent || form.theme_accent
+        const theme_tertiary = palette?.tertiary || ''
         setForm((prev) => ({
           ...prev,
           logo_url: url,
-          theme_primary: palette?.primary || prev.theme_primary,
-          theme_accent: palette?.accent || prev.theme_accent,
-          theme_tertiary: palette?.tertiary || '',
+          theme_primary,
+          theme_accent,
+          theme_tertiary,
         }))
         setLogoSwatches(palette?.swatches || [])
+        const saved = await updateInstitution({
+          logo_url: url,
+          theme_primary: normalizeHexColor(theme_primary),
+          theme_accent: normalizeHexColor(theme_accent, '#D32F2F'),
+          theme_tertiary: String(theme_tertiary || '').trim()
+            ? normalizeHexColor(theme_tertiary, '#0EA5E9')
+            : null,
+        })
+        await refreshUser?.()
+        onUpdated?.(saved)
+        publishInstitutionBrand({
+          id: saved?.id || institution?.id,
+          logo_url: url,
+          name: saved?.name || institution?.name,
+        })
         toast({
-          title: 'Success',
-          description: palette?.primary
-            ? 'Logo uploaded. Primary, secondary, and a third color were taken from the image — save settings to apply.'
-            : 'Logo uploaded. Save settings to apply.',
+          title: 'Logo saved',
+          description: 'Landing header, sign-in, and footer now use this logo.',
         })
       } else {
         setField(field, url)
@@ -290,7 +309,16 @@ const InstitutionSettingsForm = ({ onUpdated }) => {
       setAppCurrency(currency, symbol)
       await refreshUser?.()
       onUpdated?.(updated)
-      toast({ title: 'Success', description: 'Institution settings saved successfully.' })
+      publishInstitutionBrand({
+        id: updated?.id || institution?.id,
+        logo_url: updated?.logo_url ?? form.logo_url,
+        name: updated?.name || form.name,
+      })
+      const landingHref = getTenantPortalUrl({ ...institution, subdomain: form.subdomain })
+      toast({
+        title: 'Success',
+        description: `Settings saved. Public landing: ${landingHref}`,
+      })
     } catch (err) {
       toast({
         title: 'Error',
@@ -419,11 +447,29 @@ const InstitutionSettingsForm = ({ onUpdated }) => {
               <AssetUploadField
                 id="inst_logo"
                 label="Logo"
-                hint="Brand colors are detected automatically from this image."
+                hint="Saved immediately to your public landing page. Brand colors are detected from the image."
                 value={form.logo_url}
-                onUrlChange={(v) => {
+                onUrlChange={async (v) => {
                   setField('logo_url', v)
                   if (!v) setLogoSwatches([])
+                  if (v) return
+                  try {
+                    const saved = await updateInstitution({ logo_url: null })
+                    await refreshUser?.()
+                    onUpdated?.(saved)
+                    publishInstitutionBrand({
+                      id: saved?.id || institution?.id,
+                      logo_url: '',
+                      name: saved?.name || institution?.name,
+                    })
+                    toast({ title: 'Logo removed', description: 'Landing header, sign-in, and footer no longer show a logo.' })
+                  } catch (err) {
+                    toast({
+                      title: 'Error',
+                      description: getUserMessage(err, { fallback: MESSAGES.SAVE_FAILED }),
+                      variant: 'destructive',
+                    })
+                  }
                 }}
                 onFile={(e) => handleAssetFile(e, 'logo', 'logo_url')}
                 uploading={uploading === 'logo'}
@@ -655,6 +701,17 @@ const InstitutionSettingsForm = ({ onUpdated }) => {
           </div>
 
           <div className="rounded-md border border-slate-800 bg-slate-950/60 p-3 text-xs text-slate-400 space-y-1 mt-4">
+            <p>
+              <span className="text-slate-500">Public landing:</span>{' '}
+              <a
+                href={getTenantPortalUrl({ ...institution, subdomain: form.subdomain })}
+                target="_blank"
+                rel="noreferrer"
+                className="text-teal-400 hover:underline break-all"
+              >
+                {getTenantPortalUrl({ ...institution, subdomain: form.subdomain })}
+              </a>
+            </p>
             <p>
               <span className="text-slate-500">Login URL:</span> {loginUrl}
             </p>

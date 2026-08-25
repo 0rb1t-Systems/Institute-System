@@ -12,7 +12,11 @@ import {
   getInstitutionCurrency,
   getInstitutionCurrencySymbol,
   getRegistrationFeeAmount,
+  applyBrandPatch,
+  mergeInstitutionWithPublishedBrand,
+  coalesceLogoUrl,
   rememberTenantSubdomain,
+  subscribeInstitutionBrand,
 } from '@/lib/institution';
 
 const AuthContext = createContext<any>(null);
@@ -429,7 +433,9 @@ export const AuthProvider = ({ children }) => {
 
         const { data: inst } = await supabase
           .from('institutions')
-          .select('id, status')
+          .select(
+            'id, status, logo_url, name, theme_primary, theme_accent, theme_tertiary, description, hero_image_url, hero_headline, footer_text, landing_template_id',
+          )
           .eq('id', profile.institution_id)
           .maybeSingle();
 
@@ -441,8 +447,11 @@ export const AuthProvider = ({ children }) => {
             setInstitution(null);
           }
         } else if (inst && mounted.current) {
-          // Keep in-memory institution.status in sync after activate/suspend
-          setInstitution((prev) => (prev ? { ...prev, status: inst.status } : prev));
+          setInstitution((prev) => {
+            if (!prev) return prev
+            const logo_url = coalesceLogoUrl(inst.logo_url, prev.logo_url)
+            return { ...prev, ...inst, logo_url }
+          });
         }
       } catch (err) {
         logError('AuthContext - tenant status check', err);
@@ -450,6 +459,12 @@ export const AuthProvider = ({ children }) => {
     };
     document.addEventListener('visibilitychange', onVisible);
     return () => document.removeEventListener('visibilitychange', onVisible);
+  }, []);
+
+  useEffect(() => {
+    return subscribeInstitutionBrand((patch) => {
+      setInstitution((prev) => applyBrandPatch(prev, patch) ?? prev)
+    })
   }, []);
 
   // Memoised: this object was rebuilt on every render, so every useAuth()

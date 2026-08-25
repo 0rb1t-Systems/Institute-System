@@ -13,6 +13,7 @@ import {
   type LandingTemplateId,
 } from '@/lib/landingTemplates'
 import { extractLogoBrandPalette } from '@/lib/logoBrandColors'
+import { brandedImageSrc } from '@/lib/institution'
 import {
   EMPTY_LANDING_CONTENT,
   sanitizeLandingContent,
@@ -207,7 +208,7 @@ export default function LandingTemplatePicker({ baseInstitution, values, onChang
             <div className="flex items-center gap-3">
               <div className="flex h-16 w-16 items-center justify-center overflow-hidden rounded-full bg-white/10 ring-1 ring-white/15">
                 {previewInstitution.logo_url ? (
-                  <img src={previewInstitution.logo_url} alt="" className="h-full w-full object-contain" />
+                  <img src={brandedImageSrc(previewInstitution.logo_url)} alt="" className="h-full w-full object-contain" />
                 ) : (
                   <Upload className="h-5 w-5 text-slate-400" />
                 )}

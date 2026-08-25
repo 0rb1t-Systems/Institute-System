@@ -6,12 +6,16 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Alert, AlertDescription } from '@/components/ui/alert'
+import { LandingLogo } from '@/components/landing/LandingShared'
+import { institutionLogoUrl } from '@/lib/institution'
 import { brandInitial } from '@/components/landing/types'
 
 type Props = {
   open: boolean
-  institutionName: string
+  institution?: { logo_url?: string | null; name?: string | null } | null
+  institutionName?: string
   logoUrl?: string | null
+  subdomain?: string | null
   primary: string
   identifier: string
   password: string
@@ -27,6 +31,7 @@ type Props = {
 
 export default function LandingLoginModal({
   open,
+  institution,
   institutionName,
   logoUrl,
   primary,
@@ -41,7 +46,9 @@ export default function LandingLoginModal({
   onSubmit,
 }: Props) {
   const [showPassword, setShowPassword] = useState(false)
-  const brand = institutionName?.trim() || 'Institution'
+  const brand = String(institution?.name || institutionName || '').trim() || 'Institution'
+  const logoSource = institution || logoUrl
+  const markUrl = institutionLogoUrl(logoSource)
 
   return (
     <AnimatePresence>
@@ -105,7 +112,6 @@ export default function LandingLoginModal({
             </button>
 
             <div className="relative px-6 pb-6 pt-7 sm:px-8 sm:pb-8 sm:pt-8">
-              {/* Brand header */}
               <div className="mb-7 flex flex-col items-center text-center">
                 <motion.div
                   initial={{ opacity: 0, y: 8 }}
@@ -113,19 +119,8 @@ export default function LandingLoginModal({
                   transition={{ delay: 0.05 }}
                   className="relative mb-4"
                 >
-                  <div
-                    className="absolute inset-0 rounded-[1.35rem] opacity-50 blur-xl"
-                    style={{ backgroundColor: primary }}
-                    aria-hidden
-                  />
-                  {logoUrl ? (
-                    <div className="relative rounded-[1.35rem] border border-white/15 bg-white px-5 py-4 shadow-lg sm:px-6 sm:py-5">
-                      <img
-                        src={logoUrl}
-                        alt={brand}
-                        className="mx-auto h-[4.5rem] w-auto max-w-[13.5rem] object-contain sm:h-20 sm:max-w-[15rem]"
-                      />
-                    </div>
+                  {markUrl ? (
+                    <LandingLogo institution={logoSource} align="center" />
                   ) : (
                     <div
                       className="relative flex h-16 w-16 items-center justify-center rounded-2xl text-xl font-bold text-white shadow-lg ring-1 ring-white/20"
@@ -141,14 +136,14 @@ export default function LandingLoginModal({
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: 0.1 }}
                 >
-                  {logoUrl ? null : (
+                  {markUrl ? null : (
                     <p className="font-display text-[1.35rem] font-bold leading-tight tracking-tight text-white sm:text-[1.5rem]">
                       {brand}
                     </p>
                   )}
                   <p
                     id="tenant-login-title"
-                    className={`${logoUrl ? '' : 'mt-1.5'} text-sm font-medium text-slate-300`}
+                    className={`${markUrl ? '' : 'mt-1.5'} text-sm font-medium text-slate-300`}
                   >
                     Sign in to your portal
                   </p>
