@@ -105,7 +105,7 @@ const PlatformFeaturesPage = () => (
                 src={item.image}
                 alt={item.caption}
                 objectPosition={item.objectPosition}
-                className="h-[22rem] w-full shadow-[0_28px_60px_rgba(6,21,18,0.28)] sm:h-[26rem]"
+                className="h-52 w-full shadow-[0_28px_60px_rgba(6,21,18,0.28)] sm:h-72 lg:h-[26rem]"
               />
               <figcaption className="mt-3 text-sm text-[var(--pf-faint)]">{item.caption}</figcaption>
             </motion.figure>

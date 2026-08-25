@@ -73,7 +73,7 @@ const WelcomePage = () => {
               <span className="h-1.5 w-1.5 rounded-full bg-teal-500" />
               For training centers
             </p>
-            <h1 className="mt-4 font-display text-4xl font-semibold tracking-tight text-[var(--pf-text)] sm:text-5xl">
+            <h1 className="mt-4 font-display text-[1.85rem] font-semibold tracking-tight text-[var(--pf-text)] sm:text-5xl">
               Tvet<span className="text-teal-500">Flow</span>
             </h1>
             <p className="mt-3 max-w-lg font-display text-xl font-medium leading-snug text-[var(--pf-muted)] sm:text-2xl">
@@ -100,8 +100,8 @@ const WelcomePage = () => {
                 )
               })}
             </ul>
-            <div className="mt-8 flex flex-wrap gap-3">
-              <Button asChild size="lg" className="h-11 bg-[var(--pf-accent)] px-5 font-semibold text-[var(--pf-accent-fg)] hover:opacity-90">
+            <div className="mt-8 flex w-full flex-col gap-3 sm:flex-row sm:flex-wrap">
+              <Button asChild size="lg" className="h-11 w-full bg-[var(--pf-accent)] px-5 font-semibold text-[var(--pf-accent-fg)] hover:opacity-90 sm:w-auto">
                 <Link to="/create-institution">
                   Create institution admin
                   <ArrowRight className="ml-2 h-4 w-4" />
@@ -111,7 +111,7 @@ const WelcomePage = () => {
                 type="button"
                 size="lg"
                 variant="outline"
-                className="h-11 border-[var(--pf-line)] bg-transparent text-[var(--pf-text)] hover:bg-[var(--pf-hover)]"
+                className="h-11 w-full border-[var(--pf-line)] bg-transparent text-[var(--pf-text)] hover:bg-[var(--pf-hover)] sm:w-auto"
                 onClick={() => setVerifyOpen(true)}
               >
                 Verify Identity
@@ -122,7 +122,7 @@ const WelcomePage = () => {
             initial={{ opacity: 0, y: 28, scale: 0.97 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
             transition={{ duration: 0.7, delay: 0.12, ease: [0.22, 1, 0.36, 1] }}
-            className="relative"
+            className="relative min-w-0 max-w-full"
           >
             <div className="pointer-events-none absolute -inset-4 rounded-[1.6rem] bg-teal-500/10 blur-2xl" aria-hidden />
             <DashboardPreview />
@@ -236,7 +236,7 @@ const WelcomePage = () => {
       </section>
 
       <Dialog open={verifyOpen} onOpenChange={setVerifyOpen}>
-        <DialogContent className="max-w-lg rounded-2xl border-[var(--pf-line)] bg-[var(--pf-surface)] p-5 text-[var(--pf-text)] shadow-[0_24px_60px_rgba(6,21,18,0.35)] sm:p-6">
+        <DialogContent className="max-h-[90vh] max-w-lg overflow-y-auto rounded-2xl border-[var(--pf-line)] bg-[var(--pf-surface)] p-4 text-[var(--pf-text)] shadow-[0_24px_60px_rgba(6,21,18,0.35)] sm:p-6">
           <StudentIdentityVerify variant="platform" accent="#14b8a6" />
         </DialogContent>
       </Dialog>

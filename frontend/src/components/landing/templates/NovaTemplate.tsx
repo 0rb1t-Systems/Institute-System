@@ -41,13 +41,13 @@ export default function NovaTemplate(p: LandingTemplateProps) {
 
       <header className="relative z-30 border-b border-white/10 bg-[#061816]/80 backdrop-blur-xl">
         <div className="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-3 px-4 py-3 sm:px-6">
-          <div className="flex min-w-0 items-center gap-3">
+          <div className="flex min-w-0 flex-1 items-center gap-3">
             <BrandMark institution={institution} primary={primary} size="sm" rounded="xl" />
             <p className="truncate font-display text-sm font-bold tracking-tight sm:text-base">
               {institution.name}
             </p>
           </div>
-          <LandingPageNav primary={primary} preview={preview} tone="dark" className="hidden lg:flex" />
+          <LandingPageNav institution={institution} primary={primary} preview={preview} tone="dark" className="hidden lg:flex" />
           <LandingHeaderActions
             primary={primary}
             verifyHref={verifyHref}
@@ -60,7 +60,7 @@ export default function NovaTemplate(p: LandingTemplateProps) {
           />
         </div>
         <div className="mx-auto max-w-6xl px-4 pb-3 lg:hidden">
-          <LandingPageNav primary={primary} preview={preview} tone="dark" className="justify-center" />
+          <LandingPageNav institution={institution} primary={primary} preview={preview} tone="dark" className="justify-center" />
         </div>
       </header>
 

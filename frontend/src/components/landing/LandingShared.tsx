@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom'
 import { ArrowRight, LogIn, Mail, MapPin, Phone, ShieldCheck } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { brandInitial, dashboardPathForRole, type LandingInstitution } from '@/components/landing/types'
-import { scrollToLandingSection } from '@/components/landing/LandingSections'
+import { landingNavItemsFor, scrollToLandingSection } from '@/components/landing/LandingSections'
 
 /** Shared brand mark — logo or initial. */
 export function BrandMark({
@@ -59,7 +59,7 @@ export function LandingHeaderActions({
   outlineClassName?: string
 }) {
   return (
-    <div className="flex min-w-0 flex-wrap items-center justify-end gap-1.5 sm:gap-2">
+    <div className="flex min-w-0 shrink-0 flex-wrap items-center justify-end gap-1.5 sm:gap-2">
       {sameTenant ? (
         <Button asChild size="sm" className={`${solidClassName} max-sm:px-2.5`} style={{ backgroundColor: primary }}>
           <Link to={preview ? '#' : dashboardPathForRole(userRole)}>Dashboard</Link>
@@ -221,21 +221,13 @@ export function SharedLandingFooter({
         <div>
           <p className={`text-xs font-semibold uppercase tracking-[0.14em] ${muted}`}>Quick links</p>
           <ul className="mt-3 space-y-2 text-sm">
-            <li>
-              <button type="button" onClick={() => scrollToLandingSection('home', preview)} className={linkHover}>
-                Home
-              </button>
-            </li>
-            <li>
-              <button type="button" onClick={() => scrollToLandingSection('about', preview)} className={linkHover}>
-                About
-              </button>
-            </li>
-            <li>
-              <button type="button" onClick={() => scrollToLandingSection('programs', preview)} className={linkHover}>
-                Programs
-              </button>
-            </li>
+            {landingNavItemsFor(institution).map((item) => (
+              <li key={item.id}>
+                <button type="button" onClick={() => scrollToLandingSection(item.id, preview)} className={linkHover}>
+                  {item.label}
+                </button>
+              </li>
+            ))}
             <li>
               <button type="button" onClick={() => !preview && onOpenLogin()} className={linkHover}>
                 Portal Login

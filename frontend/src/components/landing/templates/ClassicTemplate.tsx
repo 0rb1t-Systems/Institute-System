@@ -44,13 +44,13 @@ export default function ClassicTemplate(p: LandingTemplateProps) {
 
       <header className="relative z-20 border-b border-white/10 bg-black/20 backdrop-blur-xl">
         <div className="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-2 px-4 py-2.5 sm:gap-3 sm:px-8 sm:py-3">
-          <div className="flex min-w-0 items-center gap-2.5 sm:gap-3">
+          <div className="flex min-w-0 flex-1 items-center gap-2.5 sm:gap-3">
             <BrandMark institution={institution} primary={primary} size="sm" />
             <p className="truncate text-sm font-bold uppercase tracking-[0.08em] text-white">
               {institution.name}
             </p>
           </div>
-          <LandingPageNav primary={accent} preview={preview} tone="dark" className="hidden md:flex" />
+          <LandingPageNav institution={institution} primary={accent} preview={preview} tone="dark" className="hidden min-w-0 lg:flex" />
           <LandingHeaderActions
             primary={primary}
             verifyHref={verifyHref}
@@ -62,8 +62,8 @@ export default function ClassicTemplate(p: LandingTemplateProps) {
             outlineClassName="rounded-lg border-white/25 bg-white/5 text-white hover:bg-white/10 hover:text-white"
           />
         </div>
-        <div className="mx-auto max-w-6xl px-4 pb-3 md:hidden">
-          <LandingPageNav primary={accent} preview={preview} tone="dark" className="justify-center" />
+        <div className="mx-auto max-w-6xl px-4 pb-3 lg:hidden">
+          <LandingPageNav institution={institution} primary={accent} preview={preview} tone="dark" className="justify-center" />
         </div>
       </header>
 

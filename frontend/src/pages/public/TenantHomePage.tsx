@@ -324,7 +324,7 @@ const TenantHomePage = ({ subdomain: subdomainProp }) => {
       <button
         type="button"
         onClick={openTemplateSwitcher}
-        className="fixed bottom-5 right-5 z-40 inline-flex items-center gap-2 rounded-full border border-white/15 bg-[#0c1a32]/92 px-4 py-2.5 text-xs font-semibold text-white shadow-xl backdrop-blur-md hover:bg-[#12243f]"
+        className="fixed bottom-4 right-4 z-40 inline-flex items-center gap-2 rounded-full border border-white/15 bg-[#0c1a32]/92 px-3 py-2.5 text-xs font-semibold text-white shadow-xl backdrop-blur-md hover:bg-[#12243f] sm:bottom-5 sm:right-5 sm:px-4"
       >
         <LayoutTemplate className="h-3.5 w-3.5 text-teal-300" />
         Templates

@@ -19,7 +19,7 @@ export type LandingContent = {
 export const EMPTY_LANDING_CONTENT: LandingContent = {
   about_title: '',
   about_body: '',
-  about_highlights: ['', '', ''],
+  about_highlights: ['', '', '', ''],
   programs_intro: '',
   programs: [
     { title: '', description: '' },
@@ -57,7 +57,7 @@ export function sanitizeLandingContent(raw?: unknown): LandingContent {
     .slice(0, LIMITS.max_highlights)
     .map((h) => sanitizePlainText(h, LIMITS.highlight))
 
-  while (about_highlights.length < 3) about_highlights.push('')
+  while (about_highlights.length < 4) about_highlights.push('')
 
   const programs = programsIn.slice(0, LIMITS.max_programs).map((row) => {
     const item = row && typeof row === 'object' ? (row as Record<string, unknown>) : {}
@@ -92,6 +92,28 @@ export const DEFAULT_ABOUT_HIGHLIGHTS = [
   'Official certificates and transcripts',
   'A trusted place for students and partners',
 ]
+
+export function filledAboutHighlights(content: LandingContent): string[] {
+  return content.about_highlights.map((h) => String(h || '').trim()).filter(Boolean)
+}
+
+export function filledLandingPrograms(content: LandingContent): LandingProgramItem[] {
+  return content.programs.filter((p) => String(p.title || '').trim() || String(p.description || '').trim())
+}
+
+/** About block is optional — only render what the institution actually wrote. */
+export function landingAboutVisible(content: LandingContent): boolean {
+  return Boolean(
+    String(content.about_title || '').trim() ||
+      String(content.about_body || '').trim() ||
+      filledAboutHighlights(content).length,
+  )
+}
+
+/** Programs block is optional — skipped copy stays off the public page. */
+export function landingProgramsVisible(content: LandingContent): boolean {
+  return Boolean(String(content.programs_intro || '').trim() || filledLandingPrograms(content).length)
+}
 
 export const DEFAULT_PROGRAMS: LandingProgramItem[] = [
   {

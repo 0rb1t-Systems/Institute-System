@@ -30,13 +30,13 @@ export default function AtelierTemplate(p: LandingTemplateProps) {
     <div className="min-h-screen overflow-x-hidden bg-[#F7F6F4] font-sans text-stone-900">
       <header className="mx-auto max-w-6xl px-4 pt-5 sm:px-6 sm:pt-6">
         <div className="flex flex-wrap items-center justify-between gap-2 border-b border-stone-200/80 pb-4 sm:gap-3 sm:pb-5">
-          <div className="flex min-w-0 items-center gap-2.5 sm:gap-3">
+          <div className="flex min-w-0 flex-1 items-center gap-2.5 sm:gap-3">
             <BrandMark institution={institution} primary={primary} size="sm" rounded="2xl" />
             <p className="truncate font-display text-sm font-semibold tracking-tight sm:text-lg">
               {institution.name}
             </p>
           </div>
-          <LandingPageNav primary={accent} preview={preview} tone="light" className="hidden md:flex" />
+          <LandingPageNav institution={institution} primary={accent} preview={preview} tone="light" className="hidden min-w-0 lg:flex" />
           <LandingHeaderActions
             primary={primary}
             verifyHref={verifyHref}
@@ -48,8 +48,8 @@ export default function AtelierTemplate(p: LandingTemplateProps) {
             outlineClassName="rounded-full border-stone-300 bg-white"
           />
         </div>
-        <div className="mt-3 md:hidden">
-          <LandingPageNav primary={accent} preview={preview} tone="light" className="justify-center" />
+        <div className="mt-3 lg:hidden">
+          <LandingPageNav institution={institution} primary={accent} preview={preview} tone="light" className="justify-center" />
         </div>
       </header>
 

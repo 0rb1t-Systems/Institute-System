@@ -505,8 +505,10 @@ html[data-platform-theme='light'] .platform-shell ::-webkit-scrollbar-thumb {
   50% { transform: translate3d(0, -10px, 0); }
 }
 
-.platform-preview-bob {
-  animation: platform-preview-bob 5.5s ease-in-out infinite;
+@media (min-width: 640px) {
+  .platform-preview-bob {
+    animation: platform-preview-bob 5.5s ease-in-out infinite;
+  }
 }
 
 @keyframes wa-ripple {

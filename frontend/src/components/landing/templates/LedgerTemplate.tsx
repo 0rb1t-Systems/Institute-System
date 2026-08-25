@@ -35,7 +35,7 @@ export default function LedgerTemplate(p: LandingTemplateProps) {
 
       <header className="border-b border-slate-200 bg-white">
         <div className="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-2 px-4 py-2.5 sm:gap-3 sm:px-6 sm:py-3">
-          <div className="flex min-w-0 items-center gap-2.5 sm:gap-3">
+          <div className="flex min-w-0 flex-1 items-center gap-2.5 sm:gap-3">
             <BrandMark institution={institution} primary={primary} size="sm" rounded="xl" />
             <div className="min-w-0">
               <p className="truncate text-sm font-bold tracking-tight text-slate-900 sm:text-base">
@@ -44,7 +44,7 @@ export default function LedgerTemplate(p: LandingTemplateProps) {
               <p className="hidden text-[11px] text-slate-500 sm:block">Official institution portal</p>
             </div>
           </div>
-          <LandingPageNav primary={accent} preview={preview} tone="light" className="hidden md:flex" />
+          <LandingPageNav institution={institution} primary={accent} preview={preview} tone="light" className="hidden min-w-0 lg:flex" />
           <LandingHeaderActions
             primary={primary}
             verifyHref={verifyHref}
@@ -56,8 +56,8 @@ export default function LedgerTemplate(p: LandingTemplateProps) {
             outlineClassName="rounded-md border-slate-300 bg-white"
           />
         </div>
-        <div className="mx-auto max-w-6xl px-4 pb-3 md:hidden">
-          <LandingPageNav primary={accent} preview={preview} tone="light" className="justify-center" />
+        <div className="mx-auto max-w-6xl px-4 pb-3 lg:hidden">
+          <LandingPageNav institution={institution} primary={accent} preview={preview} tone="light" className="justify-center" />
         </div>
       </header>
 

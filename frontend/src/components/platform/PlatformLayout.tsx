@@ -63,7 +63,7 @@ const PlatformLayout = ({
   }
 
   return (
-    <div className="platform-public relative min-h-screen font-sans">
+    <div className="platform-public relative min-h-screen overflow-x-hidden font-sans">
       <header
         className={`sticky top-0 z-30 border-b transition-[background,box-shadow,border-color] duration-300 ${
           scrolled
@@ -89,13 +89,13 @@ const PlatformLayout = ({
                 <Link
                   key={item.to}
                   to={item.to}
-                  className={`inline-flex items-center gap-1.5 rounded-lg px-2.5 py-2 text-[13px] transition-colors duration-200 ${
+                  className={`inline-flex items-center gap-1 rounded-lg px-1.5 py-2 text-[12px] transition-colors duration-200 xl:gap-1.5 xl:px-2.5 xl:text-[13px] ${
                     active
                       ? 'bg-teal-500/12 font-medium text-[var(--pf-text)]'
                       : 'text-[var(--pf-muted)] hover:bg-[var(--pf-hover)] hover:text-[var(--pf-text)]'
                   }`}
                 >
-                  <Icon className="h-3.5 w-3.5 shrink-0 opacity-80" />
+                  <Icon className="hidden h-3.5 w-3.5 shrink-0 opacity-80 xl:inline" />
                   <span className="whitespace-nowrap">
                     {item.to === '/plans' ? (
                       <>
@@ -113,10 +113,11 @@ const PlatformLayout = ({
               <button
                 type="button"
                 onClick={onVerify}
-                className="inline-flex items-center gap-1.5 rounded-lg px-2.5 py-2 text-[13px] text-[var(--pf-muted)] transition-colors hover:bg-[var(--pf-hover)] hover:text-[var(--pf-text)]"
+                className="inline-flex items-center gap-1 rounded-lg px-1.5 py-2 text-[12px] text-[var(--pf-muted)] transition-colors hover:bg-[var(--pf-hover)] hover:text-[var(--pf-text)] xl:gap-1.5 xl:px-2.5 xl:text-[13px]"
               >
-                <ShieldCheck className="h-3.5 w-3.5 opacity-80" />
-                Verify ID
+                <ShieldCheck className="hidden h-3.5 w-3.5 opacity-80 xl:inline" />
+                <span className="xl:hidden">Verify</span>
+                <span className="hidden xl:inline">Verify ID</span>
               </button>
             ) : null}
           </nav>

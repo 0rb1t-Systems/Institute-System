@@ -40,7 +40,7 @@ const PlatformContactPage = () => (
       <PlatformPhoto
         src={PLATFORM_PHOTOS.students}
         alt="Students on campus"
-        className="h-72 w-full lg:h-full lg:min-h-[360px]"
+        className="h-56 w-full lg:h-full lg:min-h-[360px]"
       />
     </section>
   </PlatformLayout>

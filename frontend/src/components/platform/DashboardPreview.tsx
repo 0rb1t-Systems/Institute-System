@@ -21,15 +21,15 @@ const DashboardPreview = () => {
   ]
 
   return (
-    <div className="platform-preview-bob relative">
+    <div className="platform-preview-bob relative min-w-0 max-w-full">
       <div className="overflow-hidden rounded-2xl border border-[var(--pf-line)] bg-[var(--pf-surface)] shadow-[0_24px_60px_rgba(6,21,18,0.28)]">
       <div className="flex items-center gap-2 border-b border-[var(--pf-line)] px-4 py-2.5">
         <span className="h-2 w-2 rounded-full bg-[#c45c4a]" />
         <span className="h-2 w-2 rounded-full bg-[#c9a227]" />
         <span className="h-2 w-2 rounded-full bg-[#2d8c78]" />
-        <span className="ml-2 text-[11px] text-[var(--pf-faint)]">Horizon Institute · Dashboard</span>
+        <span className="ml-2 min-w-0 truncate text-[10px] text-[var(--pf-faint)] sm:text-[11px]">Horizon Institute · Dashboard</span>
       </div>
-      <div className="grid grid-cols-[88px_1fr] sm:grid-cols-[112px_1fr]">
+      <div className="grid grid-cols-[4.5rem_1fr] sm:grid-cols-[112px_1fr]">
         <aside className="border-r border-[var(--pf-line)] bg-[var(--pf-bg)] px-2 py-4">
           <p className="truncate px-2 font-display text-[11px] font-bold text-[var(--pf-text)]">Horizon</p>
           <div className="mt-4 space-y-1">

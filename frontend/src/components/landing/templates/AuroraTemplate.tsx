@@ -38,13 +38,13 @@ export default function AuroraTemplate(p: LandingTemplateProps) {
 
       <div className="relative z-30 mx-auto max-w-6xl px-4 pt-5 sm:px-6">
         <header className="flex flex-wrap items-center justify-between gap-2 rounded-2xl border border-white/80 bg-white/80 px-3 py-2.5 shadow-[0_8px_30px_rgba(15,23,42,0.06)] backdrop-blur-xl sm:gap-3 sm:px-5 sm:py-3">
-          <div className="flex min-w-0 items-center gap-2.5 sm:gap-3">
+          <div className="flex min-w-0 flex-1 items-center gap-2.5 sm:gap-3">
             <BrandMark institution={institution} primary={primary} size="sm" />
             <p className="truncate font-display text-sm font-bold tracking-tight text-slate-900 sm:text-base">
               {institution.name}
             </p>
           </div>
-          <LandingPageNav primary={primary} preview={preview} tone="light" className="hidden lg:flex" />
+          <LandingPageNav institution={institution} primary={primary} preview={preview} tone="light" className="hidden lg:flex" />
           <LandingHeaderActions
             primary={primary}
             verifyHref={verifyHref}
@@ -56,6 +56,9 @@ export default function AuroraTemplate(p: LandingTemplateProps) {
             outlineClassName="rounded-full border-slate-200 bg-white"
           />
         </header>
+        <div className="mt-3 lg:hidden">
+          <LandingPageNav institution={institution} primary={primary} preview={preview} tone="light" className="justify-center" />
+        </div>
       </div>
 
       <section
@@ -97,10 +100,6 @@ export default function AuroraTemplate(p: LandingTemplateProps) {
           </div>
         </div>
       </section>
-
-      <div className="relative z-10 px-4 pb-2 lg:hidden">
-        <LandingPageNav primary={primary} preview={preview} tone="light" className="justify-center" />
-      </div>
 
       <LandingContentSections
         institution={institution}

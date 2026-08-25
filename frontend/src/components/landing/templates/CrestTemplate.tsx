@@ -43,13 +43,13 @@ export default function CrestTemplate(p: LandingTemplateProps) {
 
       <header className="relative z-20 border-b border-white/10">
         <div className="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-2 px-4 py-2.5 sm:gap-3 sm:px-6 sm:py-3.5">
-          <div className="flex min-w-0 items-center gap-2.5 sm:gap-3">
+          <div className="flex min-w-0 flex-1 items-center gap-2.5 sm:gap-3">
             <BrandMark institution={institution} primary={accent} size="sm" />
             <p className="truncate text-sm font-bold tracking-tight text-white sm:uppercase sm:tracking-[0.08em]">
               {institution.name}
             </p>
           </div>
-          <LandingPageNav primary={accent} preview={preview} tone="dark" className="hidden md:flex" />
+          <LandingPageNav institution={institution} primary={accent} preview={preview} tone="dark" className="hidden min-w-0 lg:flex" />
           <LandingHeaderActions
             primary={accent}
             verifyHref={verifyHref}
@@ -61,8 +61,8 @@ export default function CrestTemplate(p: LandingTemplateProps) {
             outlineClassName="rounded-sm border-white/30 bg-transparent text-white hover:bg-white/10 hover:text-white"
           />
         </div>
-        <div className="mx-auto max-w-6xl px-4 pb-3 md:hidden">
-          <LandingPageNav primary={accent} preview={preview} tone="dark" className="justify-center" />
+        <div className="mx-auto max-w-6xl px-4 pb-3 lg:hidden">
+          <LandingPageNav institution={institution} primary={accent} preview={preview} tone="dark" className="justify-center" />
         </div>
       </header>
 

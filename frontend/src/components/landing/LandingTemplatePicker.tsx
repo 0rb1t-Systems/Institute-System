@@ -295,7 +295,7 @@ export default function LandingTemplatePicker({ baseInstitution, values, onChang
         <div>
           <h3 className="text-sm font-semibold text-white">About page</h3>
           <p className="mt-1 text-xs text-slate-500">
-            Longer copy for the About section. Plain text only — markup is stripped for safety.
+            Optional. Leave blank to hide the About section on the public landing page.
           </p>
         </div>
         <div className="space-y-2">
@@ -318,8 +318,8 @@ export default function LandingTemplatePicker({ baseInstitution, values, onChang
             className="min-h-[120px] border-white/10 bg-[#061512]"
           />
         </div>
-        <div className="grid gap-3 sm:grid-cols-3">
-          {content.about_highlights.slice(0, 3).map((h, i) => (
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+          {content.about_highlights.slice(0, 4).map((h, i) => (
             <div key={i} className="space-y-2">
               <Label className="text-slate-200">Highlight {i + 1}</Label>
               <Input
@@ -343,7 +343,7 @@ export default function LandingTemplatePicker({ baseInstitution, values, onChang
           <div>
             <h3 className="text-sm font-semibold text-white">Programs page</h3>
             <p className="mt-1 text-xs text-slate-500">
-              Add up to 8 programs. If you leave this empty, open classes (names only) are shown.
+              Optional. Add up to 8 programs. Leave empty to hide Programs on the landing page.
             </p>
           </div>
           <Button
@@ -411,7 +411,6 @@ export default function LandingTemplatePicker({ baseInstitution, values, onChang
                     programs: content.programs.filter((_, idx) => idx !== i),
                   })
                 }
-                disabled={content.programs.length <= 1}
               >
                 <Trash2 className="h-4 w-4" />
               </Button>

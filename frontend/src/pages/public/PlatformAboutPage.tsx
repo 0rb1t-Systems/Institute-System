@@ -43,7 +43,7 @@ const PlatformAboutPage = () => (
             src={PLATFORM_PHOTOS.about}
             alt="Trainees and an instructor working with equipment on the shop floor"
             objectPosition="center 30%"
-            className="h-80 w-full shadow-[0_32px_70px_rgba(6,21,18,0.32)] lg:h-[440px]"
+            className="h-56 w-full shadow-[0_32px_70px_rgba(6,21,18,0.32)] sm:h-80 lg:h-[440px]"
           />
         </motion.div>
       </div>

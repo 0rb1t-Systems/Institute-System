@@ -36,7 +36,7 @@ export default function HorizonTemplate(p: LandingTemplateProps) {
 
       <header className="relative z-20 mx-auto max-w-5xl px-4 pt-5 sm:px-6 sm:pt-6">
         <div className="flex flex-wrap items-center justify-between gap-2 sm:gap-3">
-          <div className="flex min-w-0 items-center gap-2.5 sm:gap-3">
+          <div className="flex min-w-0 flex-1 items-center gap-2.5 sm:gap-3">
             <BrandMark institution={institution} primary={primary} size="sm" rounded="xl" />
             <p className="truncate font-display text-sm font-bold tracking-tight sm:text-lg">
               {institution.name}
@@ -54,7 +54,7 @@ export default function HorizonTemplate(p: LandingTemplateProps) {
           />
         </div>
         <div className="mt-4 flex justify-center sm:mt-5">
-          <LandingPageNav primary={primary} preview={preview} tone="light" className="justify-center" />
+          <LandingPageNav institution={institution} primary={primary} preview={preview} tone="light" className="justify-center" />
         </div>
       </header>
 

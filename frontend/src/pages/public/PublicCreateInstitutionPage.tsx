@@ -23,9 +23,9 @@ import { getAppRootDomain, getTenantPortalUrl, usesTenantSubdomainHosts } from '
 import { normalizeHexColor } from '@/lib/logoBrandColors'
 
 const CREATE_STEPS = [
-  { id: 'admin' as const, n: 1, label: '1. Admin account' },
-  { id: 'institution' as const, n: 2, label: '2. Institution setup' },
-  { id: 'template' as const, n: 3, label: '3. Landing template' },
+  { id: 'admin' as const, n: 1, label: '1. Admin account', short: 'Admin' },
+  { id: 'institution' as const, n: 2, label: '2. Institution setup', short: 'Institution' },
+  { id: 'template' as const, n: 3, label: '3. Landing template', short: 'Template' },
 ]
 
 const GOLD = '#E8C547'
@@ -241,7 +241,7 @@ const PublicCreateInstitutionPage = () => {
     'border-[var(--pf-line)] bg-[var(--pf-bg)] text-[var(--pf-text)] placeholder:text-[var(--pf-faint)]'
 
   return (
-    <div className="platform-public relative min-h-screen overflow-hidden font-sans">
+    <div className="platform-public relative min-h-screen overflow-x-hidden font-sans">
       <Helmet>
         <title>{title}</title>
       </Helmet>
@@ -314,10 +314,11 @@ const PublicCreateInstitutionPage = () => {
               return (
                 <p
                   key={item.id}
-                  className="px-1 text-[9px] font-semibold uppercase tracking-[0.12em] sm:text-[11px]"
+                  className="px-0.5 text-[10px] font-semibold uppercase tracking-[0.08em] sm:px-1 sm:text-[11px] sm:tracking-[0.12em]"
                   style={{ color: active || done ? GOLD : 'rgb(148,163,184)' }}
                 >
-                  {item.label}
+                  <span className="sm:hidden">{item.short}</span>
+                  <span className="hidden sm:inline">{item.label}</span>
                 </p>
               )
             })}
