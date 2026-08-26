@@ -698,14 +698,139 @@ html[data-platform-theme='light'][data-tenant-chrome='1'] .bg-slate-700 {
   background-color: var(--tenant-surface) !important;
 }
 
+html[data-platform-theme='light'][data-tenant-chrome='1'] .from-slate-900,
+html[data-platform-theme='light'][data-tenant-chrome='1'] .from-slate-950,
+html[data-platform-theme='light'][data-tenant-chrome='1'] .from-blue-900,
+html[data-platform-theme='light'][data-tenant-chrome='1'] .from-blue-900\/50,
+html[data-platform-theme='light'][data-tenant-chrome='1'] .from-indigo-950,
+html[data-platform-theme='light'][data-tenant-chrome='1'] .to-slate-900,
+html[data-platform-theme='light'][data-tenant-chrome='1'] .to-slate-950,
+html[data-platform-theme='light'][data-tenant-chrome='1'] .to-indigo-950,
+html[data-platform-theme='light'][data-tenant-chrome='1'] .to-indigo-950\/30 {
+  background-image: none !important;
+  background-color: var(--tenant-surface) !important;
+}
+
+html[data-platform-theme='light'][data-tenant-chrome='1'] .bg-slate-800\/60,
+html[data-platform-theme='light'][data-tenant-chrome='1'] .bg-slate-800\/80,
+html[data-platform-theme='light'][data-tenant-chrome='1'] .bg-slate-950\/40 {
+  background-color: #f1f5f9 !important;
+}
+
+html[data-platform-theme='light'][data-tenant-chrome='1'] .hover\:bg-slate-800\/40:hover,
+html[data-platform-theme='light'][data-tenant-chrome='1'] .hover\:bg-slate-800\/30:hover,
+html[data-platform-theme='light'][data-tenant-chrome='1'] .hover\:bg-slate-800\/20:hover {
+  background-color: color-mix(in srgb, var(--brand-primary, #002147) 6%, #ffffff) !important;
+}
+
+html[data-platform-theme='light'][data-tenant-chrome='1'] .hover\:border-indigo-500\/50:hover,
+html[data-platform-theme='light'][data-tenant-chrome='1'] .hover\:border-indigo-500\/40:hover,
+html[data-platform-theme='light'][data-tenant-chrome='1'] .hover\:border-blue-500\/50:hover,
+html[data-platform-theme='light'][data-tenant-chrome='1'] .hover\:border-blue-500\/40:hover,
+html[data-platform-theme='light'][data-tenant-chrome='1'] .hover\:border-green-500\/50:hover,
+html[data-platform-theme='light'][data-tenant-chrome='1'] .hover\:border-purple-500\/50:hover,
+html[data-platform-theme='light'][data-tenant-chrome='1'] .hover\:border-amber-500\/50:hover,
+html[data-platform-theme='light'][data-tenant-chrome='1'] .hover\:border-yellow-500\/50:hover,
+html[data-platform-theme='light'][data-tenant-chrome='1'] .hover\:border-slate-700:hover {
+  border-color: color-mix(in srgb, var(--brand-primary, #002147) 28%, #e2e8f0) !important;
+}
+
+html[data-platform-theme='light'][data-tenant-chrome='1'] .hover\:text-white:hover,
+html[data-platform-theme='light'][data-tenant-chrome='1'] .hover\:text-slate-100:hover,
+html[data-platform-theme='light'][data-tenant-chrome='1'] .hover\:text-slate-200:hover {
+  color: var(--tenant-text) !important;
+}
+
+html[data-platform-theme='light'][data-tenant-chrome='1'] .hover\:bg-indigo-500\/10:hover,
+html[data-platform-theme='light'][data-tenant-chrome='1'] .hover\:bg-indigo-500\/20:hover {
+  background-color: color-mix(in srgb, var(--brand-primary, #002147) 8%, #ffffff) !important;
+}
+
+html[data-platform-theme='light'][data-tenant-chrome='1'] .bg-indigo-500\/10,
+html[data-platform-theme='light'][data-tenant-chrome='1'] .bg-indigo-500\/20 {
+  background-color: color-mix(in srgb, var(--brand-primary, #002147) 10%, #ffffff) !important;
+}
+
+html[data-platform-theme='light'][data-tenant-chrome='1'] .text-blue-200 {
+  color: var(--brand-primary, #002147) !important;
+}
+
+html[data-platform-theme='light'][data-tenant-chrome='1'] .text-rose-500,
+html[data-platform-theme='light'][data-tenant-chrome='1'] .text-rose-400 {
+  color: #be123c !important;
+}
+
+html[data-platform-theme='light'][data-tenant-chrome='1'] .bg-red-500\/10,
+html[data-platform-theme='light'][data-tenant-chrome='1'] .bg-red-900\/30,
+html[data-platform-theme='light'][data-tenant-chrome='1'] .bg-rose-500\/10 {
+  background-color: #ffe4e6 !important;
+}
+
+html[data-platform-theme='light'][data-tenant-chrome='1'] .bg-green-900\/30 {
+  background-color: #dcfce7 !important;
+}
+
+html[data-platform-theme='light'][data-tenant-chrome='1'] .border-red-500\/20,
+html[data-platform-theme='light'][data-tenant-chrome='1'] .border-red-900,
+html[data-platform-theme='light'][data-tenant-chrome='1'] .border-rose-500\/25 {
+  border-color: #fecdd3 !important;
+}
+
+html[data-platform-theme='light'][data-tenant-chrome='1'] .border-green-900,
+html[data-platform-theme='light'][data-tenant-chrome='1'] .border-green-500\/20,
+html[data-platform-theme='light'][data-tenant-chrome='1'] .border-emerald-500\/20,
+html[data-platform-theme='light'][data-tenant-chrome='1'] .border-emerald-500\/25 {
+  border-color: #bbf7d0 !important;
+}
+
+html[data-platform-theme='light'][data-tenant-chrome='1'] .hover\:bg-red-500\/20:hover {
+  background-color: #fecdd3 !important;
+}
+
 html[data-platform-theme='light'][data-tenant-chrome='1'] .hover\:bg-slate-900\/80:hover {
   background-color: color-mix(in srgb, var(--brand-primary, #002147) 8%, #ffffff) !important;
 }
 
 html[data-platform-theme='light'][data-tenant-chrome='1'] .bg-indigo-600\/25,
 html[data-platform-theme='light'][data-tenant-chrome='1'] .bg-blue-950\/20,
-html[data-platform-theme='light'][data-tenant-chrome='1'] .bg-blue-500\/10 {
+html[data-platform-theme='light'][data-tenant-chrome='1'] .bg-blue-500\/10,
+html[data-platform-theme='light'][data-tenant-chrome='1'] .bg-blue-500\/15,
+html[data-platform-theme='light'][data-tenant-chrome='1'] .bg-blue-500\/20 {
   background-color: color-mix(in srgb, var(--brand-primary) 10%, #ffffff) !important;
+}
+
+html[data-platform-theme='light'][data-tenant-chrome='1'] .group:hover .group-hover\:bg-indigo-500\/20,
+html[data-platform-theme='light'][data-tenant-chrome='1'] .group:hover .group-hover\:bg-blue-500\/20,
+html[data-platform-theme='light'][data-tenant-chrome='1'] .group:hover .group-hover\:bg-green-500\/20,
+html[data-platform-theme='light'][data-tenant-chrome='1'] .group:hover .group-hover\:bg-purple-500\/20,
+html[data-platform-theme='light'][data-tenant-chrome='1'] .group:hover .group-hover\:bg-yellow-500\/20,
+html[data-platform-theme='light'][data-tenant-chrome='1'] .group:hover .group-hover\:bg-amber-500\/25 {
+  background-color: color-mix(in srgb, var(--brand-primary, #002147) 14%, #ffffff) !important;
+}
+
+html[data-platform-theme='light'][data-tenant-chrome='1'] .group:hover .group-hover\:bg-green-500\/20 {
+  background-color: #bbf7d0 !important;
+}
+
+html[data-platform-theme='light'][data-tenant-chrome='1'] .group:hover .group-hover\:bg-purple-500\/20 {
+  background-color: #e9d5ff !important;
+}
+
+html[data-platform-theme='light'][data-tenant-chrome='1'] .group:hover .group-hover\:bg-amber-500\/25 {
+  background-color: #fde68a !important;
+}
+
+html[data-platform-theme='light'][data-tenant-chrome='1'] .text-green-500 {
+  color: #15803d !important;
+}
+
+html[data-platform-theme='light'][data-tenant-chrome='1'] .text-amber-500 {
+  color: #b45309 !important;
+}
+
+html[data-platform-theme='light'][data-tenant-chrome='1'] .border-blue-500\/25,
+html[data-platform-theme='light'][data-tenant-chrome='1'] .border-indigo-500\/20 {
+  border-color: color-mix(in srgb, var(--brand-primary, #002147) 22%, #ffffff) !important;
 }
 
 html[data-platform-theme='light'][data-tenant-chrome='1'] .bg-amber-950\/30,

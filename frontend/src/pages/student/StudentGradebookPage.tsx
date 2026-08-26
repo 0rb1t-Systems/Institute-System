@@ -43,7 +43,7 @@ const gradeTone = (grade: string) => {
     case 'F':
       return 'text-rose-400 bg-rose-500/10 border-rose-500/25';
     default:
-      return 'text-slate-400 bg-slate-800/60 border-slate-700';
+      return 'text-slate-500 bg-slate-800/60 border-slate-700';
   }
 };
 
@@ -275,7 +275,7 @@ const StudentGradebookPage = () => {
             <p className="text-slate-400">Course marks, letter grades, and GPA</p>
           </div>
           <div className="flex flex-wrap gap-2 print:hidden">
-            <Button variant="outline" onClick={() => window.print()} className="gap-2 border-slate-700 bg-slate-900/50 hover:bg-slate-800">
+            <Button variant="outline" onClick={() => window.print()} className="gap-2 border-slate-700 bg-slate-900/50 hover:bg-slate-800 hover:text-slate-100">
               <Printer className="h-4 w-4" /> Print
             </Button>
           </div>
@@ -283,31 +283,31 @@ const StudentGradebookPage = () => {
 
         {/* Stats Row */}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-           <Card className="bg-gradient-to-br from-blue-900/50 to-slate-900 border-blue-500/30">
+           <Card className="bg-slate-900/50 border-blue-500/25 hover:border-blue-500/40 transition-colors">
                <CardContent className="p-6 flex items-center justify-between">
                    <div>
                        <p className="text-sm font-medium text-blue-200">Cumulative GPA</p>
                        <h3 className="text-3xl font-bold text-white mt-1">{stats.gpa}</h3>
                    </div>
-                   <div className="bg-blue-500/20 p-3 rounded-full">
+                   <div className="bg-blue-500/10 p-3 rounded-full">
                        <GraduationCap className="h-6 w-6 text-blue-400" />
                    </div>
                </CardContent>
            </Card>
 
-           <Card className="bg-slate-900/50 border-slate-800">
+           <Card className="bg-slate-900/50 border-slate-800 hover:border-slate-700 transition-colors">
                <CardContent className="p-6 flex items-center justify-between">
                    <div>
                        <p className="text-sm font-medium text-slate-400">Courses Taken</p>
                        <h3 className="text-3xl font-bold text-white mt-1">{stats.graded} <span className="text-sm font-normal text-slate-500">/ {stats.total}</span></h3>
                    </div>
-                   <div className="bg-slate-800 p-3 rounded-full">
+                   <div className="bg-blue-500/10 p-3 rounded-full">
                        <BookOpen className="h-6 w-6 text-slate-400" />
                    </div>
                </CardContent>
            </Card>
 
-           <Card className="bg-slate-900/50 border-slate-800">
+           <Card className="bg-slate-900/50 border-slate-800 hover:border-slate-700 transition-colors">
                <CardContent className="p-6 flex items-center justify-between">
                    <div>
                        <p className="text-sm font-medium text-slate-400">Passed</p>
@@ -319,7 +319,7 @@ const StudentGradebookPage = () => {
                </CardContent>
            </Card>
 
-           <Card className="bg-slate-900/50 border-slate-800">
+           <Card className="bg-slate-900/50 border-slate-800 hover:border-slate-700 transition-colors">
                <CardContent className="p-6 flex items-center justify-between">
                    <div>
                        <p className="text-sm font-medium text-slate-400">Completion Rate</p>
@@ -339,9 +339,9 @@ const StudentGradebookPage = () => {
                 gradesByClass.map((group) => (
                   <Card
                     key={group.className}
-                    className="bg-slate-900/60 border-slate-800 overflow-hidden shadow-lg shadow-black/20"
+                    className="bg-slate-900/50 border-slate-800 overflow-hidden shadow-sm"
                   >
-                    <CardHeader className="border-b border-slate-800/80 bg-gradient-to-r from-slate-900 via-slate-900/90 to-slate-950 py-4">
+                    <CardHeader className="border-b border-slate-800/80 bg-slate-900/40 py-4">
                       <div className="flex items-center justify-between gap-3">
                         <div className="flex items-center gap-3 min-w-0">
                           <div className="h-9 w-9 rounded-lg bg-blue-500/15 border border-blue-500/25 flex items-center justify-center shrink-0">
@@ -382,7 +382,7 @@ const StudentGradebookPage = () => {
                               return (
                                 <TableRow
                                   key={`${item.courseCode}-${i}`}
-                                  className="border-slate-800/80 hover:bg-slate-800/30 transition-colors"
+                                  className="border-slate-800/80 hover:bg-slate-800/40 transition-colors"
                                 >
                                   <TableCell className="pl-5 py-4">
                                     <div className="font-medium text-white leading-snug">{item.courseName}</div>
@@ -408,7 +408,7 @@ const StudentGradebookPage = () => {
                                       )}>
                                         {pending ? '—' : `${Math.round(item.percentage)}%`}
                                       </span>
-                                      <div className="w-full h-1.5 rounded-full bg-slate-800 overflow-hidden">
+                                      <div className="w-full h-1.5 rounded-full bg-muted overflow-hidden">
                                         <div
                                           className={cn('h-full rounded-full transition-all duration-500', scoreBarColor(item.percentage, pending))}
                                           style={{ width: `${barWidth}%` }}
@@ -438,7 +438,7 @@ const StudentGradebookPage = () => {
                                         'font-medium',
                                         item.status === 'Pass' && 'bg-emerald-500/10 text-emerald-400 hover:bg-emerald-500/20 border border-emerald-500/20',
                                         item.status === 'Fail' && 'bg-rose-500/10 text-rose-400 hover:bg-rose-500/20 border border-rose-500/20',
-                                        item.status === 'Pending' && 'bg-slate-800 text-slate-400 border border-slate-700'
+                                        item.status === 'Pending' && 'bg-slate-800/60 text-slate-500 border border-slate-700'
                                       )}
                                     >
                                       {item.status}
@@ -522,8 +522,8 @@ const StudentGradebookPage = () => {
                                         ))}
                                     </Pie>
                                     <Tooltip 
-                                        contentStyle={{ backgroundColor: '#1e293b', borderColor: '#334155', color: '#fff' }}
-                                        itemStyle={{ color: '#fff' }}
+                                        contentStyle={{ backgroundColor: 'var(--tenant-surface)', borderColor: 'var(--tenant-line)', color: 'var(--tenant-text)' }}
+                                        itemStyle={{ color: 'var(--tenant-text)' }}
                                     />
                                     <Legend verticalAlign="bottom" height={36}/>
                                 </PieChart>

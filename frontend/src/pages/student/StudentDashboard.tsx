@@ -178,8 +178,8 @@ const StudentDashboard = () => {
             <Helmet><title>Dashboard - Student Portal</title></Helmet>
 
             {/* Profile Overview Header */}
-            <div className="bg-gradient-to-r from-slate-900 to-indigo-950/30 rounded-2xl p-6 border border-slate-800 shadow-xl mb-8 flex flex-col md:flex-row items-center gap-6">
-                <Avatar className="h-24 w-24 border-4 border-slate-800 shadow-lg">
+            <div className="bg-slate-900/50 rounded-2xl p-6 border border-slate-800 shadow-sm mb-8 flex flex-col md:flex-row items-center gap-6">
+                <Avatar className="h-24 w-24 border-4 border-slate-800 shadow-sm">
                     <AvatarImage src={user?.avatar_url} />
                     <AvatarFallback className="bg-indigo-600 text-3xl font-bold text-white">
                         {user?.name?.charAt(0) || 'U'}
@@ -207,8 +207,8 @@ const StudentDashboard = () => {
             {/* Quick Stats */}
             <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6 mb-8">
                 <Card className="bg-slate-900/50 border-slate-800 relative overflow-hidden group hover:border-blue-500/50 transition-colors">
-                    <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
-                        <BookOpen className="h-16 w-16 text-blue-500" />
+                    <div className="absolute top-4 right-4 p-2.5 rounded-full bg-blue-500/10 text-blue-400 group-hover:bg-blue-500/20 transition-colors">
+                        <BookOpen className="h-6 w-6" />
                     </div>
                     <CardHeader className="pb-2">
                         <CardTitle className="text-sm font-medium text-slate-400 uppercase tracking-wider">Active Classes</CardTitle>
@@ -222,8 +222,8 @@ const StudentDashboard = () => {
                 </Card>
 
                 <Card className="bg-slate-900/50 border-slate-800 relative overflow-hidden group hover:border-green-500/50 transition-colors">
-                    <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
-                        <CheckCircle className="h-16 w-16 text-green-500" />
+                    <div className="absolute top-4 right-4 p-2.5 rounded-full bg-green-500/10 text-green-500 group-hover:bg-green-500/20 transition-colors">
+                        <CheckCircle className="h-6 w-6" />
                     </div>
                     <CardHeader className="pb-2">
                         <CardTitle className="text-sm font-medium text-slate-400 uppercase tracking-wider">Overall Attendance</CardTitle>
@@ -232,15 +232,15 @@ const StudentDashboard = () => {
                         <div className="text-4xl font-bold text-white flex items-baseline gap-1">
                             {overallAttendanceStats.rate.toFixed(0)}<span className="text-2xl text-slate-500">%</span>
                         </div>
-                        <div className="w-full bg-slate-800 h-1.5 rounded-full mt-3 overflow-hidden">
+                        <div className="w-full bg-muted h-1.5 rounded-full mt-3 overflow-hidden">
                             <div className="bg-green-500 h-full rounded-full transition-all duration-1000" style={{ width: `${overallAttendanceStats.rate}%` }}></div>
                         </div>
                     </CardContent>
                 </Card>
 
                 <Card className="bg-slate-900/50 border-slate-800 relative overflow-hidden group hover:border-purple-500/50 transition-colors">
-                    <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
-                        <TrendingUp className="h-16 w-16 text-purple-500" />
+                    <div className="absolute top-4 right-4 p-2.5 rounded-full bg-purple-500/10 text-purple-400 group-hover:bg-purple-500/20 transition-colors">
+                        <TrendingUp className="h-6 w-6" />
                     </div>
                     <CardHeader className="pb-2">
                         <CardTitle className="text-sm font-medium text-slate-400 uppercase tracking-wider">Avg Grade Performance</CardTitle>
@@ -259,14 +259,14 @@ const StudentDashboard = () => {
                     className="bg-slate-900/50 border-slate-800 relative overflow-hidden group hover:border-amber-500/50 transition-colors cursor-pointer"
                     onClick={() => navigate('/portal/finance')}
                 >
-                    <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
-                        <CreditCard className="h-16 w-16 text-amber-500" />
+                    <div className="absolute top-4 right-4 p-2.5 rounded-full bg-amber-500/15 text-amber-500 group-hover:bg-amber-500/25 transition-colors">
+                        <CreditCard className="h-6 w-6" />
                     </div>
                     <CardHeader className="pb-2">
                         <CardTitle className="text-sm font-medium text-slate-400 uppercase tracking-wider">Outstanding Balance</CardTitle>
                     </CardHeader>
                     <CardContent>
-                        <div className={`text-3xl font-bold ${financialSummary.balance > 0 ? 'text-red-400' : 'text-green-400'}`}>
+                        <div className={`text-3xl font-bold ${financialSummary.balance > 0 ? 'text-rose-500' : 'text-green-400'}`}>
                             {formatCurrency(financialSummary.balance)}
                         </div>
                         <p className="text-xs text-slate-500 mt-2">
@@ -282,7 +282,7 @@ const StudentDashboard = () => {
                     <CardHeader className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
                         <div>
                             <CardTitle className="text-lg text-white flex items-center gap-2">
-                                <CreditCard className="h-5 w-5 text-amber-400" /> Monthly Balance
+                                <CreditCard className="h-5 w-5 text-indigo-400" /> Monthly Balance
                             </CardTitle>
                             <CardDescription className="mt-1">
                                 {activeClass?.name
@@ -296,7 +296,7 @@ const StudentDashboard = () => {
                         <Button
                             variant="ghost"
                             size="sm"
-                            className="text-amber-400 hover:text-amber-300 self-start sm:self-auto"
+                            className="text-indigo-400 hover:text-indigo-300 hover:bg-indigo-500/10 self-start sm:self-auto"
                             onClick={() => navigate('/portal/finance')}
                         >
                             Full finance <ArrowRight className="ml-1 h-4 w-4" />
@@ -307,7 +307,7 @@ const StudentDashboard = () => {
                             {monthlyBreakdown.map((row) => (
                                 <div
                                     key={row.month}
-                                    className="rounded-lg border border-slate-800 bg-slate-950/60 p-3 flex items-center justify-between gap-3"
+                                    className="rounded-lg border border-slate-800 bg-slate-950/60 p-3 flex items-center justify-between gap-3 transition-colors hover:border-indigo-500/40 hover:bg-slate-800/40"
                                 >
                                     <div>
                                         <div className="text-sm font-medium text-slate-200">{row.label}</div>
@@ -345,7 +345,7 @@ const StudentDashboard = () => {
                         <h2 className="text-xl font-bold text-white flex items-center gap-2">
                             <BookOpen className="h-5 w-5 text-indigo-400" /> My Current Classes
                         </h2>
-                        <Button variant="ghost" size="sm" className="text-indigo-400 hover:text-indigo-300" onClick={() => navigate('/student/classes')}>
+                        <Button variant="ghost" size="sm" className="text-indigo-400 hover:text-indigo-300 hover:bg-indigo-500/10" onClick={() => navigate('/student/classes')}>
                             View All <ArrowRight className="ml-1 h-4 w-4" />
                         </Button>
                     </div>
@@ -363,7 +363,7 @@ const StudentDashboard = () => {
                                     <CardContent>
                                         <div className="flex justify-between items-center mt-2">
                                             <Badge variant="outline" className="bg-green-500/10 text-green-400 border-green-500/20">Active</Badge>
-                                            <Button variant="ghost" size="sm" className="h-8 text-slate-400 hover:text-white" onClick={() => navigate(`/student/classes`)}>
+                                            <Button variant="ghost" size="sm" className="h-8 text-slate-400 hover:text-white hover:bg-slate-800/40" onClick={() => navigate(`/student/classes`)}>
                                                 Details
                                             </Button>
                                         </div>
@@ -391,7 +391,7 @@ const StudentDashboard = () => {
                             </CardTitle>
                         </CardHeader>
                         <CardContent className="space-y-3">
-                            <Link to="/portal/gradebook" className="flex items-center justify-between p-3 rounded-lg bg-slate-950 border border-slate-800 hover:border-indigo-500/50 transition-colors group">
+                            <Link to="/portal/gradebook" className="flex items-center justify-between p-3 rounded-lg bg-slate-950 border border-slate-800 hover:border-indigo-500/50 hover:bg-slate-800/40 transition-colors group">
                                 <div className="flex items-center gap-3">
                                     <div className="p-2 bg-indigo-500/10 rounded-md text-indigo-400 group-hover:bg-indigo-500/20">
                                         <Activity className="h-4 w-4" />
@@ -401,7 +401,7 @@ const StudentDashboard = () => {
                                 <ArrowRight className="h-4 w-4 text-slate-600 group-hover:text-indigo-400 transition-colors" />
                             </Link>
                             
-                            <Link to="/portal/attendance" className="flex items-center justify-between p-3 rounded-lg bg-slate-950 border border-slate-800 hover:border-green-500/50 transition-colors group">
+                            <Link to="/portal/attendance" className="flex items-center justify-between p-3 rounded-lg bg-slate-950 border border-slate-800 hover:border-green-500/50 hover:bg-slate-800/40 transition-colors group">
                                 <div className="flex items-center gap-3">
                                     <div className="p-2 bg-green-500/10 rounded-md text-green-400 group-hover:bg-green-500/20">
                                         <CheckCircle className="h-4 w-4" />
@@ -411,7 +411,7 @@ const StudentDashboard = () => {
                                 <ArrowRight className="h-4 w-4 text-slate-600 group-hover:text-green-400 transition-colors" />
                             </Link>
 
-                            <Link to="/portal/finance" className="flex items-center justify-between p-3 rounded-lg bg-slate-950 border border-slate-800 hover:border-yellow-500/50 transition-colors group">
+                            <Link to="/portal/finance" className="flex items-center justify-between p-3 rounded-lg bg-slate-950 border border-slate-800 hover:border-yellow-500/50 hover:bg-slate-800/40 transition-colors group">
                                 <div className="flex items-center gap-3">
                                     <div className="p-2 bg-yellow-500/10 rounded-md text-yellow-400 group-hover:bg-yellow-500/20">
                                         <TrendingUp className="h-4 w-4" />
