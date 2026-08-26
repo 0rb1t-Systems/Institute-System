@@ -46,7 +46,7 @@ export default function NovaTemplate(p: LandingTemplateProps) {
           light ? 'border-slate-200 bg-white/90' : 'border-white/10 bg-[#061816]/80'
         }`}
       >
-        <div className="mx-auto flex max-w-6xl flex-wrap items-center gap-x-4 gap-y-2 md:gap-x-7 px-4 py-3 sm:px-6">
+        <div className="mx-auto w-full min-w-0 max-w-6xl px-3 py-3 sm:px-6">
           <LandingHeaderBar
             institution={institution}
             primary={primary}

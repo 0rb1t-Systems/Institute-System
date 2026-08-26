@@ -52,16 +52,54 @@ export function LandingPageNav({
   tone = 'light',
   className = '',
   institution,
+  variant = 'links',
 }: {
   primary: string
   preview?: boolean
   tone?: 'light' | 'dark'
   className?: string
   institution?: LandingInstitution
+  variant?: 'links' | 'tabs'
 }) {
   const activeId = useLandingActiveSection(preview)
   const idle = tone === 'dark' ? 'text-white/70 hover:text-white' : 'text-slate-500 hover:text-slate-900'
   const items = landingNavItemsFor(institution)
+
+  if (variant === 'tabs') {
+    const track =
+      tone === 'dark'
+        ? 'border-white/10 bg-white/10'
+        : 'border-slate-200/80 bg-slate-100/90'
+    const idleTab = tone === 'dark' ? 'text-white/70' : 'text-slate-500'
+
+    return (
+      <nav
+        className={`grid w-full grid-cols-4 gap-0.5 rounded-xl border p-1 ${track} ${className}`}
+        aria-label="Page sections"
+      >
+        {items.map((item) => {
+          const active = activeId === item.id
+          return (
+            <button
+              key={item.id}
+              type="button"
+              onClick={() => scrollToLandingSection(item.id, preview)}
+              className={`min-w-0 rounded-lg px-1 py-1.5 text-center text-[11px] font-medium leading-tight transition sm:text-xs ${
+                active ? 'font-semibold shadow-sm' : idleTab
+              }`}
+              style={
+                active
+                  ? { backgroundColor: primary, color: 'var(--brand-on-primary, #fff)' }
+                  : undefined
+              }
+            >
+              <span className="block truncate">{item.label}</span>
+            </button>
+          )
+        })}
+      </nav>
+    )
+  }
 
   return (
     <nav

@@ -18,7 +18,7 @@ import {
 import LandingHeroSocials from '@/components/landing/LandingHeroSocials'
 
 const HEADER_LOGO_CLASS =
-  'h-12 w-auto max-w-[16rem] object-contain md:h-14 md:max-w-[18rem]'
+  'h-8 w-auto max-w-[6.75rem] object-contain sm:h-12 sm:max-w-[14rem] md:h-14 md:max-w-[18rem]'
 
 /** Same logo file + size for header, login form, and footer. */
 export function LandingLogo({
@@ -56,7 +56,7 @@ export function BrandMark({
   size?: 'sm' | 'md' | 'lg'
   rounded?: 'full' | 'xl' | '2xl'
 }) {
-  const dim = size === 'sm' ? 'h-9 w-9' : size === 'lg' ? 'h-12 w-12' : 'h-10 w-10'
+  const dim = size === 'sm' ? 'h-8 w-8 sm:h-9 sm:w-9' : size === 'lg' ? 'h-9 w-9 sm:h-12 sm:w-12' : 'h-10 w-10'
   const radius = rounded === '2xl' ? 'rounded-2xl' : rounded === 'xl' ? 'rounded-xl' : 'rounded-full'
   const logoUrl = institutionLogoUrl(institution)
   if (logoUrl) {
@@ -99,8 +99,8 @@ export function LandingHeaderBrand({
   const logoUrl = institutionLogoUrl(institution)
   if (logoUrl) {
     return (
-      <div className={`flex items-center ${className}`}>
-        <span className="inline-flex items-center">
+      <div className={`flex min-w-0 items-center ${className}`}>
+        <span className="inline-flex min-w-0 max-w-full items-center">
           <LandingLogo institution={institution} />
         </span>
       </div>
@@ -108,7 +108,7 @@ export function LandingHeaderBrand({
   }
 
   return (
-    <div className={`flex max-w-[22rem] items-center gap-3 sm:gap-3.5 ${className}`}>
+    <div className={`flex max-w-full min-w-0 items-center gap-2 sm:max-w-[22rem] sm:gap-3.5 ${className}`}>
       <BrandMark institution={institution} primary={primary} size="lg" rounded="xl" />
       <div className="min-w-0">
         <p className={`${nameClassName} line-clamp-2 break-words`}>{institution.name}</p>
@@ -118,7 +118,7 @@ export function LandingHeaderBrand({
   )
 }
 
-/** Logo left, tabs centered, actions right. */
+/** Logo left, tabs centered, actions right. On mobile: logo + buttons one row, tabs bar below. */
 export function LandingHeaderBar({
   institution,
   primary,
@@ -150,45 +150,46 @@ export function LandingHeaderBar({
 }) {
   const navColor = navPrimary ?? primary
   return (
-    <div className="grid w-full min-w-0 grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-x-3 gap-y-2">
-      <div className="col-start-1 row-start-1 justify-self-start pr-3">
-        <LandingHeaderBrand
+    <div className="flex w-full min-w-0 flex-col gap-2.5">
+      <div className="grid w-full min-w-0 grid-cols-[minmax(0,1fr)_auto] items-center gap-x-2 sm:gap-x-3 md:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)]">
+        <div className="min-w-0 justify-self-start">
+          <LandingHeaderBrand
+            institution={institution}
+            primary={primary}
+            className="min-w-0"
+            nameClassName={brandNameClassName}
+            tagline={brandTagline}
+            tone={tone}
+          />
+        </div>
+        <LandingPageNav
           institution={institution}
-          primary={primary}
-          className="shrink-0"
-          nameClassName={brandNameClassName}
-          tagline={brandTagline}
+          primary={navColor}
+          preview={preview}
           tone={tone}
+          className="col-start-2 row-start-1 hidden justify-center md:flex"
         />
+        <div className="col-start-2 justify-self-end md:col-start-3">
+          <LandingHeaderActions
+            primary={primary}
+            verifyHref={verifyHref}
+            sameTenant={sameTenant}
+            userRole={userRole}
+            onOpenLogin={onOpenLogin}
+            preview={preview}
+            solidClassName={solidClassName}
+            outlineClassName={outlineClassName}
+          />
+        </div>
       </div>
       <LandingPageNav
         institution={institution}
         primary={navColor}
         preview={preview}
         tone={tone}
-        className="col-start-2 row-start-1 hidden justify-center md:flex"
+        variant="tabs"
+        className="md:hidden"
       />
-      <div className="col-start-3 row-start-1 justify-self-end">
-        <LandingHeaderActions
-          primary={primary}
-          verifyHref={verifyHref}
-          sameTenant={sameTenant}
-          userRole={userRole}
-          onOpenLogin={onOpenLogin}
-          preview={preview}
-          solidClassName={solidClassName}
-          outlineClassName={outlineClassName}
-        />
-      </div>
-      <div className="col-span-3 row-start-2 md:hidden">
-        <LandingPageNav
-          institution={institution}
-          primary={navColor}
-          preview={preview}
-          tone={tone}
-          className="justify-center"
-        />
-      </div>
     </div>
   )
 }
@@ -213,35 +214,37 @@ export function LandingHeaderActions({
   solidClassName?: string
   outlineClassName?: string
 }) {
+  const compact =
+    'inline-flex h-8 shrink-0 items-center whitespace-nowrap !px-2 text-[11px] sm:h-9 sm:!px-3.5 sm:text-sm'
   return (
-    <div className="flex min-w-0 shrink-0 flex-wrap items-center justify-end gap-1.5 sm:gap-2">
-      {preview ? null : <ThemeToggle variant="brand" className="shrink-0" />}
+    <div className="flex shrink-0 flex-nowrap items-center justify-end gap-1 sm:gap-1.5">
+      {preview ? null : <ThemeToggle variant="brand" className="h-8 w-8 shrink-0 sm:h-8 sm:w-8" />}
       {sameTenant ? (
-        <Button asChild size="sm" className={`${solidClassName} max-sm:px-2.5`} style={brandButtonStyle(primary)}>
+        <Button asChild size="sm" className={`${solidClassName} ${compact}`} style={brandButtonStyle(primary)}>
           <Link to={preview ? '#' : dashboardPathForRole(userRole)}>Dashboard</Link>
         </Button>
       ) : (
         <Button
           type="button"
           size="sm"
-          className={`${solidClassName} max-sm:px-2.5`}
+          className={`${solidClassName} ${compact}`}
           style={brandButtonStyle(primary)}
           onClick={() => !preview && onOpenLogin()}
         >
-          <LogIn className="mr-1 h-3.5 w-3.5 sm:mr-1.5" />
+          <LogIn className="mr-1 h-3.5 w-3.5" />
           <span className="sm:hidden">Login</span>
           <span className="hidden sm:inline">Portal Login</span>
         </Button>
       )}
       {preview ? (
-        <Button type="button" size="sm" variant="outline" className={`${outlineClassName} max-sm:px-2.5`}>
-          <ShieldCheck className="mr-1 h-3.5 w-3.5 sm:mr-1.5" />
+        <Button type="button" size="sm" variant="outline" className={`${outlineClassName} ${compact}`}>
+          <ShieldCheck className="mr-1 h-3.5 w-3.5" />
           Verify
         </Button>
       ) : (
-        <Button asChild size="sm" variant="outline" className={`${outlineClassName} max-sm:px-2.5`}>
+        <Button asChild size="sm" variant="outline" className={`${outlineClassName} ${compact}`}>
           <Link to={verifyHref}>
-            <ShieldCheck className="mr-1 h-3.5 w-3.5 sm:mr-1.5" />
+            <ShieldCheck className="mr-1 h-3.5 w-3.5" />
             Verify
           </Link>
         </Button>

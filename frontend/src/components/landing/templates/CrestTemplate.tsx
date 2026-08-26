@@ -42,7 +42,7 @@ export default function CrestTemplate(p: LandingTemplateProps) {
       />
 
       <header className={`relative z-20 border-b ${light ? 'border-slate-200 bg-white/90 backdrop-blur-md' : 'border-white/10'}`}>
-        <div className="mx-auto flex max-w-6xl flex-wrap items-center gap-x-4 gap-y-2 md:gap-x-7 px-4 py-2.5 sm:px-6 sm:py-3.5">
+        <div className="mx-auto w-full min-w-0 max-w-6xl px-3 py-2.5 sm:px-6 sm:py-3.5">
           <LandingHeaderBar
             institution={institution}
             primary={accent}

@@ -37,7 +37,7 @@ export default function HorizonTemplate(p: LandingTemplateProps) {
       />
 
       <header className="relative z-20 mx-auto max-w-5xl px-4 pt-5 sm:px-6 sm:pt-6">
-        <div className="flex flex-wrap items-center gap-x-4 gap-y-2 md:gap-x-7">
+        <div className="w-full min-w-0">
           <LandingHeaderBar
             institution={institution}
             primary={primary}

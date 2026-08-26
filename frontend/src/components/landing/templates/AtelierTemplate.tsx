@@ -32,7 +32,7 @@ export default function AtelierTemplate(p: LandingTemplateProps) {
     >
       <header className="mx-auto max-w-6xl px-4 pt-5 sm:px-6 sm:pt-6">
         <div
-          className={`flex flex-wrap items-center gap-x-4 gap-y-2 md:gap-x-7 border-b pb-4 sm:pb-5 ${
+          className={`w-full min-w-0 border-b pb-4 sm:pb-5 ${
             light ? 'border-stone-200/80' : 'border-white/10'
           }`}
         >

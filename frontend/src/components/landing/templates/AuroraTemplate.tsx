@@ -36,7 +36,7 @@ export default function AuroraTemplate(p: LandingTemplateProps) {
 
       <div className="relative z-30 mx-auto max-w-6xl px-4 pt-5 sm:px-6">
         <header
-          className={`flex flex-wrap items-center gap-x-4 gap-y-2 md:gap-x-7 rounded-2xl border px-3 py-2.5 backdrop-blur-xl sm:px-5 sm:py-3 ${
+          className={`w-full min-w-0 rounded-2xl border px-3 py-2.5 backdrop-blur-xl sm:px-5 sm:py-3 ${
             light
               ? 'border-white/80 bg-white/80 shadow-[0_8px_30px_rgba(15,23,42,0.06)]'
               : 'border-white/10 bg-white/5 shadow-[0_8px_30px_rgba(0,0,0,0.25)]'
