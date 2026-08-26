@@ -50,12 +50,12 @@ const LogoBrandColorPicker = ({
               type="color"
               value={safePrimary}
               onChange={(e) => onPrimaryChange(e.target.value)}
-              className="h-10 w-14 cursor-pointer p-1 bg-slate-950 border-slate-800"
+              className="h-10 w-14 cursor-pointer p-1 bg-[var(--tenant-bg)] border-[var(--tenant-line)] [.platform-public_&]:bg-[var(--pf-bg)] [.platform-public_&]:border-[var(--pf-line)]"
             />
             <Input
               value={primary}
               onChange={(e) => onPrimaryChange(e.target.value)}
-              className="bg-slate-950 border-slate-800 font-mono"
+              className="bg-[var(--tenant-bg)] border-[var(--tenant-line)] font-mono [.platform-public_&]:bg-[var(--pf-bg)] [.platform-public_&]:border-[var(--pf-line)]"
             />
           </div>
         </div>
@@ -67,12 +67,12 @@ const LogoBrandColorPicker = ({
               type="color"
               value={safeAccent}
               onChange={(e) => onAccentChange(e.target.value)}
-              className="h-10 w-14 cursor-pointer p-1 bg-slate-950 border-slate-800"
+              className="h-10 w-14 cursor-pointer p-1 bg-[var(--tenant-bg)] border-[var(--tenant-line)] [.platform-public_&]:bg-[var(--pf-bg)] [.platform-public_&]:border-[var(--pf-line)]"
             />
             <Input
               value={accent}
               onChange={(e) => onAccentChange(e.target.value)}
-              className="bg-slate-950 border-slate-800 font-mono"
+              className="bg-[var(--tenant-bg)] border-[var(--tenant-line)] font-mono [.platform-public_&]:bg-[var(--pf-bg)] [.platform-public_&]:border-[var(--pf-line)]"
             />
           </div>
         </div>
@@ -84,13 +84,13 @@ const LogoBrandColorPicker = ({
               type="color"
               value={safeTertiary}
               onChange={(e) => onTertiaryChange(e.target.value)}
-              className="h-10 w-14 cursor-pointer p-1 bg-slate-950 border-slate-800"
+              className="h-10 w-14 cursor-pointer p-1 bg-[var(--tenant-bg)] border-[var(--tenant-line)] [.platform-public_&]:bg-[var(--pf-bg)] [.platform-public_&]:border-[var(--pf-line)]"
             />
             <Input
               value={tertiary || ''}
               onChange={(e) => onTertiaryChange(e.target.value)}
               placeholder="optional"
-              className="bg-slate-950 border-slate-800 font-mono"
+              className="bg-[var(--tenant-bg)] border-[var(--tenant-line)] font-mono [.platform-public_&]:bg-[var(--pf-bg)] [.platform-public_&]:border-[var(--pf-line)]"
             />
           </div>
         </div>

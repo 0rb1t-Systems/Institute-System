@@ -12,6 +12,7 @@ import { getUserMessage } from '@/lib/mapError';
 import { MESSAGES } from '@/lib/messages';
 import { getPublicInstitutionBySubdomain } from '@/lib/api';
 import ThemeToggle from '@/components/platform/ThemeToggle';
+import { usePlatformTheme } from '@/contexts/PlatformThemeContext';
 import { LandingLogo } from '@/components/landing/LandingShared';
 import {
   getInstitutionPrimary,
@@ -40,6 +41,8 @@ const LoginPage = ({ initialError = '' }) => {
   const [institution, setInstitution] = useState(null);
   const [loadingTenant, setLoadingTenant] = useState(false);
   const { login } = useAuth();
+  const { mode } = usePlatformTheme();
+  const light = mode === 'light';
   const navigate = useNavigate();
   const location = useLocation();
   const [searchParams] = useSearchParams();
@@ -161,7 +164,9 @@ const LoginPage = ({ initialError = '' }) => {
     <div
       className={
         isTenantLogin
-          ? 'relative flex min-h-screen items-center justify-center overflow-hidden bg-slate-950 p-4'
+          ? `relative flex min-h-screen items-center justify-center overflow-hidden p-4 ${
+              light ? 'bg-slate-50' : 'bg-slate-950'
+            }`
           : 'platform-public relative flex min-h-screen items-center justify-center overflow-hidden p-4'
       }
     >
@@ -171,11 +176,9 @@ const LoginPage = ({ initialError = '' }) => {
         </title>
       </Helmet>
 
-      {!isTenantLogin ? (
-        <div className="absolute right-4 top-4 z-20">
-          <ThemeToggle />
-        </div>
-      ) : null}
+      <div className="absolute right-4 top-4 z-20">
+        <ThemeToggle variant={isTenantLogin ? 'brand' : 'platform'} />
+      </div>
 
       <div className="pointer-events-none absolute inset-0 overflow-hidden" aria-hidden>
         <div
@@ -188,7 +191,9 @@ const LoginPage = ({ initialError = '' }) => {
       <Card
         className={
           isTenantLogin
-            ? 'relative z-10 w-full max-w-md border-slate-800 bg-slate-900/80 shadow-2xl backdrop-blur-sm'
+            ? light
+              ? 'relative z-10 w-full max-w-md border-slate-200 bg-white shadow-xl'
+              : 'relative z-10 w-full max-w-md border-slate-800 bg-slate-900/80 shadow-2xl backdrop-blur-sm'
             : 'relative z-10 w-full max-w-md border-[var(--pf-line)] bg-[var(--pf-surface)] shadow-xl'
         }
       >
@@ -209,11 +214,11 @@ const LoginPage = ({ initialError = '' }) => {
               )}
               <div>
                 {tenantLogo ? null : (
-                  <CardTitle className="text-xl font-bold text-white sm:text-2xl">
+                  <CardTitle className={`text-xl font-bold sm:text-2xl ${light ? 'text-slate-900' : 'text-white'}`}>
                     {institution?.name || 'Institution portal'}
                   </CardTitle>
                 )}
-                <CardDescription className={`text-slate-400 ${tenantLogo ? '' : 'mt-1'}`}>
+                <CardDescription className={`${light && isTenantLogin ? 'text-slate-500' : 'text-slate-400'} ${tenantLogo ? '' : 'mt-1'}`}>
                   Sign in to open your dashboard
                 </CardDescription>
               </div>
@@ -233,13 +238,13 @@ const LoginPage = ({ initialError = '' }) => {
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-4">
             {error && (
-              <Alert variant="destructive" className="border-red-900/50 bg-red-950/50 text-red-200">
+              <Alert variant="destructive" className={light ? 'border-red-200 bg-red-50 text-red-800' : 'border-red-900/50 bg-red-950/50 text-red-200'}>
                 <AlertCircle className="h-4 w-4" />
                 <AlertDescription>{error}</AlertDescription>
               </Alert>
             )}
             <div className="space-y-2">
-              <Label htmlFor="identifier" className={isTenantLogin ? 'text-slate-200' : 'text-[var(--pf-text)]'}>
+              <Label htmlFor="identifier" className={isTenantLogin ? (light ? 'text-slate-700' : 'text-slate-200') : 'text-[var(--pf-text)]'}>
                 {isTenantLogin ? 'Email or Student ID' : 'Admin email'}
               </Label>
               <Input
@@ -257,7 +262,9 @@ const LoginPage = ({ initialError = '' }) => {
                 }}
                 className={
                   isTenantLogin
-                    ? 'border-slate-700 bg-slate-950 text-white placeholder:text-slate-500'
+                    ? light
+                      ? 'border-slate-200 bg-slate-50 text-slate-900 placeholder:text-slate-400'
+                      : 'border-slate-700 bg-slate-950 text-white placeholder:text-slate-500'
                     : 'border-[var(--pf-line)] bg-[var(--pf-bg)] text-[var(--pf-text)] placeholder:text-[var(--pf-faint)]'
                 }
                 style={{ ['--tw-ring-color']: primary }}
@@ -267,7 +274,7 @@ const LoginPage = ({ initialError = '' }) => {
             </div>
             <div className="space-y-2">
               <div className="flex items-center justify-between">
-                <Label htmlFor="password" className={isTenantLogin ? 'text-slate-200' : 'text-[var(--pf-text)]'}>
+                <Label htmlFor="password" className={isTenantLogin ? (light ? 'text-slate-700' : 'text-slate-200') : 'text-[var(--pf-text)]'}>
                   Password
                 </Label>
                 <Link
@@ -292,7 +299,9 @@ const LoginPage = ({ initialError = '' }) => {
                 }}
                 className={
                   isTenantLogin
-                    ? 'border-slate-700 bg-slate-950 text-white placeholder:text-slate-500'
+                    ? light
+                      ? 'border-slate-200 bg-slate-50 text-slate-900 placeholder:text-slate-400'
+                      : 'border-slate-700 bg-slate-950 text-white placeholder:text-slate-500'
                     : 'border-[var(--pf-line)] bg-[var(--pf-bg)] text-[var(--pf-text)] placeholder:text-[var(--pf-faint)]'
                 }
                 disabled={isLoading}
@@ -326,13 +335,13 @@ const LoginPage = ({ initialError = '' }) => {
         <CardFooter
           className={
             isTenantLogin
-              ? 'flex flex-col items-center space-y-3 border-t border-slate-800 pt-6'
+              ? `flex flex-col items-center space-y-3 border-t pt-6 ${light ? 'border-slate-200' : 'border-slate-800'}`
               : 'flex flex-col items-center space-y-3 border-t border-[var(--pf-line)] pt-6'
           }
         >
           {isTenantLogin ? (
             <>
-              <p className="text-center text-xs text-slate-400">
+              <p className={`text-center text-xs ${light ? 'text-slate-500' : 'text-slate-400'}`}>
                 Only this institution’s accounts can sign in here.
               </p>
               {/^https?:\/\//i.test(tenantHomeHref) ? (

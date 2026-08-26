@@ -9,6 +9,8 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Button } from '@/components/ui/button';
 import { formatDate } from '@/lib/utils';
 import Logo from '@/components/Logo';
+import ThemeToggle from '@/components/platform/ThemeToggle';
+import { usePlatformTheme } from '@/contexts/PlatformThemeContext';
 
 const VerificationPage = () => {
   const { id } = useParams();
@@ -52,26 +54,31 @@ const VerificationPage = () => {
   }, [id]);
 
   const accent = documentData?.themePrimary || '#2563eb';
+  const { mode } = usePlatformTheme();
+  const light = mode === 'light';
 
   return (
-    <div className="min-h-screen bg-slate-950 flex flex-col items-center p-4 pt-12 font-sans text-slate-100">
+    <div className={`relative min-h-screen flex flex-col items-center p-4 pt-12 font-sans ${light ? 'bg-slate-50 text-slate-900' : 'bg-slate-950 text-slate-100'}`}>
       <Helmet><title>Document Verification - Portal</title></Helmet>
+      <div className="absolute right-4 top-4 z-10">
+        <ThemeToggle variant="brand" />
+      </div>
       
       <div className="mb-8 scale-125">
          {documentData?.logoUrl ? (
            <img src={documentData.logoUrl} alt="" className="h-12 w-auto object-contain mx-auto" />
          ) : (
-           <Logo className="brightness-0 invert" />
+           <Logo className={light ? '' : 'brightness-0 invert'} />
          )}
       </div>
 
       <Card
-        className="w-full max-w-md shadow-xl border border-slate-800 bg-slate-900 text-slate-100 border-t-4"
+        className={`w-full max-w-md shadow-xl border border-t-4 ${light ? 'border-slate-200 bg-white text-slate-900' : 'border-slate-800 bg-slate-900 text-slate-100'}`}
         style={{ borderTopColor: accent }}
       >
         <CardHeader className="text-center pb-2">
-          <CardTitle className="text-xl text-white">Credential Verification</CardTitle>
-          <CardDescription className="text-slate-400">Official training center credential registry</CardDescription>
+          <CardTitle className={`text-xl ${light ? 'text-slate-900' : 'text-white'}`}>Credential Verification</CardTitle>
+          <CardDescription className={light ? 'text-slate-500' : 'text-slate-400'}>Official training center credential registry</CardDescription>
         </CardHeader>
         <CardContent className="space-y-6 pt-6">
             {loading ? (
@@ -84,7 +91,7 @@ const VerificationPage = () => {
                 </div>
             ) : (
                 <div className="space-y-6">
-                    <div className="flex flex-col items-center space-y-2 pb-4 border-b border-slate-800">
+                    <div className={`flex flex-col items-center space-y-2 pb-4 border-b ${light ? 'border-slate-200' : 'border-slate-800'}`}>
                         <CheckCircle2 className="h-16 w-16 text-green-500" />
                         <h3 className="text-lg font-bold text-green-400">Verified Authentic</h3>
                         <p className="text-xs text-slate-400 uppercase tracking-widest">Official Record Found</p>
@@ -93,10 +100,10 @@ const VerificationPage = () => {
                     <div className="space-y-4">
                         {documentData.institutionName && (
                           <div className="flex items-start gap-3">
-                            <Building2 className="h-5 w-5 text-slate-400 mt-0.5 shrink-0" />
+                            <Building2 className={`h-5 w-5 mt-0.5 shrink-0 ${light ? 'text-slate-400' : 'text-slate-400'}`} />
                             <div className="min-w-0">
-                              <p className="text-xs text-slate-400 uppercase tracking-wide">Institution</p>
-                              <p className="font-semibold text-white break-words">{documentData.institutionName}</p>
+                              <p className={`text-xs uppercase tracking-wide ${light ? 'text-slate-500' : 'text-slate-400'}`}>Institution</p>
+                              <p className={`font-semibold break-words ${light ? 'text-slate-900' : 'text-white'}`}>{documentData.institutionName}</p>
                             </div>
                           </div>
                         )}
@@ -104,16 +111,16 @@ const VerificationPage = () => {
                         <div className="flex items-start gap-3">
                             <User className="h-5 w-5 text-slate-400 mt-0.5 shrink-0" />
                             <div className="min-w-0">
-                                <p className="text-xs text-slate-400 uppercase tracking-wide">Student</p>
-                                <p className="font-semibold text-white break-words">{documentData.studentName}</p>
+                                <p className={`text-xs uppercase tracking-wide ${light ? 'text-slate-500' : 'text-slate-400'}`}>Student</p>
+                                <p className={`font-semibold break-words ${light ? 'text-slate-900' : 'text-white'}`}>{documentData.studentName}</p>
                             </div>
                         </div>
 
                         <div className="flex items-start gap-3">
                             <GraduationCap className="h-5 w-5 text-slate-400 mt-0.5 shrink-0" />
                             <div className="min-w-0">
-                                <p className="text-xs text-slate-400 uppercase tracking-wide">Credential</p>
-                                <p className="font-semibold text-white capitalize">{documentData.type}</p>
+                                <p className={`text-xs uppercase tracking-wide ${light ? 'text-slate-500' : 'text-slate-400'}`}>Credential</p>
+                                <p className={`font-semibold capitalize ${light ? 'text-slate-900' : 'text-white'}`}>{documentData.type}</p>
                                 <p className="text-sm font-medium break-words" style={{ color: accent }}>{documentData.title}</p>
                                 {documentData.certificateNumber && (
                                   <p className="text-xs text-slate-300 font-mono mt-1 break-all">{documentData.certificateNumber}</p>
@@ -124,8 +131,8 @@ const VerificationPage = () => {
                         <div className="flex items-start gap-3">
                              <Calendar className="h-5 w-5 text-slate-400 mt-0.5 shrink-0" />
                              <div className="min-w-0">
-                                 <p className="text-xs text-slate-400 uppercase tracking-wide">Issue Date</p>
-                                 <p className="font-medium text-white">{formatDate(documentData.date)}</p>
+                                 <p className={`text-xs uppercase tracking-wide ${light ? 'text-slate-500' : 'text-slate-400'}`}>Issue Date</p>
+                                 <p className={`font-medium ${light ? 'text-slate-900' : 'text-white'}`}>{formatDate(documentData.date)}</p>
                              </div>
                         </div>
                     </div>
@@ -138,7 +145,7 @@ const VerificationPage = () => {
                 </div>
             )}
             <div className="pt-2">
-                <Button asChild variant="outline" className="w-full border-slate-700 bg-slate-950 text-white hover:bg-slate-800 hover:text-white">
+                <Button asChild variant="outline" className={light ? 'w-full border-slate-200 bg-white text-slate-800 hover:bg-slate-50' : 'w-full border-slate-700 bg-slate-950 text-white hover:bg-slate-800 hover:text-white'}>
                     <Link to="/login">Login to Portal</Link>
                 </Button>
             </div>

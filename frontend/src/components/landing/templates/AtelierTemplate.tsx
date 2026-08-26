@@ -2,9 +2,9 @@ import React from 'react'
 import { LandingCtas, LandingHeaderBar, SharedLandingFooter } from '@/components/landing/LandingShared'
 import LandingHeroSocials from '@/components/landing/LandingHeroSocials'
 import { LandingContentSections } from '@/components/landing/LandingSections'
-import type { LandingTemplateProps } from '@/components/landing/types'
+import { landingIsLight, type LandingTemplateProps } from '@/components/landing/types'
 
-/** Editorial warm — image left, refined typography right. */
+/** Editorial — image left, refined typography right. */
 export default function AtelierTemplate(p: LandingTemplateProps) {
   const {
     institution,
@@ -21,11 +21,21 @@ export default function AtelierTemplate(p: LandingTemplateProps) {
     preview,
     onChangeTemplate,
   } = p
+  const light = landingIsLight(p.themeMode)
+  const tone = light ? 'light' : 'dark'
 
   return (
-    <div className="min-h-screen overflow-x-hidden bg-[#F7F6F4] font-sans text-stone-900">
+    <div
+      className={`min-h-screen overflow-x-hidden font-sans ${
+        light ? 'bg-[#F7F6F4] text-stone-900' : 'bg-[#161412] text-stone-100'
+      }`}
+    >
       <header className="mx-auto max-w-6xl px-4 pt-5 sm:px-6 sm:pt-6">
-        <div className="flex flex-wrap items-center gap-x-4 gap-y-2 md:gap-x-7 border-b border-stone-200/80 pb-4 sm:pb-5">
+        <div
+          className={`flex flex-wrap items-center gap-x-4 gap-y-2 md:gap-x-7 border-b pb-4 sm:pb-5 ${
+            light ? 'border-stone-200/80' : 'border-white/10'
+          }`}
+        >
           <LandingHeaderBar
             institution={institution}
             primary={primary}
@@ -35,9 +45,18 @@ export default function AtelierTemplate(p: LandingTemplateProps) {
             userRole={userRole}
             onOpenLogin={onOpenLogin}
             preview={preview}
-            brandNameClassName="font-display text-[13px] font-semibold leading-snug tracking-tight sm:text-[15px]"
+            tone={tone}
+            brandNameClassName={
+              light
+                ? 'font-display text-[13px] font-semibold leading-snug tracking-tight text-stone-900 sm:text-[15px]'
+                : 'font-display text-[13px] font-semibold leading-snug tracking-tight text-white sm:text-[15px]'
+            }
             solidClassName="rounded-full px-4 text-white"
-            outlineClassName="rounded-full border-stone-300 bg-white"
+            outlineClassName={
+              light
+                ? 'rounded-full border-stone-300 bg-white text-stone-800'
+                : 'rounded-full border-white/20 bg-white/5 text-white hover:bg-white/10'
+            }
           />
         </div>
       </header>
@@ -60,14 +79,20 @@ export default function AtelierTemplate(p: LandingTemplateProps) {
         </div>
 
         <div className="order-1 space-y-5 sm:space-y-6 lg:order-2">
-          <p className="text-[11px] font-medium uppercase tracking-[0.24em] text-stone-500">
+          <p className={`text-[11px] font-medium uppercase tracking-[0.24em] ${light ? 'text-stone-500' : 'text-stone-400'}`}>
             Community · {year}
           </p>
-          <h1 className="max-w-lg break-words font-display text-2xl font-semibold leading-[1.14] tracking-tight text-stone-900 sm:text-4xl lg:text-[2.6rem]">
+          <h1
+            className={`max-w-lg break-words font-display text-2xl font-semibold leading-[1.14] tracking-tight sm:text-4xl lg:text-[2.6rem] ${
+              light ? 'text-stone-900' : 'text-white'
+            }`}
+          >
             {headline}
           </h1>
           <p
-            className="max-w-md border-l-2 pl-3 text-[15px] leading-relaxed text-stone-600 sm:pl-4"
+            className={`max-w-md border-l-2 pl-3 text-[15px] leading-relaxed sm:pl-4 ${
+              light ? 'text-stone-600' : 'text-stone-300'
+            }`}
             style={{ borderColor: accent }}
           >
             {tagline}
@@ -81,12 +106,16 @@ export default function AtelierTemplate(p: LandingTemplateProps) {
             preview={preview}
             size="default"
             solidClassName="rounded-full px-6 text-white"
-            outlineClassName="rounded-full border-stone-300 bg-white px-6"
+            outlineClassName={
+              light
+                ? 'rounded-full border-stone-300 bg-white px-6 text-stone-800'
+                : 'rounded-full border-white/20 bg-white/5 px-6 text-white hover:bg-white/10'
+            }
           />
           <LandingHeroSocials
             institution={institution}
             primary={primary}
-            tone={p.themeMode === 'dark' ? 'dark' : 'light'}
+            tone={tone}
             preview={preview}
           />
         </div>
@@ -97,7 +126,7 @@ export default function AtelierTemplate(p: LandingTemplateProps) {
         primary={primary}
         accent={accent}
         tagline={tagline}
-        tone="light"
+        tone={tone}
         preview={preview}
       />
       <SharedLandingFooter
@@ -108,7 +137,7 @@ export default function AtelierTemplate(p: LandingTemplateProps) {
         onOpenLogin={onOpenLogin}
         onChangeTemplate={onChangeTemplate}
         preview={preview}
-        tone="light"
+        tone={tone}
       />
     </div>
   )

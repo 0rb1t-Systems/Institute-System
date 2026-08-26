@@ -28,12 +28,24 @@ export type LandingCustomizeValues = {
   theme_primary: string
   theme_accent: string
   theme_tertiary: string
+  social_whatsapp: string
+  social_facebook: string
+  social_tiktok: string
   logoPreviewUrl: string | null
   heroPreviewUrl: string | null
   logoFile: File | null
   heroFile: File | null
   landing_content: LandingContent
 }
+
+const titleCls = 'text-[var(--tenant-text)] [.platform-public_&]:text-[var(--pf-text)]'
+const mutedCls = 'text-[var(--tenant-muted)] [.platform-public_&]:text-[var(--pf-muted)]'
+const labelCls = 'text-[var(--tenant-text)] [.platform-public_&]:text-[var(--pf-text)]'
+const cardCls =
+  'rounded-2xl border border-[var(--tenant-line)] bg-[var(--tenant-surface)] [.platform-public_&]:border-[var(--pf-line)] [.platform-public_&]:bg-[var(--pf-surface)]'
+const fieldCls =
+  'border-[var(--tenant-line)] bg-[var(--tenant-bg)] text-[var(--tenant-text)] placeholder:text-[var(--tenant-muted)] [.platform-public_&]:border-[var(--pf-line)] [.platform-public_&]:bg-[var(--pf-bg)] [.platform-public_&]:text-[var(--pf-text)]'
+const fileFieldCls = `${fieldCls} text-sm file:mr-3 file:rounded file:border-0 file:bg-teal-500/20 file:px-2 file:py-1 file:text-teal-700 [html[data-platform-theme='dark']_&]:file:text-teal-200`
 
 type Props = {
   baseInstitution: LandingInstitution
@@ -72,6 +84,9 @@ export default function LandingTemplatePicker({ baseInstitution, values, onChang
       theme_primary: values.theme_primary || meta.defaultPrimary,
       theme_accent: values.theme_accent || meta.defaultAccent,
       theme_tertiary: values.theme_tertiary || null,
+      social_whatsapp: values.social_whatsapp || baseInstitution.social_whatsapp || null,
+      social_facebook: values.social_facebook || baseInstitution.social_facebook || null,
+      social_tiktok: values.social_tiktok || baseInstitution.social_tiktok || null,
       logo_url: values.logoPreviewUrl || baseInstitution.logo_url || null,
       hero_image_url: values.heroPreviewUrl || null,
       landing_content: landingContent,
@@ -144,19 +159,19 @@ export default function LandingTemplatePicker({ baseInstitution, values, onChang
   return (
     <div className="space-y-6">
       <div>
-        <h2 className="font-display text-xl font-bold text-white sm:text-2xl [.platform-public_&]:text-[var(--pf-text)]">Choose a landing template</h2>
-        <p className="mt-1 text-sm text-slate-400 [.platform-public_&]:text-[var(--pf-muted)]">
+        <h2 className={`font-display text-xl font-bold sm:text-2xl ${titleCls}`}>Choose a landing template</h2>
+        <p className={`mt-1 text-sm ${mutedCls}`}>
           Design preview updates at the top when you select a template. Upload your logo so branding appears live.
         </p>
       </div>
 
       {/* Large design preview on top */}
-      <div className="overflow-hidden rounded-2xl border border-white/10 bg-black/30 shadow-2xl">
-        <div className="flex items-center justify-between border-b border-white/10 px-4 py-2.5">
-          <p className="text-xs font-medium text-slate-300">
-            Design preview · <span className="text-white">{meta.name}</span>
+      <div className={`overflow-hidden shadow-2xl ${cardCls}`}>
+        <div className="flex items-center justify-between border-b border-[var(--tenant-line)] px-4 py-2.5 [.platform-public_&]:border-[var(--pf-line)]">
+          <p className={`text-xs font-medium ${mutedCls}`}>
+            Design preview · <span className={titleCls}>{meta.name}</span>
           </p>
-          <p className="hidden text-[11px] text-slate-500 sm:block">{meta.tagline}</p>
+          <p className={`hidden text-[11px] sm:block ${mutedCls}`}>{meta.tagline}</p>
         </div>
         <div className="max-h-[38vh] overflow-y-auto">
           <div className="pointer-events-none select-none">
@@ -180,7 +195,7 @@ export default function LandingTemplatePicker({ baseInstitution, values, onChang
               className={`relative overflow-hidden rounded-2xl border p-3 text-left transition ${
                 selected
                   ? 'border-teal-400/70 bg-teal-500/10 ring-2 ring-teal-400/40'
-                  : 'border-white/10 bg-black/20 hover:border-white/25'
+                  : 'border-[var(--tenant-line)] bg-[var(--tenant-bg)] hover:border-[color-mix(in_srgb,var(--tenant-text)_25%,transparent)] [.platform-public_&]:border-[var(--pf-line)] [.platform-public_&]:bg-[var(--pf-bg)]'
               }`}
             >
               <div
@@ -189,8 +204,8 @@ export default function LandingTemplatePicker({ baseInstitution, values, onChang
                   backgroundImage: `linear-gradient(135deg, ${t.defaultPrimary}aa, transparent 55%), url(${t.defaultHeroImage})`,
                 }}
               />
-              <p className="text-sm font-semibold text-white">{t.name}</p>
-              <p className="mt-0.5 text-xs leading-snug text-slate-400">{t.tagline}</p>
+              <p className={`text-sm font-semibold ${titleCls}`}>{t.name}</p>
+              <p className={`mt-0.5 text-xs leading-snug ${mutedCls}`}>{t.tagline}</p>
               {selected && (
                 <span className="absolute right-3 top-3 flex h-6 w-6 items-center justify-center rounded-full bg-teal-400 text-[#04201c]">
                   <Check className="h-3.5 w-3.5" />
@@ -201,26 +216,26 @@ export default function LandingTemplatePicker({ baseInstitution, values, onChang
         })}
       </div>
 
-      <div className="grid gap-5 rounded-2xl border border-white/10 bg-black/25 p-5 lg:grid-cols-2">
+      <div className={`grid gap-5 p-5 lg:grid-cols-2 ${cardCls}`}>
         <div className="space-y-4">
           <div className="space-y-2">
-            <Label className="text-slate-200">Institution logo *</Label>
+            <Label className={labelCls}>Institution logo *</Label>
             <div className="flex items-center gap-3">
-              <div className="flex h-16 w-16 items-center justify-center overflow-hidden rounded-full bg-white/10 ring-1 ring-white/15">
+              <div className="flex h-16 w-16 items-center justify-center overflow-hidden rounded-full bg-[var(--tenant-bg)] ring-1 ring-[var(--tenant-line)] [.platform-public_&]:bg-[var(--pf-bg)] [.platform-public_&]:ring-[var(--pf-line)]">
                 {previewInstitution.logo_url ? (
                   <img src={brandedImageSrc(previewInstitution.logo_url)} alt="" className="h-full w-full object-contain" />
                 ) : (
-                  <Upload className="h-5 w-5 text-slate-400" />
+                  <Upload className={`h-5 w-5 ${mutedCls}`} />
                 )}
               </div>
               <div className="flex-1">
                 <Input
                   type="file"
                   accept="image/png,image/jpeg,image/webp,image/svg+xml"
-                  className="border-white/10 bg-[#061512] text-sm file:mr-3 file:rounded file:border-0 file:bg-teal-500/20 file:px-2 file:py-1 file:text-teal-200"
+                  className={fileFieldCls}
                   onChange={(e) => onLogo(e.target.files?.[0] || null)}
                 />
-                <p className="mt-1 text-[11px] text-slate-500">
+                <p className={`mt-1 text-[11px] ${mutedCls}`}>
                   PNG, JPG, WebP or SVG · max 5MB. Brand colors are detected from the logo.
                 </p>
               </div>
@@ -228,19 +243,19 @@ export default function LandingTemplatePicker({ baseInstitution, values, onChang
           </div>
 
           <div className="space-y-2">
-            <Label className="text-slate-200">Hero image (optional)</Label>
+            <Label className={labelCls}>Hero image (optional)</Label>
             <div className="flex items-center gap-3">
-              <div className="flex h-16 w-24 items-center justify-center overflow-hidden rounded-xl bg-white/10 ring-1 ring-white/15">
+              <div className="flex h-16 w-24 items-center justify-center overflow-hidden rounded-xl bg-[var(--tenant-bg)] ring-1 ring-[var(--tenant-line)] [.platform-public_&]:bg-[var(--pf-bg)] [.platform-public_&]:ring-[var(--pf-line)]">
                 {values.heroPreviewUrl ? (
                   <img src={values.heroPreviewUrl} alt="" className="h-full w-full object-cover" />
                 ) : (
-                  <ImagePlus className="h-5 w-5 text-slate-400" />
+                  <ImagePlus className={`h-5 w-5 ${mutedCls}`} />
                 )}
               </div>
               <Input
                 type="file"
                 accept="image/png,image/jpeg,image/webp"
-                className="border-white/10 bg-[#061512] text-sm file:mr-3 file:rounded file:border-0 file:bg-teal-500/20 file:px-2 file:py-1 file:text-teal-200"
+                className={fileFieldCls}
                 onChange={(e) => onHero(e.target.files?.[0] || null)}
               />
             </div>
@@ -263,66 +278,66 @@ export default function LandingTemplatePicker({ baseInstitution, values, onChang
 
         <div className="space-y-4">
           <div className="space-y-2">
-            <Label className="text-slate-200">Hero headline</Label>
+            <Label className={labelCls}>Hero headline</Label>
             <Input
               value={values.hero_headline}
               onChange={(e) => onChange({ hero_headline: e.target.value })}
               placeholder={meta.defaultHeadline}
-              className="border-white/10 bg-[#061512]"
+              className={fieldCls}
             />
           </div>
           <div className="space-y-2">
-            <Label className="text-slate-200">Short description</Label>
+            <Label className={labelCls}>Short description</Label>
             <Textarea
               value={values.description}
               onChange={(e) => onChange({ description: e.target.value })}
               placeholder="Quality education, professional training, and trusted credentials."
-              className="min-h-[72px] border-white/10 bg-[#061512]"
+              className={`min-h-[72px] ${fieldCls}`}
             />
           </div>
           <div className="space-y-2">
-            <Label className="text-slate-200">Footer text</Label>
+            <Label className={labelCls}>Footer text</Label>
             <Textarea
               value={values.footer_text}
               onChange={(e) => onChange({ footer_text: e.target.value })}
               placeholder="Official public portal for verification and secure access."
-              className="min-h-[64px] border-white/10 bg-[#061512]"
+              className={`min-h-[64px] ${fieldCls}`}
             />
           </div>
         </div>
       </div>
 
-      <div className="space-y-5 rounded-2xl border border-white/10 bg-black/25 p-5">
+      <div className={`space-y-5 p-5 ${cardCls}`}>
         <div>
-          <h3 className="text-sm font-semibold text-white">About page</h3>
-          <p className="mt-1 text-xs text-slate-500">
+          <h3 className={`text-sm font-semibold ${titleCls}`}>About page</h3>
+          <p className={`mt-1 text-xs ${mutedCls}`}>
             Optional. Leave blank to hide the About section on the public landing page.
           </p>
         </div>
         <div className="space-y-2">
-          <Label className="text-slate-200">About title</Label>
+          <Label className={labelCls}>About title</Label>
           <Input
             value={content.about_title}
             maxLength={80}
             onChange={(e) => setContent({ about_title: e.target.value })}
             placeholder={`About ${baseInstitution.name || 'our institution'}`}
-            className="border-white/10 bg-[#061512]"
+            className={fieldCls}
           />
         </div>
         <div className="space-y-2">
-          <Label className="text-slate-200">About story</Label>
+          <Label className={labelCls}>About story</Label>
           <Textarea
             value={content.about_body}
             maxLength={4000}
             onChange={(e) => setContent({ about_body: e.target.value })}
             placeholder="Share your mission, history, and what makes this institution distinctive."
-            className="min-h-[120px] border-white/10 bg-[#061512]"
+            className={`min-h-[120px] ${fieldCls}`}
           />
         </div>
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
           {content.about_highlights.slice(0, 4).map((h, i) => (
             <div key={i} className="space-y-2">
-              <Label className="text-slate-200">Highlight {i + 1}</Label>
+              <Label className={labelCls}>Highlight {i + 1}</Label>
               <Input
                 value={h}
                 maxLength={90}
@@ -332,18 +347,58 @@ export default function LandingTemplatePicker({ baseInstitution, values, onChang
                   setContent({ about_highlights: next })
                 }}
                 placeholder="e.g. Practical skills"
-                className="border-white/10 bg-[#061512]"
+                className={fieldCls}
               />
             </div>
           ))}
         </div>
+        <div className="space-y-3 rounded-xl border border-[var(--tenant-line)] bg-[var(--tenant-bg)] p-4 [.platform-public_&]:border-[var(--pf-line)] [.platform-public_&]:bg-[var(--pf-bg)]">
+          <div>
+            <p className={`text-sm font-semibold ${titleCls}`}>Social media icons</p>
+            <p className={`mt-1 text-xs ${mutedCls}`}>
+              Add your links. Animated icons appear on the About section, hero, and footer of every landing template. Leave blank to hide.
+            </p>
+          </div>
+          <div className="grid gap-3 sm:grid-cols-3">
+            <div className="space-y-1.5">
+              <Label className={labelCls} htmlFor="landing_social_whatsapp">WhatsApp</Label>
+              <Input
+                id="landing_social_whatsapp"
+                value={values.social_whatsapp || ''}
+                onChange={(e) => onChange({ social_whatsapp: e.target.value })}
+                placeholder="25261xxxxxxx or https://wa.me/..."
+                className={fieldCls}
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label className={labelCls} htmlFor="landing_social_facebook">Facebook</Label>
+              <Input
+                id="landing_social_facebook"
+                value={values.social_facebook || ''}
+                onChange={(e) => onChange({ social_facebook: e.target.value })}
+                placeholder="https://facebook.com/yourpage"
+                className={fieldCls}
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label className={labelCls} htmlFor="landing_social_tiktok">TikTok</Label>
+              <Input
+                id="landing_social_tiktok"
+                value={values.social_tiktok || ''}
+                onChange={(e) => onChange({ social_tiktok: e.target.value })}
+                placeholder="https://tiktok.com/@yourpage"
+                className={fieldCls}
+              />
+            </div>
+          </div>
+        </div>
       </div>
 
-      <div className="space-y-5 rounded-2xl border border-white/10 bg-black/25 p-5">
+      <div className={`space-y-5 p-5 ${cardCls}`}>
         <div className="flex items-start justify-between gap-3">
           <div>
-            <h3 className="text-sm font-semibold text-white">Programs page</h3>
-            <p className="mt-1 text-xs text-slate-500">
+            <h3 className={`text-sm font-semibold ${titleCls}`}>Programs page</h3>
+            <p className={`mt-1 text-xs ${mutedCls}`}>
               Optional. Add up to 8 programs. Leave empty to hide Programs on the landing page.
             </p>
           </div>
@@ -351,7 +406,7 @@ export default function LandingTemplatePicker({ baseInstitution, values, onChang
             type="button"
             size="sm"
             variant="outline"
-            className="border-white/15 bg-white/5 text-slate-200"
+            className="border-[var(--tenant-line)] bg-transparent text-[var(--tenant-text)] [.platform-public_&]:border-[var(--pf-line)] [.platform-public_&]:text-[var(--pf-text)]"
             disabled={content.programs.length >= 8}
             onClick={() =>
               setContent({
@@ -364,18 +419,21 @@ export default function LandingTemplatePicker({ baseInstitution, values, onChang
           </Button>
         </div>
         <div className="space-y-2">
-          <Label className="text-slate-200">Programs intro</Label>
+          <Label className={labelCls}>Programs intro</Label>
           <Textarea
             value={content.programs_intro}
             maxLength={400}
             onChange={(e) => setContent({ programs_intro: e.target.value })}
             placeholder="A short introduction to what students can study."
-            className="min-h-[64px] border-white/10 bg-[#061512]"
+            className={`min-h-[64px] ${fieldCls}`}
           />
         </div>
         <div className="space-y-3">
           {content.programs.map((p, i) => (
-            <div key={i} className="grid gap-2 rounded-xl border border-white/10 bg-[#061512]/80 p-3 sm:grid-cols-[1fr_auto]">
+            <div
+              key={i}
+              className="grid gap-2 rounded-xl border border-[var(--tenant-line)] bg-[var(--tenant-bg)] p-3 sm:grid-cols-[1fr_auto] [.platform-public_&]:border-[var(--pf-line)] [.platform-public_&]:bg-[var(--pf-bg)]"
+            >
               <div className="space-y-2">
                 <Input
                   value={p.title}
@@ -387,7 +445,7 @@ export default function LandingTemplatePicker({ baseInstitution, values, onChang
                     setContent({ programs: next })
                   }}
                   placeholder="Program title"
-                  className="border-white/10 bg-transparent"
+                  className={`border-[var(--tenant-line)] bg-transparent ${titleCls}`}
                 />
                 <Textarea
                   value={p.description}
@@ -399,14 +457,14 @@ export default function LandingTemplatePicker({ baseInstitution, values, onChang
                     setContent({ programs: next })
                   }}
                   placeholder="One or two sentences about this program."
-                  className="min-h-[64px] border-white/10 bg-transparent"
+                  className={`min-h-[64px] border-[var(--tenant-line)] bg-transparent ${titleCls}`}
                 />
               </div>
               <Button
                 type="button"
                 size="icon"
                 variant="ghost"
-                className="h-9 w-9 text-slate-500 hover:text-red-300"
+                className={`h-9 w-9 hover:text-red-500 ${mutedCls}`}
                 onClick={() =>
                   setContent({
                     programs: content.programs.filter((_, idx) => idx !== i),
@@ -433,6 +491,9 @@ export function emptyLandingCustomize(templateId: LandingTemplateId = 'aurora'):
     theme_primary: t.defaultPrimary,
     theme_accent: t.defaultAccent,
     theme_tertiary: '',
+    social_whatsapp: '',
+    social_facebook: '',
+    social_tiktok: '',
     logoPreviewUrl: null,
     heroPreviewUrl: null,
     logoFile: null,

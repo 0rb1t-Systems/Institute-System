@@ -2,6 +2,7 @@ import React from 'react'
 import { motion } from 'framer-motion'
 import { Award, BookOpen, GraduationCap, ShieldCheck, Sparkles, Users } from 'lucide-react'
 import type { LandingInstitution } from '@/components/landing/types'
+import LandingHeroSocials from '@/components/landing/LandingHeroSocials'
 import {
   DEFAULT_ABOUT_HIGHLIGHTS,
   DEFAULT_PROGRAMS,
@@ -35,6 +36,7 @@ export function LandingContentSections({
   accent,
   tagline,
   tone = 'light',
+  preview,
 }: SectionsProps) {
   const dark = tone === 'dark'
   const content = sanitizeLandingContent(institution.landing_content)
@@ -75,6 +77,14 @@ export function LandingContentSections({
                 {aboutTitle}
               </h2>
               <p className={`mt-4 max-w-3xl text-sm leading-relaxed sm:text-[15px] ${bodyCls}`}>{aboutBody}</p>
+              <div className="mt-5">
+                <LandingHeroSocials
+                  institution={institution}
+                  primary={primary}
+                  tone={tone}
+                  preview={preview}
+                />
+              </div>
             </div>
             {highlights.length ? (
               <ul

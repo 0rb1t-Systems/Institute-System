@@ -9,6 +9,7 @@ import { Alert, AlertDescription } from '@/components/ui/alert'
 import { LandingLogo } from '@/components/landing/LandingShared'
 import { institutionLogoUrl } from '@/lib/institution'
 import { brandInitial } from '@/components/landing/types'
+import { usePlatformTheme } from '@/contexts/PlatformThemeContext'
 
 type Props = {
   open: boolean
@@ -46,6 +47,8 @@ export default function LandingLoginModal({
   onSubmit,
 }: Props) {
   const [showPassword, setShowPassword] = useState(false)
+  const { mode } = usePlatformTheme()
+  const light = mode === 'light'
   const brand = String(institution?.name || institutionName || '').trim() || 'Institution'
   const logoSource = institution || logoUrl
   const markUrl = institutionLogoUrl(logoSource)
@@ -61,14 +64,14 @@ export default function LandingLoginModal({
         >
           <button
             type="button"
-            className="absolute inset-0 bg-[#020617]/75 backdrop-blur-[6px]"
+            className={`absolute inset-0 backdrop-blur-[6px] ${light ? 'bg-slate-900/25' : 'bg-[#020617]/75'}`}
             aria-label="Close sign in"
             onClick={onClose}
           />
 
           {/* Ambient brand glow behind the card */}
           <div
-            className="pointer-events-none absolute h-72 w-72 rounded-full blur-[100px] opacity-40"
+            className={`pointer-events-none absolute h-72 w-72 rounded-full blur-[100px] ${light ? 'opacity-20' : 'opacity-40'}`}
             style={{ backgroundColor: primary }}
             aria-hidden
           />
@@ -77,11 +80,19 @@ export default function LandingLoginModal({
             role="dialog"
             aria-modal="true"
             aria-labelledby="tenant-login-title"
-            className="relative w-full max-w-[420px] overflow-hidden rounded-[1.35rem] border border-white/10 shadow-[0_25px_80px_-20px_rgba(0,0,0,0.85)]"
-            style={{
-              background:
-                'linear-gradient(165deg, rgba(15,28,52,0.98) 0%, rgba(8,16,34,0.99) 55%, rgba(6,12,26,1) 100%)',
-            }}
+            className={`relative w-full max-w-[420px] overflow-hidden rounded-[1.35rem] border ${
+              light
+                ? 'border-slate-200 bg-white shadow-[0_25px_80px_-24px_rgba(15,23,42,0.35)]'
+                : 'border-white/10 shadow-[0_25px_80px_-20px_rgba(0,0,0,0.85)]'
+            }`}
+            style={
+              light
+                ? undefined
+                : {
+                    background:
+                      'linear-gradient(165deg, rgba(15,28,52,0.98) 0%, rgba(8,16,34,0.99) 55%, rgba(6,12,26,1) 100%)',
+                  }
+            }
             initial={{ opacity: 0, y: 22, scale: 0.96 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 14, scale: 0.97 }}
@@ -105,7 +116,11 @@ export default function LandingLoginModal({
             <button
               type="button"
               onClick={onClose}
-              className="absolute right-3.5 top-4 z-10 rounded-xl p-2 text-slate-400 transition hover:bg-white/8 hover:text-white"
+              className={`absolute right-3.5 top-4 z-10 rounded-xl p-2 transition ${
+                light
+                  ? 'text-slate-500 hover:bg-slate-100 hover:text-slate-900'
+                  : 'text-slate-400 hover:bg-white/8 hover:text-white'
+              }`}
               aria-label="Close"
             >
               <X className="h-4 w-4" />
@@ -123,7 +138,9 @@ export default function LandingLoginModal({
                     <LandingLogo institution={logoSource} align="center" />
                   ) : (
                     <div
-                      className="relative flex h-16 w-16 items-center justify-center rounded-2xl text-xl font-bold text-white shadow-lg ring-1 ring-white/20"
+                      className={`relative flex h-16 w-16 items-center justify-center rounded-2xl text-xl font-bold text-white shadow-lg ${
+                        light ? 'ring-1 ring-black/5' : 'ring-1 ring-white/20'
+                      }`}
                       style={{ backgroundColor: primary }}
                     >
                       {brandInitial(brand)}
@@ -137,17 +154,21 @@ export default function LandingLoginModal({
                   transition={{ delay: 0.1 }}
                 >
                   {markUrl ? null : (
-                    <p className="font-display text-[1.35rem] font-bold leading-tight tracking-tight text-white sm:text-[1.5rem]">
+                    <p
+                      className={`font-display text-[1.35rem] font-bold leading-tight tracking-tight sm:text-[1.5rem] ${
+                        light ? 'text-slate-900' : 'text-white'
+                      }`}
+                    >
                       {brand}
                     </p>
                   )}
                   <p
                     id="tenant-login-title"
-                    className={`${markUrl ? '' : 'mt-1.5'} text-sm font-medium text-slate-300`}
+                    className={`${markUrl ? '' : 'mt-1.5'} text-sm font-medium ${light ? 'text-slate-600' : 'text-slate-300'}`}
                   >
                     Sign in to your portal
                   </p>
-                  <p className="mt-1 flex items-center justify-center gap-1.5 text-[11px] text-slate-500">
+                  <p className={`mt-1 flex items-center justify-center gap-1.5 text-[11px] ${light ? 'text-slate-500' : 'text-slate-500'}`}>
                     <ShieldCheck className="h-3 w-3" style={{ color: primary }} />
                     {subtitle}
                   </p>
@@ -158,7 +179,11 @@ export default function LandingLoginModal({
                 {loginError && (
                   <Alert
                     variant="destructive"
-                    className="border-red-500/30 bg-red-950/40 text-red-100"
+                    className={
+                      light
+                        ? 'border-red-200 bg-red-50 text-red-800'
+                        : 'border-red-500/30 bg-red-950/40 text-red-100'
+                    }
                   >
                     <AlertCircle className="h-4 w-4" />
                     <AlertDescription>{loginError}</AlertDescription>
@@ -166,7 +191,7 @@ export default function LandingLoginModal({
                 )}
 
                 <div className="space-y-2">
-                  <Label htmlFor="tenant-login-id" className="text-[13px] font-medium text-slate-300">
+                  <Label htmlFor="tenant-login-id" className={`text-[13px] font-medium ${light ? 'text-slate-700' : 'text-slate-300'}`}>
                     Email or Student ID
                   </Label>
                   <div className="relative">
@@ -176,7 +201,11 @@ export default function LandingLoginModal({
                       value={identifier}
                       onChange={(e) => onIdentifier(e.target.value)}
                       placeholder="you@email.com or Student ID"
-                      className="h-11 rounded-xl border-white/10 bg-white/[0.97] pl-10 text-slate-900 placeholder:text-slate-400 shadow-inner focus-visible:ring-2"
+                      className={`h-11 rounded-xl pl-10 text-slate-900 placeholder:text-slate-400 shadow-inner focus-visible:ring-2 ${
+                        light
+                          ? 'border-slate-200 bg-slate-50'
+                          : 'border-white/10 bg-white/[0.97]'
+                      }`}
                       style={
                         {
                           ['--tw-ring-color' as string]: primary,
@@ -191,7 +220,7 @@ export default function LandingLoginModal({
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="tenant-login-pw" className="text-[13px] font-medium text-slate-300">
+                  <Label htmlFor="tenant-login-pw" className={`text-[13px] font-medium ${light ? 'text-slate-700' : 'text-slate-300'}`}>
                     Password
                   </Label>
                   <div className="relative">
@@ -202,7 +231,11 @@ export default function LandingLoginModal({
                       value={password}
                       onChange={(e) => onPassword(e.target.value)}
                       placeholder="Enter your password"
-                      className="h-11 rounded-xl border-white/10 bg-white/[0.97] pl-10 pr-11 text-slate-900 placeholder:text-slate-400 shadow-inner focus-visible:ring-2"
+                      className={`h-11 rounded-xl pl-10 pr-11 text-slate-900 placeholder:text-slate-400 shadow-inner focus-visible:ring-2 ${
+                        light
+                          ? 'border-slate-200 bg-slate-50'
+                          : 'border-white/10 bg-white/[0.97]'
+                      }`}
                       style={
                         {
                           ['--tw-ring-color' as string]: primary,
@@ -246,7 +279,7 @@ export default function LandingLoginModal({
                 </Button>
               </form>
 
-              <p className="mt-5 text-center text-[11px] leading-relaxed text-slate-500">
+              <p className={`mt-5 text-center text-[11px] leading-relaxed ${light ? 'text-slate-500' : 'text-slate-500'}`}>
                 Use the email or student ID issued by {brand}.
               </p>
             </div>

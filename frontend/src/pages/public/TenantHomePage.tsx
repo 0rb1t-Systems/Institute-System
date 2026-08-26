@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Helmet } from 'react-helmet';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
-import { LayoutTemplate, Loader2 } from 'lucide-react';
+import { Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { getPublicInstitutionBySubdomain, setLandingTemplate } from '@/lib/api';
 import { supabase } from '@/lib/supabaseClient';
@@ -432,17 +432,7 @@ const TenantHomePage = ({ subdomain: subdomainProp }) => {
         sameTenant={!!sameTenant}
         userRole={user?.role}
         onOpenLogin={openLogin}
-        onChangeTemplate={openTemplateSwitcher}
       />
-
-      <button
-        type="button"
-        onClick={openTemplateSwitcher}
-        className="fixed bottom-4 right-4 z-40 inline-flex items-center gap-2 rounded-full border border-white/15 bg-[#0c1a32]/92 px-3 py-2.5 text-xs font-semibold text-white shadow-xl backdrop-blur-md hover:bg-[#12243f] sm:bottom-5 sm:right-5 sm:px-4"
-      >
-        <LayoutTemplate className="h-3.5 w-3.5 text-teal-300" />
-        Templates
-      </button>
 
       <LandingTemplateSwitcher
         open={switcherOpen}

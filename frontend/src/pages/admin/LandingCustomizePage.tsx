@@ -48,6 +48,9 @@ const LandingCustomizePage = () => {
           theme_primary: data?.theme_primary || meta.defaultPrimary,
           theme_accent: data?.theme_accent || meta.defaultAccent,
           theme_tertiary: data?.theme_tertiary || '',
+          social_whatsapp: data?.social_whatsapp || '',
+          social_facebook: data?.social_facebook || '',
+          social_tiktok: data?.social_tiktok || '',
           logoPreviewUrl: data?.logo_url || null,
           heroPreviewUrl: data?.hero_image_url || null,
           logoFile: null,
@@ -77,6 +80,9 @@ const LandingCustomizePage = () => {
       logo_url: landing.logoPreviewUrl || inst?.logo_url,
       description: landing.description || inst?.description,
       landing_content: landing.landing_content,
+      social_whatsapp: inst?.social_whatsapp,
+      social_facebook: inst?.social_facebook,
+      social_tiktok: inst?.social_tiktok,
     }),
     [inst, authInst, landing.logoPreviewUrl, landing.description, landing.landing_content],
   )
@@ -125,6 +131,9 @@ const LandingCustomizePage = () => {
         logo_url: logo_url || null,
         hero_image_url: hero_image_url || null,
         landing_content: landing.landing_content,
+        social_whatsapp: landing.social_whatsapp.trim() || null,
+        social_facebook: landing.social_facebook.trim() || null,
+        social_tiktok: landing.social_tiktok.trim() || null,
       })
 
       setInst(updated)
@@ -164,7 +173,7 @@ const LandingCustomizePage = () => {
 
       <div className="mx-auto max-w-5xl space-y-4">
         <div className="flex flex-wrap items-center gap-3">
-          <Button asChild variant="outline" size="sm" className="border-slate-700">
+          <Button asChild variant="outline" size="sm" className="border-[var(--tenant-line)]">
             <a href={landingPath} target="_blank" rel="noreferrer">
               <ArrowLeft className="mr-1.5 h-3.5 w-3.5" />
               View public landing
@@ -181,17 +190,17 @@ const LandingCustomizePage = () => {
           </Alert>
         )}
         {success && (
-          <Alert className="border-teal-800/50 bg-teal-950/40 text-teal-100">
+          <Alert className="border-teal-600/30 bg-teal-500/10 text-teal-800 [html[data-platform-theme='dark']_&]:text-teal-100">
             <AlertDescription>{success}</AlertDescription>
           </Alert>
         )}
 
         {loading ? (
-          <div className="flex items-center justify-center py-20 text-slate-400">
+          <div className="flex items-center justify-center py-20 text-[var(--tenant-muted)]">
             <Loader2 className="h-6 w-6 animate-spin" />
           </div>
         ) : (
-          <div className="rounded-2xl border border-slate-800 bg-slate-950/60 p-4 sm:p-6">
+          <div className="rounded-2xl border border-[var(--tenant-line)] bg-[var(--tenant-surface)] p-4 sm:p-6">
             <LandingTemplatePicker
               baseInstitution={baseInstitution}
               values={landing}
