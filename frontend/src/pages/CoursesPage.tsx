@@ -39,19 +39,25 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
+import { coursesForDiploma, diplomasForCourse } from '@/lib/diplomaCourses';
 
-const sortDiplomaCourses = (list = []) =>
-  [...list].sort((a, b) => {
-    const ao = Number(a?.sort_order ?? 0);
-    const bo = Number(b?.sort_order ?? 0);
-    if (ao !== bo) return ao - bo;
-    return String(a?.name || '').localeCompare(String(b?.name || ''));
-  });
-
-const DiplomaForm = ({ diploma, onSave, closeDialog }: any) => {
+const DiplomaForm = ({ diploma, closeDialog }: any) => {
     const [name, setName] = useState(diploma?.name || '');
     const [description, setDescription] = useState(diploma?.description || '');
-    const { addDiploma, updateDiplomaData, diplomas } = useData();
+    const [selectedCourseId, setSelectedCourseId] = useState('');
+    const {
+        addDiploma,
+        updateDiplomaData,
+        diplomas,
+        courses,
+        diplomaCourses = [],
+        assignCourseToDiploma,
+        removeCourseFromDiploma,
+    } = useData();
+
+    const includedCourses = diploma ? coursesForDiploma(courses, diplomaCourses, diploma.id) : [];
+    const includedIds = new Set(includedCourses.map((c) => c.id));
+    const availableCourses = courses.filter((c) => !includedIds.has(c.id));
 
     const handleSubmit = async (e) => {
         e.preventDefault();
@@ -81,6 +87,27 @@ const DiplomaForm = ({ diploma, onSave, closeDialog }: any) => {
         }
     };
 
+    const handleAddCourse = async () => {
+        if (!diploma?.id || !selectedCourseId) return;
+        try {
+            await assignCourseToDiploma(diploma.id, selectedCourseId);
+            setSelectedCourseId('');
+            notify.success({ title: 'Course added', description: 'Existing course was added to this diploma.' });
+        } catch (error) {
+            notify.error(error, { context: 'CoursesPage - assignCourseToDiploma', fallback: MESSAGES.SAVE_FAILED });
+        }
+    };
+
+    const handleRemoveCourse = async (courseId) => {
+        if (!diploma?.id) return;
+        try {
+            await removeCourseFromDiploma(diploma.id, courseId);
+            notify.success({ title: 'Removed', description: 'Course was removed from this diploma only.' });
+        } catch (error) {
+            notify.error(error, { context: 'CoursesPage - removeCourseFromDiploma', fallback: MESSAGES.SAVE_FAILED });
+        }
+    };
+
     return (
         <form onSubmit={handleSubmit}>
             <DialogHeader><DialogTitle>{diploma ? 'Edit Diploma' : 'Create New Diploma'}</DialogTitle></DialogHeader>
@@ -93,6 +120,45 @@ const DiplomaForm = ({ diploma, onSave, closeDialog }: any) => {
                     <Label htmlFor="description" className="text-left sm:text-right">Description</Label>
                     <Textarea id="description" value={description} onChange={e => setDescription(e.target.value)} className="col-span-3" />
                 </div>
+                {diploma ? (
+                    <div className="space-y-3 border-t border-slate-800 pt-4">
+                        <Label>Included Courses</Label>
+                        <div className="flex gap-2 items-end">
+                            <div className="flex-1 space-y-1">
+                                <Select value={selectedCourseId} onValueChange={setSelectedCourseId}>
+                                    <SelectTrigger><SelectValue placeholder="Add existing course..." /></SelectTrigger>
+                                    <SelectContent>
+                                        {availableCourses.map((c) => (
+                                            <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
+                            </div>
+                            <Button type="button" onClick={handleAddCourse} disabled={!selectedCourseId}>
+                                <PlusCircle className="h-4 w-4 mr-1" /> Add
+                            </Button>
+                        </div>
+                        <ul className="space-y-1 max-h-40 overflow-y-auto text-sm">
+                            {includedCourses.length > 0 ? includedCourses.map((c) => (
+                                <li key={c.id} className="flex items-center justify-between gap-2 rounded-md border border-slate-800 px-2 py-1.5">
+                                    <span className="truncate">{c.name}</span>
+                                    <Button
+                                        type="button"
+                                        variant="ghost"
+                                        size="icon"
+                                        className="h-7 w-7 text-red-400 hover:text-red-300 hover:bg-red-400/10 shrink-0"
+                                        onClick={() => handleRemoveCourse(c.id)}
+                                        title="Remove from this diploma"
+                                    >
+                                        <Trash2 className="h-3.5 w-3.5" />
+                                    </Button>
+                                </li>
+                            )) : (
+                                <li className="text-xs text-muted-foreground">No courses added yet</li>
+                            )}
+                        </ul>
+                    </div>
+                ) : null}
                 <div className="col-span-4 text-xs text-muted-foreground text-center">* Duration and fees are now managed at the Class level.</div>
             </div>
             <DialogFooter><Button type="submit">Save Diploma</Button></DialogFooter>
@@ -187,7 +253,7 @@ const CourseForm = ({ course, closeDialog }: any) => {
 };
 
 /** Drag-and-drop reorder panel for diploma courses (no course codes). */
-const ManageSequencePanel = ({ diploma, diplomas, courses, onClose, onSaved }) => {
+const ManageSequencePanel = ({ diploma, diplomas, courses, diplomaCourses, onClose, onSaved }) => {
     const { reorderDiplomaCourses } = useData();
     const [selectedDiplomaId, setSelectedDiplomaId] = useState(diploma?.id || '');
     const [ordered, setOrdered] = useState([]);
@@ -204,9 +270,8 @@ const ManageSequencePanel = ({ diploma, diplomas, courses, onClose, onSaved }) =
             setOrdered([]);
             return;
         }
-        const list = sortDiplomaCourses(courses.filter((c) => c.diploma_id === selectedDiplomaId));
-        setOrdered(list);
-    }, [selectedDiplomaId, courses]);
+        setOrdered(coursesForDiploma(courses, diplomaCourses, selectedDiplomaId));
+    }, [selectedDiplomaId, courses, diplomaCourses]);
 
     const moveItem = (from, to) => {
         if (from === to || from == null || to == null) return;
@@ -355,15 +420,15 @@ const CoursesPage = () => {
     const [sequenceDiploma, setSequenceDiploma] = useState(null);
     const [isSequenceOpen, setIsSequenceOpen] = useState(false);
 
-    const { courses, diplomas, deleteDiplomaData, deleteCourse } = useData();
+    const {
+        courses,
+        diplomas,
+        diplomaCourses = [],
+        deleteDiplomaData,
+        deleteCourse,
+    } = useData();
     const { user } = useAuth();
     const canManagePrograms = user?.role === 'admin' || user?.role === 'staff';
-
-    const diplomaNameById = useMemo(() => {
-        const map = new Map();
-        diplomas.forEach((d) => map.set(d.id, d.name));
-        return map;
-    }, [diplomas]);
 
     const handleDeleteClick = (type, id) => {
         if (!canManagePrograms) {
@@ -416,7 +481,9 @@ const CoursesPage = () => {
                     <div className="flex gap-2">
                          <Dialog open={isDiplomaOpen} onOpenChange={(open) => { setIsDiplomaOpen(open); if(!open) setEditingDiploma(null); }}>
                             <DialogTrigger asChild><Button variant="outline"><GraduationCap className="mr-2 h-4 w-4" /> Create Diploma</Button></DialogTrigger>
-                            <DialogContent className="sm:max-w-[500px]"><DiplomaForm diploma={editingDiploma} closeDialog={() => setIsDiplomaOpen(false)} /></DialogContent>
+                            <DialogContent className="sm:max-w-[540px] max-h-[90vh] overflow-y-auto">
+                                <DiplomaForm key={editingDiploma?.id || 'new'} diploma={editingDiploma} closeDialog={() => setIsDiplomaOpen(false)} />
+                            </DialogContent>
                         </Dialog>
                         <Dialog open={isCourseOpen} onOpenChange={(open) => { setIsCourseOpen(open); if(!open) setEditingCourse(null); }}>
                             <DialogTrigger asChild><Button><PlusCircle className="mr-2 h-4 w-4" /> Create Course</Button></DialogTrigger>
@@ -458,6 +525,7 @@ const CoursesPage = () => {
                             diploma={sequenceDiploma}
                             diplomas={diplomas}
                             courses={courses}
+                            diplomaCourses={diplomaCourses}
                             onClose={() => setIsSequenceOpen(false)}
                             onSaved={() => {}}
                         />
@@ -484,9 +552,7 @@ const CoursesPage = () => {
                 <TabsContent value="diplomas" className="mt-4">
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                         {diplomas.map((diploma, index) => {
-                            const diplomaCourses = sortDiplomaCourses(
-                                courses.filter((c) => c.diploma_id === diploma.id),
-                            );
+                            const diplomaCourseList = coursesForDiploma(courses, diplomaCourses, diploma.id);
                             return (
                                 <motion.div key={diploma.id} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: index * 0.05 }}>
                                     <Card className="flex flex-col h-full bg-slate-900/50 border-slate-800 hover:border-primary/50 transition-colors">
@@ -495,7 +561,7 @@ const CoursesPage = () => {
                                                 <span className="leading-snug">{diploma.name}</span>
                                                 <div className="flex items-center gap-1 shrink-0">
                                                     <span className="inline-flex h-6 min-w-6 items-center justify-center rounded-full bg-blue-600/90 text-[11px] font-bold text-white px-1.5">
-                                                        {diplomaCourses.length}
+                                                        {diplomaCourseList.length}
                                                     </span>
                                                     {canManagePrograms && (
                                                         <>
@@ -513,7 +579,7 @@ const CoursesPage = () => {
                                                     <span className="flex items-center">
                                                         <BookOpen className="mr-2 h-3.5 w-3.5"/> Included Courses
                                                     </span>
-                                                    {canManagePrograms && diplomaCourses.length > 0 ? (
+                                                    {canManagePrograms && diplomaCourseList.length > 0 ? (
                                                         <button
                                                             type="button"
                                                             onClick={() => openSequence(diploma)}
@@ -524,8 +590,8 @@ const CoursesPage = () => {
                                                     ) : null}
                                                 </div>
                                                 <ul className="list-disc list-inside text-slate-400 space-y-1 max-h-[150px] overflow-y-auto text-xs">
-                                                    {diplomaCourses.length > 0
-                                                        ? diplomaCourses.map((c) => (
+                                                    {diplomaCourseList.length > 0
+                                                        ? diplomaCourseList.map((c) => (
                                                             <li key={c.id} className="truncate">{c.name}</li>
                                                           ))
                                                         : <li>No courses added yet</li>}
@@ -543,8 +609,8 @@ const CoursesPage = () => {
                 <TabsContent value="courses" className="mt-4">
                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                         {courses.map((course, index) => {
-                            const diplomaName = course.diploma?.name || diplomaNameById.get(course.diploma_id);
-                            const diplomaCount = diplomaName ? 1 : 0;
+                            const linkedDiplomas = diplomasForCourse(diplomas, diplomaCourses, course);
+                            const diplomaCount = linkedDiplomas.length;
                             const isElearning = course.type === 'outsource';
                             return (
                             <motion.div key={course.id} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: index * 0.03 }}>
@@ -591,10 +657,17 @@ const CoursesPage = () => {
                                             <p className="text-xs text-slate-500">
                                                 Assigned to {diplomaCount} diploma{diplomaCount === 1 ? '' : 's'}
                                             </p>
-                                            {diplomaName ? (
-                                                <span className="inline-flex max-w-full items-center rounded-full border border-blue-500/50 bg-blue-950/40 px-3 py-1 text-sm font-medium text-blue-400 truncate">
-                                                    {diplomaName}
-                                                </span>
+                                            {linkedDiplomas.length > 0 ? (
+                                                <div className="flex flex-wrap gap-1.5">
+                                                    {linkedDiplomas.map((d) => (
+                                                        <span
+                                                            key={d.id}
+                                                            className="inline-flex max-w-full items-center rounded-full border border-blue-500/50 bg-blue-950/40 px-3 py-1 text-sm font-medium text-blue-400 truncate"
+                                                        >
+                                                            {d.name}
+                                                        </span>
+                                                    ))}
+                                                </div>
                                             ) : (
                                                 <span className="inline-flex items-center rounded-full border border-slate-700 bg-slate-900/60 px-3 py-1 text-sm text-slate-500">
                                                     Standalone

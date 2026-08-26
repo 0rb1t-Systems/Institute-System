@@ -50,6 +50,7 @@ import {
   getLetterGradeFromScale,
   isCoursePassedFromScale,
 } from '@/lib/gradingScale';
+import { coursesForDiploma } from '@/lib/diplomaCourses';
 
 const TranscriptView = ({ studentId, onClose }: any) => {
     const { user, institution } = useAuth();
@@ -61,6 +62,7 @@ const TranscriptView = ({ studentId, onClose }: any) => {
       enrollments,
       classes,
       classCourses,
+      diplomaCourses = [],
       exams,
       diplomas,
       gradebookEntries = [],
@@ -201,7 +203,7 @@ const TranscriptView = ({ studentId, onClose }: any) => {
 
         // 1. Identify all courses related to this class/program
         if (currentClass.diploma_id) {
-            relevantCourses = courses.filter(c => c.diploma_id === currentClass.diploma_id);
+            relevantCourses = coursesForDiploma(courses, diplomaCourses, currentClass.diploma_id);
         } else if (currentClass.course_id) {
             const c = courses.find(course => course.id === currentClass.course_id);
             if (c) relevantCourses = [c];
@@ -288,7 +290,7 @@ const TranscriptView = ({ studentId, onClose }: any) => {
                 date: bestResult ? new Date(bestResult.submission_date || bestResult.graded_at || Date.now()).toLocaleDateString() : '-'
             };
         });
-    }, [studentData, selectedClassId, classes, courses, results, classCourses, exams, currentClass, gradebookEntries, transcripts, gradeScale]);
+    }, [studentData, selectedClassId, classes, courses, results, classCourses, diplomaCourses, exams, currentClass, gradebookEntries, transcripts, gradeScale]);
 
     const stats = useMemo(() => {
         const graded = transcriptData.filter(t => t.marks !== null);

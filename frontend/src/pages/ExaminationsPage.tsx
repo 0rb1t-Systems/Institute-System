@@ -15,6 +15,7 @@ import { useToast } from '@/components/ui/use-toast';
 import { notify, MESSAGES } from '@/lib/notify';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import ResultsErrorBoundary from '@/components/ui/ResultsErrorBoundary';
+import { coursesForDiploma } from '@/lib/diplomaCourses';
 
 const ExaminationsPageContent = () => {
   const { user } = useAuth();
@@ -22,6 +23,7 @@ const ExaminationsPageContent = () => {
     classes, 
     courses, 
     classCourses, 
+    diplomaCourses = [],
     students, 
     enrollments, 
     exams, 
@@ -63,7 +65,7 @@ const ExaminationsPageContent = () => {
         let clsCourses = [];
 
         if (cls.diploma_id) {
-            clsCourses = courses.filter(c => c.diploma_id === cls.diploma_id);
+            clsCourses = coursesForDiploma(courses, diplomaCourses, cls.diploma_id);
         } else if (cls.course_id) {
             const c = courses.find(course => course.id === cls.course_id);
             if (c) clsCourses = [c];
@@ -84,7 +86,7 @@ const ExaminationsPageContent = () => {
 
         return { ...cls, derivedCourses: allCourses, instructorName };
     });
-  }, [classes, courses, classCourses, user, searchTerm, users]);
+  }, [classes, courses, classCourses, diplomaCourses, user, searchTerm, users]);
   
   const handleOpenGrading = async (cls, course) => {
       let exam = exams.find(e => 

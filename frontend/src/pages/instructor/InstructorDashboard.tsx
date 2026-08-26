@@ -11,6 +11,7 @@ import { formatCurrency } from '@/lib/utils';
 
 import MonthYearSelector from '@/components/instructor/MonthYearSelector';
 import ClassesOverviewSection from '@/components/instructor/ClassesOverviewSection';
+import EarningsHistoryTable from '@/components/instructor/EarningsHistoryTable';
 
 const EarningsVisualization = lazy(() => import('@/components/instructor/EarningsVisualization'));
 
@@ -26,7 +27,7 @@ function isSameMonth(dateValue, selectedDate) {
 
 const InstructorDashboard = () => {
   const { user } = useAuth();
-  const { classes = [], instructorEarnings = [], enrollments = [] } = useData();
+  const { classes = [], instructorEarnings = [], enrollments = [], students = [], payments = [] } = useData();
   const [selectedDate, setSelectedDate] = useState(() => new Date());
 
   const { filteredEarnings, myClasses, totalStudents } = useMemo(() => {
@@ -106,7 +107,7 @@ const InstructorDashboard = () => {
           subtitle="Track your class performance and monthly revenue."
         />
         <div className="flex flex-col items-end gap-2">
-          <span className="text-xs text-slate-500 font-medium uppercase tracking-wider">
+          <span className="text-xs text-[var(--tenant-muted)] font-medium uppercase tracking-wider">
             Reporting Period
           </span>
           <MonthYearSelector selectedDate={selectedDate} onChange={setSelectedDate} />
@@ -144,6 +145,14 @@ const InstructorDashboard = () => {
           classes={myClasses}
         />
       </Suspense>
+
+      <EarningsHistoryTable
+        earnings={filteredEarnings}
+        students={students}
+        classes={myClasses}
+        payments={payments}
+        selectedDate={selectedDate}
+      />
     </AnimatedPage>
   );
 };

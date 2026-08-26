@@ -133,6 +133,24 @@ const ClassForm = ({ classInfo, onSave, closeDialog }: any) => {
     const [type, setType] = useState(classInfo?.diploma_id ? 'diploma' : 'course');
     const [selectedId, setSelectedId] = useState(classInfo?.diploma_id || classInfo?.course_id || '');
     const [instructor_id, setInstructorId] = useState(classInfo?.instructor_id || '');
+
+    const selectedInstructor = useMemo(
+      () => instructors.find((i) => i.id === instructor_id) || null,
+      [instructors, instructor_id]
+    );
+    const uniqueInstructorRate =
+      selectedInstructor?.instructor_commission_rate != null &&
+      selectedInstructor.instructor_commission_rate !== ''
+        ? Number(selectedInstructor.instructor_commission_rate)
+        : null;
+    const hasUniqueCommission =
+      Number.isFinite(uniqueInstructorRate) && uniqueInstructorRate != null;
+    const effectiveCommissionPct = hasUniqueCommission
+      ? Math.round(Number(uniqueInstructorRate) * 10000) / 100
+      : defaultCommissionPct;
+    const effectiveCommissionRate = hasUniqueCommission
+      ? Math.max(0, Math.min(1, Number(uniqueInstructorRate)))
+      : Math.max(0, Math.min(1, Number(institution?.default_instructor_commission_rate) || 0));
     const [settlementModel, setSettlementModel] = useState(
       classInfo?.settlement_model === 'fixed_fee' ? 'fixed_fee' : 'commission'
     );
@@ -251,8 +269,7 @@ const ClassForm = ({ classInfo, onSave, closeDialog }: any) => {
                 diploma_id: type === 'diploma' ? selectedId : null,
                 duration_months: Number(duration_months),
                 fee: Number(fee),
-                // Always persist Institution Settings rate (source of truth for commission earnings)
-                commission_rate: Math.max(0, Math.min(1, Number(institution?.default_instructor_commission_rate) || 0)),
+                commission_rate: effectiveCommissionRate,
                 settlement_model: settlementModel === 'fixed_fee' ? 'fixed_fee' : 'commission',
                 instructor_fixed_fee:
                   settlementModel === 'fixed_fee' ? Math.max(0, Number(instructorFixedFee) || 0) : 0,
@@ -401,12 +418,14 @@ const ClassForm = ({ classInfo, onSave, closeDialog }: any) => {
                           min="0"
                           max="100"
                           step="0.1"
-                          value={defaultCommissionPct}
+                          value={effectiveCommissionPct}
                           readOnly
                           className="bg-slate-900 border-slate-800 text-slate-300"
                         />
                         <p className="text-xs text-slate-500">
-                          Set in Institution Settings ({defaultCommissionPct}%). Applied to instructor earnings on every tuition payment.
+                          {hasUniqueCommission
+                            ? `Unique rate for this instructor (${effectiveCommissionPct}%). Set on Instructors — Institution Settings will not override it.`
+                            : `Institution default (${defaultCommissionPct}%). Set a unique % on Instructors if this person should keep a different rate.`}
                         </p>
                       </div>
                   </div>

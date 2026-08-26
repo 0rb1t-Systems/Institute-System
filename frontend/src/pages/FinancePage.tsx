@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useData } from '@/contexts/DataContext';
 import { useAuth } from '@/contexts/AuthContext';
-import { PlusCircle, CheckCircle2, XCircle, AlertCircle, Lock, Search } from 'lucide-react';
+import { CheckCircle2, XCircle, AlertCircle, Lock, Search } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -855,11 +855,6 @@ const FinancePage = () => {
       <PageHeader 
         title="Finance Dashboard" 
         subtitle="Manage student billing, payments, and withdrawals."
-        action={
-            <Button onClick={() => { setPreSelectedStudent(null); setEditingPayment(null); setPaymentMode('payment'); setIsPayOpen(true); }} className="bg-indigo-600 hover:bg-indigo-700">
-                <PlusCircle className="mr-2 h-4 w-4" /> Record Payment
-            </Button>
-        }
       />
 
       <Dialog open={isPayOpen} onOpenChange={setIsPayOpen}>

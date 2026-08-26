@@ -35,7 +35,7 @@ const AttendanceReportFilters = ({ filters, setFilters, availableClasses, clearF
                     onClick={onExport} 
                     disabled={isExporting || totalRecords === 0}
                     size="sm"
-                    className="flex-1 sm:flex-none bg-green-600 hover:bg-green-700 text-white border-none shadow-md"
+                    className="flex-1 sm:flex-none bg-green-600 hover:bg-green-700 text-white border-none shadow-md inst-excel-btn"
                   >
                       {isExporting ? (
                           <><Loader2 className="h-4 w-4 mr-2 animate-spin" /> Exporting...</>

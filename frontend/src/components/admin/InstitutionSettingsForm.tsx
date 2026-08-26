@@ -692,9 +692,11 @@ const InstitutionSettingsForm = ({ onUpdated }) => {
               <p className="text-xs text-slate-500">
                 Default for <strong className="text-slate-400">commission</strong> classes: applied to
                 completed tuition payments for instructor earnings and withdrawable balance.
+                Instructors with a <strong className="text-slate-400">unique commission</strong> (set
+                on Instructors) keep their own % — this setting does not overwrite them.
                 Classes can also use a <strong className="text-slate-400">fixed fee</strong> instead
-                (set on the class or as an instructor default in Users). Changing the % updates
-                commission classes for future payments only — existing settlement records stay
+                (set on the class or as an instructor default). Changing the default % updates
+                remaining commission classes for future payments only — existing settlement records stay
                 historically accurate.
               </p>
             </div>

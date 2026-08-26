@@ -424,6 +424,9 @@ const EditUserDialog = ({ user, isOpen, onClose, onSave }) => {
                                 setData({ ...data, fixed_fee_amount: e.target.value })
                               }
                             />
+                            <p className="text-xs text-muted-foreground">
+                              Saving also updates this instructor&apos;s assigned classes and their fixed-fee earnings.
+                            </p>
                           </div>
                         )}
                       </>

@@ -121,6 +121,13 @@ Deno.serve(async (req) => {
       role === 'instructor' && settlement_model === 'fixed_fee'
         ? Math.max(0, Number(body.fixed_fee_amount) || 0)
         : 0
+    let instructor_commission_rate: number | null = null
+    if (role === 'instructor' && settlement_model === 'commission' && body.instructor_commission_rate != null && body.instructor_commission_rate !== '') {
+      const n = Number(body.instructor_commission_rate)
+      if (Number.isFinite(n)) {
+        instructor_commission_rate = Math.min(1, Math.max(0, n))
+      }
+    }
 
     if (!email || !full_name || !role) {
       return json({ error: 'email, full_name, role are required' }, 400)
@@ -185,7 +192,7 @@ Deno.serve(async (req) => {
           role,
           phone,
           ...(role === 'instructor'
-            ? { settlement_model, fixed_fee_amount }
+            ? { settlement_model, fixed_fee_amount, instructor_commission_rate }
             : {}),
         })
         .eq('id', existingProfile.id)
@@ -253,6 +260,7 @@ Deno.serve(async (req) => {
       phone,
       settlement_model: role === 'instructor' ? settlement_model : 'commission',
       fixed_fee_amount: role === 'instructor' ? fixed_fee_amount : 0,
+      instructor_commission_rate: role === 'instructor' ? instructor_commission_rate : null,
     })
 
     if (pErr) {

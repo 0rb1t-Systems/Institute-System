@@ -28,6 +28,7 @@ import {
 } from '@/lib/examPass';
 import { getCombinedExamWithBonus } from '@/lib/assignmentBonus';
 import { getInstitutionGradeScale } from '@/lib/gradingScale';
+import { coursesForDiploma } from '@/lib/diplomaCourses';
 
 const gradeTone = (grade: string) => {
   switch (grade) {
@@ -58,7 +59,7 @@ const scoreBarColor = (pct: number, pending: boolean) => {
 const StudentGradebookPage = () => {
   const { user, institution } = useAuth();
   const navigate = useNavigate();
-  const { results, exams, courses, classCourses, enrollments, classes, students, gradebookEntries, assignments, assignmentSubmissions } = useData();
+  const { results, exams, courses, classCourses, diplomaCourses = [], enrollments, classes, students, gradebookEntries, assignments, assignmentSubmissions } = useData();
   const gradeScale = useMemo(() => getInstitutionGradeScale(institution), [institution]);
 
   const studentData = useMemo(() => {
@@ -86,6 +87,12 @@ const StudentGradebookPage = () => {
        if(classData.course_id) {
          const c = courses.find(co => co.id === classData.course_id);
          if(c) allCourses.push({ ...c, classId: classId, className: classData.name });
+       }
+
+       if (classData.diploma_id) {
+         coursesForDiploma(courses, diplomaCourses, classData.diploma_id).forEach((c) => {
+           allCourses.push({ ...c, classId: classId, className: classData.name });
+         });
        }
        
        const linked = classCourses
@@ -198,7 +205,7 @@ const StudentGradebookPage = () => {
       };
     });
 
-  }, [studentData, enrollments, classes, courses, classCourses, exams, results, gradebookEntries, assignments, assignmentSubmissions, gradeScale]);
+  }, [studentData, enrollments, classes, courses, classCourses, diplomaCourses, exams, results, gradebookEntries, assignments, assignmentSubmissions, gradeScale]);
 
   const gradesByClass = useMemo(() => {
     const map = new Map<string, { className: string; courses: typeof studentGrades }>();

@@ -52,8 +52,8 @@ const AttendanceReportSummary = ({ records, loading, lastUpdated }) => {
             <Card className="bg-slate-900/50 border-slate-800">
                 <CardContent className="p-4 flex items-center justify-between">
                     <div>
-                        <div className="text-3xl font-bold text-white">{stats.total}</div>
-                        <div className="text-xs text-slate-400 uppercase tracking-wider mt-1">Total Records</div>
+                        <div className="text-3xl font-bold text-[var(--tenant-text)]">{stats.total}</div>
+                        <div className="text-xs text-[var(--tenant-muted)] uppercase tracking-wider mt-1 font-medium">Total Records</div>
                     </div>
                     <Users className="h-8 w-8 text-blue-500 opacity-50" />
                 </CardContent>
@@ -63,7 +63,7 @@ const AttendanceReportSummary = ({ records, loading, lastUpdated }) => {
                 <CardContent className="p-4 flex items-center justify-between">
                     <div>
                         <div className="text-3xl font-bold text-green-400">{stats.present + stats.late}</div>
-                        <div className="text-xs text-slate-400 uppercase tracking-wider mt-1">Total Attended</div>
+                        <div className="text-xs text-[var(--tenant-muted)] uppercase tracking-wider mt-1 font-medium">Total Attended</div>
                     </div>
                     <CheckCircle className="h-8 w-8 text-green-500 opacity-50" />
                 </CardContent>
@@ -73,7 +73,7 @@ const AttendanceReportSummary = ({ records, loading, lastUpdated }) => {
                 <CardContent className="p-4 flex items-center justify-between">
                     <div>
                         <div className="text-3xl font-bold text-blue-400">{stats.percentage.toFixed(1)}%</div>
-                        <div className="text-xs text-slate-400 uppercase tracking-wider mt-1">Overall %</div>
+                        <div className="text-xs text-[var(--tenant-muted)] uppercase tracking-wider mt-1 font-medium">Overall %</div>
                     </div>
                     <Percent className="h-8 w-8 text-blue-500 opacity-50" />
                 </CardContent>
@@ -82,10 +82,10 @@ const AttendanceReportSummary = ({ records, loading, lastUpdated }) => {
             <Card className="bg-slate-900/50 border-slate-800">
                 <CardContent className="p-4 flex items-center justify-between">
                     <div>
-                        <div className="text-sm font-medium text-slate-200 mt-2">
+                        <div className="text-sm font-semibold text-[var(--tenant-text)] mt-2">
                             {lastUpdated ? format(lastUpdated, 'HH:mm:ss') : '--:--'}
                         </div>
-                        <div className="text-xs text-slate-400 uppercase tracking-wider mt-1">Last Updated</div>
+                        <div className="text-xs text-[var(--tenant-muted)] uppercase tracking-wider mt-1 font-medium">Last Updated</div>
                     </div>
                     <Clock className="h-8 w-8 text-slate-500 opacity-50" />
                 </CardContent>

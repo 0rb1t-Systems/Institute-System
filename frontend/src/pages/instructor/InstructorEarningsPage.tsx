@@ -16,6 +16,8 @@ import { useToast } from '@/components/ui/use-toast';
 import { notify, MESSAGES } from '@/lib/notify';
 import { formatCurrency, formatDate } from '@/lib/utils';
 import { RefreshCw, Search, Wallet, Banknote, AlertCircle } from 'lucide-react';
+import MonthYearSelector from '@/components/instructor/MonthYearSelector';
+import EarningsHistoryTable from '@/components/instructor/EarningsHistoryTable';
 
 const InstructorEarningsPage = () => {
   const { user, institution } = useAuth();
@@ -27,6 +29,7 @@ const InstructorEarningsPage = () => {
     loading,
     students,
     classes,
+    payments,
   } = useData();
   const { toast } = useToast();
   const settingsRate = Number(institution?.default_instructor_commission_rate || 0);
@@ -34,6 +37,8 @@ const InstructorEarningsPage = () => {
   const [activeTab, setActiveTab] = useState('earnings');
   const [searchTerm, setSearchTerm] = useState('');
   const [classFilter, setClassFilter] = useState('all');
+  const [selectedDate, setSelectedDate] = useState(() => new Date());
+  const [monthFilter, setMonthFilter] = useState('month');
   const [withdrawAmount, setWithdrawAmount] = useState('');
   const [method, setMethod] = useState('EVC Plus');
   const [details, setDetails] = useState('');
@@ -47,11 +52,15 @@ const InstructorEarningsPage = () => {
         const student =
           earning.student || students.find((s) => s.id === earning.student_id) || null;
         const cls = earning.class || classes.find((c) => c.id === earning.class_id) || null;
+        const payment =
+          earning.payment ||
+          payments.find((p) => p.id === earning.payment_id) ||
+          null;
         const rate = Number(earning.rate || settingsRate || cls?.commission_rate || 0);
         const paymentAmount = isFixed
           ? Number(earning.amount)
-          : earning.payment?.amount != null
-            ? Number(earning.payment.amount)
+          : payment?.amount != null
+            ? Number(payment.amount)
             : rate > 0
               ? Number(earning.amount) / rate
               : Number(earning.amount);
@@ -71,7 +80,7 @@ const InstructorEarningsPage = () => {
         };
       })
       .sort((a, b) => Number(new Date(b.created_at)) - Number(new Date(a.created_at)));
-  }, [instructorEarnings, user.id, students, classes, settingsRate]);
+  }, [instructorEarnings, user.id, students, classes, payments, settingsRate]);
 
   const myWithdrawals = useMemo(
     () =>
@@ -109,11 +118,19 @@ const InstructorEarningsPage = () => {
       const matchesSearch =
         item.studentName.toLowerCase().includes(searchTerm.toLowerCase()) ||
         item.studentCode.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        item.className.toLowerCase().includes(searchTerm.toLowerCase()) ||
         (item.isFixed && 'fixed'.includes(searchTerm.toLowerCase()));
       const matchesClass = classFilter === 'all' || item.class_id === classFilter;
-      return matchesSearch && matchesClass;
+      if (!matchesSearch || !matchesClass) return false;
+      if (monthFilter !== 'month') return true;
+      const d = new Date(item.created_at);
+      if (Number.isNaN(d.getTime())) return false;
+      return (
+        d.getMonth() === selectedDate.getMonth() &&
+        d.getFullYear() === selectedDate.getFullYear()
+      );
     });
-  }, [myEarnings, searchTerm, classFilter]);
+  }, [myEarnings, searchTerm, classFilter, monthFilter, selectedDate]);
 
   const myClassOptions = useMemo(() => {
     const ids = new Set(myEarnings.map((e) => e.class_id));
@@ -172,7 +189,7 @@ const InstructorEarningsPage = () => {
 
       <PageHeader
         title="My Earnings"
-        subtitle="View commission earnings and request withdrawals in one place."
+        subtitle="See which students paid this month, your share of each payment, and request withdrawals."
       >
         <Button variant="outline" size="sm" onClick={refreshData} disabled={loading}>
           <RefreshCw className={`h-4 w-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
@@ -230,14 +247,14 @@ const InstructorEarningsPage = () => {
             <div className="relative flex-1">
               <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-slate-500" />
               <Input
-                placeholder="Search student name or ID..."
+                placeholder="Search student, ID, or class..."
                 className="pl-9 bg-slate-950 border-slate-800"
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
               />
             </div>
             <Select value={classFilter} onValueChange={setClassFilter}>
-              <SelectTrigger className="w-full sm:w-[250px] bg-slate-950 border-slate-800">
+              <SelectTrigger className="w-full sm:w-[220px] bg-slate-950 border-slate-800">
                 <SelectValue placeholder="Filter by Class" />
               </SelectTrigger>
               <SelectContent>
@@ -249,6 +266,18 @@ const InstructorEarningsPage = () => {
                 ))}
               </SelectContent>
             </Select>
+            <Select value={monthFilter} onValueChange={setMonthFilter}>
+              <SelectTrigger className="w-full sm:w-[180px] bg-slate-950 border-slate-800">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="month">Selected month</SelectItem>
+                <SelectItem value="all">All months</SelectItem>
+              </SelectContent>
+            </Select>
+            {monthFilter === 'month' && (
+              <MonthYearSelector selectedDate={selectedDate} onChange={setSelectedDate} />
+            )}
             <Button
               variant="outline"
               className="border-green-800 text-green-400 hover:bg-green-900/20"
@@ -259,64 +288,14 @@ const InstructorEarningsPage = () => {
             </Button>
           </div>
 
-          <Card className="bg-slate-900/50 border-slate-800">
-            <CardHeader>
-              <CardTitle>Earnings History</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <Table>
-                <TableHeader>
-                  <TableRow className="border-slate-800 hover:bg-transparent">
-                    <TableHead>Date</TableHead>
-                    <TableHead>Student / Type</TableHead>
-                    <TableHead>Class</TableHead>
-                    <TableHead className="text-right">Base</TableHead>
-                    <TableHead className="text-right text-green-400 font-bold">Earned</TableHead>
-                    <TableHead className="text-right">Status</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {filteredEarnings.length > 0 ? (
-                    filteredEarnings.map((item) => (
-                      <TableRow key={item.id} className="border-slate-800 hover:bg-slate-800/50">
-                        <TableCell className="text-slate-400">{formatDate(item.created_at)}</TableCell>
-                        <TableCell>
-                          <div className="font-medium text-slate-200">{item.studentName}</div>
-                          <div className="text-xs text-slate-500">
-                            {item.isFixed ? 'Fixed fee' : item.studentCode}
-                          </div>
-                        </TableCell>
-                        <TableCell className="text-slate-400">{item.className}</TableCell>
-                        <TableCell className="text-right text-slate-500 font-mono">
-                          {item.isFixed ? '—' : formatCurrency(item.paymentAmount)}
-                        </TableCell>
-                        <TableCell className="text-right font-bold text-green-400 font-mono">
-                          + {formatCurrency(item.amount)}
-                        </TableCell>
-                        <TableCell className="text-right">
-                          <Badge
-                            className={
-                              item.isFixed
-                                ? 'bg-amber-900/30 text-amber-400 border-amber-800'
-                                : 'bg-blue-900/30 text-blue-400 border-blue-800'
-                            }
-                          >
-                            {item.isFixed ? 'Fixed fee' : 'Commission'}
-                          </Badge>
-                        </TableCell>
-                      </TableRow>
-                    ))
-                  ) : (
-                    <TableRow>
-                      <TableCell colSpan={6} className="text-center py-12 text-slate-500">
-                        No earnings records found.
-                      </TableCell>
-                    </TableRow>
-                  )}
-                </TableBody>
-              </Table>
-            </CardContent>
-          </Card>
+          <EarningsHistoryTable
+            earnings={filteredEarnings}
+            students={students}
+            classes={classes}
+            payments={payments}
+            defaultRate={settingsRate}
+            selectedDate={monthFilter === 'month' ? selectedDate : null}
+          />
         </TabsContent>
 
         <TabsContent value="withdraw" className="space-y-6">

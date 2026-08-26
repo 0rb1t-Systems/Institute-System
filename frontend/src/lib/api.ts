@@ -305,6 +305,11 @@ export const createNewUser = async (data) => {
     0,
     Number(meta.fixed_fee_amount ?? data.fixed_fee_amount ?? 0) || 0,
   )
+  const uniqueRateRaw = meta.instructor_commission_rate ?? data.instructor_commission_rate
+  const instructorCommissionRate =
+    role === 'instructor' && settlementModel === 'commission' && uniqueRateRaw != null && uniqueRateRaw !== ''
+      ? Math.min(1, Math.max(0, Number(uniqueRateRaw)))
+      : null
 
   const { data: result, error } = await supabase.functions.invoke('create-user', {
     headers: { Authorization: `Bearer ${session.access_token}` },
@@ -316,6 +321,7 @@ export const createNewUser = async (data) => {
       phone: meta.phone || data.phone || null,
       settlement_model: role === 'instructor' ? settlementModel : undefined,
       fixed_fee_amount: role === 'instructor' ? fixedFeeAmount : undefined,
+      instructor_commission_rate: role === 'instructor' ? instructorCommissionRate : undefined,
     },
   })
 
@@ -469,9 +475,23 @@ export const updateUser = async (userId, data) => {
       if (data.fixed_fee_amount !== undefined) {
         extra.fixed_fee_amount = Math.max(0, Number(data.fixed_fee_amount) || 0)
       }
+      if (data.instructor_commission_rate !== undefined) {
+        extra.instructor_commission_rate =
+          data.instructor_commission_rate == null || data.instructor_commission_rate === ''
+            ? null
+            : Math.min(1, Math.max(0, Number(data.instructor_commission_rate)))
+      }
       if (fullName) extra.full_name = fullName
       if (Object.keys(extra).length > 0) {
         await supabase.from('profiles').update(extra).eq('id', userId)
+      }
+      if (data.settlement_model !== undefined || data.fixed_fee_amount !== undefined || data.instructor_commission_rate !== undefined) {
+        await applyInstructorSettlementToClasses(
+          userId,
+          data.settlement_model,
+          data.fixed_fee_amount,
+          data.instructor_commission_rate
+        )
       }
       return getProfile(userId)
     }
@@ -520,6 +540,12 @@ export const updateUser = async (userId, data) => {
   if (data.fixed_fee_amount !== undefined) {
     updates.fixed_fee_amount = Math.max(0, Number(data.fixed_fee_amount) || 0)
   }
+  if (data.instructor_commission_rate !== undefined) {
+    updates.instructor_commission_rate =
+      data.instructor_commission_rate == null || data.instructor_commission_rate === ''
+        ? null
+        : Math.min(1, Math.max(0, Number(data.instructor_commission_rate)))
+  }
 
   if (Object.keys(updates).length === 0) {
     return getProfile(userId)
@@ -532,7 +558,77 @@ export const updateUser = async (userId, data) => {
     .select()
     .single()
   if (error) throw error
+
+  if (data.settlement_model !== undefined || data.fixed_fee_amount !== undefined || data.instructor_commission_rate !== undefined) {
+    await applyInstructorSettlementToClasses(
+      userId,
+      updates.settlement_model ?? data.settlement_model,
+      updates.fixed_fee_amount ?? data.fixed_fee_amount,
+      data.instructor_commission_rate
+    )
+  }
+
   return mapProfile(row)
+}
+
+/** When admin changes an instructor's default pay, apply it to their classes. */
+const applyInstructorSettlementToClasses = async (
+  instructorId,
+  settlementModel,
+  fixedFeeAmount,
+  uniqueCommissionRate
+) => {
+  if (!instructorId) return
+  const me = await getMyProfile()
+  if (!me?.institution_id) return
+
+  const model =
+    settlementModel === 'fixed_fee' || settlementModel === 'commission' ? settlementModel : null
+  const fee = Math.max(0, Number(fixedFeeAmount) || 0)
+
+  if (model === 'fixed_fee') {
+    const { error } = await supabase
+      .from('classes')
+      .update({
+        settlement_model: 'fixed_fee',
+        instructor_fixed_fee: fee,
+      })
+      .eq('instructor_id', instructorId)
+      .eq('institution_id', me.institution_id)
+    if (error) throw error
+    return
+  }
+
+  let commissionRate = null
+  if (uniqueCommissionRate != null && uniqueCommissionRate !== '') {
+    commissionRate = Math.min(1, Math.max(0, Number(uniqueCommissionRate)))
+  } else {
+    const { data: inst } = await supabase
+      .from('institutions')
+      .select('default_instructor_commission_rate')
+      .eq('id', me.institution_id)
+      .maybeSingle()
+    commissionRate = Math.min(1, Math.max(0, Number(inst?.default_instructor_commission_rate) || 0))
+  }
+
+  const payload: any = {
+    instructor_fixed_fee: 0,
+    commission_rate: commissionRate,
+  }
+  if (model === 'commission') payload.settlement_model = 'commission'
+
+  let query = supabase
+    .from('classes')
+    .update(payload)
+    .eq('instructor_id', instructorId)
+    .eq('institution_id', me.institution_id)
+
+  if (model !== 'commission') {
+    query = query.eq('settlement_model', 'commission')
+  }
+
+  const { error } = await query
+  if (error) throw error
 }
 
 export const deleteUser = async (userId) => {
@@ -1118,10 +1214,22 @@ export const updateInstitution = async (updates) => {
 
   // Keep class commission_rate aligned with Institution Settings so UI matches settlements
   if (allowed.default_instructor_commission_rate !== undefined) {
-    await supabase
+    const { data: uniqueInstructors } = await supabase
+      .from('profiles')
+      .select('id')
+      .eq('institution_id', me.institution_id)
+      .eq('role', 'instructor')
+      .not('instructor_commission_rate', 'is', null)
+    const uniqueIds = (uniqueInstructors || []).map((p) => p.id)
+    let q = supabase
       .from('classes')
       .update({ commission_rate: allowed.default_instructor_commission_rate })
       .eq('institution_id', me.institution_id)
+      .eq('settlement_model', 'commission')
+    if (uniqueIds.length > 0) {
+      q = q.not('instructor_id', 'in', `(${uniqueIds.join(',')})`)
+    }
+    await q
   }
 
   // Complete settings + ensure default document templates (server-side institution_id)
@@ -1585,6 +1693,100 @@ export const setActiveInvoiceTemplate = async (layoutKey) => {
   return data
 }
 
+const normalizeDiplomaIds = (data) => {
+  if (Array.isArray(data?.diploma_ids)) {
+    return [...new Set(data.diploma_ids.filter((id) => id && id !== 'none'))]
+  }
+  if (data?.diploma_id !== undefined) {
+    const diplomaId = data.diploma_id && data.diploma_id !== 'none' ? data.diploma_id : null
+    return diplomaId ? [diplomaId] : []
+  }
+  return null
+}
+
+const nextDiplomaCourseSort = async (diplomaId) => {
+  const { data: maxRow } = await supabase
+    .from('diploma_courses')
+    .select('sort_order')
+    .eq('diploma_id', diplomaId)
+    .order('sort_order', { ascending: false })
+    .limit(1)
+    .maybeSingle()
+  return Number(maxRow?.sort_order || 0) + 1
+}
+
+export const syncCourseDiplomas = async (courseId, diplomaIds) => {
+  const me = await getMyProfile()
+  const wanted = [...new Set((diplomaIds || []).filter(Boolean))]
+  const { data: existing, error: existingError } = await supabase
+    .from('diploma_courses')
+    .select('id, diploma_id')
+    .eq('course_id', courseId)
+  if (existingError) throw existingError
+
+  const existingIds = new Set((existing || []).map((r) => r.diploma_id))
+  const toAdd = wanted.filter((id) => !existingIds.has(id))
+  const toRemove = (existing || []).filter((r) => !wanted.includes(r.diploma_id))
+
+  for (const diplomaId of toAdd) {
+    const sortOrder = await nextDiplomaCourseSort(diplomaId)
+    const { error } = await supabase.from('diploma_courses').insert({
+      institution_id: me.institution_id,
+      diploma_id: diplomaId,
+      course_id: courseId,
+      sort_order: sortOrder,
+    })
+    if (error) throw error
+  }
+
+  if (toRemove.length > 0) {
+    const { error } = await supabase
+      .from('diploma_courses')
+      .delete()
+      .in('id', toRemove.map((r) => r.id))
+    if (error) throw error
+  }
+
+  return wanted
+}
+
+export const getDiplomaCourses = async () => {
+  const { data, error } = await supabase
+    .from('diploma_courses')
+    .select('*')
+    .order('sort_order', { ascending: true })
+    .order('created_at', { ascending: true })
+  if (error) throw error
+  return data || []
+}
+
+export const assignCourseToDiploma = async (diplomaId, courseId) => {
+  const me = await getMyProfile()
+  const sortOrder = await nextDiplomaCourseSort(diplomaId)
+  const { data: row, error } = await supabase
+    .from('diploma_courses')
+    .insert({
+      institution_id: me.institution_id,
+      diploma_id: diplomaId,
+      course_id: courseId,
+      sort_order: sortOrder,
+    })
+    .select()
+    .single()
+  if (error) throw error
+  return row
+}
+
+export const removeCourseFromDiploma = async (diplomaId, courseId) => {
+  const { error } = await supabase
+    .from('diploma_courses')
+    .delete()
+    .eq('diploma_id', diplomaId)
+    .eq('course_id', courseId)
+  if (error) throw error
+  return true
+}
+
 // --- Courses ---
 export const getCourses = async () => {
   const { data, error } = await supabase
@@ -1598,19 +1800,8 @@ export const getCourses = async () => {
 
 export const createCourse = async (data) => {
   const me = await getMyProfile()
-  const diplomaId = data.diploma_id && data.diploma_id !== 'none' ? data.diploma_id : null
-
-  let sortOrder = 0
-  if (diplomaId) {
-    const { data: maxRow } = await supabase
-      .from('courses')
-      .select('sort_order')
-      .eq('diploma_id', diplomaId)
-      .order('sort_order', { ascending: false })
-      .limit(1)
-      .maybeSingle()
-    sortOrder = Number(maxRow?.sort_order || 0) + 1
-  }
+  const diplomaIds = normalizeDiplomaIds(data) || []
+  const primaryDiplomaId = diplomaIds[0] || null
 
   const { data: row, error } = await supabase
     .from('courses')
@@ -1619,12 +1810,16 @@ export const createCourse = async (data) => {
       name: data.name,
       code: data.code,
       type: data.type || 'regular',
-      diploma_id: diplomaId,
-      sort_order: sortOrder,
+      diploma_id: primaryDiplomaId,
+      sort_order: 0,
     })
     .select()
     .single()
   if (error) throw error
+
+  if (diplomaIds.length) {
+    await syncCourseDiplomas(row.id, diplomaIds)
+  }
   return row
 }
 
@@ -1635,29 +1830,16 @@ export const updateCourse = async (id, data) => {
   if (data.type !== undefined) updates.type = data.type
   if (data.sort_order !== undefined) updates.sort_order = Number(data.sort_order) || 0
 
-  if (data.diploma_id !== undefined) {
-    const diplomaId = data.diploma_id && data.diploma_id !== 'none' ? data.diploma_id : null
-    updates.diploma_id = diplomaId
-
-    // When (re)assigning to a diploma without an explicit sort, append to end
-    if (diplomaId && data.sort_order === undefined) {
-      const { data: existing } = await supabase
-        .from('courses')
-        .select('diploma_id, sort_order')
-        .eq('id', id)
-        .maybeSingle()
-      if (!existing || existing.diploma_id !== diplomaId) {
-        const { data: maxRow } = await supabase
-          .from('courses')
-          .select('sort_order')
-          .eq('diploma_id', diplomaId)
-          .order('sort_order', { ascending: false })
-          .limit(1)
-          .maybeSingle()
-        updates.sort_order = Number(maxRow?.sort_order || 0) + 1
-      }
-    }
-    if (!diplomaId) updates.sort_order = 0
+  // diploma_ids replaces membership; diploma_id on edit is ignored so the
+  // original course form cannot pull a shared course off other diplomas.
+  if (Array.isArray(data?.diploma_ids)) {
+    const diplomaIds = normalizeDiplomaIds(data) || []
+    updates.diploma_id = diplomaIds[0] || null
+    if (!diplomaIds.length) updates.sort_order = 0
+    const { data: row, error } = await supabase.from('courses').update(updates).eq('id', id).select().single()
+    if (error) throw error
+    await syncCourseDiplomas(id, diplomaIds)
+    return row
   }
 
   const { data: row, error } = await supabase.from('courses').update(updates).eq('id', id).select().single()

@@ -58,6 +58,21 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { formatCurrency, isValidEmail } from '@/lib/utils';
 import { notify, MESSAGES } from '@/lib/notify';
 import { useAuth } from '@/contexts/AuthContext';
+import { useData } from '@/contexts/DataContext';
+
+const rateToPct = (rate) => {
+  if (rate == null || rate === '') return '';
+  const n = Number(rate);
+  if (!Number.isFinite(n)) return '';
+  return String(Math.round(n * 10000) / 100);
+};
+
+const pctToRate = (pct) => {
+  if (pct == null || String(pct).trim() === '') return null;
+  const n = Number(pct);
+  if (!Number.isFinite(n)) return null;
+  return Math.min(1, Math.max(0, n / 100));
+};
 
 const CreateInstructorDialog = ({ isOpen, onClose, onCreated }) => {
   const { toast } = useToast();
@@ -67,6 +82,8 @@ const CreateInstructorDialog = ({ isOpen, onClose, onCreated }) => {
     phone: '',
     password: '',
     settlement_model: 'commission',
+    commission_mode: 'institution',
+    unique_commission_pct: '',
     fixed_fee_amount: '0',
   });
   const [isSaving, setIsSaving] = useState(false);
@@ -79,6 +96,8 @@ const CreateInstructorDialog = ({ isOpen, onClose, onCreated }) => {
       phone: '',
       password: '',
       settlement_model: 'commission',
+      commission_mode: 'institution',
+      unique_commission_pct: '',
       fixed_fee_amount: '0',
     });
     setCreated(null);
@@ -103,6 +122,18 @@ const CreateInstructorDialog = ({ isOpen, onClose, onCreated }) => {
     if (form.settlement_model === 'fixed_fee' && Number(form.fixed_fee_amount) <= 0) {
       return notify.validation('Enter a default fixed fee greater than 0 for this instructor.');
     }
+    if (
+      form.settlement_model === 'commission' &&
+      form.commission_mode === 'unique' &&
+      (form.unique_commission_pct === '' || Number(form.unique_commission_pct) < 0 || Number(form.unique_commission_pct) > 100)
+    ) {
+      return notify.validation('Enter a unique commission between 0 and 100%.');
+    }
+
+    const uniqueRate =
+      form.settlement_model === 'commission' && form.commission_mode === 'unique'
+        ? pctToRate(form.unique_commission_pct)
+        : null;
 
     setIsSaving(true);
     try {
@@ -115,10 +146,12 @@ const CreateInstructorDialog = ({ isOpen, onClose, onCreated }) => {
           phone: form.phone.trim() || null,
           settlement_model: form.settlement_model,
           fixed_fee_amount: Number(form.fixed_fee_amount) || 0,
+          instructor_commission_rate: uniqueRate,
         },
         phone: form.phone.trim() || null,
         settlement_model: form.settlement_model,
         fixed_fee_amount: Number(form.fixed_fee_amount) || 0,
+        instructor_commission_rate: uniqueRate,
       });
 
       setCreated({
@@ -281,6 +314,10 @@ const CreateInstructorDialog = ({ isOpen, onClose, onCreated }) => {
                   setForm({
                     ...form,
                     settlement_model,
+                    commission_mode:
+                      settlement_model === 'commission' ? form.commission_mode : 'institution',
+                    unique_commission_pct:
+                      settlement_model === 'fixed_fee' ? '' : form.unique_commission_pct,
                     fixed_fee_amount:
                       settlement_model === 'commission' ? '0' : form.fixed_fee_amount,
                   })
@@ -295,9 +332,43 @@ const CreateInstructorDialog = ({ isOpen, onClose, onCreated }) => {
                 </SelectContent>
               </Select>
               <p className="text-xs text-muted-foreground">
-                Default for new classes assigned to this instructor. Each class can still override.
+                Commission uses a % of each tuition payment. Fixed fee is one amount per class, not a %.
               </p>
             </div>
+            {form.settlement_model === 'commission' && (
+              <div className="space-y-2">
+                <Label>Commission rate</Label>
+                <Select
+                  value={form.commission_mode}
+                  onValueChange={(commission_mode) => setForm({ ...form, commission_mode })}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="institution">Institution default (from Settings)</SelectItem>
+                    <SelectItem value="unique">Unique commission for this instructor</SelectItem>
+                  </SelectContent>
+                </Select>
+                {form.commission_mode === 'unique' && (
+                  <div className="space-y-1">
+                    <Label>Unique commission (%)</Label>
+                    <Input
+                      type="number"
+                      min="0"
+                      max="100"
+                      step="0.1"
+                      value={form.unique_commission_pct}
+                      onChange={(e) => setForm({ ...form, unique_commission_pct: e.target.value })}
+                      placeholder="e.g. 25"
+                    />
+                    <p className="text-xs text-muted-foreground">
+                      This instructor keeps this % even if Institution Settings change.
+                    </p>
+                  </div>
+                )}
+              </div>
+            )}
             {form.settlement_model === 'fixed_fee' && (
               <div className="space-y-2">
                 <Label>Default fixed fee</Label>
@@ -342,6 +413,8 @@ const EditInstructorDialog = ({ user, isOpen, onClose, onSave }) => {
     email: '',
     password: '',
     settlement_model: user.settlement_model === 'fixed_fee' ? 'fixed_fee' : 'commission',
+    commission_mode: user.instructor_commission_rate != null ? 'unique' : 'institution',
+    unique_commission_pct: rateToPct(user.instructor_commission_rate),
     fixed_fee_amount: String(user.fixed_fee_amount ?? 0),
   });
   const [isSaving, setIsSaving] = useState(false);
@@ -353,6 +426,8 @@ const EditInstructorDialog = ({ user, isOpen, onClose, onSave }) => {
         email: '',
         password: '',
         settlement_model: user.settlement_model === 'fixed_fee' ? 'fixed_fee' : 'commission',
+        commission_mode: user.instructor_commission_rate != null ? 'unique' : 'institution',
+        unique_commission_pct: rateToPct(user.instructor_commission_rate),
         fixed_fee_amount: String(user.fixed_fee_amount ?? 0),
       });
     }
@@ -362,9 +437,14 @@ const EditInstructorDialog = ({ user, isOpen, onClose, onSave }) => {
     const nameChanged = data.name.trim() && data.name.trim() !== (user.name || '');
     const emailChanged = Boolean(data.email.trim());
     const passwordChanged = Boolean(data.password);
+    const uniqueRate =
+      data.settlement_model === 'commission' && data.commission_mode === 'unique'
+        ? pctToRate(data.unique_commission_pct)
+        : null;
     const settlementChanged =
       data.settlement_model !== (user.settlement_model === 'fixed_fee' ? 'fixed_fee' : 'commission') ||
-      Number(data.fixed_fee_amount) !== Number(user.fixed_fee_amount ?? 0);
+      Number(data.fixed_fee_amount) !== Number(user.fixed_fee_amount ?? 0) ||
+      uniqueRate !== (user.instructor_commission_rate == null ? null : Number(user.instructor_commission_rate));
 
     if (!nameChanged && !emailChanged && !passwordChanged && !settlementChanged) {
       onClose();
@@ -379,6 +459,13 @@ const EditInstructorDialog = ({ user, isOpen, onClose, onSave }) => {
     if (data.settlement_model === 'fixed_fee' && Number(data.fixed_fee_amount) <= 0) {
       return notify.validation('Enter a default fixed fee greater than 0.');
     }
+    if (
+      data.settlement_model === 'commission' &&
+      data.commission_mode === 'unique' &&
+      (data.unique_commission_pct === '' || Number(data.unique_commission_pct) < 0 || Number(data.unique_commission_pct) > 100)
+    ) {
+      return notify.validation('Enter a unique commission between 0 and 100%.');
+    }
 
     setIsSaving(true);
     try {
@@ -391,6 +478,7 @@ const EditInstructorDialog = ({ user, isOpen, onClose, onSave }) => {
               settlement_model: data.settlement_model,
               fixed_fee_amount:
                 data.settlement_model === 'fixed_fee' ? Number(data.fixed_fee_amount) || 0 : 0,
+              instructor_commission_rate: uniqueRate,
             }
           : {}),
       });
@@ -453,6 +541,10 @@ const EditInstructorDialog = ({ user, isOpen, onClose, onSave }) => {
                 setData({
                   ...data,
                   settlement_model,
+                  commission_mode:
+                    settlement_model === 'commission' ? data.commission_mode : 'institution',
+                  unique_commission_pct:
+                    settlement_model === 'fixed_fee' ? '' : data.unique_commission_pct,
                   fixed_fee_amount: settlement_model === 'commission' ? '0' : data.fixed_fee_amount,
                 })
               }
@@ -466,6 +558,40 @@ const EditInstructorDialog = ({ user, isOpen, onClose, onSave }) => {
               </SelectContent>
             </Select>
           </div>
+          {data.settlement_model === 'commission' && (
+            <div className="space-y-2">
+              <Label>Commission rate</Label>
+              <Select
+                value={data.commission_mode}
+                onValueChange={(commission_mode) => setData({ ...data, commission_mode })}
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="institution">Institution default (from Settings)</SelectItem>
+                  <SelectItem value="unique">Unique commission for this instructor</SelectItem>
+                </SelectContent>
+              </Select>
+              {data.commission_mode === 'unique' && (
+                <div className="space-y-1">
+                  <Label>Unique commission (%)</Label>
+                  <Input
+                    type="number"
+                    min="0"
+                    max="100"
+                    step="0.1"
+                    value={data.unique_commission_pct}
+                    onChange={(e) => setData({ ...data, unique_commission_pct: e.target.value })}
+                    placeholder="e.g. 25"
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    Saving applies this % to this instructor&apos;s commission classes. Institution Settings will not override it.
+                  </p>
+                </div>
+              )}
+            </div>
+          )}
           {data.settlement_model === 'fixed_fee' && (
             <div className="space-y-2">
               <Label>Default fixed fee</Label>
@@ -476,6 +602,9 @@ const EditInstructorDialog = ({ user, isOpen, onClose, onSave }) => {
                 value={data.fixed_fee_amount}
                 onChange={(e) => setData({ ...data, fixed_fee_amount: e.target.value })}
               />
+              <p className="text-xs text-muted-foreground">
+                Saving also updates this instructor&apos;s assigned classes and their fixed-fee earnings.
+              </p>
             </div>
           )}
         </div>
@@ -495,6 +624,7 @@ const EditInstructorDialog = ({ user, isOpen, onClose, onSave }) => {
 
 const InstructorsPage = () => {
   const { users, loading, error, refresh } = useUsers();
+  const { refreshData } = useData();
   const { user: currentUser } = useAuth();
   const isTenantAdmin = currentUser?.role === 'admin';
   /** Only tenant admin may create instructors; staff can view the list only. */
@@ -559,7 +689,10 @@ const InstructorsPage = () => {
     if (user.settlement_model === 'fixed_fee') {
       return `Fixed fee · ${formatCurrency(user.fixed_fee_amount ?? 0)}`;
     }
-    return 'Commission';
+    if (user.instructor_commission_rate != null) {
+      return `Unique commission · ${rateToPct(user.instructor_commission_rate)}%`;
+    }
+    return 'Commission (institution default)';
   };
 
   return (
@@ -777,7 +910,10 @@ const InstructorsPage = () => {
             user={editUser}
             isOpen={!!editUser}
             onClose={() => setEditUser(null)}
-            onSave={refresh}
+            onSave={async () => {
+              await refresh();
+              await refreshData();
+            }}
           />
         )}
 

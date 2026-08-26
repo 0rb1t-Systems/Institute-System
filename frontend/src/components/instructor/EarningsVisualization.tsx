@@ -63,17 +63,17 @@ const EarningsVisualization = ({ earnings = [], selectedDate, classes = [] }) =>
     <div className={dashboardStyles.section}>
       <div className="flex items-center justify-between mb-2">
         <div>
-          <h3 className="text-xl font-bold text-white flex items-center gap-2">
+          <h3 className="text-xl font-bold text-[var(--tenant-text)] flex items-center gap-2">
             <TrendingUp className="h-5 w-5 text-green-400" />
             Financial Overview
           </h3>
-          <p className="text-slate-400 text-sm mt-1">
+          <p className="text-[var(--tenant-muted)] text-sm mt-1">
             Earnings breakdown for <span className="text-green-400 font-medium">{monthName}</span>
           </p>
         </div>
         <div className="text-right">
-          <p className="text-xs text-slate-500 uppercase font-bold tracking-wider">Total Share</p>
-          <h2 className="text-3xl font-bold text-white tracking-tight">{formatCurrency(totalPeriodEarnings)}</h2>
+          <p className="text-xs text-[var(--tenant-muted)] uppercase font-bold tracking-wider">Total Share</p>
+          <h2 className="text-3xl font-bold text-[var(--tenant-text)] tracking-tight">{formatCurrency(totalPeriodEarnings)}</h2>
         </div>
       </div>
 
