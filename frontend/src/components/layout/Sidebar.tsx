@@ -32,10 +32,10 @@ const Sidebar = () => {
         active
           ? isPlatform
             ? 'bg-teal-500/15 text-[var(--pf-text)] pointer-events-none'
-            : 'bg-slate-800 text-white pointer-events-none border-l-2 pl-[10px]'
+            : 'bg-[color-mix(in_srgb,var(--brand-primary)_12%,transparent)] text-[var(--tenant-text)] pointer-events-none border-l-2 pl-[10px]'
           : isPlatform
             ? 'text-[var(--pf-muted)] hover:bg-[var(--pf-hover)] hover:text-[var(--pf-text)]'
-            : 'text-slate-300 hover:bg-slate-800/80 hover:text-slate-100'
+            : 'text-[var(--tenant-muted)] hover:bg-[var(--tenant-line)] hover:text-[var(--tenant-text)]'
       )}
       style={!isPlatform && active ? { borderLeftColor: 'var(--brand-primary)' } : undefined}
     >
@@ -54,13 +54,13 @@ const Sidebar = () => {
         'hidden lg:flex flex-col h-full shrink-0 border-r',
         isPlatform
           ? 'w-[13.5rem] bg-[var(--pf-bg)] border-[var(--pf-line)]'
-          : 'w-64 bg-slate-950 border-slate-800',
+          : 'w-64 bg-[var(--tenant-bg-2)] border-[var(--tenant-line)]',
       )}
     >
       <div
         className={cn(
           'h-[4.25rem] flex items-center px-4 border-b',
-          isPlatform ? 'border-[var(--pf-line)]' : 'border-slate-800/50',
+          isPlatform ? 'border-[var(--pf-line)]' : 'border-[var(--tenant-line)]',
         )}
       >
         <Logo className="h-8 w-auto" />
@@ -69,7 +69,7 @@ const Sidebar = () => {
       <div className={cn('flex-1 overflow-y-auto px-2 py-4 space-y-0.5 custom-scrollbar', isPlatform && 'pt-5')}>
         {isPlatform ? null : (
         <div
-          className="text-[10px] font-bold uppercase tracking-wider text-slate-500 px-3 mb-2 mt-1"
+          className="text-[10px] font-bold uppercase tracking-wider text-[var(--tenant-muted)] px-3 mb-2 mt-1"
         >
           Main Menu
         </div>
@@ -82,7 +82,7 @@ const Sidebar = () => {
       <div
         className={cn(
           'p-3 border-t',
-          isPlatform ? 'border-[var(--pf-line)] bg-[var(--pf-bg-2)]' : 'border-slate-800 bg-slate-900/30',
+          isPlatform ? 'border-[var(--pf-line)] bg-[var(--pf-bg-2)]' : 'border-[var(--tenant-line)] bg-[var(--tenant-bg)]',
         )}
       >
         <Button

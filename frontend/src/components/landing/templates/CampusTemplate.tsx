@@ -1,9 +1,6 @@
 import React from 'react'
-import {
-  LandingCtas,
-  LandingHeaderBar,
-  SharedLandingFooter,
-} from '@/components/landing/LandingShared'
+import { LandingCtas, LandingHeaderBar, SharedLandingFooter } from '@/components/landing/LandingShared'
+import LandingHeroSocials from '@/components/landing/LandingHeroSocials'
 import { LandingContentSections } from '@/components/landing/LandingSections'
 import type { LandingTemplateProps } from '@/components/landing/types'
 
@@ -61,6 +58,12 @@ export default function CampusTemplate(p: LandingTemplateProps) {
               size="default"
               solidClassName="rounded-lg px-5 text-white"
               outlineClassName="rounded-lg border-slate-200 bg-white px-5"
+            />
+            <LandingHeroSocials
+              institution={institution}
+              primary={primary}
+              tone={p.themeMode === 'dark' ? 'dark' : 'light'}
+              preview={preview}
             />
           </div>
         </div>

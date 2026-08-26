@@ -73,7 +73,7 @@ const Header = () => {
         'sticky top-0 z-30 flex h-[4.25rem] items-center gap-2 border-b px-3 sm:px-5 min-w-0',
         isPlatform
           ? 'border-[var(--pf-line)] bg-[var(--pf-bg)]/92 backdrop-blur-xl'
-          : 'h-14 sm:h-16 border-slate-800 bg-slate-950/80 backdrop-blur-xl sm:static sm:border-0 sm:bg-transparent sm:px-8',
+            : 'h-14 sm:h-16 border-[var(--tenant-line)] bg-[var(--tenant-bg)]/85 backdrop-blur-xl sm:static sm:border-0 sm:bg-transparent sm:px-8',
       )}
     >
       <Sheet open={sheetOpen} onOpenChange={setSheetOpen}>
@@ -85,7 +85,7 @@ const Header = () => {
               'lg:hidden shrink-0',
               isPlatform
                 ? 'bg-[var(--pf-surface)] border-[var(--pf-line)] text-[var(--pf-text)]'
-                : 'bg-slate-900 border-slate-800 text-slate-200',
+                : 'bg-[var(--tenant-surface)] border-[var(--tenant-line)] text-[var(--tenant-text)]',
             )}
           >
             <Menu className="h-5 w-5" />
@@ -98,13 +98,13 @@ const Header = () => {
             'w-[min(100vw-2rem,300px)] p-0 flex flex-col border-r',
             isPlatform
               ? 'bg-[var(--pf-bg)] border-[var(--pf-line)] text-[var(--pf-text)]'
-              : 'bg-slate-950 border-slate-800 text-white',
+              : 'bg-[var(--tenant-bg-2)] border-[var(--tenant-line)] text-[var(--tenant-text)]',
           )}
         >
           <div
             className={cn(
               'flex items-center justify-center h-20 p-4 border-b shrink-0',
-              isPlatform ? 'bg-[var(--pf-bg-2)] border-[var(--pf-line)]' : 'bg-slate-900/50 border-slate-800',
+              isPlatform ? 'bg-[var(--pf-bg-2)] border-[var(--pf-line)]' : 'bg-[var(--tenant-bg)] border-[var(--tenant-line)]',
             )}
           >
             <Logo className="h-10" />
@@ -124,10 +124,10 @@ const Header = () => {
                       active
                         ? isPlatform
                           ? 'bg-teal-500/15 text-[var(--pf-text)] border-l-2 border-teal-500 pl-[10px]'
-                          : 'bg-slate-800 text-white border-l-2 pl-[10px]'
+                          : 'bg-[color-mix(in_srgb,var(--brand-primary)_12%,transparent)] text-[var(--tenant-text)] border-l-2 pl-[10px]'
                         : isPlatform
                           ? 'text-[var(--pf-muted)] hover:bg-[var(--pf-hover)]'
-                          : 'bg-transparent text-slate-300 hover:bg-slate-800 hover:text-slate-100'
+                          : 'bg-transparent text-[var(--tenant-muted)] hover:bg-[color-mix(in_srgb,var(--brand-primary)_8%,transparent)] hover:text-[var(--tenant-text)]'
                     )}
                     style={!isPlatform && active ? { borderLeftColor: 'var(--brand-primary)' } : undefined}
                   >
@@ -138,7 +138,8 @@ const Header = () => {
               );
             })}
           </nav>
-          <div className={cn('p-3 border-t shrink-0', isPlatform ? 'border-[var(--pf-line)]' : 'border-slate-800')}>
+          <div className={cn('p-3 border-t shrink-0 space-y-2', isPlatform ? 'border-[var(--pf-line)]' : 'border-[var(--tenant-line)]')}>
+            {isPlatform ? <ThemeToggle className="mb-1" /> : <ThemeToggle variant="brand" className="mb-1" />}
             <Button
               variant="ghost"
               className="w-full justify-start gap-3 text-sm text-red-400 hover:text-red-300 hover:bg-red-950/40"
@@ -160,7 +161,7 @@ const Header = () => {
       <div className="flex-1 min-w-0" />
 
       <div className="flex items-center gap-1.5 sm:gap-2 md:gap-4 shrink-0">
-        {isPlatform ? <ThemeToggle /> : null}
+        {isPlatform ? <ThemeToggle /> : <ThemeToggle variant="brand" />}
 
         <Button
           variant="ghost"
@@ -170,7 +171,7 @@ const Header = () => {
           className={cn(
             isPlatform
               ? 'text-[var(--pf-muted)] hover:text-[var(--pf-text)] hover:bg-[var(--pf-hover)]'
-              : 'text-slate-300 hover:text-slate-100 hover:bg-slate-800',
+              : 'text-[var(--tenant-muted)] hover:text-[var(--tenant-text)] hover:bg-[color-mix(in_srgb,var(--brand-primary)_10%,transparent)]',
           )}
           title="Refresh System Data"
         >
@@ -184,7 +185,7 @@ const Header = () => {
             'relative hidden sm:inline-flex',
             isPlatform
               ? 'text-[var(--pf-muted)] hover:text-[var(--pf-text)] hover:bg-[var(--pf-hover)]'
-              : 'text-slate-300 hover:text-slate-100 hover:bg-slate-800',
+              : 'text-[var(--tenant-muted)] hover:text-[var(--tenant-text)] hover:bg-[color-mix(in_srgb,var(--brand-primary)_10%,transparent)]',
           )}
         >
           <Bell className="h-5 w-5" />

@@ -1,11 +1,8 @@
 import React from 'react'
-import {
-  LandingCtas,
-  LandingHeaderBar,
-  SharedLandingFooter,
-} from '@/components/landing/LandingShared'
+import { LandingCtas, LandingHeaderBar, SharedLandingFooter } from '@/components/landing/LandingShared'
+import LandingHeroSocials from '@/components/landing/LandingHeroSocials'
 import { LandingContentSections } from '@/components/landing/LandingSections'
-import type { LandingTemplateProps } from '@/components/landing/types'
+import { landingIsLight, type LandingTemplateProps } from '@/components/landing/types'
 
 /** Formal dark — navy ceremony with gold accents, centered composition. */
 export default function CrestTemplate(p: LandingTemplateProps) {
@@ -24,23 +21,27 @@ export default function CrestTemplate(p: LandingTemplateProps) {
     preview,
     onChangeTemplate,
   } = p
+  const light = landingIsLight(p.themeMode)
+  const tone = light ? 'light' : 'dark'
 
   return (
     <div
-      className="relative min-h-screen overflow-x-hidden font-sans text-slate-100"
-      style={{ backgroundColor: primary || '#0B1F33' }}
+      className={`relative min-h-screen overflow-x-hidden font-sans ${light ? 'text-slate-900' : 'text-slate-100'}`}
+      style={{ backgroundColor: light ? '#F8FAFC' : primary || '#0B1F33' }}
     >
       <div
         className="pointer-events-none absolute inset-0"
         style={{
-          backgroundImage: `linear-gradient(165deg, ${primary || '#0B1F33'}f5 8%, ${primary || '#0B1F33'}d8 48%, ${primary || '#0B1F33'}b8 100%), url(${heroImage})`,
+          backgroundImage: light
+            ? `linear-gradient(165deg, color-mix(in srgb, ${primary} 16%, #ffffff) 0%, #f8fafc 55%, #ffffff 100%), url(${heroImage})`
+            : `linear-gradient(165deg, ${primary || '#0B1F33'}f5 8%, ${primary || '#0B1F33'}d8 48%, ${primary || '#0B1F33'}b8 100%), url(${heroImage})`,
           backgroundSize: 'cover',
           backgroundPosition: 'center',
         }}
         aria-hidden
       />
 
-      <header className="relative z-20 border-b border-white/10">
+      <header className={`relative z-20 border-b ${light ? 'border-slate-200 bg-white/90 backdrop-blur-md' : 'border-white/10'}`}>
         <div className="mx-auto flex max-w-6xl flex-wrap items-center gap-x-4 gap-y-2 md:gap-x-7 px-4 py-2.5 sm:px-6 sm:py-3.5">
           <LandingHeaderBar
             institution={institution}
@@ -50,10 +51,18 @@ export default function CrestTemplate(p: LandingTemplateProps) {
             userRole={userRole}
             onOpenLogin={onOpenLogin}
             preview={preview}
-            tone="dark"
-            brandNameClassName="text-[13px] font-semibold leading-snug tracking-tight text-white sm:text-[15px]"
-            solidClassName="rounded-sm px-4 font-semibold text-slate-900"
-            outlineClassName="rounded-sm border-white/30 bg-transparent text-white hover:bg-white/10 hover:text-white"
+            tone={tone}
+            brandNameClassName={
+              light
+                ? 'text-[13px] font-semibold leading-snug tracking-tight text-slate-900 sm:text-[15px]'
+                : 'text-[13px] font-semibold leading-snug tracking-tight text-white sm:text-[15px]'
+            }
+            solidClassName="rounded-sm px-4 font-semibold"
+            outlineClassName={
+              light
+                ? 'rounded-sm border-slate-200 bg-white text-slate-800 hover:bg-slate-50'
+                : 'rounded-sm border-white/30 bg-transparent text-white hover:bg-white/10 hover:text-white'
+            }
           />
         </div>
       </header>
@@ -72,10 +81,10 @@ export default function CrestTemplate(p: LandingTemplateProps) {
         >
           Academic Excellence
         </p>
-        <h1 className="break-words px-1 font-display text-2xl font-bold leading-tight text-white sm:text-4xl lg:text-5xl">
+        <h1 className={`break-words px-1 font-display text-2xl font-bold leading-tight sm:text-4xl lg:text-5xl ${light ? 'text-slate-900' : 'text-white'}`}>
           {headline}
         </h1>
-        <p className="mt-5 max-w-xl text-[15px] leading-relaxed text-white/70">{tagline}</p>
+        <p className={`mt-5 max-w-xl text-[15px] leading-relaxed ${light ? 'text-slate-600' : 'text-white/70'}`}>{tagline}</p>
         <div className="mt-8 w-full max-w-sm sm:mt-9 sm:max-w-md">
           <LandingCtas
             primary={accent}
@@ -86,9 +95,22 @@ export default function CrestTemplate(p: LandingTemplateProps) {
             preview={preview}
             size="default"
             align="center"
-            solidClassName="rounded-sm px-5 font-semibold text-slate-900 sm:px-7"
-            outlineClassName="rounded-sm border-white/35 bg-transparent px-5 text-white hover:bg-white/10 hover:text-white sm:px-7"
+            solidClassName="rounded-sm px-5 font-semibold sm:px-7"
+            outlineClassName={
+              light
+                ? 'rounded-sm border-slate-200 bg-white px-5 text-slate-800 hover:bg-slate-50 sm:px-7'
+                : 'rounded-sm border-white/35 bg-transparent px-5 text-white hover:bg-white/10 hover:text-white sm:px-7'
+            }
           />
+          <div className="mt-6">
+            <LandingHeroSocials
+              institution={institution}
+              primary={accent}
+              tone={tone}
+              align="center"
+              preview={preview}
+            />
+          </div>
         </div>
         <div
           className="mt-10 h-px w-28"
@@ -102,7 +124,7 @@ export default function CrestTemplate(p: LandingTemplateProps) {
           primary={accent}
           accent={accent}
           tagline={tagline}
-          tone="dark"
+          tone={tone}
           preview={preview}
         />
         <SharedLandingFooter
@@ -113,7 +135,7 @@ export default function CrestTemplate(p: LandingTemplateProps) {
           onOpenLogin={onOpenLogin}
           onChangeTemplate={onChangeTemplate}
           preview={preview}
-          tone="dark"
+          tone={tone}
         />
       </div>
     </div>

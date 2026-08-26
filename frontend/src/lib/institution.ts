@@ -38,6 +38,9 @@ export type InstitutionBrand = {
   hero_image_url?: string | null
   hero_headline?: string | null
   footer_text?: string | null
+  social_whatsapp?: string | null
+  social_facebook?: string | null
+  social_tiktok?: string | null
 } | null | undefined
 
 const DEFAULT_PRIMARY = '#002147'
@@ -276,6 +279,60 @@ export function getDocumentInstitutionTitle(
 ): string {
   if (hasInstitutionLogo(institution)) return ''
   return getInstitutionDisplayName(institution, fallback)
+}
+
+function clampSocial(value?: string | null): string {
+  return String(value || '').trim().slice(0, 500)
+}
+
+function withHttps(url: string): string {
+  if (/^https?:\/\//i.test(url)) return url
+  return `https://${url.replace(/^\/+/, '')}`
+}
+
+/** WhatsApp chat URL from a full link or phone number. */
+export function normalizeWhatsAppHref(value?: string | null): string {
+  const raw = clampSocial(value)
+  if (!raw) return ''
+  if (/^https?:\/\//i.test(raw) || /^wa\.me\//i.test(raw)) return withHttps(raw)
+  const digits = raw.replace(/[^\d]/g, '')
+  if (digits.length >= 8 && digits.length <= 15) return `https://wa.me/${digits}`
+  return ''
+}
+
+export function normalizeHttpHref(value?: string | null, hostHint?: string): string {
+  const raw = clampSocial(value)
+  if (!raw) return ''
+  if (/^https?:\/\//i.test(raw)) return raw
+  if (hostHint === 'www.tiktok.com' && !raw.includes('.')) {
+    return `https://www.tiktok.com/@${raw.replace(/^@/, '')}`
+  }
+  if (hostHint && !raw.includes('.')) return `https://${hostHint}/${raw.replace(/^@/, '')}`
+  return withHttps(raw)
+}
+
+export type InstitutionSocialLink = {
+  id: 'whatsapp' | 'facebook' | 'tiktok'
+  label: string
+  href: string
+}
+
+export function institutionSocialLinks(
+  institution?: InstitutionBrand | {
+    social_whatsapp?: string | null
+    social_facebook?: string | null
+    social_tiktok?: string | null
+  },
+): InstitutionSocialLink[] {
+  const row = institution || {}
+  const items: InstitutionSocialLink[] = []
+  const wa = normalizeWhatsAppHref(row.social_whatsapp)
+  const fb = normalizeHttpHref(row.social_facebook, 'facebook.com')
+  const tt = normalizeHttpHref(row.social_tiktok, 'www.tiktok.com')
+  if (wa) items.push({ id: 'whatsapp', label: 'WhatsApp', href: wa })
+  if (fb) items.push({ id: 'facebook', label: 'Facebook', href: fb })
+  if (tt) items.push({ id: 'tiktok', label: 'TikTok', href: tt })
+  return items
 }
 
 export function getInstitutionPrimary(institution?: InstitutionBrand): string {

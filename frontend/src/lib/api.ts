@@ -11,7 +11,7 @@ import { landingContentForSave } from '@/lib/landingContent'
 const notReady = (_feature) => new Error('FEATURE_UNAVAILABLE')
 
 const INST_SELECT =
-  'id, name, subdomain, logo_url, description, email, phone, address, website, motto, theme_primary, theme_accent, theme_tertiary, status, created_at, affiliate_commission_rate, registration_fee_amount, default_instructor_commission_rate, currency, currency_symbol, signatory_left_title, signatory_right_title, signatory_left_name, signatory_right_name, seal_url, signature_url, certificate_footer_text, transcript_footer_text, invoice_footer_text, settings_completed_at, landing_template_id, hero_image_url, hero_headline, footer_text, landing_content, grading_scale'
+  'id, name, subdomain, logo_url, description, email, phone, address, website, motto, theme_primary, theme_accent, theme_tertiary, social_whatsapp, social_facebook, social_tiktok, status, created_at, affiliate_commission_rate, registration_fee_amount, default_instructor_commission_rate, currency, currency_symbol, signatory_left_title, signatory_right_title, signatory_left_name, signatory_right_name, seal_url, signature_url, certificate_footer_text, transcript_footer_text, invoice_footer_text, settings_completed_at, landing_template_id, hero_image_url, hero_headline, footer_text, landing_content, grading_scale'
 
 async function requireUser() {
   const { data, error } = await supabase.auth.getUser()
@@ -1025,6 +1025,15 @@ export const updateInstitution = async (updates) => {
   if (updates.theme_tertiary !== undefined) {
     const t = String(updates.theme_tertiary || '').trim()
     allowed.theme_tertiary = t || null
+  }
+  if (updates.social_whatsapp !== undefined) {
+    allowed.social_whatsapp = String(updates.social_whatsapp || '').trim().slice(0, 500) || null
+  }
+  if (updates.social_facebook !== undefined) {
+    allowed.social_facebook = String(updates.social_facebook || '').trim().slice(0, 500) || null
+  }
+  if (updates.social_tiktok !== undefined) {
+    allowed.social_tiktok = String(updates.social_tiktok || '').trim().slice(0, 500) || null
   }
   if (updates.landing_template_id !== undefined) {
     const tid = String(updates.landing_template_id || '').trim().toLowerCase()

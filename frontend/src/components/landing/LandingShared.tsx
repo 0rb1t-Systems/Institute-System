@@ -2,8 +2,10 @@ import React from 'react'
 import { Link } from 'react-router-dom'
 import { ArrowRight, LogIn, Mail, MapPin, Phone, ShieldCheck } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import ThemeToggle from '@/components/platform/ThemeToggle'
 import {
   brandInitial,
+  brandButtonStyle,
   dashboardPathForRole,
   type LandingInstitution,
 } from '@/components/landing/types'
@@ -13,6 +15,7 @@ import {
   landingNavItemsFor,
   scrollToLandingSection,
 } from '@/components/landing/LandingNav'
+import LandingHeroSocials from '@/components/landing/LandingHeroSocials'
 
 const HEADER_LOGO_CLASS =
   'h-12 w-auto max-w-[16rem] object-contain md:h-14 md:max-w-[18rem]'
@@ -212,8 +215,9 @@ export function LandingHeaderActions({
 }) {
   return (
     <div className="flex min-w-0 shrink-0 flex-wrap items-center justify-end gap-1.5 sm:gap-2">
+      {preview ? null : <ThemeToggle variant="brand" className="shrink-0" />}
       {sameTenant ? (
-        <Button asChild size="sm" className={`${solidClassName} max-sm:px-2.5`} style={{ backgroundColor: primary }}>
+        <Button asChild size="sm" className={`${solidClassName} max-sm:px-2.5`} style={brandButtonStyle(primary)}>
           <Link to={preview ? '#' : dashboardPathForRole(userRole)}>Dashboard</Link>
         </Button>
       ) : (
@@ -221,7 +225,7 @@ export function LandingHeaderActions({
           type="button"
           size="sm"
           className={`${solidClassName} max-sm:px-2.5`}
-          style={{ backgroundColor: primary }}
+          style={brandButtonStyle(primary)}
           onClick={() => !preview && onOpenLogin()}
         >
           <LogIn className="mr-1 h-3.5 w-3.5 sm:mr-1.5" />
@@ -282,7 +286,7 @@ export function LandingCtas({
           asChild
           size={size}
           className={`${solidClassName} w-full sm:w-auto`}
-          style={{ backgroundColor: primary }}
+          style={brandButtonStyle(primary)}
         >
           <Link to={preview ? '#' : dashboardPathForRole(userRole)}>
             Go to dashboard <ArrowRight className="ml-2 h-4 w-4" />
@@ -293,7 +297,7 @@ export function LandingCtas({
           type="button"
           size={size}
           className={`${solidClassName} w-full sm:w-auto`}
-          style={{ backgroundColor: primary }}
+          style={brandButtonStyle(primary)}
           onClick={click}
         >
           <LogIn className="mr-2 h-4 w-4" />
@@ -374,6 +378,9 @@ export function SharedLandingFooter({
             )}
           </div>
           <p className={`mt-3 max-w-xs break-words text-sm leading-relaxed ${muted}`}>{footerNote}</p>
+          <div className="mt-4">
+            <LandingHeroSocials institution={institution} primary={primary} tone={tone} preview={preview} />
+          </div>
         </div>
 
         <div>

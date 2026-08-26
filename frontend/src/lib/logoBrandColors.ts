@@ -91,10 +91,14 @@ export function hexToHslChannels(hex: string): string {
   return `${Math.round(h)} ${Math.round(s * 100)}% ${Math.round(l * 100)}%`
 }
 
-export function hexForegroundChannels(hex: string): string {
+export function hexForegroundHex(hex: string): string {
   const { r, g, b } = hexToRgb(hex)
   const { l } = rgbToHsl(r, g, b)
-  return l > 0.62 ? '222 47% 11%' : '210 40% 98%'
+  return l > 0.62 ? '#0F172A' : '#FFFFFF'
+}
+
+export function hexForegroundChannels(hex: string): string {
+  return hexForegroundHex(hex) === '#0F172A' ? '222 47% 11%' : '210 40% 98%'
 }
 
 export function shadeHex(hex: string, deltaL: number): string {
@@ -276,6 +280,9 @@ export function applyInstitutionBrandCss(
     : ''
   root.style.setProperty('--brand-primary', primary)
   root.style.setProperty('--brand-accent', accent)
+  root.style.setProperty('--brand-on-primary', hexForegroundHex(primary))
+  root.style.setProperty('--brand-on-accent', hexForegroundHex(accent))
+  root.style.setProperty('--brand-soft', `color-mix(in srgb, ${primary} 12%, #ffffff)`)
   if (tertiary) root.style.setProperty('--brand-tertiary', tertiary)
   else root.style.removeProperty('--brand-tertiary')
   root.style.setProperty('--primary', hexToHslChannels(primary))
@@ -288,6 +295,9 @@ export function clearInstitutionBrandCss(): void {
   const root = document.documentElement
   root.style.removeProperty('--brand-primary')
   root.style.removeProperty('--brand-accent')
+  root.style.removeProperty('--brand-on-primary')
+  root.style.removeProperty('--brand-on-accent')
+  root.style.removeProperty('--brand-soft')
   root.style.removeProperty('--brand-tertiary')
   root.style.removeProperty('--primary')
   root.style.removeProperty('--primary-foreground')

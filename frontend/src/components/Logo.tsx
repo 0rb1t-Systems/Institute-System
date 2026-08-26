@@ -42,10 +42,10 @@ const Logo = ({ className = 'h-12', institution: institutionProp = undefined }) 
 
   return (
     <div className={`flex items-center gap-2 min-w-0 ${className}`}>
-      <div className="h-full aspect-square max-h-10 rounded-lg bg-indigo-600 flex items-center justify-center shrink-0">
-        <GraduationCap className="h-[55%] w-[55%] text-white" />
+      <div className="h-full aspect-square max-h-10 rounded-lg flex items-center justify-center shrink-0" style={{ backgroundColor: 'var(--brand-primary, #002147)', color: 'var(--brand-on-primary, #fff)' }}>
+        <GraduationCap className="h-[55%] w-[55%]" />
       </div>
-      <span className="text-sm font-bold text-white truncate leading-tight hidden sm:inline">
+      <span className="text-sm font-bold truncate leading-tight hidden sm:inline text-[var(--tenant-text,#fff)]">
         {name}
       </span>
     </div>

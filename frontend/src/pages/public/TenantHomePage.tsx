@@ -161,6 +161,9 @@ const TenantHomePage = ({ subdomain: subdomainProp }) => {
                   hero_headline: row.hero_headline ?? prev.hero_headline,
                   footer_text: row.footer_text ?? prev.footer_text,
                   landing_template_id: row.landing_template_id ?? prev.landing_template_id,
+                  social_whatsapp: row.social_whatsapp ?? prev.social_whatsapp,
+                  social_facebook: row.social_facebook ?? prev.social_facebook,
+                  social_tiktok: row.social_tiktok ?? prev.social_tiktok,
                 }
               : prev,
           )

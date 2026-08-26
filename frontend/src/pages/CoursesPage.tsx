@@ -548,7 +548,7 @@ const CoursesPage = () => {
                             const isElearning = course.type === 'outsource';
                             return (
                             <motion.div key={course.id} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: index * 0.03 }}>
-                                <Card className="flex flex-col h-full bg-[#0b1120] border-slate-800/90 rounded-2xl shadow-sm overflow-hidden">
+                                <Card className="flex flex-col h-full bg-slate-950 border-slate-800/90 rounded-2xl shadow-sm overflow-hidden">
                                     <CardHeader className="pb-3 space-y-3">
                                         <div className="flex justify-between items-start gap-3">
                                             <CardTitle className="text-lg font-bold text-white leading-snug pr-1">

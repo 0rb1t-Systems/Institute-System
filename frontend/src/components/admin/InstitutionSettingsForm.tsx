@@ -64,6 +64,9 @@ const empty = {
   certificate_footer_text: '',
   transcript_footer_text: '',
   invoice_footer_text: '',
+  social_whatsapp: '',
+  social_facebook: '',
+  social_tiktok: '',
 }
 
 const AssetUploadField = ({
@@ -165,6 +168,9 @@ const InstitutionSettingsForm = ({ onUpdated }) => {
       certificate_footer_text: institution.certificate_footer_text || '',
       transcript_footer_text: institution.transcript_footer_text || '',
       invoice_footer_text: institution.invoice_footer_text || '',
+      social_whatsapp: institution.social_whatsapp || '',
+      social_facebook: institution.social_facebook || '',
+      social_tiktok: institution.social_tiktok || '',
     })
     setAppCurrency(currency, symbol)
     if (institution.logo_url) {
@@ -305,6 +311,9 @@ const InstitutionSettingsForm = ({ onUpdated }) => {
         certificate_footer_text: form.certificate_footer_text,
         transcript_footer_text: form.transcript_footer_text,
         invoice_footer_text: form.invoice_footer_text,
+        social_whatsapp: form.social_whatsapp.trim() || null,
+        social_facebook: form.social_facebook.trim() || null,
+        social_tiktok: form.social_tiktok.trim() || null,
       })
       setAppCurrency(currency, symbol)
       await refreshUser?.()
@@ -506,6 +515,47 @@ const InstitutionSettingsForm = ({ onUpdated }) => {
                   onAccentChange={(hex) => setField('theme_accent', hex)}
                   onTertiaryChange={(hex) => setField('theme_tertiary', hex)}
                 />
+              </div>
+
+              <div className="sm:col-span-2 rounded-xl border border-slate-800 bg-slate-950/50 p-4 space-y-3">
+                <div>
+                  <p className="text-sm font-semibold text-slate-200">Social media (landing hero)</p>
+                  <p className="text-xs text-slate-500">
+                    Add your links. Animated icons appear on every landing template hero. Leave blank to hide.
+                  </p>
+                </div>
+                <div className="grid gap-3 sm:grid-cols-3">
+                  <div className="space-y-1.5">
+                    <Label htmlFor="social_whatsapp">WhatsApp</Label>
+                    <Input
+                      id="social_whatsapp"
+                      value={form.social_whatsapp}
+                      onChange={(e) => setField('social_whatsapp', e.target.value)}
+                      placeholder="25261xxxxxxx or https://wa.me/..."
+                      className="bg-slate-950 border-slate-800"
+                    />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label htmlFor="social_facebook">Facebook</Label>
+                    <Input
+                      id="social_facebook"
+                      value={form.social_facebook}
+                      onChange={(e) => setField('social_facebook', e.target.value)}
+                      placeholder="https://facebook.com/yourpage"
+                      className="bg-slate-950 border-slate-800"
+                    />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label htmlFor="social_tiktok">TikTok</Label>
+                    <Input
+                      id="social_tiktok"
+                      value={form.social_tiktok}
+                      onChange={(e) => setField('social_tiktok', e.target.value)}
+                      placeholder="https://tiktok.com/@yourpage"
+                      className="bg-slate-950 border-slate-800"
+                    />
+                  </div>
+                </div>
               </div>
 
               <div className="space-y-2">

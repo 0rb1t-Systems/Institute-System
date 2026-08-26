@@ -1,11 +1,8 @@
 import React from 'react'
-import {
-  LandingCtas,
-  LandingHeaderBar,
-  SharedLandingFooter,
-} from '@/components/landing/LandingShared'
+import { LandingCtas, LandingHeaderBar, SharedLandingFooter } from '@/components/landing/LandingShared'
+import LandingHeroSocials from '@/components/landing/LandingHeroSocials'
 import { LandingContentSections } from '@/components/landing/LandingSections'
-import type { LandingTemplateProps } from '@/components/landing/types'
+import { landingIsLight, type LandingTemplateProps } from '@/components/landing/types'
 
 /** Soft light glass — floating nav, rounded portrait hero. */
 export default function AuroraTemplate(p: LandingTemplateProps) {
@@ -24,9 +21,11 @@ export default function AuroraTemplate(p: LandingTemplateProps) {
     preview,
     onChangeTemplate,
   } = p
+  const light = landingIsLight(p.themeMode)
+  const tone = light ? 'light' : 'dark'
 
   return (
-    <div className="relative min-h-screen overflow-x-hidden bg-[#F8FAFC] font-sans text-slate-900">
+    <div className={`relative min-h-screen overflow-x-hidden font-sans ${light ? 'bg-[#F8FAFC] text-slate-900' : 'bg-[#0b1220] text-white'}`}>
       <div
         className="pointer-events-none absolute inset-0"
         style={{
@@ -45,9 +44,18 @@ export default function AuroraTemplate(p: LandingTemplateProps) {
             userRole={userRole}
             onOpenLogin={onOpenLogin}
             preview={preview}
-            brandNameClassName="font-display text-[13px] font-semibold leading-snug tracking-tight text-slate-900 sm:text-[15px]"
-            solidClassName="rounded-full px-4 text-white"
-            outlineClassName="rounded-full border-slate-200 bg-white"
+            tone={tone}
+            brandNameClassName={
+              light
+                ? 'font-display text-[13px] font-semibold leading-snug tracking-tight text-slate-900 sm:text-[15px]'
+                : 'font-display text-[13px] font-semibold leading-snug tracking-tight text-white sm:text-[15px]'
+            }
+            solidClassName="rounded-full px-4"
+            outlineClassName={
+              light
+                ? 'rounded-full border-slate-200 bg-white text-slate-800'
+                : 'rounded-full border-white/20 bg-white/5 text-white hover:bg-white/10'
+            }
           />
         </header>
       </div>
@@ -57,13 +65,13 @@ export default function AuroraTemplate(p: LandingTemplateProps) {
         className="relative z-10 mx-auto grid max-w-6xl scroll-mt-24 items-center gap-8 px-4 py-10 sm:gap-10 sm:px-6 sm:py-12 lg:grid-cols-2 lg:gap-14 lg:py-16"
       >
         <div className="space-y-5 sm:space-y-6">
-          <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-500">
+          <p className={`text-[11px] font-semibold uppercase tracking-[0.2em] ${light ? 'text-slate-500' : 'text-slate-400'}`}>
             {institution.name}
           </p>
-          <h1 className="max-w-lg break-words font-display text-2xl font-bold leading-[1.12] tracking-tight text-slate-800 sm:text-4xl lg:text-[2.65rem]">
+          <h1 className={`max-w-lg break-words font-display text-2xl font-bold leading-[1.12] tracking-tight sm:text-4xl lg:text-[2.65rem] ${light ? 'text-slate-800' : 'text-white'}`}>
             {headline}
           </h1>
-          <p className="max-w-md text-[15px] leading-relaxed text-slate-600">{tagline}</p>
+          <p className={`max-w-md text-[15px] leading-relaxed ${light ? 'text-slate-600' : 'text-slate-300'}`}>{tagline}</p>
           <LandingCtas
             primary={primary}
             verifyHref={verifyHref}
@@ -72,8 +80,18 @@ export default function AuroraTemplate(p: LandingTemplateProps) {
             onOpenLogin={onOpenLogin}
             preview={preview}
             size="default"
-            solidClassName="rounded-full px-6 text-white shadow-md shadow-slate-900/10"
-            outlineClassName="rounded-full border-slate-200 bg-white px-6"
+            solidClassName="rounded-full px-6 shadow-md shadow-slate-900/10"
+            outlineClassName={
+              light
+                ? 'rounded-full border-slate-200 bg-white px-6 text-slate-800'
+                : 'rounded-full border-white/20 bg-white/5 px-6 text-white'
+            }
+          />
+          <LandingHeroSocials
+            institution={institution}
+            primary={primary}
+            tone={tone}
+            preview={preview}
           />
         </div>
 
@@ -97,7 +115,7 @@ export default function AuroraTemplate(p: LandingTemplateProps) {
         primary={primary}
         accent={accent}
         tagline={tagline}
-        tone="light"
+        tone={tone}
         preview={preview}
       />
       <SharedLandingFooter
@@ -108,7 +126,7 @@ export default function AuroraTemplate(p: LandingTemplateProps) {
         onOpenLogin={onOpenLogin}
         onChangeTemplate={onChangeTemplate}
         preview={preview}
-        tone="light"
+        tone={tone}
       />
     </div>
   )

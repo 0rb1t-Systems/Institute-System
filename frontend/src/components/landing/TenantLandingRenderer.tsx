@@ -1,4 +1,4 @@
-import React from 'react'
+import React, { useEffect } from 'react'
 import {
   getLandingTemplate,
   resolveHeroHeadline,
@@ -8,7 +8,10 @@ import {
 import {
   getInstitutionAccent,
   getInstitutionPrimary,
+  getInstitutionTertiary,
 } from '@/lib/institution'
+import { applyInstitutionBrandCss } from '@/lib/logoBrandColors'
+import { usePlatformTheme } from '@/contexts/PlatformThemeContext'
 import type { LandingInstitution, LandingTemplateProps } from '@/components/landing/types'
 import ClassicTemplate from '@/components/landing/templates/ClassicTemplate'
 import AuroraTemplate from '@/components/landing/templates/AuroraTemplate'
@@ -51,6 +54,7 @@ export default function TenantLandingRenderer({
   onChangeTemplate,
   templateId,
 }: Props) {
+  const { mode } = usePlatformTheme()
   const meta = getLandingTemplate(templateId || institution.landing_template_id)
   const Template = TEMPLATE_MAP[meta.id] || ClassicTemplate
 
@@ -58,6 +62,10 @@ export default function TenantLandingRenderer({
     String(institution.theme_primary || '').trim() || meta.defaultPrimary || getInstitutionPrimary(institution)
   const accent =
     String(institution.theme_accent || '').trim() || meta.defaultAccent || getInstitutionAccent(institution)
+
+  useEffect(() => {
+    applyInstitutionBrandCss(primary, accent, getInstitutionTertiary(institution))
+  }, [primary, accent, institution])
 
   const heroImage = resolveHeroImage({
     ...institution,
@@ -75,20 +83,23 @@ export default function TenantLandingRenderer({
   const shortTagline = tagline.length > 180 ? `${tagline.slice(0, 177)}…` : tagline
 
   return (
-    <Template
-      institution={institution}
-      primary={primary}
-      accent={accent}
-      heroImage={heroImage}
-      headline={headline}
-      tagline={shortTagline}
-      verifyHref={verifyHref}
-      year={new Date().getFullYear()}
-      sameTenant={sameTenant}
-      userRole={userRole}
-      onOpenLogin={onOpenLogin}
-      preview={preview}
-      onChangeTemplate={preview ? undefined : onChangeTemplate}
-    />
+    <div className={`tenant-landing ${mode === 'light' ? 'tenant-landing-light' : 'tenant-landing-dark'}`}>
+      <Template
+        institution={institution}
+        primary={primary}
+        accent={accent}
+        heroImage={heroImage}
+        headline={headline}
+        tagline={shortTagline}
+        verifyHref={verifyHref}
+        year={new Date().getFullYear()}
+        sameTenant={sameTenant}
+        userRole={userRole}
+        onOpenLogin={onOpenLogin}
+        preview={preview}
+        onChangeTemplate={preview ? undefined : onChangeTemplate}
+        themeMode={mode}
+      />
+    </div>
   )
 }

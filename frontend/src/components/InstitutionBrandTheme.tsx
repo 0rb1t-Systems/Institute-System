@@ -11,16 +11,22 @@ export default function InstitutionBrandTheme() {
   const { user, institution } = useAuth()
 
   useEffect(() => {
+    const root = document.documentElement
     if (!institution || user?.role === 'super_admin') {
+      root.removeAttribute('data-tenant-chrome')
       clearInstitutionBrandCss()
       return
     }
+    root.setAttribute('data-tenant-chrome', '1')
     applyInstitutionBrandCss(
       getInstitutionPrimary(institution),
       getInstitutionAccent(institution),
       getInstitutionTertiary(institution),
     )
-    return () => clearInstitutionBrandCss()
+    return () => {
+      root.removeAttribute('data-tenant-chrome')
+      clearInstitutionBrandCss()
+    }
   }, [institution, user?.role])
 
   return null

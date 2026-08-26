@@ -15,6 +15,9 @@ export type LandingInstitution = {
   theme_primary?: string | null
   theme_accent?: string | null
   theme_tertiary?: string | null
+  social_whatsapp?: string | null
+  social_facebook?: string | null
+  social_tiktok?: string | null
   landing_template_id?: LandingTemplateId | string | null
   hero_image_url?: string | null
   hero_headline?: string | null
@@ -38,6 +41,8 @@ export type LandingTemplateProps = {
   preview?: boolean
   /** Opens on-page template switcher (preferred over navigate). */
   onChangeTemplate?: () => void
+  /** Visitor light/dark preference — chrome follows branding colors. */
+  themeMode?: 'light' | 'dark'
 }
 
 export { hasInstitutionLogo, institutionLogoUrl } from '@/lib/institution'
@@ -45,6 +50,17 @@ export { hasInstitutionLogo, institutionLogoUrl } from '@/lib/institution'
 export function brandInitial(name?: string | null) {
   const n = String(name || '').trim()
   return n ? n.charAt(0).toUpperCase() : 'I'
+}
+
+export function landingIsLight(themeMode?: 'light' | 'dark') {
+  return themeMode === 'light'
+}
+
+export function brandButtonStyle(primary: string) {
+  return {
+    backgroundColor: primary,
+    color: 'var(--brand-on-primary, #fff)',
+  }
 }
 
 export function dashboardPathForRole(role?: string | null) {

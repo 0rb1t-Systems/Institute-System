@@ -467,7 +467,7 @@ const FinanceReport = () => {
                                             return (
                                                 <TableRow key={`p-${item.data.id}`} className="border-slate-800">
                                                     <TableCell className="text-slate-400">{formatDate(item.data.payment_date)}</TableCell>
-                                                    <TableCell className="font-medium text-white">{s?.name || 'Unknown'}</TableCell>
+                  <TableCell className="font-medium">{s?.name || 'Unknown'}</TableCell>
                                                     <TableCell className="text-slate-200">{displayClass}</TableCell>
                                                     <TableCell>
                                                         <span className={`inline-flex items-center rounded-md border px-2 py-0.5 text-[11px] font-semibold ${kindBadgeClass(kind)}`}>
@@ -480,7 +480,7 @@ const FinanceReport = () => {
                                                         </span>
                                                     </TableCell>
                                                     <TableCell className="text-slate-400 capitalize">{item.data.method || '-'}</TableCell>
-                                                    <TableCell className="text-right font-mono text-white">{formatCurrency(item.data.amount)}</TableCell>
+                                                    <TableCell className="text-right font-mono">{formatCurrency(item.data.amount)}</TableCell>
                                                 </TableRow>
                                             );
                                         }
@@ -488,7 +488,7 @@ const FinanceReport = () => {
                                         return (
                                             <TableRow key={`u-${item.data.student.id}-${item.data.class.id}`} className="border-slate-800">
                                                 <TableCell className="text-slate-600">-</TableCell>
-                                                <TableCell className="font-medium text-white">{item.data.student.name}</TableCell>
+                                                <TableCell className="font-medium">{item.data.student.name}</TableCell>
                                                 <TableCell className="text-slate-200">{item.data.class.name}</TableCell>
                                                 <TableCell>
                                                     <span className={`inline-flex items-center rounded-md border px-2 py-0.5 text-[11px] font-semibold ${kindBadgeClass(item.paymentKind)}`}>

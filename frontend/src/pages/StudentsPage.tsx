@@ -73,12 +73,12 @@ const ManualTransferDialog = ({ student, closeDialog }) => {
     };
 
     return (
-        <DialogContent className="sm:max-w-[400px] bg-slate-900 border-slate-800 text-slate-100">
+        <DialogContent className="sm:max-w-[400px]">
             <DialogHeader><DialogTitle>{currentActiveEnrollment ? 'Transfer Student' : 'Enroll Student'}</DialogTitle></DialogHeader>
             <div className="py-4 space-y-4">
                 <Select value={selectedClassId} onValueChange={setSelectedClassId}>
-                    <SelectTrigger className="bg-slate-950 border-slate-800"><SelectValue placeholder="Choose a class..." /></SelectTrigger>
-                    <SelectContent className="bg-slate-950 border-slate-800 text-slate-100">
+                    <SelectTrigger><SelectValue placeholder="Choose a class..." /></SelectTrigger>
+                    <SelectContent>
                         {activeClasses.map(c => (
                             <SelectItem key={c.id} value={c.id} disabled={currentActiveEnrollment?.class_id === c.id}>{c.name}</SelectItem>
                         ))}
@@ -86,7 +86,7 @@ const ManualTransferDialog = ({ student, closeDialog }) => {
                 </Select>
             </div>
             <DialogFooter>
-                 <Button variant="outline" onClick={closeDialog} className="bg-slate-800 border-slate-700 hover:bg-slate-700 text-slate-300">Cancel</Button>
+                 <Button variant="outline" onClick={closeDialog}>Cancel</Button>
                  <Button onClick={handleAction} disabled={!selectedClassId || loading}>{loading ? 'Processing...' : 'Confirm'}</Button>
             </DialogFooter>
         </DialogContent>
@@ -286,15 +286,15 @@ const StudentsPage = () => {
             </Dialog>
 
             <AlertDialog open={isDeleteOpen} onOpenChange={(open) => { if (!isDeleting) setIsDeleteOpen(open) }}>
-                <AlertDialogContent className="bg-slate-900 border-slate-800 text-slate-100">
+                <AlertDialogContent>
                     <AlertDialogHeader>
                         <AlertDialogTitle>Delete {studentToDelete?.name}?</AlertDialogTitle>
-                        <AlertDialogDescription className="text-slate-400">
+                        <AlertDialogDescription>
                             This permanently deletes the student account and related records (enrollments, payments, attendance) in your institution. This cannot be undone.
                         </AlertDialogDescription>
                     </AlertDialogHeader>
                     <AlertDialogFooter>
-                        <AlertDialogCancel disabled={isDeleting} onClick={() => setStudentToDelete(null)} className="bg-slate-800 border-slate-700 hover:bg-slate-700 text-slate-300">Cancel</AlertDialogCancel>
+                        <AlertDialogCancel disabled={isDeleting} onClick={() => setStudentToDelete(null)}>Cancel</AlertDialogCancel>
                         <Button onClick={handleConfirmDelete} disabled={isDeleting} className="bg-red-600 hover:bg-red-700 text-white">
                             {isDeleting ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Deleting...</> : 'Confirm Delete'}
                         </Button>
@@ -302,9 +302,9 @@ const StudentsPage = () => {
                 </AlertDialogContent>
             </AlertDialog>
 
-            <Card className="bg-slate-900/50 border-slate-800 shadow-xl">
-                <CardHeader className="flex flex-row items-center justify-between border-b border-slate-800 pb-4">
-                    <CardTitle className="text-white">Student Directory</CardTitle>
+            <Card className="border-slate-800 bg-slate-900/50 shadow-xl [.tenant-shell_&]:bg-[var(--tenant-surface)] [.tenant-shell_&]:border-[var(--tenant-line)] [.tenant-shell_&]:shadow-[0_10px_30px_color-mix(in_srgb,var(--brand-primary)_8%,transparent)]">
+                <CardHeader className="flex flex-row items-center justify-between border-b border-slate-800 pb-4 [.tenant-shell_&]:border-[var(--tenant-line)]">
+                    <CardTitle className="text-white [.tenant-shell_&]:text-[var(--tenant-text)]">Student Directory</CardTitle>
                     <div className="text-sm text-slate-400">
                         Page {currentPage} of {totalPages || 1}
                     </div>
@@ -330,9 +330,9 @@ const StudentsPage = () => {
                                             className={`border-slate-800 hover:bg-slate-800/40 transition-colors ${deletingRowId === s.id ? 'opacity-50 pointer-events-none' : ''}`}
                                         >
                                             <TableCell className="px-6 py-3">
-                                                <Avatar className="h-10 w-10 border border-slate-700 bg-slate-800">
+                                                <Avatar className="h-10 w-10 border border-slate-700 [.tenant-shell_&]:border-[var(--tenant-line)]">
                                                     <AvatarImage src={s.avatar_url} alt={s.name} className="object-cover" />
-                                                    <AvatarFallback className="bg-slate-800 text-slate-400 text-xs font-medium">
+                                                    <AvatarFallback className="bg-slate-800 text-white text-xs font-medium [html[data-platform-theme='light']_&]:bg-[color-mix(in_srgb,var(--brand-primary)_14%,transparent)] [html[data-platform-theme='light']_&]:text-[var(--brand-primary)]">
                                                         {s.name?.substring(0, 2).toUpperCase() || 'ST'}
                                                     </AvatarFallback>
                                                 </Avatar>

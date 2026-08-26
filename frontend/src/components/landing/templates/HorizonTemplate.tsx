@@ -1,9 +1,6 @@
 import React from 'react'
-import {
-  LandingCtas,
-  LandingHeaderBar,
-  SharedLandingFooter,
-} from '@/components/landing/LandingShared'
+import { LandingCtas, LandingHeaderBar, SharedLandingFooter } from '@/components/landing/LandingShared'
+import LandingHeroSocials from '@/components/landing/LandingHeroSocials'
 import { LandingContentSections } from '@/components/landing/LandingSections'
 import type { LandingTemplateProps } from '@/components/landing/types'
 
@@ -78,6 +75,15 @@ export default function HorizonTemplate(p: LandingTemplateProps) {
             align="center"
             solidClassName="rounded-xl px-6 text-white"
             outlineClassName="rounded-xl border-slate-200 bg-white px-6"
+          />
+        </div>
+        <div className="mt-6">
+          <LandingHeroSocials
+            institution={institution}
+            primary={primary}
+            tone={p.themeMode === 'dark' ? 'dark' : 'light'}
+            align="center"
+            preview={preview}
           />
         </div>
         <div className="mx-auto mt-8 overflow-hidden rounded-2xl shadow-[0_20px_50px_rgba(15,23,42,0.12)] ring-1 ring-black/5 sm:mt-10">

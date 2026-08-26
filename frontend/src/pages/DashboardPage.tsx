@@ -16,6 +16,7 @@ import { getRegistrationFeeAmount } from '@/lib/institution';
 import { computeStudentBalance } from '@/lib/finance';
 import { getInstitutionGradeScale } from '@/lib/gradingScale';
 import { getExamScorePercent, getExamTotalMarks, getLetterGrade } from '@/lib/examPass';
+import { usePlatformTheme } from '@/contexts/PlatformThemeContext';
 import {
   BarChart,
   Bar,
@@ -31,6 +32,8 @@ import {
  */
 const DashboardPage = () => {
   const { user, institution } = useAuth();
+  const { mode } = usePlatformTheme();
+  const isLight = mode === 'light';
   const {
     students,
     classes,
@@ -257,10 +260,10 @@ const DashboardPage = () => {
       </div>
 
       <div className="grid gap-4 lg:grid-cols-5">
-        <Card className="bg-slate-900/50 border-slate-800 lg:col-span-3">
+        <Card className="bg-slate-900/50 border-slate-800 lg:col-span-3 [.tenant-shell_&]:bg-[var(--tenant-surface)] [.tenant-shell_&]:border-[var(--tenant-line)] [.tenant-shell_&]:shadow-[0_10px_30px_color-mix(in_srgb,var(--brand-primary)_8%,transparent)]">
           <CardHeader>
-            <CardTitle className="text-white text-lg">Financial Overview</CardTitle>
-            <CardDescription className="text-slate-400">
+            <CardTitle className="text-white text-lg [.tenant-shell_&]:text-[var(--tenant-text)]">Financial Overview</CardTitle>
+            <CardDescription className="text-slate-400 [.tenant-shell_&]:text-[var(--tenant-muted)]">
               Distribution of revenue sources.
             </CardDescription>
           </CardHeader>
@@ -268,17 +271,17 @@ const DashboardPage = () => {
             {showFinance ? (
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={chartData} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" vertical={false} />
+                  <CartesianGrid strokeDasharray="3 3" stroke={isLight ? '#dbe4ef' : '#1e293b'} vertical={false} />
                   <XAxis
                     dataKey="name"
-                    stroke="#64748b"
-                    tick={{ fill: '#94a3b8', fontSize: 12 }}
+                    stroke={isLight ? '#64748b' : '#64748b'}
+                    tick={{ fill: isLight ? '#475569' : '#94a3b8', fontSize: 12 }}
                     axisLine={false}
                     tickLine={false}
                   />
                   <YAxis
                     stroke="#64748b"
-                    tick={{ fill: '#94a3b8', fontSize: 12 }}
+                    tick={{ fill: isLight ? '#475569' : '#94a3b8', fontSize: 12 }}
                     axisLine={false}
                     tickLine={false}
                     tickFormatter={(val) =>
@@ -286,16 +289,16 @@ const DashboardPage = () => {
                     }
                   />
                   <Tooltip
-                    cursor={{ fill: 'rgba(148, 163, 184, 0.08)' }}
+                    cursor={{ fill: isLight ? 'color-mix(in srgb, var(--brand-primary) 8%, transparent)' : 'rgba(148, 163, 184, 0.08)' }}
                     contentStyle={{
-                      background: '#0f172a',
-                      border: '1px solid #1e293b',
+                      background: isLight ? '#ffffff' : '#0f172a',
+                      border: isLight ? '1px solid #dbe4ef' : '1px solid #1e293b',
                       borderRadius: 8,
-                      color: '#f8fafc',
+                      color: isLight ? '#0f172a' : '#f8fafc',
                     }}
                     formatter={(value) => [formatCurrency(Number(value)), 'Amount']}
                   />
-                  <Bar dataKey="amount" fill="#334155" radius={[4, 4, 0, 0]} maxBarSize={72} />
+                  <Bar dataKey="amount" fill={isLight ? 'var(--brand-primary)' : '#334155'} radius={[4, 4, 0, 0]} maxBarSize={72} />
                 </BarChart>
               </ResponsiveContainer>
             ) : (
@@ -306,10 +309,10 @@ const DashboardPage = () => {
           </CardContent>
         </Card>
 
-        <Card className="bg-slate-900/50 border-slate-800 lg:col-span-2">
+        <Card className="bg-slate-900/50 border-slate-800 lg:col-span-2 [.tenant-shell_&]:bg-[var(--tenant-surface)] [.tenant-shell_&]:border-[var(--tenant-line)] [.tenant-shell_&]:shadow-[0_10px_30px_color-mix(in_srgb,var(--brand-primary)_8%,transparent)]">
           <CardHeader>
-            <CardTitle className="text-white text-lg">Latest Results</CardTitle>
-            <CardDescription className="text-slate-400">
+            <CardTitle className="text-white text-lg [.tenant-shell_&]:text-[var(--tenant-text)]">Latest Results</CardTitle>
+            <CardDescription className="text-slate-400 [.tenant-shell_&]:text-[var(--tenant-muted)]">
               Latest gradebook finals for your institution.
             </CardDescription>
           </CardHeader>
@@ -319,16 +322,16 @@ const DashboardPage = () => {
             ) : latestResults.length > 0 ? (
               latestResults.map((item) => (
                 <div key={item.id} className="flex items-center gap-3">
-                  <Avatar className="h-9 w-9 border border-slate-700">
-                    <AvatarFallback className="bg-slate-800 text-slate-300 text-sm">
+                  <Avatar className="h-9 w-9 border border-slate-700 [.tenant-shell_&]:border-[var(--tenant-line)]">
+                    <AvatarFallback className="bg-slate-800 text-white text-sm [html[data-platform-theme='light']_&]:bg-[color-mix(in_srgb,var(--brand-primary)_14%,transparent)] [html[data-platform-theme='light']_&]:text-[var(--brand-primary)]">
                       {item.initial}
                     </AvatarFallback>
                   </Avatar>
                   <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium text-white truncate">{item.name}</p>
+                    <p className="text-sm font-medium text-white truncate [.tenant-shell_&]:text-[var(--tenant-text)]">{item.name}</p>
                     <p className="text-xs text-slate-500 truncate">{item.subtitle}</p>
                   </div>
-                  <span className="text-sm font-semibold text-emerald-400 tabular-nums shrink-0">
+                  <span className="text-sm font-semibold text-emerald-400 tabular-nums shrink-0 [.tenant-shell_&]:text-emerald-600">
                     {item.scoreLabel}
                   </span>
                 </div>
