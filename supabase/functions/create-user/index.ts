@@ -160,9 +160,9 @@ Deno.serve(async (req) => {
     }
 
     const pwd =
-      password && String(password).length >= 6
-        ? String(password)
-        : crypto.randomUUID().slice(0, 8) + 'Aa1!'
+      role === 'student' || !(password && String(password).length >= 6)
+        ? crypto.randomUUID().slice(0, 8) + 'Aa1!'
+        : String(password)
 
     // Same-tenant suspended user → reactivate (admin only) instead of failing
     const { data: existingProfile } = await admin
@@ -275,6 +275,24 @@ Deno.serve(async (req) => {
       .eq('id', newUserId)
       .maybeSingle()
 
+    let returnedPassword = pwd
+    if (role === 'student') {
+      const studentCode = String(createdProfile?.student_code || '').trim()
+      if (!studentCode) {
+        await admin.auth.admin.deleteUser(newUserId)
+        return json({ error: 'STUDENT_ID_REQUIRED' }, 400)
+      }
+      const { error: pwErr } = await admin.auth.admin.updateUserById(newUserId, {
+        password: studentCode,
+      })
+      if (pwErr) {
+        await admin.auth.admin.deleteUser(newUserId)
+        console.error('[create-user] student ID password failed', pwErr.message)
+        return json({ error: pwErr.message }, 400)
+      }
+      returnedPassword = studentCode
+    }
+
     const { data: inst } = await admin
       .from('institutions')
       .select('name')
@@ -285,7 +303,7 @@ Deno.serve(async (req) => {
       {
         id: newUserId,
         email,
-        password: pwd,
+        password: returnedPassword,
         role,
         full_name,
         student_code: createdProfile?.student_code || null,

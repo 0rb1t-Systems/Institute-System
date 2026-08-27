@@ -20,6 +20,7 @@ import {
   getInstitutionCurrencySymbol,
   isInstitutionSettingsComplete,
   formatCertificateSerial,
+  formatCertificateDigits,
   parseCertificateNumberStart,
   nextCertificateSerialPreview,
   defaultStudentIdSample,
@@ -71,7 +72,7 @@ const empty = {
   certificate_footer_text: '',
   transcript_footer_text: '',
   invoice_footer_text: '',
-  certificate_number_start: '0001',
+  certificate_number_start: '001',
   student_id_sample: '',
 }
 
@@ -174,7 +175,7 @@ const InstitutionSettingsForm = ({ onUpdated }) => {
       certificate_footer_text: institution.certificate_footer_text || '',
       transcript_footer_text: institution.transcript_footer_text || '',
       invoice_footer_text: institution.invoice_footer_text || '',
-      certificate_number_start: formatCertificateSerial(
+      certificate_number_start: formatCertificateDigits(
         institution.certificate_number_start,
         institution.certificate_number_pad,
       ),
@@ -654,23 +655,26 @@ const InstitutionSettingsForm = ({ onUpdated }) => {
             <div>
               <CardTitle className="text-white text-base">Certificate numbering</CardTitle>
               <CardDescription>
-                Set the first serial for this institution (example 0001). Each new certificate takes the next
-                unused number. Issued numbers never go backwards and two certificates cannot share the same number.
+                Enter the starting number (example 001 or 002). Certificates are issued as CERT-001, CERT-002,
+                and so on. Numbers never go backwards and two certificates cannot share the same number.
               </CardDescription>
             </div>
           </div>
         </CardHeader>
         <CardContent className="space-y-2">
           <Label htmlFor="cert_number_start">Certificate start number</Label>
-          <Input
-            id="cert_number_start"
-            form="institution-settings-form"
-            value={form.certificate_number_start}
-            onChange={(e) => setField('certificate_number_start', e.target.value.replace(/[^\d]/g, '').slice(0, 9))}
-            inputMode="numeric"
-            placeholder="0001"
-            className="bg-slate-950 border-slate-800 font-mono max-w-xs"
-          />
+          <div className="flex items-center gap-2 max-w-xs">
+            <span className="font-mono text-slate-400 shrink-0">CERT-</span>
+            <Input
+              id="cert_number_start"
+              form="institution-settings-form"
+              value={form.certificate_number_start}
+              onChange={(e) => setField('certificate_number_start', e.target.value.replace(/[^\d]/g, '').slice(0, 9))}
+              inputMode="numeric"
+              placeholder="001"
+              className="bg-slate-950 border-slate-800 font-mono"
+            />
+          </div>
           <p className="text-xs text-slate-500">
             Next certificate will be{' '}
             <span className="font-mono text-slate-300">
@@ -705,8 +709,9 @@ const InstitutionSettingsForm = ({ onUpdated }) => {
             <div>
               <CardTitle className="text-white text-base">Student ID structure</CardTitle>
               <CardDescription>
-                Example: brce002, DI123, or 134855. The next student gets the next unused number. IDs never go
-                backwards and two students cannot share the same ID.
+                Example: brce002, DI1234, or 134855. The next student gets the next unused number. The first
+                login password is this Student ID (then they can change it). Use at least 6 characters so login
+                is accepted. IDs never go backwards and two students cannot share the same ID.
               </CardDescription>
             </div>
           </div>

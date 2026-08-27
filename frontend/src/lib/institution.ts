@@ -650,26 +650,31 @@ export function getInstitutionContactLine(institution?: InstitutionBrand): strin
   return parts.join(' · ') || getTenantBaseUrl(institution).replace(/^https?:\/\//, '')
 }
 
-export function formatCertificateSerial(n?: number | null, pad = 4): string {
+export function formatCertificateDigits(n?: number | null, pad = 3): string {
   const v = Math.max(1, Math.floor(Number(n) || 1))
-  const width = Math.min(9, Math.max(1, Math.floor(Number(pad) || 4)))
+  const width = Math.min(9, Math.max(1, Math.floor(Number(pad) || 3)))
   return String(v).padStart(Math.max(width, String(v).length), '0')
 }
 
+/** Official issued certificate number: CERT-001, CERT-002, … */
+export function formatCertificateSerial(n?: number | null, pad = 3): string {
+  return `CERT-${formatCertificateDigits(n, pad)}`
+}
+
 export function parseCertificateNumberStart(raw: string): { start: number; pad: number } {
-  const digits = String(raw || '').replace(/\D/g, '')
+  const digits = String(raw || '').replace(/^CERT-?/i, '').replace(/\D/g, '')
   const start = Math.max(1, Math.floor(Number(digits || '1')))
   if (!Number.isFinite(start) || start > 999999999) {
     throw new Error('INVALID_CERTIFICATE_START')
   }
-  const pad = Math.min(9, Math.max(4, digits.length || 4))
+  const pad = Math.min(9, Math.max(3, digits.length || 3))
   return { start, pad }
 }
 
 export function nextCertificateSerialPreview(institution?: InstitutionBrand): string {
   const start = Math.max(1, Math.floor(Number(institution?.certificate_number_start) || 1))
   const last = Math.max(0, Math.floor(Number(institution?.certificate_number_last) || 0))
-  const pad = Math.min(9, Math.max(1, Math.floor(Number(institution?.certificate_number_pad) || 4)))
+  const pad = Math.min(9, Math.max(1, Math.floor(Number(institution?.certificate_number_pad) || 3)))
   return formatCertificateSerial(Math.max(last, start - 1) + 1, pad)
 }
 

@@ -35,13 +35,6 @@ function normalizeSecret(raw: string | undefined | null): string {
   return key
 }
 
-function randomPassword(len = 12): string {
-  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789!@#'
-  const arr = new Uint8Array(len)
-  crypto.getRandomValues(arr)
-  return Array.from(arr, (b) => chars[b % chars.length]).join('')
-}
-
 function isDuplicateKey(msg: string): boolean {
   const lower = String(msg || '').toLowerCase()
   return (
@@ -231,10 +224,10 @@ Deno.serve(async (req) => {
     let tempPassword: string | null = null
 
     if (!studentId) {
-      tempPassword = randomPassword(12)
+      const bootstrapPassword = crypto.randomUUID().replace(/-/g, '') + 'Aa1'
       const { data: createdAuth, error: authErr } = await admin.auth.admin.createUser({
         email,
-        password: tempPassword,
+        password: bootstrapPassword,
         email_confirm: true,
         user_metadata: { full_name: fullName },
       })
@@ -272,6 +265,34 @@ Deno.serve(async (req) => {
           .eq('id', inquiryId)
         return json({ error: profErr.message }, 400)
       }
+
+      const { data: codeRow } = await admin
+        .from('profiles')
+        .select('student_code')
+        .eq('id', studentId)
+        .maybeSingle()
+      const studentCode = String(codeRow?.student_code || '').trim()
+      if (!studentCode) {
+        await admin.auth.admin.deleteUser(studentId)
+        await admin
+          .from('registration_inquiries')
+          .update({ status: 'pending', updated_at: new Date().toISOString() })
+          .eq('id', inquiryId)
+        return json({ error: 'STUDENT_ID_REQUIRED' }, 400)
+      }
+      const { error: pwErr } = await admin.auth.admin.updateUserById(studentId, {
+        password: studentCode,
+      })
+      if (pwErr) {
+        await admin.auth.admin.deleteUser(studentId)
+        await admin
+          .from('registration_inquiries')
+          .update({ status: 'pending', updated_at: new Date().toISOString() })
+          .eq('id', inquiryId)
+        console.error('[approve-registration-inquiry] student ID password failed', pwErr.message)
+        return json({ error: pwErr.message }, 400)
+      }
+      tempPassword = studentCode
     } else if (inquiry.affiliate_id) {
       await admin
         .from('profiles')

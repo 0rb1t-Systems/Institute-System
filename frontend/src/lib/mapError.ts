@@ -170,7 +170,7 @@ const CODE_MAP = {
   },
   INVALID_CERTIFICATE_START: {
     title: 'Invalid certificate start',
-    description: 'Enter a starting serial like 0001. Numbers only, from 1 upward.',
+    description: 'Enter a starting number like 001 or 002. Certificates are issued as CERT-001, CERT-002.',
   },
   INVALID_STUDENT_ID_SAMPLE: {
     title: 'Invalid student ID structure',

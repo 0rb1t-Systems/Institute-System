@@ -159,8 +159,9 @@ const GeneralRegistrationsList = () => {
                     <div className="bg-slate-950 p-4 rounded-md border border-slate-800 space-y-2 font-mono text-sm">
                         <div className="flex justify-between"><span className="text-slate-500">Name:</span> <span className="text-white">{createdCreds?.name}</span></div>
                         <div className="flex justify-between"><span className="text-slate-500">Email:</span> <span className="text-white">{createdCreds?.email}</span></div>
-                        <div className="flex justify-between"><span className="text-slate-500">Username:</span> <span className="text-yellow-400 font-bold">{createdCreds?.username}</span></div>
-                        <div className="flex justify-between"><span className="text-slate-500">Password:</span> <span className="text-green-400 font-bold">{createdCreds?.password}</span></div>
+                        <div className="flex justify-between"><span className="text-slate-500">Student ID:</span> <span className="text-yellow-400 font-bold">{createdCreds?.username}</span></div>
+                        <p className="text-xs text-slate-500 pt-1">First password is the Student ID. The student can change it after login.</p>
+                        <div className="flex justify-between"><span className="text-slate-500">First password (same as ID):</span> <span className="text-green-400 font-bold">{createdCreds?.password}</span></div>
                     </div>
                     <p className="text-xs text-slate-500 italic">Usually the password is the same as the Student Code.</p>
                 </div>

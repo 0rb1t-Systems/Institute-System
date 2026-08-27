@@ -723,7 +723,7 @@ export const createStudentWithAutoCode = async (data) => {
   })
   return {
     ...student,
-    password: result.password,
+    password: result.password || student.student_code,
     emailed: result.emailed,
     email_skipped: result.email_skipped,
     email_error: result.email_error,
