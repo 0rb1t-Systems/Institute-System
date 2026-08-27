@@ -39,6 +39,7 @@ const LoginPage = ({ initialError = '' }) => {
   const [error, setError] = useState(initialError || '');
   const [isLoading, setIsLoading] = useState(false);
   const [forgotMode, setForgotMode] = useState(false);
+  const [forgotSent, setForgotSent] = useState(false);
   const [info, setInfo] = useState('');
   const [institution, setInstitution] = useState(null);
   const [loadingTenant, setLoadingTenant] = useState(false);
