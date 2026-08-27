@@ -17,7 +17,7 @@ import { uploadAssignmentFile, resolveAssignmentFileUrl } from '@/lib/api';
 
 const StudentAssignmentsPage = () => {
     const { user } = useAuth();
-    const { assignments, assignmentSubmissions, enrollments, classes, createManualSubmission } = useData();
+    const { assignments, assignmentSubmissions, enrollments, classes, courses, createManualSubmission } = useData();
     const { toast } = useToast();
     const [uploading, setUploading] = useState(null);
 
@@ -47,6 +47,7 @@ const StudentAssignmentsPage = () => {
             .filter(a => myClassIds.includes(a.class_id))
             .map(a => {
                 const cls = classes.find(c => c.id === a.class_id);
+                const courseName = courses.find(c => c.id === a.course_id)?.name;
                 const submission = assignmentSubmissions.find(s => s.assignment_id === a.id && s.student_id === student?.id);
                 
                 const dueDate = new Date(a.due_date);
@@ -64,6 +65,7 @@ const StudentAssignmentsPage = () => {
                 return {
                     ...a,
                     className: cls?.name,
+                    courseName,
                     submission,
                     isPastDeadline,
                     isArchived,
@@ -72,7 +74,7 @@ const StudentAssignmentsPage = () => {
             })
             .filter(a => !a.isArchived)
             .sort((a, b) => Number(new Date(a.due_date)) - Number(new Date(b.due_date)));
-    }, [assignments, myClassIds, classes, assignmentSubmissions, student]);
+    }, [assignments, myClassIds, classes, courses, assignmentSubmissions, student]);
 
     const handleFileUpload = async (event, assignmentId) => {
         const file = event.target.files[0];
@@ -119,7 +121,16 @@ const StudentAssignmentsPage = () => {
                                 <div className="flex justify-between items-start gap-3">
                                     <div>
                                         <CardTitle>{assign.title}</CardTitle>
-                                        <CardDescription className="mt-1">{assign.className}</CardDescription>
+                                        <CardDescription className="mt-1">
+                                          {assign.courseName ? (
+                                            <>
+                                              <span className="font-medium text-indigo-300">{assign.courseName}</span>
+                                              {assign.className ? <span> · {assign.className}</span> : null}
+                                            </>
+                                          ) : (
+                                            assign.className
+                                          )}
+                                        </CardDescription>
                                     </div>
                                     <div className="flex flex-col items-end gap-2">
                                         {assign.submission ? (

@@ -48,3 +48,22 @@ export function diplomaIdsForCourse(diplomaCourses = [], course) {
   if (ids.length) return ids;
   return course.diploma_id ? [course.diploma_id] : [];
 }
+
+/** Courses a class can assign work to: linked class courses + diploma program courses. */
+export function coursesForClass(classRow, courses = [], classCourses = [], diplomaCourses = []) {
+  if (!classRow) return [];
+  const list = [];
+  const add = (course) => {
+    if (course && !list.some((c) => c.id === course.id)) list.push(course);
+  };
+  if (classRow.course_id) {
+    add((courses || []).find((c) => c.id === classRow.course_id));
+  }
+  ;(classCourses || [])
+    .filter((cc) => cc.class_id === classRow.id)
+    .forEach((cc) => add((courses || []).find((c) => c.id === cc.course_id)));
+  if (classRow.diploma_id) {
+    coursesForDiploma(courses, diplomaCourses, classRow.diploma_id).forEach(add);
+  }
+  return list;
+}

@@ -31,6 +31,7 @@ const AssignmentGradingPage = () => {
       exams,
       results,
       classes,
+      courses,
     } = useData();
     const { toast } = useToast();
     
@@ -50,6 +51,10 @@ const AssignmentGradingPage = () => {
     };
 
     const assignment = useMemo(() => assignments.find(a => a.id === assignmentId), [assignments, assignmentId]);
+    const assignmentCourseName = useMemo(
+      () => courses.find((c) => c.id === assignment?.course_id)?.name || '',
+      [courses, assignment],
+    );
     const classPrimaryCourseId = useMemo(() => {
       if (!assignment) return null;
       return classes.find((c) => c.id === assignment.class_id)?.course_id || null;
@@ -167,6 +172,7 @@ const AssignmentGradingPage = () => {
                     <div className="min-w-0">
                         <h1 className="text-xl sm:text-2xl font-bold text-white break-words">{assignment.title}</h1>
                         <p className="text-slate-400 text-sm break-words">
+                            {assignmentCourseName ? `${assignmentCourseName} · ` : ''}
                             Due: {formatDateTime(assignment.due_date)} |{' '}
                             {countsTowardGrade
                               ? `Bonus max: ${assignment.total_marks} (added to exam)`

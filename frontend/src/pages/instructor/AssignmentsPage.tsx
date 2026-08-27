@@ -17,6 +17,7 @@ import { notify, MESSAGES } from '@/lib/notify';
 import { Plus, Calendar, BookOpen, Clock, Trash2, Edit, CheckCircle, Users, File } from 'lucide-react';
 import { formatDateTime } from '@/lib/utils';
 import { uploadAssignmentFile } from '@/lib/api';
+import { coursesForClass } from '@/lib/diplomaCourses';
 import {
   DateTimePickerField,
   splitDateTimeLocal,
@@ -37,7 +38,7 @@ import {
 
 const AssignmentsPage = () => {
   const { user } = useAuth();
-  const { assignments, classes, courses, classCourses, saveAssignment, deleteAssignmentData, assignmentSubmissions } = useData();
+  const { assignments, classes, courses, classCourses, diplomaCourses = [], saveAssignment, deleteAssignmentData, assignmentSubmissions } = useData();
   const { toast } = useToast();
   const navigate = useNavigate();
   
@@ -69,20 +70,14 @@ const AssignmentsPage = () => {
 
   const selectedClassCourses = useMemo(() => {
     const cls = classes.find((c) => c.id === formData.class_id);
-    if (!cls) return [];
-    const list = [];
-    if (cls.course_id) {
-      const c = courses.find((co) => co.id === cls.course_id);
-      if (c) list.push(c);
-    }
-    (classCourses || [])
-      .filter((cc) => cc.class_id === formData.class_id)
-      .forEach((cc) => {
-        const c = courses.find((co) => co.id === cc.course_id);
-        if (c && !list.some((x) => x.id === c.id)) list.push(c);
-      });
-    return list;
-  }, [classes, courses, classCourses, formData.class_id]);
+    return coursesForClass(cls, courses, classCourses, diplomaCourses);
+  }, [classes, courses, classCourses, diplomaCourses, formData.class_id]);
+
+  const selectedClass = useMemo(
+    () => classes.find((c) => c.id === formData.class_id) || null,
+    [classes, formData.class_id],
+  );
+  const isDiplomaClass = Boolean(selectedClass?.diploma_id) || selectedClassCourses.length > 1;
 
   const filteredAssignments = useMemo(() => {
       if (user?.role === 'admin' || user?.role === 'staff') return assignments;
@@ -109,11 +104,12 @@ const AssignmentsPage = () => {
           setEditingAssignment(null);
           const defaultClassId = availableClasses.length > 0 ? availableClasses[0].id : '';
           const cls = classes.find((c) => c.id === defaultClassId);
+          const classCourseList = coursesForClass(cls, courses, classCourses, diplomaCourses);
           setFormData({
               title: '',
               description: '',
               class_id: defaultClassId,
-              course_id: cls?.course_id || '',
+              course_id: classCourseList.length === 1 ? classCourseList[0].id : '',
               due_date: '',
               due_time: '14:00',
               total_marks: 10,
@@ -148,6 +144,10 @@ const AssignmentsPage = () => {
           notify.validation('Please select a class.');
           return;
       }
+      if (selectedClassCourses.length > 1 && !formData.course_id) {
+          notify.validation('Please select which diploma course this assignment belongs to.');
+          return;
+      }
       if (!formData.due_date) {
           notify.validation('Please choose a due date.');
           return;
@@ -170,7 +170,7 @@ const AssignmentsPage = () => {
               title: formData.title,
               description: formData.description,
               class_id: formData.class_id,
-              course_id: formData.course_id || null,
+              course_id: formData.course_id || selectedClassCourses[0]?.id || null,
               total_marks: marks,
               due_date: new Date(dueLocal).toISOString(),
               attachment_url: uploadedFileUrl || null,
@@ -215,13 +215,24 @@ const AssignmentsPage = () => {
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
             {filteredAssignments.map(assign => {
                 const stats = getSubmissionStats(assign.id);
+                const cls = classes.find((c) => c.id === assign.class_id);
+                const courseName = courses.find((c) => c.id === assign.course_id)?.name;
                 return (
                     <Card key={assign.id} className="bg-slate-900/50 border-slate-800 flex flex-col">
                         <CardHeader>
                             <div className="flex justify-between items-start">
                                 <div>
                                     <CardTitle className="text-lg text-slate-100 line-clamp-1" title={assign.title}>{assign.title}</CardTitle>
-                                    <CardDescription className="mt-1">{assign.class?.name}</CardDescription>
+                                    <CardDescription className="mt-1">
+                                      {courseName ? (
+                                        <>
+                                          <span className="text-indigo-300">{courseName}</span>
+                                          {cls?.name ? <span> · {cls.name}</span> : null}
+                                        </>
+                                      ) : (
+                                        assign.class?.name || cls?.name
+                                      )}
+                                    </CardDescription>
                                 </div>
                                 <div className="flex flex-col items-end gap-2">
                                     <span
@@ -327,10 +338,11 @@ const AssignmentsPage = () => {
                           value={formData.class_id}
                           onValueChange={(val) => {
                             const cls = classes.find((c) => c.id === val);
+                            const classCourseList = coursesForClass(cls, courses, classCourses, diplomaCourses);
                             setFormData({
                               ...formData,
                               class_id: val,
-                              course_id: cls?.course_id || formData.course_id || '',
+                              course_id: classCourseList.length === 1 ? classCourseList[0].id : '',
                             });
                           }}
                         >
@@ -340,25 +352,28 @@ const AssignmentsPage = () => {
                             </SelectContent>
                         </Select>
                     </div>
-                    {selectedClassCourses.length > 0 && formData.counts_toward_grade !== false && (
+                    {selectedClassCourses.length > 0 && (
                       <div className="space-y-2">
-                        <Label>Course (exam this boosts)</Label>
+                        <Label>{isDiplomaClass ? 'Diploma course' : 'Course'}</Label>
                         <Select
-                          value={formData.course_id || 'none'}
+                          value={formData.course_id || undefined}
                           onValueChange={(val) =>
-                            setFormData({ ...formData, course_id: val === 'none' ? '' : val })
+                            setFormData({ ...formData, course_id: val })
                           }
                         >
-                          <SelectTrigger><SelectValue placeholder="Use class course" /></SelectTrigger>
+                          <SelectTrigger>
+                            <SelectValue placeholder={isDiplomaClass ? 'Select a course in this diploma' : 'Select course'} />
+                          </SelectTrigger>
                           <SelectContent>
-                            <SelectItem value="none">Class primary course</SelectItem>
                             {selectedClassCourses.map((c) => (
                               <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
                             ))}
                           </SelectContent>
                         </Select>
                         <p className="text-[10px] text-slate-500">
-                          Graded assignment points are added to this course&apos;s exam score (capped at exam total).
+                          {isDiplomaClass
+                            ? 'Students will see this course name on the assignment. Graded bonus points go to this course exam.'
+                            : 'Graded assignment points are added to this course exam score (capped at exam total).'}
                         </p>
                       </div>
                     )}
