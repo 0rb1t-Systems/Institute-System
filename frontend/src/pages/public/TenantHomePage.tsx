@@ -281,6 +281,7 @@ const TenantHomePage = ({ subdomain: subdomainProp }) => {
     try {
       const { user: signedIn, error: loginErr } = await login(id, pw, {
         requiredInstitutionId: String(institution.id),
+        subdomain: institution.subdomain || '',
       });
       if (loginErr || !signedIn) {
         throw loginErr || new Error('AUTH.INVALID_CREDENTIALS');

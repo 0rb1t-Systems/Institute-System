@@ -11,7 +11,7 @@ import { landingContentForSave } from '@/lib/landingContent'
 const notReady = (_feature) => new Error('FEATURE_UNAVAILABLE')
 
 const INST_SELECT =
-  'id, name, subdomain, logo_url, description, email, phone, address, website, motto, theme_primary, theme_accent, theme_tertiary, social_whatsapp, social_facebook, social_tiktok, status, created_at, affiliate_commission_rate, registration_fee_amount, default_instructor_commission_rate, currency, currency_symbol, signatory_left_title, signatory_right_title, signatory_left_name, signatory_right_name, seal_url, signature_url, certificate_footer_text, transcript_footer_text, invoice_footer_text, settings_completed_at, landing_template_id, hero_image_url, hero_headline, footer_text, landing_content, grading_scale'
+  'id, name, subdomain, logo_url, description, email, phone, address, website, motto, theme_primary, theme_accent, theme_tertiary, social_whatsapp, social_facebook, social_tiktok, status, created_at, affiliate_commission_rate, registration_fee_amount, default_instructor_commission_rate, currency, currency_symbol, signatory_left_title, signatory_right_title, signatory_left_name, signatory_right_name, seal_url, signature_url, certificate_footer_text, transcript_footer_text, invoice_footer_text, certificate_number_start, certificate_number_pad, certificate_number_last, student_id_prefix, student_id_start, student_id_pad, student_id_last, settings_completed_at, landing_template_id, hero_image_url, hero_headline, footer_text, landing_content, grading_scale'
 
 async function requireUser() {
   const { data, error } = await supabase.auth.getUser()
@@ -35,7 +35,8 @@ function mapProfile(p) {
   return {
     ...p,
     name: p.full_name,
-    username: p.email?.split('@')[0] || p.id.slice(0, 8),
+    username: p.student_code || p.email?.split('@')[0] || p.id.slice(0, 8),
+    student_code: p.student_code || p.email?.split('@')[0] || p.id.slice(0, 8),
     avatar_url: p.avatar_url ?? null,
   }
 }
@@ -45,7 +46,7 @@ function mapStudent(p) {
   return {
     id: p.id,
     profile_id: p.id,
-    student_code: (p.email?.split('@')[0] || p.id.slice(0, 8)).toUpperCase(),
+    student_code: p.student_code || (p.email?.split('@')[0] || p.id.slice(0, 8)).toUpperCase(),
     name: p.full_name,
     email: p.email,
     phone: p.phone ?? null,
@@ -188,7 +189,7 @@ function mapSettlement(row, ctx: any = {}) {
     class: classRow ? { id: classRow.id, name: classRow.name } : null,
     class_id: row.class_id,
     student: student
-      ? { id: student.id, name: student.full_name || student.name, student_code: student.email?.split('@')[0]?.toUpperCase() }
+      ? { id: student.id, name: student.full_name || student.name, student_code: student.student_code || student.email?.split('@')[0]?.toUpperCase() }
       : null,
     payment: payment ? { id: payment.id, amount: Number(payment.amount) } : null,
   }
@@ -219,7 +220,7 @@ async function enrichSettlements(rows) {
     ...new Set((enrollmentsRes.data || []).map((e) => e.student_id).filter(Boolean)),
   ]
   const profilesRes = studentIds.length
-    ? await supabase.from('profiles').select('id, full_name, email').in('id', studentIds)
+    ? await supabase.from('profiles').select('id, full_name, email, student_code').in('id', studentIds)
     : { data: [] }
 
   const enrollmentById = Object.fromEntries((enrollmentsRes.data || []).map((e) => [e.id, e]))
@@ -266,17 +267,14 @@ export const verifyStudentCredentials = async (email, password) => {
   }
 }
 
-export const getEmailByUsername = async (username) => {
+export const getEmailByUsername = async (username, subdomain) => {
   if (!username) return null
-  const q = username.trim()
-  const { data, error } = await supabase
-    .from('profiles')
-    .select('email')
-    .ilike('email', `${q}%`)
-    .limit(10)
-  if (error || !data?.length) return null
-  const exact = data.find((p) => p.email?.split('@')[0]?.toLowerCase() === q.toLowerCase())
-  return (exact || data[0]).email
+  const { data, error } = await supabase.rpc('resolve_login_email', {
+    p_identifier: String(username).trim(),
+    p_subdomain: String(subdomain || '').trim().toLowerCase() || null,
+  })
+  if (error || !data) return null
+  return String(data)
 }
 
 export const createNewUser = async (data) => {
@@ -1197,6 +1195,37 @@ export const updateInstitution = async (updates) => {
   }
   if (updates.invoice_footer_text !== undefined) {
     allowed.invoice_footer_text = String(updates.invoice_footer_text || '').trim() || null
+  }
+  if (updates.certificate_number_start !== undefined || updates.certificate_number_pad !== undefined) {
+    const start = Math.floor(Number(updates.certificate_number_start))
+    const pad = Math.floor(Number(updates.certificate_number_pad ?? 4))
+    if (!Number.isFinite(start) || start < 1 || start > 999999999) {
+      throw new Error('INVALID_CERTIFICATE_START')
+    }
+    if (!Number.isFinite(pad) || pad < 1 || pad > 9) {
+      throw new Error('INVALID_CERTIFICATE_START')
+    }
+    allowed.certificate_number_start = start
+    allowed.certificate_number_pad = pad
+  }
+  if (
+    updates.student_id_prefix !== undefined ||
+    updates.student_id_start !== undefined ||
+    updates.student_id_pad !== undefined
+  ) {
+    const prefix = String(updates.student_id_prefix ?? '').trim()
+    if (!/^[A-Za-z]{0,12}$/.test(prefix)) throw new Error('INVALID_STUDENT_ID_SAMPLE')
+    const start = Math.floor(Number(updates.student_id_start))
+    const pad = Math.floor(Number(updates.student_id_pad ?? 3))
+    if (!Number.isFinite(start) || start < 1 || start > 999999999) {
+      throw new Error('INVALID_STUDENT_ID_SAMPLE')
+    }
+    if (!Number.isFinite(pad) || pad < 1 || pad > 9) {
+      throw new Error('INVALID_STUDENT_ID_SAMPLE')
+    }
+    allowed.student_id_prefix = prefix
+    allowed.student_id_start = start
+    allowed.student_id_pad = pad
   }
   if (updates.grading_scale !== undefined) {
     // null clears custom scale (fallback to platform default)
@@ -2345,7 +2374,7 @@ export const getAttendanceEnriched = async (filters: any = {}) => {
 
   const [profilesRes, classesRes] = await Promise.all([
     studentIds.length
-      ? supabase.from('profiles').select('id, full_name, email').in('id', studentIds)
+      ? supabase.from('profiles').select('id, full_name, email, student_code').in('id', studentIds)
       : Promise.resolve({ data: [] }),
     uniqueClassIds.length
       ? supabase.from('classes').select('id, name').in('id', uniqueClassIds)
@@ -2362,7 +2391,7 @@ export const getAttendanceEnriched = async (filters: any = {}) => {
     return {
       ...mapped,
       student: profile
-        ? { id: profile.id, name: profile.full_name, student_code: profile.email?.split('@')[0] }
+        ? { id: profile.id, name: profile.full_name, student_code: profile.student_code || profile.email?.split('@')[0] }
         : null,
       class: cls ? { id: cls.id, name: cls.name } : null,
     }
@@ -2595,14 +2624,6 @@ export const autoGenerateCertificatesBatch = async (options: CertificateBatchOpt
     candidates = candidates.filter((row) => allow.has(row.student_id))
   }
 
-  const [{ data: existing, error: certErr }] = await Promise.all([
-    supabase
-      .from('certificates')
-      .select('id, student_id, class_id, enrollment_id, certificate_number')
-      .eq('institution_id', me.institution_id),
-  ])
-  if (certErr) throw certErr
-
   const { data: snapshot, error: snapErr } = await supabase.rpc('build_document_branding_snapshot', {
     p_institution_id: me.institution_id,
     p_document_type: 'certificate',
@@ -2649,17 +2670,7 @@ export const autoGenerateCertificatesBatch = async (options: CertificateBatchOpt
   const courseById = Object.fromEntries((courses || []).map((c) => [c.id, c]))
   const diplomaById = Object.fromEntries((diplomas || []).map((d) => [d.id, d]))
 
-  const year = new Date().getFullYear()
-  const existingNums = (existing || [])
-    .map((c) => String(c.certificate_number || ''))
-    .map((n) => {
-      const m = n.match(new RegExp(`^CERT-${year}-(\\d+)$`, 'i'))
-      return m ? Number(m[1]) : 0
-    })
-  let seq = Math.max(0, ...existingNums, (existing || []).length)
-
   const items = toCreate.map((enr) => {
-    seq += 1
     const cls = classById[enr.class_id]
     const course = cls?.course_id ? courseById[cls.course_id] : null
     const diploma = cls?.diploma_id ? diplomaById[cls.diploma_id] : null
@@ -2668,7 +2679,6 @@ export const autoGenerateCertificatesBatch = async (options: CertificateBatchOpt
       student_id: enr.student_id,
       class_id: enr.class_id,
       enrollment_id: enr.id,
-      certificate_number: `CERT-${year}-${String(seq).padStart(5, '0')}`,
       template_snapshot: {
         ...(snapshot && typeof snapshot === 'object' ? snapshot : {}),
         class_id: enr.class_id,
@@ -3055,7 +3065,7 @@ async function enrichCertificates(rows) {
 
   const [{ data: profiles }, { data: classRows }] = await Promise.all([
     studentIds.length
-      ? supabase.from('profiles').select('id, full_name, email').in('id', studentIds)
+      ? supabase.from('profiles').select('id, full_name, email, student_code').in('id', studentIds)
       : Promise.resolve({ data: [] }),
     classIds.length
       ? supabase
@@ -3148,17 +3158,26 @@ export const getCertificateByStudentAndDiploma = async (studentId, diplomaId) =>
 
 export const generateCertificatesBatch = async (items) => {
   const me = await getMyProfile()
-  const rows = (items || []).map((item, i) => ({
+  const pending = items || []
+  if (!pending.length) return []
+
+  const { data: serials, error: allocErr } = await supabase.rpc('allocate_certificate_numbers', {
+    p_count: pending.length,
+  })
+  if (allocErr) throw allocErr
+  const numbers = Array.isArray(serials) ? serials.map((n) => String(n)) : []
+  if (numbers.length !== pending.length) throw new Error('CERTIFICATE_NUMBER_EXHAUSTED')
+
+  const rows = pending.map((item, i) => ({
     institution_id: me.institution_id,
     student_id: item.student_id,
     enrollment_id: item.enrollment_id || null,
     class_id: item.class_id || null,
-    certificate_number: item.certificate_number || `CERT-${Date.now()}-${i}`,
+    certificate_number: numbers[i],
     status: 'issued',
     issued_by: me.id,
     template_snapshot: item.template_snapshot || item || {},
   }))
-  if (!rows.length) return []
   const { data, error } = await supabase.from('certificates').insert(rows).select()
   if (error) {
     const msg = String(error.message || error.code || '')
@@ -3498,7 +3517,7 @@ export const approveRegistrationInquiry = async (id) => {
   return {
     name: payload.name,
     email: payload.email,
-    student_code: payload.email?.split('@')[0],
+    student_code: payload.student_code || payload.email?.split('@')[0],
     password: payload.password || null,
     already_approved: !!payload.already_approved,
     emailed,

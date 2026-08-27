@@ -176,7 +176,7 @@ const LoginPage = ({ initialError = '' }) => {
       const { user, error: loginError } = await login(trimmedIdentifier, trimmedPassword, {
         platformAdminOnly: !isTenantLogin,
         ...(isTenantLogin && institution?.id
-          ? { requiredInstitutionId: institution.id }
+          ? { requiredInstitutionId: institution.id, subdomain: institution.subdomain || tenant || '' }
           : {}),
       });
 

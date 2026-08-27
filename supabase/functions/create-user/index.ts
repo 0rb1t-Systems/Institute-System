@@ -269,6 +269,12 @@ Deno.serve(async (req) => {
       return json({ error: pErr.message }, 400)
     }
 
+    const { data: createdProfile } = await admin
+      .from('profiles')
+      .select('student_code')
+      .eq('id', newUserId)
+      .maybeSingle()
+
     const { data: inst } = await admin
       .from('institutions')
       .select('name')
@@ -282,6 +288,7 @@ Deno.serve(async (req) => {
         password: pwd,
         role,
         full_name,
+        student_code: createdProfile?.student_code || null,
         institution_id: caller.institution_id,
         institution_name: inst?.name ?? 'Training Center',
       },

@@ -31,6 +31,13 @@ export type InstitutionBrand = {
   /** Director/Registrar signature image */
   signature_url?: string | null
   certificate_footer_text?: string | null
+  certificate_number_start?: number | null
+  certificate_number_pad?: number | null
+  certificate_number_last?: number | null
+  student_id_prefix?: string | null
+  student_id_start?: number | null
+  student_id_pad?: number | null
+  student_id_last?: number | null
   transcript_footer_text?: string | null
   invoice_footer_text?: string | null
   settings_completed_at?: string | null
@@ -641,6 +648,83 @@ export function getInstitutionContactLine(institution?: InstitutionBrand): strin
     .map((p) => String(p || '').trim())
     .filter(Boolean)
   return parts.join(' · ') || getTenantBaseUrl(institution).replace(/^https?:\/\//, '')
+}
+
+export function formatCertificateSerial(n?: number | null, pad = 4): string {
+  const v = Math.max(1, Math.floor(Number(n) || 1))
+  const width = Math.min(9, Math.max(1, Math.floor(Number(pad) || 4)))
+  return String(v).padStart(Math.max(width, String(v).length), '0')
+}
+
+export function parseCertificateNumberStart(raw: string): { start: number; pad: number } {
+  const digits = String(raw || '').replace(/\D/g, '')
+  const start = Math.max(1, Math.floor(Number(digits || '1')))
+  if (!Number.isFinite(start) || start > 999999999) {
+    throw new Error('INVALID_CERTIFICATE_START')
+  }
+  const pad = Math.min(9, Math.max(4, digits.length || 4))
+  return { start, pad }
+}
+
+export function nextCertificateSerialPreview(institution?: InstitutionBrand): string {
+  const start = Math.max(1, Math.floor(Number(institution?.certificate_number_start) || 1))
+  const last = Math.max(0, Math.floor(Number(institution?.certificate_number_last) || 0))
+  const pad = Math.min(9, Math.max(1, Math.floor(Number(institution?.certificate_number_pad) || 4)))
+  return formatCertificateSerial(Math.max(last, start - 1) + 1, pad)
+}
+
+export function institutionNameInitials(name?: string | null): string {
+  const words = String(name || '')
+    .replace(/[^A-Za-z]+/g, ' ')
+    .trim()
+    .split(/\s+/)
+    .filter(Boolean)
+  if (!words.length) return 'ST'
+  let out = words.map((w) => w[0]).join('').toUpperCase()
+  if (out.length < 2) out = words[0].slice(0, 2).toUpperCase()
+  return (out || 'ST').slice(0, 4)
+}
+
+export function formatStudentIdSample(prefix: string, n: number, pad = 3): string {
+  const serial = String(Math.max(1, Math.floor(Number(n) || 1)))
+  const width = Math.min(9, Math.max(1, Math.floor(Number(pad) || 3)))
+  return `${prefix || ''}${serial.padStart(Math.max(width, serial.length), '0')}`
+}
+
+export function defaultStudentIdSample(institutionName?: string | null): string {
+  return formatStudentIdSample(institutionNameInitials(institutionName), 123, 3)
+}
+
+export function parseStudentIdSample(raw: string): { prefix: string; start: number; pad: number } {
+  const sample = String(raw || '').trim()
+  const m = sample.match(/^([A-Za-z]{0,12})(\d{1,9})$/)
+  if (!m) throw new Error('INVALID_STUDENT_ID_SAMPLE')
+  const prefix = m[1]
+  const start = Math.floor(Number(m[2]))
+  if (!Number.isFinite(start) || start < 1) throw new Error('INVALID_STUDENT_ID_SAMPLE')
+  return { prefix, start, pad: m[2].length }
+}
+
+export function nextStudentIdPreview(institution?: InstitutionBrand, sample?: string): string {
+  let prefix = institution?.student_id_prefix
+  let start = Math.max(1, Math.floor(Number(institution?.student_id_start) || 123))
+  let pad = Math.min(9, Math.max(1, Math.floor(Number(institution?.student_id_pad) || 3)))
+  if (sample != null && String(sample).trim()) {
+    try {
+      const parsed = parseStudentIdSample(sample)
+      prefix = parsed.prefix
+      start = parsed.start
+      pad = parsed.pad
+    } catch {
+      /* keep institution values */
+    }
+  } else if (prefix == null) {
+    prefix = institutionNameInitials(institution?.name)
+    start = 123
+    pad = 3
+  }
+  const last = Math.max(0, Math.floor(Number(institution?.student_id_last) || 0))
+  return formatStudentIdSample(prefix || '', Math.max(last, start - 1) + 1, pad)
 }
 
 /** Required branding fields before official documents may be issued. */

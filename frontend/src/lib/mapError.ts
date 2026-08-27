@@ -168,6 +168,18 @@ const CODE_MAP = {
     title: 'Invalid template',
     description: 'Please choose a certificate template from the library.',
   },
+  INVALID_CERTIFICATE_START: {
+    title: 'Invalid certificate start',
+    description: 'Enter a starting serial like 0001. Numbers only, from 1 upward.',
+  },
+  INVALID_STUDENT_ID_SAMPLE: {
+    title: 'Invalid student ID structure',
+    description: 'Use letters plus a number (brce002) or numbers only (134855).',
+  },
+  CERTIFICATE_NUMBER_EXHAUSTED: {
+    title: 'Certificate numbering failed',
+    description: 'Could not allocate the next certificate number. Try again.',
+  },
   CUSTOM_UPLOAD_MISSING: {
     title: 'Upload required',
     description: 'Upload your own certificate template before activating it.',

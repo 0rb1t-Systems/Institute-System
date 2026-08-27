@@ -109,17 +109,28 @@ Deno.serve(async (req) => {
       if (match?.status === 'approved') email = String(match.email).trim().toLowerCase()
     } else if (institutionId) {
       const prefix = identifier.replace(/[@\s]/g, '')
-      const { data: rows } = await admin
+      const { data: byCode } = await admin
         .from('profiles')
         .select('id, email, status')
         .eq('institution_id', institutionId)
-        .ilike('email', `${prefix}%`)
-        .limit(10)
-      const match = (rows || []).find((p) => {
-        const local = String(p.email || '').split('@')[0]
-        return local.toLowerCase() === prefix.toLowerCase() && p.status === 'approved'
-      })
-      if (match?.email) email = String(match.email).trim().toLowerCase()
+        .ilike('student_code', prefix)
+        .eq('status', 'approved')
+        .maybeSingle()
+      if (byCode?.email) {
+        email = String(byCode.email).trim().toLowerCase()
+      } else {
+        const { data: rows } = await admin
+          .from('profiles')
+          .select('id, email, status')
+          .eq('institution_id', institutionId)
+          .ilike('email', `${prefix}%`)
+          .limit(10)
+        const match = (rows || []).find((p) => {
+          const local = String(p.email || '').split('@')[0]
+          return local.toLowerCase() === prefix.toLowerCase() && p.status === 'approved'
+        })
+        if (match?.email) email = String(match.email).trim().toLowerCase()
+      }
     }
 
     if (!email) return json(GENERIC)

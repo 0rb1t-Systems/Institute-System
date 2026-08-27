@@ -19,6 +19,13 @@ import {
   getInstitutionCurrency,
   getInstitutionCurrencySymbol,
   isInstitutionSettingsComplete,
+  formatCertificateSerial,
+  parseCertificateNumberStart,
+  nextCertificateSerialPreview,
+  defaultStudentIdSample,
+  formatStudentIdSample,
+  parseStudentIdSample,
+  nextStudentIdPreview,
 } from '@/lib/institution'
 import { isValidEmail, setAppCurrency } from '@/lib/utils'
 import { useToast } from '@/components/ui/use-toast'
@@ -64,6 +71,8 @@ const empty = {
   certificate_footer_text: '',
   transcript_footer_text: '',
   invoice_footer_text: '',
+  certificate_number_start: '0001',
+  student_id_sample: '',
 }
 
 const AssetUploadField = ({
@@ -165,6 +174,18 @@ const InstitutionSettingsForm = ({ onUpdated }) => {
       certificate_footer_text: institution.certificate_footer_text || '',
       transcript_footer_text: institution.transcript_footer_text || '',
       invoice_footer_text: institution.invoice_footer_text || '',
+      certificate_number_start: formatCertificateSerial(
+        institution.certificate_number_start,
+        institution.certificate_number_pad,
+      ),
+      student_id_sample:
+        institution.student_id_prefix != null
+          ? formatStudentIdSample(
+              institution.student_id_prefix,
+              institution.student_id_start,
+              institution.student_id_pad,
+            )
+          : defaultStudentIdSample(institution.name),
     })
     setAppCurrency(currency, symbol)
     if (institution.logo_url) {
@@ -272,6 +293,32 @@ const InstitutionSettingsForm = ({ onUpdated }) => {
       return
     }
 
+    let serial
+    try {
+      serial = parseCertificateNumberStart(form.certificate_number_start)
+    } catch {
+      toast({
+        title: 'Validation',
+        description: 'Certificate start must be a number like 0001.',
+        variant: 'destructive',
+      })
+      return
+    }
+
+    let studentId
+    try {
+      studentId = parseStudentIdSample(
+        form.student_id_sample || defaultStudentIdSample(form.name || institution?.name),
+      )
+    } catch {
+      toast({
+        title: 'Validation',
+        description: 'Student ID must look like brce002, DI123, or 134855.',
+        variant: 'destructive',
+      })
+      return
+    }
+
     setSaving(true)
     try {
       const updated = await updateInstitution({
@@ -305,6 +352,11 @@ const InstitutionSettingsForm = ({ onUpdated }) => {
         certificate_footer_text: form.certificate_footer_text,
         transcript_footer_text: form.transcript_footer_text,
         invoice_footer_text: form.invoice_footer_text,
+        certificate_number_start: serial.start,
+        certificate_number_pad: serial.pad,
+        student_id_prefix: studentId.prefix,
+        student_id_start: studentId.start,
+        student_id_pad: studentId.pad,
       })
       setAppCurrency(currency, symbol)
       await refreshUser?.()
@@ -592,6 +644,99 @@ const InstitutionSettingsForm = ({ onUpdated }) => {
               className="bg-slate-950 border-slate-800 min-h-[64px]"
             />
           </div>
+        </CardContent>
+      </Card>
+
+      <Card className="bg-slate-900 border-slate-800">
+        <CardHeader>
+          <div className="flex items-center gap-2">
+            <FileText className="h-5 w-5 text-amber-400" />
+            <div>
+              <CardTitle className="text-white text-base">Certificate numbering</CardTitle>
+              <CardDescription>
+                Set the first serial for this institution (example 0001). Each new certificate takes the next
+                unused number. Issued numbers never go backwards and two certificates cannot share the same number.
+              </CardDescription>
+            </div>
+          </div>
+        </CardHeader>
+        <CardContent className="space-y-2">
+          <Label htmlFor="cert_number_start">Certificate start number</Label>
+          <Input
+            id="cert_number_start"
+            form="institution-settings-form"
+            value={form.certificate_number_start}
+            onChange={(e) => setField('certificate_number_start', e.target.value.replace(/[^\d]/g, '').slice(0, 9))}
+            inputMode="numeric"
+            placeholder="0001"
+            className="bg-slate-950 border-slate-800 font-mono max-w-xs"
+          />
+          <p className="text-xs text-slate-500">
+            Next certificate will be{' '}
+            <span className="font-mono text-slate-300">
+              {(() => {
+                try {
+                  const parsed = parseCertificateNumberStart(form.certificate_number_start)
+                  return nextCertificateSerialPreview({
+                    ...institution,
+                    certificate_number_start: parsed.start,
+                    certificate_number_pad: parsed.pad,
+                  })
+                } catch {
+                  return nextCertificateSerialPreview(institution)
+                }
+              })()}
+            </span>
+            {institution?.certificate_number_last
+              ? ` (already issued up to ${formatCertificateSerial(
+                  institution.certificate_number_last,
+                  institution.certificate_number_pad,
+                )})`
+              : ''}
+            . If paper certificates already exist, set the start to the next unused number.
+          </p>
+        </CardContent>
+      </Card>
+
+      <Card className="bg-slate-900 border-slate-800">
+        <CardHeader>
+          <div className="flex items-center gap-2">
+            <FileText className="h-5 w-5 text-teal-400" />
+            <div>
+              <CardTitle className="text-white text-base">Student ID structure</CardTitle>
+              <CardDescription>
+                Example: brce002, DI123, or 134855. The next student gets the next unused number. IDs never go
+                backwards and two students cannot share the same ID.
+              </CardDescription>
+            </div>
+          </div>
+        </CardHeader>
+        <CardContent className="space-y-2">
+          <Label htmlFor="student_id_sample">Student ID start (sample)</Label>
+          <Input
+            id="student_id_sample"
+            form="institution-settings-form"
+            value={form.student_id_sample}
+            onChange={(e) =>
+              setField('student_id_sample', e.target.value.replace(/[^A-Za-z0-9]/g, '').slice(0, 21))
+            }
+            placeholder={defaultStudentIdSample(form.name || institution?.name)}
+            className="bg-slate-950 border-slate-800 font-mono max-w-xs"
+          />
+          <p className="text-xs text-slate-500">
+            Next student ID will be{' '}
+            <span className="font-mono text-slate-300">
+              {nextStudentIdPreview(institution, form.student_id_sample)}
+            </span>
+            {institution?.student_id_last
+              ? ` (already issued up to ${formatStudentIdSample(
+                  institution.student_id_prefix || '',
+                  institution.student_id_last,
+                  institution.student_id_pad,
+                )})`
+              : ''}
+            . If you do not change this, it defaults to your institution initials plus 123.
+          </p>
         </CardContent>
       </Card>
 

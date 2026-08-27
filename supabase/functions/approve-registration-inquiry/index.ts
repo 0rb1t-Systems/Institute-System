@@ -222,7 +222,7 @@ Deno.serve(async (req) => {
     // Existing profile in same tenant?
     const { data: existingProfile } = await admin
       .from('profiles')
-      .select('id, full_name, email')
+      .select('id, full_name, email, student_code')
       .eq('institution_id', caller.institution_id)
       .ilike('email', email)
       .maybeSingle()
@@ -316,10 +316,21 @@ Deno.serve(async (req) => {
       },
     })
 
+    let studentCode = existingProfile?.student_code || null
+    if (studentId) {
+      const { data: codeRow } = await admin
+        .from('profiles')
+        .select('student_code')
+        .eq('id', studentId)
+        .maybeSingle()
+      studentCode = codeRow?.student_code || studentCode
+    }
+
     return json({
       id: studentId,
       name: fullName,
       email,
+      student_code: studentCode,
       password: tempPassword,
       already_approved: false,
       reused_existing: !!existingProfile,

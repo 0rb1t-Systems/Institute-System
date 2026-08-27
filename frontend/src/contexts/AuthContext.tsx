@@ -113,7 +113,7 @@ export const AuthProvider = ({ children }) => {
         ? supabase
             .from('institutions')
             .select(
-              'id, name, subdomain, logo_url, description, email, phone, address, website, motto, theme_primary, theme_accent, theme_tertiary, social_whatsapp, social_facebook, social_tiktok, status, affiliate_commission_rate, registration_fee_amount, default_instructor_commission_rate, currency, currency_symbol, signatory_left_title, signatory_right_title, signatory_left_name, signatory_right_name, seal_url, signature_url, certificate_footer_text, transcript_footer_text, invoice_footer_text, settings_completed_at, landing_template_id, hero_image_url, hero_headline, footer_text, grading_scale',
+              'id, name, subdomain, logo_url, description, email, phone, address, website, motto, theme_primary, theme_accent, theme_tertiary, social_whatsapp, social_facebook, social_tiktok, status, affiliate_commission_rate, registration_fee_amount, default_instructor_commission_rate, currency, currency_symbol, signatory_left_title, signatory_right_title, signatory_left_name, signatory_right_name, seal_url, signature_url, certificate_footer_text, transcript_footer_text, invoice_footer_text, certificate_number_start, certificate_number_pad, certificate_number_last, student_id_prefix, student_id_start, student_id_pad, student_id_last, settings_completed_at, landing_template_id, hero_image_url, hero_headline, footer_text, grading_scale',
             )
             .eq('id', profile.institution_id)
             .maybeSingle()
@@ -169,7 +169,7 @@ export const AuthProvider = ({ children }) => {
       avatar_url: profile.avatar_url || authUser.user_metadata?.avatar_url,
       phone: profile.phone,
       studentId: studentData?.id || (profile.role === 'student' ? profile.id : undefined),
-      studentCode: studentData?.student_code,
+      studentCode: studentData?.student_code || profile.student_code,
       institution_id: profile.institution_id,
       status: profile.status,
     };
@@ -326,7 +326,10 @@ export const AuthProvider = ({ children }) => {
         let emailToUse = identifier;
 
         if (!isValidEmail(identifier)) {
-          const resolvedEmail = await getEmailByUsername(identifier);
+          const resolvedEmail = await getEmailByUsername(
+            identifier,
+            options && options.subdomain ? options.subdomain : '',
+          );
           if (!resolvedEmail) {
             throw new Error('AUTH.INVALID_CREDENTIALS');
           }
