@@ -622,8 +622,12 @@ const WithdrawalApprovalList = () => {
     const pendingRequests = sortedRequests.filter(r => r.status === 'pending');
     const historyRequests = sortedRequests.filter(r => r.status !== 'pending');
 
-    const instructorName = (instructorId) =>
-      users.find((u) => u.id === instructorId)?.name || users.find((u) => u.id === instructorId)?.full_name || 'Unknown';
+    const payeeName = (req) => {
+      const id = req.affiliate_id || req.instructor_id;
+      const person = users.find((u) => u.id === id);
+      const name = person?.name || person?.full_name || 'Unknown';
+      return req.affiliate_id ? `${name} (Affiliate)` : name;
+    };
 
     const handleAction = async (id, action) => {
         try {
@@ -651,13 +655,13 @@ const WithdrawalApprovalList = () => {
                         <AlertCircle className="h-5 w-5 text-yellow-500" />
                         Pending Requests
                     </CardTitle>
-                    <CardDescription>Instructors waiting for payout. Approve to deduct from system balance.</CardDescription>
+                    <CardDescription>Instructors and affiliates waiting for payout. Approve to deduct from available balance.</CardDescription>
                 </CardHeader>
                 <CardContent>
                     <Table>
                         <TableHeader>
                             <TableRow className="border-slate-800 hover:bg-transparent">
-                                <TableHead>Instructor</TableHead>
+                                <TableHead>Payee</TableHead>
                                 <TableHead>Date</TableHead>
                                 <TableHead>Details</TableHead>
                                 <TableHead>Amount</TableHead>
@@ -667,7 +671,7 @@ const WithdrawalApprovalList = () => {
                         <TableBody>
                             {pendingRequests.length > 0 ? pendingRequests.map(req => (
                                 <TableRow key={req.id} className="border-slate-800 hover:bg-slate-800/50">
-                                    <TableCell className="font-medium text-white">{instructorName(req.instructor_id)}</TableCell>
+                                    <TableCell className="font-medium text-white">{payeeName(req)}</TableCell>
                                     <TableCell className="text-slate-400">{formatDate(req.requested_at)}</TableCell>
                                     <TableCell>
                                         <div className="text-xs text-slate-300">{req.method || '—'}</div>
@@ -719,7 +723,7 @@ const WithdrawalApprovalList = () => {
                     <Table>
                         <TableHeader>
                             <TableRow className="border-slate-800 hover:bg-transparent">
-                                <TableHead>Instructor</TableHead>
+                                <TableHead>Payee</TableHead>
                                 <TableHead>Date Requested</TableHead>
                                 <TableHead>Date Processed</TableHead>
                                 <TableHead>Amount</TableHead>
@@ -729,7 +733,7 @@ const WithdrawalApprovalList = () => {
                         <TableBody>
                             {historyRequests.length > 0 ? historyRequests.slice(0, 10).map(req => (
                                 <TableRow key={req.id} className="border-slate-800 hover:bg-slate-800/50">
-                                    <TableCell className="text-slate-300">{instructorName(req.instructor_id)}</TableCell>
+                                    <TableCell className="text-slate-300">{payeeName(req)}</TableCell>
                                     <TableCell className="text-slate-400">{formatDate(req.requested_at)}</TableCell>
                                     <TableCell className="text-slate-400">{req.processed_at ? formatDate(req.processed_at) : '-'}</TableCell>
                                     <TableCell className="font-medium text-white">{formatCurrency(req.amount)}</TableCell>

@@ -51,7 +51,7 @@ const CODE_MAP = {
   },
   WITHDRAWAL_EXCEEDS_BALANCE: {
     title: 'Insufficient balance',
-    description: 'Withdrawal amount exceeds the available instructor balance.',
+    description: 'Withdrawal amount exceeds the available balance.',
   },
   REGISTRATION_FEE_DISABLED: {
     title: 'Registration fee not set',
@@ -379,7 +379,7 @@ const MESSAGE_REWRITES = [
     test: /WITHDRAWAL_EXCEEDS_BALANCE|ka badan yahay balance/i,
     mapped: {
       title: 'Insufficient balance',
-      description: 'Withdrawal amount exceeds the available instructor balance.',
+      description: 'Withdrawal amount exceeds the available balance.',
     },
   },
   {

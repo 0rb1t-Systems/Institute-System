@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Helmet } from 'react-helmet';
 import { format } from 'date-fns';
 import { Link } from 'react-router-dom';
@@ -16,37 +16,56 @@ import { Users, DollarSign, Share2, Wallet, Copy, CheckCircle2, AlertCircle } fr
 import { getAffiliateCommissionRate, getTenantBaseUrl, rateToPercent } from '@/lib/institution';
 import { useToast } from '@/components/ui/use-toast';
 import MonthYearSelector from '@/components/instructor/MonthYearSelector';
+import { dashboardStyles } from '@/components/instructor/InstructorDashboardStyles';
 import {
   buildAffiliateStudentMonthRows,
   filterSettlementsForMonth,
+  formatMonthKey,
+  latestBillingMonthDate,
   monthKeyFromDate,
 } from '@/lib/affiliateMonthTracking';
 
 const statusBadge = (status: string) => {
   if (status === 'paid') {
-    return <Badge className="bg-green-500/20 text-green-400 hover:bg-green-500/30">Paid</Badge>;
+    return <Badge className="bg-green-500/15 text-green-700 dark:text-green-400 hover:bg-green-500/20">Paid</Badge>;
   }
   if (status === 'partial') {
-    return <Badge className="bg-amber-500/20 text-amber-400 hover:bg-amber-500/30">Partial</Badge>;
+    return <Badge className="bg-amber-500/15 text-amber-700 dark:text-amber-400 hover:bg-amber-500/20">Partial</Badge>;
   }
-  return <Badge className="bg-red-500/20 text-red-400 hover:bg-red-500/30">Unpaid</Badge>;
+  if (status === 'not_due') {
+    return <Badge className="bg-slate-500/15 text-slate-600 dark:text-slate-300 hover:bg-slate-500/20">Not billed</Badge>;
+  }
+  return <Badge className="bg-red-500/15 text-red-700 dark:text-red-400 hover:bg-red-500/20">Unpaid</Badge>;
 };
 
-/**
- * Affiliate dashboard — referred students paid vs unpaid for a selected month,
- * plus commission earned on those payments.
- */
 const AffiliatePage = () => {
   const { user, institution } = useAuth();
   const { students, payments, enrollments, classes, affiliateSettlements = [] } = useData();
   const { toast } = useToast();
   const [selectedDate, setSelectedDate] = useState(() => new Date());
   const [statusTab, setStatusTab] = useState('all');
+  const monthInitialized = useRef(false);
 
   const ratePct = rateToPercent(getAffiliateCommissionRate(institution), 1);
   const referralLink = `${getTenantBaseUrl(institution)}/register${user?.id ? `?ref=${user.id}` : ''}`;
   const monthKey = monthKeyFromDate(selectedDate);
   const monthLabel = format(selectedDate, 'MMMM yyyy');
+
+  useEffect(() => {
+    if (monthInitialized.current || !user?.id) return;
+    const latest = latestBillingMonthDate({
+      students,
+      payments,
+      settlements: affiliateSettlements,
+      affiliateId: user.id,
+    });
+    if (latest) {
+      setSelectedDate(latest);
+      monthInitialized.current = true;
+    } else if ((payments || []).length > 0 || (affiliateSettlements || []).length > 0) {
+      monthInitialized.current = true;
+    }
+  }, [students, payments, affiliateSettlements, user?.id]);
 
   const myStudents = useMemo(() => {
     if (!user) return [];
@@ -67,21 +86,14 @@ const AffiliatePage = () => {
     [students, enrollments, classes, payments, affiliateSettlements, user?.id, monthKey],
   );
 
-  const billedRows = useMemo(
-    () => monthRows.filter((r) => r.billedThisMonth),
-    [monthRows],
-  );
-
-  const listSource = billedRows.length > 0 ? billedRows : monthRows;
-
   const visibleRows = useMemo(() => {
-    if (statusTab === 'paid') return listSource.filter((r) => r.status === 'paid');
-    if (statusTab === 'unpaid') return listSource.filter((r) => r.status === 'unpaid' || r.status === 'partial');
-    return listSource;
-  }, [listSource, statusTab]);
+    if (statusTab === 'paid') return monthRows.filter((r) => r.status === 'paid');
+    if (statusTab === 'unpaid') return monthRows.filter((r) => r.status === 'unpaid' || r.status === 'partial');
+    return monthRows;
+  }, [monthRows, statusTab]);
 
-  const paidCount = listSource.filter((r) => r.status === 'paid').length;
-  const unpaidCount = listSource.filter((r) => r.status !== 'paid').length;
+  const paidCount = monthRows.filter((r) => r.status === 'paid').length;
+  const unpaidCount = monthRows.filter((r) => r.status === 'unpaid' || r.status === 'partial').length;
 
   const monthSettlements = useMemo(
     () => filterSettlementsForMonth(affiliateSettlements, user?.id, monthKey, payments),
@@ -111,10 +123,10 @@ const AffiliatePage = () => {
       <div className="flex flex-col lg:flex-row justify-between items-start lg:items-end gap-4 mb-2">
         <PageHeader
           title="Affiliate Dashboard"
-          subtitle="Track referred students who paid this month, who still owe, and your commission."
+          subtitle="See which months each referred student paid, and the commission you can withdraw."
         />
         <div className="flex flex-col items-end gap-2">
-          <span className="text-xs text-slate-500 font-medium uppercase tracking-wider">
+          <span className="text-xs text-[var(--tenant-muted)] font-medium uppercase tracking-wider">
             Billing month
           </span>
           <MonthYearSelector selectedDate={selectedDate} onChange={setSelectedDate} />
@@ -122,58 +134,58 @@ const AffiliatePage = () => {
       </div>
 
       <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-4 mb-8">
-        <Card className="bg-slate-900/50 border-slate-800">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-slate-400">Referred Students</CardTitle>
+        <Card className={dashboardStyles.card}>
+          <CardHeader className="pb-2 p-0">
+            <CardTitle className={dashboardStyles.metricLabel}>Referred Students</CardTitle>
           </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-white flex items-center gap-2">
-              <Users className="h-5 w-5 text-blue-400" /> {myStudents.length}
+          <CardContent className="p-0 pt-2">
+            <div className={`${dashboardStyles.metricValue} flex items-center gap-2`}>
+              <Users className="h-5 w-5 text-blue-500" /> {myStudents.length}
             </div>
           </CardContent>
         </Card>
-        <Card className="bg-slate-900/50 border-slate-800">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-slate-400">Paid in {format(selectedDate, 'MMM')}</CardTitle>
+        <Card className={dashboardStyles.card}>
+          <CardHeader className="pb-2 p-0">
+            <CardTitle className={dashboardStyles.metricLabel}>Paid in {format(selectedDate, 'MMM')}</CardTitle>
           </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-green-400 flex items-center gap-2">
+          <CardContent className="p-0 pt-2">
+            <div className="text-3xl font-bold text-green-600 dark:text-green-400 flex items-center gap-2">
               <CheckCircle2 className="h-5 w-5" /> {paidCount}
             </div>
-            <p className="text-xs text-slate-500 mt-1">Fully paid for {monthLabel}</p>
+            <p className="text-xs text-[var(--tenant-muted)] mt-1">Fully paid for {monthLabel}</p>
           </CardContent>
         </Card>
-        <Card className="bg-slate-900/50 border-slate-800">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-slate-400">Unpaid in {format(selectedDate, 'MMM')}</CardTitle>
+        <Card className={dashboardStyles.card}>
+          <CardHeader className="pb-2 p-0">
+            <CardTitle className={dashboardStyles.metricLabel}>Unpaid in {format(selectedDate, 'MMM')}</CardTitle>
           </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-red-400 flex items-center gap-2">
+          <CardContent className="p-0 pt-2">
+            <div className="text-3xl font-bold text-red-600 dark:text-red-400 flex items-center gap-2">
               <AlertCircle className="h-5 w-5" /> {unpaidCount}
             </div>
-            <p className="text-xs text-slate-500 mt-1">Unpaid or partial for {monthLabel}</p>
+            <p className="text-xs text-[var(--tenant-muted)] mt-1">Unpaid or partial for {monthLabel}</p>
           </CardContent>
         </Card>
-        <Card className="bg-slate-900/50 border-slate-800">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-slate-400">Commission ({format(selectedDate, 'MMM')})</CardTitle>
+        <Card className={dashboardStyles.card}>
+          <CardHeader className="pb-2 p-0">
+            <CardTitle className={dashboardStyles.metricLabel}>Commission ({format(selectedDate, 'MMM')})</CardTitle>
           </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-amber-400 flex items-center gap-2">
+          <CardContent className="p-0 pt-2">
+            <div className="text-3xl font-bold text-amber-600 dark:text-amber-400 flex items-center gap-2">
               <Wallet className="h-5 w-5" /> {formatCurrency(monthCommission)}
             </div>
-            <p className="text-xs text-slate-500 mt-1">
+            <p className="text-xs text-[var(--tenant-muted)] mt-1">
               Lifetime {formatCurrency(lifetimeCommission)} · Rate {ratePct.toFixed(1)}%
             </p>
           </CardContent>
         </Card>
       </div>
 
-      <Card className="bg-slate-900/50 border-slate-800 mb-8">
-        <CardHeader className="flex flex-row items-start justify-between gap-4">
+      <Card className={`${dashboardStyles.card} mb-8`}>
+        <CardHeader className="flex flex-row items-start justify-between gap-4 p-0 pb-4">
           <div>
-            <CardTitle className="flex items-center gap-2">
-              <Share2 className="h-4 w-4 text-purple-400" /> Referral Link
+            <CardTitle className="flex items-center gap-2 text-[var(--tenant-text)]">
+              <Share2 className="h-4 w-4 text-purple-500" /> Referral Link
             </CardTitle>
             <CardDescription>Students who register with this link are attributed to you.</CardDescription>
           </div>
@@ -181,40 +193,40 @@ const AffiliatePage = () => {
             <Copy className="h-4 w-4 mr-2" /> Copy
           </Button>
         </CardHeader>
-        <CardContent>
-          <p className="text-xs font-mono text-purple-400 break-all">{referralLink}</p>
+        <CardContent className="p-0">
+          <p className="text-xs font-mono text-purple-600 dark:text-purple-400 break-all">{referralLink}</p>
         </CardContent>
       </Card>
 
       <Tabs value={statusTab} onValueChange={setStatusTab} className="space-y-4">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-          <TabsList className="bg-slate-900 border border-slate-800">
-            <TabsTrigger value="all">All ({listSource.length})</TabsTrigger>
+          <TabsList>
+            <TabsTrigger value="all">All ({monthRows.length})</TabsTrigger>
             <TabsTrigger value="paid">Paid ({paidCount})</TabsTrigger>
             <TabsTrigger value="unpaid">Unpaid ({unpaidCount})</TabsTrigger>
           </TabsList>
           <Button asChild variant="outline" size="sm">
             <Link to="/affiliate/earnings">
-              <DollarSign className="h-4 w-4 mr-2" /> View earnings
+              <DollarSign className="h-4 w-4 mr-2" /> Withdraw earnings
             </Link>
           </Button>
         </div>
 
         <TabsContent value={statusTab} className="mt-0">
-          <Card className="bg-slate-900/50 border-slate-800">
-            <CardHeader>
-              <CardTitle>Students — {monthLabel}</CardTitle>
+          <Card className={dashboardStyles.card}>
+            <CardHeader className="p-0 pb-4">
+              <CardTitle className="text-[var(--tenant-text)]">Students — {monthLabel}</CardTitle>
               <CardDescription>
-                Tuition status for the selected month. Commission is earned when a referred student completes a tuition payment.
+                Status is for the selected billing month. Paid months lists every month this student has already paid.
               </CardDescription>
             </CardHeader>
-            <CardContent>
+            <CardContent className="p-0">
               <Table>
                 <TableHeader>
-                  <TableRow className="border-slate-800 hover:bg-transparent">
+                  <TableRow>
                     <TableHead>Student</TableHead>
-                    <TableHead>Registered</TableHead>
                     <TableHead>Classes</TableHead>
+                    <TableHead>Paid months</TableHead>
                     <TableHead className="text-right">Due</TableHead>
                     <TableHead className="text-right">Paid</TableHead>
                     <TableHead className="text-right">Your share</TableHead>
@@ -224,20 +236,37 @@ const AffiliatePage = () => {
                 <TableBody>
                   {visibleRows.length > 0 ? (
                     visibleRows.map((s) => (
-                      <TableRow key={s.id} className="border-slate-800 hover:bg-slate-800/50">
+                      <TableRow key={s.id}>
                         <TableCell>
-                          <div className="font-medium text-slate-200">{s.name}</div>
-                          <div className="text-xs text-slate-500">{s.email}</div>
+                          <div className="font-medium text-[var(--tenant-text)]">{s.name}</div>
+                          <div className="text-xs text-[var(--tenant-muted)]">{s.email}</div>
+                          <div className="text-xs text-[var(--tenant-muted)]">{formatDate(s.registration_date)}</div>
                         </TableCell>
-                        <TableCell className="text-slate-400">{formatDate(s.registration_date)}</TableCell>
-                        <TableCell className="text-slate-400 text-sm">{s.classNames}</TableCell>
-                        <TableCell className="text-right font-mono text-slate-300">
+                        <TableCell className="text-sm text-[var(--tenant-text)]">{s.classNames}</TableCell>
+                        <TableCell>
+                          {s.paidMonths?.length ? (
+                            <div className="flex flex-wrap gap-1">
+                              {s.paidMonths.map((m) => (
+                                <Badge
+                                  key={m}
+                                  variant="outline"
+                                  className="text-[10px] font-normal"
+                                >
+                                  {formatMonthKey(m)}
+                                </Badge>
+                              ))}
+                            </div>
+                          ) : (
+                            <span className="text-xs text-[var(--tenant-muted)]">None yet</span>
+                          )}
+                        </TableCell>
+                        <TableCell className="text-right font-mono text-[var(--tenant-text)]">
                           {formatCurrency(s.dueAmount)}
                         </TableCell>
-                        <TableCell className="text-right font-mono text-green-400">
+                        <TableCell className="text-right font-mono text-green-600 dark:text-green-400">
                           {formatCurrency(s.paidAmount)}
                         </TableCell>
-                        <TableCell className="text-right font-mono text-amber-400">
+                        <TableCell className="text-right font-mono text-amber-600 dark:text-amber-400">
                           {formatCurrency(s.commission)}
                         </TableCell>
                         <TableCell className="text-right">{statusBadge(s.status)}</TableCell>
@@ -245,7 +274,7 @@ const AffiliatePage = () => {
                     ))
                   ) : (
                     <TableRow>
-                      <TableCell colSpan={7} className="text-center py-8 text-slate-500">
+                      <TableCell colSpan={7} className="text-center py-8 text-[var(--tenant-muted)]">
                         {myStudents.length === 0
                           ? 'No referred students yet. Share your referral link.'
                           : `No students in this list for ${monthLabel}.`}

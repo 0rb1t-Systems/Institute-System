@@ -1909,9 +1909,16 @@ export const deleteDiploma = async (id) => {
 
 // --- Classes ---
 export const getClasses = async () => {
-  const { data, error } = await supabase
+  const withInstructor = await supabase
     .from('classes')
     .select('*, instructor:profiles!classes_instructor_id_fkey(id, full_name, email)')
+    .order('created_at', { ascending: false })
+  if (!withInstructor.error) {
+    return (withInstructor.data || []).map(mapClass)
+  }
+  const { data, error } = await supabase
+    .from('classes')
+    .select('*')
     .order('created_at', { ascending: false })
   if (error) throw error
   return (data || []).map(mapClass)
@@ -2466,20 +2473,33 @@ export const getWithdrawalRequests = async () => {
 
 export const createWithdrawalRequest = async (data) => {
   const me = await getMyProfile()
-  const instructorId = data.instructor_id || me.id
   const amount = Number(data.amount)
   if (!Number.isFinite(amount) || amount <= 0) throw new Error('INVALID_AMOUNT')
+  const isAffiliate = me.role === 'affiliate' || data.affiliate_id
+  const payload = isAffiliate
+    ? {
+        institution_id: me.institution_id,
+        instructor_id: null,
+        affiliate_id: data.affiliate_id || me.id,
+        amount,
+        note: data.note || null,
+        method: data.method || null,
+        payment_details: data.payment_details || null,
+        status: 'pending',
+      }
+    : {
+        institution_id: me.institution_id,
+        instructor_id: data.instructor_id || me.id,
+        affiliate_id: null,
+        amount,
+        note: data.note || null,
+        method: data.method || null,
+        payment_details: data.payment_details || null,
+        status: 'pending',
+      }
   const { data: row, error } = await supabase
     .from('withdrawals')
-    .insert({
-      institution_id: me.institution_id,
-      instructor_id: instructorId,
-      amount,
-      note: data.note || null,
-      method: data.method || null,
-      payment_details: data.payment_details || null,
-      status: 'pending',
-    })
+    .insert(payload)
     .select()
     .single()
   if (error) {
