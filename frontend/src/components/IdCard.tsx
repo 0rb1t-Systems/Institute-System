@@ -60,17 +60,45 @@ const IdCard = ({
   const qrValue = getVerificationUrl(identityCode || 'unknown', institution, 'credential')
 
   const handleDownload = async () => {
-    if (!cardRef.current || isGenerating) return
+    const node = cardRef.current
+    if (!node || isGenerating) return
     setIsGenerating(true)
+    const host = document.createElement('div')
+    host.style.cssText =
+      'position:fixed;left:-12000px;top:0;z-index:-1;background:#ffffff;margin:0;padding:0;overflow:visible;'
+    const clone = node.cloneNode(true) as HTMLElement
+    clone.id = `${cardDomId}-export`
+    clone.style.transform = 'none'
+    clone.style.margin = '0'
+    clone.style.maxWidth = 'none'
+    clone.style.width = `${node.offsetWidth}px`
+    clone.style.height = `${node.offsetHeight}px`
+    clone.style.overflow = 'hidden'
+    host.appendChild(clone)
+    document.body.appendChild(host)
     try {
-      await new Promise((resolve) => setTimeout(resolve, 500))
-      const canvas = await html2canvas(cardRef.current, {
-        scale: 4,
+      if (document.fonts?.ready) await document.fonts.ready
+      await new Promise((resolve) => setTimeout(resolve, 250))
+      const canvas = await html2canvas(clone, {
+        scale: 3,
         useCORS: true,
         allowTaint: true,
-        backgroundColor: null,
+        backgroundColor: '#ffffff',
         logging: false,
-        imageTimeout: 0,
+        imageTimeout: 20000,
+        width: clone.offsetWidth,
+        height: clone.offsetHeight,
+        windowWidth: clone.offsetWidth,
+        windowHeight: clone.offsetHeight,
+        scrollX: 0,
+        scrollY: 0,
+        onclone: (doc) => {
+          const card = doc.getElementById(`${cardDomId}-export`) as HTMLElement | null
+          if (card) {
+            card.style.overflow = 'hidden'
+            card.style.boxShadow = 'none'
+          }
+        },
       })
       const link = document.createElement('a')
       const safeInst = institutionName.replace(/\s+/g, '_')
@@ -81,23 +109,24 @@ const IdCard = ({
     } catch (error) {
       console.error('ID Card Generation Error:', error)
     } finally {
+      host.remove()
       setIsGenerating(false)
     }
   }
 
   return (
     <div className={`flex flex-col items-center gap-6 w-full min-w-0 ${className}`}>
-      <div className="relative group w-full max-w-full overflow-x-auto">
-        <div className="mx-auto w-[480px] max-w-none relative">
+      <div className="relative group w-full max-w-full">
+        <div className="mx-auto w-[480px] max-w-full relative">
         <div
-          className={`absolute -inset-2 rounded-xl opacity-30 blur-xl transition duration-500 group-hover:opacity-40 ${isExpired ? 'bg-red-500' : ''}`}
+          className={`absolute -inset-2 rounded-xl opacity-30 blur-xl transition duration-500 group-hover:opacity-40 pointer-events-none ${isExpired ? 'bg-red-500' : ''}`}
           style={!isExpired ? { backgroundColor: primary } : undefined}
         />
 
         <div
           id={cardDomId}
           ref={cardRef}
-          className="relative w-[480px] h-[303px] bg-white rounded-xl overflow-hidden shadow-2xl flex flex-col font-sans select-none"
+          className="relative w-[480px] max-w-full min-h-[320px] bg-white rounded-xl overflow-hidden shadow-2xl flex flex-col font-sans select-none"
           style={{
             backgroundImage:
               'url("https://www.transparenttextures.com/patterns/clean-gray-paper.png"), linear-gradient(to bottom right, #ffffff, #f8fafc)',
@@ -110,7 +139,7 @@ const IdCard = ({
           >
             <div className="absolute top-0 right-0 w-32 h-full bg-white/5 transform skew-x-[-20deg] translate-x-8 pointer-events-none" />
 
-            <div className="flex items-center gap-3 z-10 w-full pr-24">
+            <div className="flex items-center gap-3 z-10 min-w-0 flex-1">
               {institution?.logo_url ? (
                 <img
                   src={institution.logo_url}
@@ -131,14 +160,14 @@ const IdCard = ({
               </div>
             </div>
 
-            <div className="absolute top-1/2 right-6 -translate-y-1/2 bg-white/10 backdrop-blur-sm px-3 py-1.5 rounded text-[10px] font-bold text-white uppercase tracking-wider border border-white/20 shadow-sm">
+            <div className="relative z-10 shrink-0 bg-white/10 backdrop-blur-sm px-3 py-1.5 rounded text-[10px] font-bold text-white uppercase tracking-wider border border-white/20 shadow-sm">
               {roleLabel}
             </div>
           </div>
 
-          <div className="flex-1 px-6 py-4 grid grid-cols-[110px_1fr] gap-5 relative z-10 content-start">
+          <div className="flex-1 px-5 py-4 grid grid-cols-[104px_1fr] gap-4 relative z-10 content-start min-h-0">
             <div className="flex flex-col items-center gap-2.5 pt-1">
-              <div className="w-[110px] h-[110px] rounded-lg border-[3px] border-white shadow-md overflow-hidden relative bg-slate-100 shrink-0">
+              <div className="w-[104px] h-[104px] rounded-lg border-[3px] border-white shadow-md overflow-hidden relative bg-slate-100 shrink-0">
                 {user?.avatar_url ? (
                   <img
                     src={user.avatar_url}
@@ -193,16 +222,16 @@ const IdCard = ({
                 </div>
               </div>
 
-              <div className="flex items-end gap-10 mt-auto pb-1 pt-2 border-t border-slate-100">
-                <div>
+              <div className="flex items-end gap-6 mt-auto pt-2 border-t border-slate-100 min-w-0">
+                <div className="min-w-0">
                   <label className="text-[9px] font-bold text-slate-400 uppercase tracking-wider block mb-0.5">
                     {idLabel}
                   </label>
-                  <p className="text-[15px] font-mono font-bold" style={{ color: primary }}>
+                  <p className="text-[15px] font-mono font-bold truncate" style={{ color: primary }}>
                     {displayCode}
                   </p>
                 </div>
-                <div>
+                <div className="min-w-0">
                   <label className="text-[9px] font-bold text-slate-400 uppercase tracking-wider block mb-0.5">
                     Valid Until
                   </label>
@@ -218,22 +247,22 @@ const IdCard = ({
             </div>
           </div>
 
-          <div className="h-[44px] bg-slate-50 border-t border-slate-100 flex items-center justify-between px-6 relative shrink-0 z-20">
-            <div className="flex gap-5 text-[9px] text-slate-500 font-bold uppercase tracking-wide">
-              <div className="flex items-center gap-1.5">
-                <Globe className="h-3 w-3" />
-                <span>{hostLabel}</span>
+          <div className="min-h-[76px] bg-slate-50 border-t border-slate-100 flex items-center justify-between gap-3 px-4 py-2.5 shrink-0">
+            <div className="flex flex-col gap-1.5 min-w-0 flex-1 text-[8px] sm:text-[9px] text-slate-500 font-bold uppercase tracking-wide">
+              <div className="flex items-center gap-1.5 min-w-0">
+                <Globe className="h-3 w-3 shrink-0" />
+                <span className="truncate">{hostLabel}</span>
               </div>
               {contactEmail ? (
-                <div className="flex items-center gap-1.5">
-                  <Mail className="h-3 w-3" />
-                  <span>{contactEmail}</span>
+                <div className="flex items-center gap-1.5 min-w-0">
+                  <Mail className="h-3 w-3 shrink-0" />
+                  <span className="truncate">{contactEmail}</span>
                 </div>
               ) : null}
             </div>
 
-            <div className="absolute bottom-2.5 right-6 bg-white p-1 rounded-lg shadow-md border border-slate-100">
-              <div className="w-[52px] h-[52px]">
+            <div className="shrink-0 bg-white p-1 rounded-md shadow-sm border border-slate-200">
+              <div className="w-[56px] h-[56px]">
                 <QRCode
                   size={256}
                   style={{ height: '100%', width: '100%' }}
@@ -245,7 +274,7 @@ const IdCard = ({
             </div>
           </div>
 
-          <div className="h-1.5 w-full" style={{ backgroundColor: accent }} />
+          <div className="h-1.5 w-full shrink-0" style={{ backgroundColor: accent }} />
         </div>
         </div>
       </div>
