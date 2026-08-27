@@ -92,6 +92,7 @@ const StudentGradebookPage = lazy(() => import('@/pages/student/StudentGradebook
 const StudentPortalIdPage = lazy(() => import('@/pages/student/StudentPortalIdPage'));
 const StudentExamResultPage = lazy(() => import('@/pages/student/StudentExamResultPage'));
 const AffiliatePage = lazy(() => import('@/pages/AffiliatePage'));
+const AffiliateEarningsPage = lazy(() => import('@/pages/affiliate/AffiliateEarningsPage'));
 const SuperAdminDashboardPage = lazy(() => import('@/pages/super-admin/SuperAdminDashboardPage'));
 const TenantsPage = lazy(() => import('@/pages/super-admin/TenantsPage'));
 const CreateTenantPage = lazy(() => import('@/pages/super-admin/CreateTenantPage'));
@@ -322,6 +323,7 @@ const App = () => {
             <Route path="/staff/profile" element={<ProtectedRoute roles={['staff']}><StaffProfilePage /></ProtectedRoute>} />
             <Route path="/staff/id-card" element={<ProtectedRoute roles={['staff']}><Lazy><StaffIdPage /></Lazy></ProtectedRoute>} />
             <Route path="/affiliate" element={<ProtectedRoute roles={['admin', 'staff', 'affiliate']}><Lazy><AffiliatePage /></Lazy></ProtectedRoute>} />
+            <Route path="/affiliate/earnings" element={<ProtectedRoute roles={['affiliate']}><Lazy><AffiliateEarningsPage /></Lazy></ProtectedRoute>} />
             <Route path="/affiliate/profile" element={<ProtectedRoute roles={['affiliate']}><StaffProfilePage /></ProtectedRoute>} />
 
             <Route path="/students" element={<ProtectedRoute roles={['admin', 'staff']}><Lazy><StudentsPage /></Lazy></ProtectedRoute>} />

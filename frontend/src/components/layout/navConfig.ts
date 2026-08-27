@@ -25,7 +25,6 @@ import {
   FileText,
   PenTool,
   ClipboardList,
-  Share2,
 } from 'lucide-react';
 
 export type NavItem = {
@@ -87,7 +86,8 @@ export function getNavItemsForRole(role?: string | null): NavItem[] {
       ];
     case 'affiliate':
       return [
-        { href: '/affiliate', icon: Share2, label: 'My Referrals' },
+        { href: '/affiliate', icon: LayoutDashboard, label: 'Dashboard' },
+        { href: '/affiliate/earnings', icon: DollarSign, label: 'My Earnings' },
         { href: '/affiliate/profile', icon: User, label: 'My Profile' },
       ];
     case 'instructor':
