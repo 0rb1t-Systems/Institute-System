@@ -14,7 +14,7 @@ const UniversalIdCard = ({ user, roleLabel, expirationDate, department, code, on
     expirationDate={expirationDate}
     indefiniteIfMissing
     onRenew={onRenew}
-    className={className || 'w-full max-w-md mx-auto'}
+    className={className || 'w-full'}
     cardDomId="universal-id-card"
   />
 )

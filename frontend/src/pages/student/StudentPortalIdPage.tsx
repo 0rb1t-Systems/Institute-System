@@ -103,14 +103,12 @@ const StudentPortalIdPage = () => {
                     
                     {enrollment ? (
                         paymentStatus.totalPaid > 0 ? (
-                            <div className="transform scale-100 sm:scale-110 transition-transform duration-300">
-                                <StudentIdCard 
-                                    student={student} 
-                                    enrollment={enrichedEnrollment} 
-                                    course={course}
-                                    classData={classData}
-                                />
-                            </div>
+                            <StudentIdCard
+                                student={student}
+                                enrollment={enrichedEnrollment}
+                                course={course}
+                                classData={classData}
+                            />
                         ) : (
                             <div className="flex flex-col items-center justify-center p-8 border border-red-500/30 bg-red-500/10 rounded-xl max-w-md mx-auto text-center space-y-4">
                                 <div className="bg-red-500/20 p-3 rounded-full">
