@@ -34,6 +34,7 @@ function TenantLandingRedirect({
 
 // Phase 1 — eager (core shell)
 import LoginPage from '@/pages/LoginPage';
+import ResetPasswordPage from '@/pages/ResetPasswordPage';
 import SignupPage from '@/pages/SignupPage';
 import WelcomePage from '@/pages/WelcomePage';
 import PrivacyPage from '@/pages/public/PrivacyPage';
@@ -261,6 +262,7 @@ const App = () => {
           <Route path="/about" element={<PlatformAboutPage />} />
           <Route path="/contact" element={<PlatformContactPage />} />
           <Route path="/login" element={<PlatformLoginRoute />} />
+          <Route path="/reset-password" element={<ResetPasswordPage />} />
           <Route path="/signup" element={user ? <Navigate to={getRootRedirect()} replace /> : <SignupPage />} />
           <Route
             path="/create-institution"

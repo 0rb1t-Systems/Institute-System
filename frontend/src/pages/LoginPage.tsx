@@ -10,7 +10,7 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Loader2, AlertCircle, LogIn, GraduationCap, ArrowLeft } from 'lucide-react';
 import { getUserMessage } from '@/lib/mapError';
 import { MESSAGES } from '@/lib/messages';
-import { getPublicInstitutionBySubdomain } from '@/lib/api';
+import { getPublicInstitutionBySubdomain, requestPasswordReset } from '@/lib/api';
 import ThemeToggle from '@/components/platform/ThemeToggle';
 import { usePlatformTheme } from '@/contexts/PlatformThemeContext';
 import { LandingLogo } from '@/components/landing/LandingShared';
@@ -38,6 +38,8 @@ const LoginPage = ({ initialError = '' }) => {
   const [password, setPassword] = useState('');
   const [error, setError] = useState(initialError || '');
   const [isLoading, setIsLoading] = useState(false);
+  const [forgotMode, setForgotMode] = useState(false);
+  const [info, setInfo] = useState('');
   const [institution, setInstitution] = useState(null);
   const [loadingTenant, setLoadingTenant] = useState(false);
   const { login } = useAuth();
@@ -61,6 +63,9 @@ const LoginPage = ({ initialError = '' }) => {
   useEffect(() => {
     if (location.state?.tenantSuspended) {
       setError(MESSAGES.AUTH.TENANT_SUSPENDED);
+    }
+    if (location.state?.passwordReset) {
+      setInfo(MESSAGES.AUTH.RESET_PASSWORD_OK);
     }
   }, [location.state]);
 
@@ -114,6 +119,34 @@ const LoginPage = ({ initialError = '' }) => {
   const tenantLogo = institutionLogoUrl(institution);
   const isTenantLogin = Boolean(tenant);
   const tenantHomeHref = tenant ? getTenantPortalUrl({ subdomain: tenant }) : '/';
+
+  const handleForgot = async (e) => {
+    e.preventDefault();
+    setError('');
+    const trimmedIdentifier = identifier.trim();
+    if (!trimmedIdentifier) {
+      setError(MESSAGES.AUTH.MISSING_CREDENTIALS);
+      return;
+    }
+    setIsLoading(true);
+    try {
+      await requestPasswordReset({
+        identifier: trimmedIdentifier,
+        subdomain: tenant,
+        redirectTo: `${window.location.origin}/reset-password`,
+      });
+      setForgotSent(true);
+    } catch (err) {
+      setError(
+        getUserMessage(err, {
+          context: 'LoginPage.forgot',
+          fallback: MESSAGES.AUTH.EMAIL_NOT_CONFIGURED,
+        }),
+      );
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -236,13 +269,23 @@ const LoginPage = ({ initialError = '' }) => {
           )}
         </CardHeader>
         <CardContent>
-          <form onSubmit={handleSubmit} className="space-y-4">
+          <form onSubmit={forgotMode ? handleForgot : handleSubmit} className="space-y-4">
+            {info && !error && (
+              <Alert className={light ? 'border-teal-200 bg-teal-50 text-teal-800' : 'border-teal-900/50 bg-teal-950/50 text-teal-100'}>
+                <AlertDescription>{info}</AlertDescription>
+              </Alert>
+            )}
             {error && (
               <Alert variant="destructive" className={light ? 'border-red-200 bg-red-50 text-red-800' : 'border-red-900/50 bg-red-950/50 text-red-200'}>
                 <AlertCircle className="h-4 w-4" />
                 <AlertDescription>{error}</AlertDescription>
               </Alert>
             )}
+            {forgotSent ? (
+              <p className={`text-sm ${light && isTenantLogin ? 'text-slate-600' : 'text-slate-400'}`}>
+                {MESSAGES.AUTH.FORGOT_PASSWORD}
+              </p>
+            ) : null}
             <div className="space-y-2">
               <Label htmlFor="identifier" className={isTenantLogin ? (light ? 'text-slate-700' : 'text-slate-200') : 'text-[var(--pf-text)]'}>
                 {isTenantLogin ? 'Email or Student ID' : 'Admin email'}
@@ -268,25 +311,27 @@ const LoginPage = ({ initialError = '' }) => {
                     : 'border-[var(--pf-line)] bg-[var(--pf-bg)] text-[var(--pf-text)] placeholder:text-[var(--pf-faint)]'
                 }
                 style={{ ['--tw-ring-color']: primary }}
-                disabled={isLoading}
+                disabled={isLoading || forgotSent}
                 required
               />
             </div>
+            {!forgotMode ? (
             <div className="space-y-2">
               <div className="flex items-center justify-between">
                 <Label htmlFor="password" className={isTenantLogin ? (light ? 'text-slate-700' : 'text-slate-200') : 'text-[var(--pf-text)]'}>
                   Password
                 </Label>
-                <Link
-                  to="#"
+                <button
+                  type="button"
                   className="text-xs text-teal-400 hover:text-teal-300"
-                  onClick={(e) => {
-                    e.preventDefault();
-                    setError(MESSAGES.AUTH.FORGOT_PASSWORD);
+                  onClick={() => {
+                    setForgotMode(true);
+                    setError('');
+                    setForgotSent(false);
                   }}
                 >
                   Forgot Password?
-                </Link>
+                </button>
               </div>
               <Input
                 id="password"
@@ -305,10 +350,12 @@ const LoginPage = ({ initialError = '' }) => {
                     : 'border-[var(--pf-line)] bg-[var(--pf-bg)] text-[var(--pf-text)] placeholder:text-[var(--pf-faint)]'
                 }
                 disabled={isLoading}
-                required
+                required={!forgotMode}
               />
             </div>
-            <div className="pt-2">
+            ) : null}
+            {!forgotSent ? (
+            <div className="pt-2 space-y-2">
               <Button
                 type="submit"
                 className={
@@ -321,15 +368,43 @@ const LoginPage = ({ initialError = '' }) => {
               >
                 {isLoading ? (
                   <>
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Verifying...
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" /> {forgotMode ? 'Sending...' : 'Verifying...'}
                   </>
+                ) : forgotMode ? (
+                  'Send reset link'
                 ) : (
                   <>
                     Sign In <LogIn className="ml-2 h-4 w-4" />
                   </>
                 )}
               </Button>
+              {forgotMode ? (
+                <button
+                  type="button"
+                  className="w-full text-center text-xs text-teal-400 hover:text-teal-300"
+                  onClick={() => {
+                    setForgotMode(false);
+                    setForgotSent(false);
+                    setError('');
+                  }}
+                >
+                  Back to sign in
+                </button>
+              ) : null}
             </div>
+            ) : (
+              <button
+                type="button"
+                className="w-full text-center text-xs text-teal-400 hover:text-teal-300"
+                onClick={() => {
+                  setForgotMode(false);
+                  setForgotSent(false);
+                  setError('');
+                }}
+              >
+                Back to sign in
+              </button>
+            )}
           </form>
         </CardContent>
         <CardFooter

@@ -85,7 +85,13 @@ export const MESSAGES = {
       'Your account is waiting for approval. You cannot sign in until an administrator approves your registration.',
     REGISTRATION_FEE_REQUIRED:
       'You cannot sign in until your registration fee is paid. Please contact your institution office to complete payment, then try again.',
-    FORGOT_PASSWORD: 'Please contact your administrator to recover your password.',
+    FORGOT_PASSWORD:
+      'If an account exists for that email, we sent a reset link. Check your inbox (and spam).',
+    EMAIL_NOT_CONFIGURED:
+      'Password reset email is not available yet. Please contact your administrator.',
+    RESET_PASSWORD_INVALID:
+      'This reset link is invalid or has expired. Request a new one from the sign-in page.',
+    RESET_PASSWORD_OK: 'Your password was updated. Sign in with your new password.',
     PLATFORM_ADMIN_ONLY: {
       title: 'This account is not registered',
       description: 'This account is not registered.',

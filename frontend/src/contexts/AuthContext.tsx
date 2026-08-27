@@ -248,6 +248,18 @@ export const AuthProvider = ({ children }) => {
         return;
       }
 
+      const onResetPage =
+        typeof window !== 'undefined' && window.location.pathname === '/reset-password';
+      if (onResetPage) {
+        finishInit();
+        return;
+      }
+
+      if (event === 'PASSWORD_RECOVERY') {
+        finishInit();
+        return;
+      }
+
       if (event === 'INITIAL_SESSION') {
         await loadUserProfile(session?.user ?? null);
         return;

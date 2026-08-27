@@ -3351,9 +3351,68 @@ export const checkRegistrationDuplicates = async (email, phone) => {
   }
 }
 
+async function readFunctionPayload(data, error) {
+  let payload = data
+  if (error) {
+    try {
+      const ctx = error.context
+      if (ctx && typeof ctx.json === 'function') payload = await ctx.json()
+      else if (ctx && typeof ctx.text === 'function') {
+        const text = await ctx.text()
+        payload = text ? JSON.parse(text) : null
+      }
+    } catch {
+      /* keep */
+    }
+  }
+  return payload
+}
+
+export const requestPasswordReset = async ({ identifier, subdomain, redirectTo }) => {
+  const { data, error } = await supabase.functions.invoke('request-password-reset', {
+    body: {
+      identifier: String(identifier || '').trim(),
+      subdomain: String(subdomain || '').trim().toLowerCase() || undefined,
+      redirect_to: redirectTo,
+    },
+  })
+  const payload = await readFunctionPayload(data, error)
+  if (payload?.error === 'SERVER_MISCONFIGURED' || payload?.error === 'RESEND_NOT_CONFIGURED') {
+    throw new Error('EMAIL_NOT_CONFIGURED')
+  }
+  return { ok: true }
+}
+
 export const updateGeneralRegistration = async (id, updates) => {
   const me = await getMyProfile()
   if (!me || !['admin', 'staff'].includes(me.role)) throw new Error('FORBIDDEN')
+
+  if (updates.status === 'rejected') {
+    const { data, error } = await supabase.functions.invoke('reject-registration-inquiry', {
+      body: {
+        inquiry_id: id,
+        rejection_reason: updates.rejection_reason || '',
+      },
+    })
+    const payload = await readFunctionPayload(data, error)
+    if (payload?.error) {
+      throw new Error(String(payload.error).split(':')[0].trim())
+    }
+    if (!payload?.id) throw new Error(error?.message || 'UPDATE_FAILED')
+
+    await writeTenantAuditLog('registration.rejected', 'registration_inquiry', id, {
+      rejection_reason: updates.rejection_reason || null,
+      emailed: !!payload.emailed,
+    })
+
+    const { data: row, error: fetchErr } = await supabase
+      .from('registration_inquiries')
+      .select('*')
+      .eq('id', id)
+      .single()
+    if (fetchErr) throw fetchErr
+    return { ...mapRegistrationInquiry(row), emailed: !!payload.emailed }
+  }
 
   const allowed: any = {}
   if (updates.status !== undefined) allowed.status = updates.status
@@ -3368,13 +3427,6 @@ export const updateGeneralRegistration = async (id, updates) => {
     .select('*')
     .single()
   if (error) throw error
-
-  if (updates.status === 'rejected') {
-    // Intentionally no student email on reject — applicant may re-submit the form.
-    await writeTenantAuditLog('registration.rejected', 'registration_inquiry', id, {
-      rejection_reason: updates.rejection_reason || null,
-    })
-  }
 
   return mapRegistrationInquiry(data)
 }

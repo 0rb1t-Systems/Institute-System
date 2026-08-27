@@ -36,3 +36,9 @@ verify_jwt = false
 
 [functions.public-provision-tenant]
 verify_jwt = false
+
+[functions.request-password-reset]
+verify_jwt = false
+
+[functions.reject-registration-inquiry]
+verify_jwt = true

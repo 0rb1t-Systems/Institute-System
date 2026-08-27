@@ -123,11 +123,12 @@ const GeneralRegistrationsList = () => {
   const confirmReject = async () => {
       if (!rejectDialog) return;
       try {
-          // No student notification on reject — they can re-submit the public form.
-          await updateGeneralRegistration(rejectDialog.id, { status: 'rejected', rejection_reason: rejectReason });
+          const result = await updateGeneralRegistration(rejectDialog.id, { status: 'rejected', rejection_reason: rejectReason });
           toast({
             title: 'Rejected',
-            description: 'Registration rejected. No message was sent. The applicant can submit again.',
+            description: result?.emailed
+              ? 'The applicant was emailed that their registration was not approved.'
+              : 'Registration rejected. The email could not be sent — they can still submit again.',
           });
           setRejectDialog(null);
       } catch (error) {
