@@ -323,14 +323,15 @@ const LoginPage = ({ initialError = '' }) => {
                 </Label>
                 <button
                   type="button"
-                  className="text-xs text-teal-400 hover:text-teal-300"
+                  className="text-xs font-semibold underline-offset-2 hover:underline"
+                  style={{ color: primary }}
                   onClick={() => {
                     setForgotMode(true);
                     setError('');
                     setForgotSent(false);
                   }}
                 >
-                  Forgot Password?
+                  Forgot password?
                 </button>
               </div>
               <Input

@@ -7,9 +7,12 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { LandingLogo } from '@/components/landing/LandingShared'
-import { institutionLogoUrl } from '@/lib/institution'
+import { institutionLogoUrl, resolvePublicTenantSubdomain } from '@/lib/institution'
 import { brandInitial } from '@/components/landing/types'
 import { usePlatformTheme } from '@/contexts/PlatformThemeContext'
+import { requestPasswordReset } from '@/lib/api'
+import { MESSAGES } from '@/lib/messages'
+import { getUserMessage } from '@/lib/mapError'
 
 type Props = {
   open: boolean
@@ -47,11 +50,59 @@ export default function LandingLoginModal({
   onSubmit,
 }: Props) {
   const [showPassword, setShowPassword] = useState(false)
+  const [forgotMode, setForgotMode] = useState(false)
+  const [forgotSent, setForgotSent] = useState(false)
+  const [forgotBusy, setForgotBusy] = useState(false)
+  const [forgotError, setForgotError] = useState('')
   const { mode } = usePlatformTheme()
   const light = mode === 'light'
   const brand = String(institution?.name || institutionName || '').trim() || 'Institution'
   const logoSource = institution || logoUrl
   const markUrl = institutionLogoUrl(logoSource)
+  const tenantSlug = String(
+    (institution as { subdomain?: string | null } | null)?.subdomain ||
+      resolvePublicTenantSubdomain() ||
+      '',
+  )
+    .trim()
+    .toLowerCase()
+
+  React.useEffect(() => {
+    if (!open) {
+      setForgotMode(false)
+      setForgotSent(false)
+      setForgotBusy(false)
+      setForgotError('')
+    }
+  }, [open])
+
+  const handleForgot = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setForgotError('')
+    const id = String(identifier || '').trim()
+    if (!id) {
+      setForgotError(MESSAGES.AUTH.MISSING_CREDENTIALS)
+      return
+    }
+    setForgotBusy(true)
+    try {
+      await requestPasswordReset({
+        identifier: id,
+        subdomain: tenantSlug,
+        redirectTo: `${window.location.origin}/reset-password`,
+      })
+      setForgotSent(true)
+    } catch (err) {
+      setForgotError(
+        getUserMessage(err, {
+          context: 'LandingLoginModal.forgot',
+          fallback: MESSAGES.AUTH.EMAIL_NOT_CONFIGURED,
+        }),
+      )
+    } finally {
+      setForgotBusy(false)
+    }
+  }
 
   return (
     <AnimatePresence>
@@ -175,8 +226,8 @@ export default function LandingLoginModal({
                 </motion.div>
               </div>
 
-              <form onSubmit={onSubmit} className="space-y-4">
-                {loginError && (
+              <form onSubmit={forgotMode ? handleForgot : onSubmit} className="space-y-4">
+                {(forgotError || loginError) && (
                   <Alert
                     variant="destructive"
                     className={
@@ -186,9 +237,14 @@ export default function LandingLoginModal({
                     }
                   >
                     <AlertCircle className="h-4 w-4" />
-                    <AlertDescription>{loginError}</AlertDescription>
+                    <AlertDescription>{forgotError || loginError}</AlertDescription>
                   </Alert>
                 )}
+                {forgotSent ? (
+                  <p className={`text-sm ${light ? 'text-slate-600' : 'text-slate-300'}`}>
+                    {MESSAGES.AUTH.FORGOT_PASSWORD}
+                  </p>
+                ) : null}
 
                 <div className="space-y-2">
                   <Label htmlFor="tenant-login-id" className={`text-[13px] font-medium ${light ? 'text-slate-700' : 'text-slate-300'}`}>
@@ -211,7 +267,7 @@ export default function LandingLoginModal({
                           ['--tw-ring-color' as string]: primary,
                         } as React.CSSProperties
                       }
-                      disabled={signingIn}
+                      disabled={signingIn || forgotBusy || forgotSent}
                       autoComplete="username"
                       autoFocus
                       required
@@ -219,10 +275,25 @@ export default function LandingLoginModal({
                   </div>
                 </div>
 
+                {!forgotMode ? (
                 <div className="space-y-2">
-                  <Label htmlFor="tenant-login-pw" className={`text-[13px] font-medium ${light ? 'text-slate-700' : 'text-slate-300'}`}>
-                    Password
-                  </Label>
+                  <div className="flex items-center justify-between gap-2">
+                    <Label htmlFor="tenant-login-pw" className={`text-[13px] font-medium ${light ? 'text-slate-700' : 'text-slate-300'}`}>
+                      Password
+                    </Label>
+                    <button
+                      type="button"
+                      className="text-[13px] font-semibold underline-offset-2 hover:underline"
+                      style={{ color: primary }}
+                      onClick={() => {
+                        setForgotMode(true)
+                        setForgotSent(false)
+                        setForgotError('')
+                      }}
+                    >
+                      Forgot password?
+                    </button>
+                  </div>
                   <div className="relative">
                     <Lock className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
                     <Input
@@ -256,7 +327,9 @@ export default function LandingLoginModal({
                     </button>
                   </div>
                 </div>
+                ) : null}
 
+                {!forgotSent ? (
                 <Button
                   type="submit"
                   className="mt-1 h-11 w-full rounded-xl text-[15px] font-semibold text-white shadow-lg transition hover:brightness-110 hover:shadow-xl active:scale-[0.99]"
@@ -264,12 +337,14 @@ export default function LandingLoginModal({
                     backgroundColor: primary,
                     boxShadow: `0 12px 28px -10px ${primary}99`,
                   }}
-                  disabled={signingIn}
+                  disabled={signingIn || forgotBusy}
                 >
-                  {signingIn ? (
+                  {signingIn || forgotBusy ? (
                     <>
-                      <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Signing in…
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" /> {forgotMode ? 'Sending…' : 'Signing in…'}
                     </>
+                  ) : forgotMode ? (
+                    'Send reset link'
                   ) : (
                     <>
                       Sign in
@@ -277,6 +352,20 @@ export default function LandingLoginModal({
                     </>
                   )}
                 </Button>
+                ) : null}
+                {forgotMode ? (
+                  <button
+                    type="button"
+                    className={`w-full text-center text-[13px] font-medium ${light ? 'text-slate-600' : 'text-slate-400'}`}
+                    onClick={() => {
+                      setForgotMode(false)
+                      setForgotSent(false)
+                      setForgotError('')
+                    }}
+                  >
+                    Back to sign in
+                  </button>
+                ) : null}
               </form>
 
               <p className={`mt-5 text-center text-[11px] leading-relaxed ${light ? 'text-slate-500' : 'text-slate-500'}`}>
