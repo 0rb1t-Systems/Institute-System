@@ -40,6 +40,7 @@ import {
   downloadDesignPDF,
   printDesignPDF,
   downloadDomPagesPdf,
+  printDomPagesPdf,
 } from '@/lib/documentPdf';
 import CertificateDesignRenderer from '@/components/certificates/CertificateDesignRenderer';
 import type { CertificateRenderData } from '@/lib/certificateTemplates';
@@ -51,6 +52,7 @@ import {
   isCoursePassedFromScale,
 } from '@/lib/gradingScale';
 import { coursesForDiploma } from '@/lib/diplomaCourses';
+import { formatMonthYear } from '@/lib/utils';
 
 const TranscriptView = ({ studentId, onClose }: any) => {
     const { user, institution } = useAuth();
@@ -119,6 +121,19 @@ const TranscriptView = ({ studentId, onClose }: any) => {
     const currentClass = useMemo(() => classes.find(c => c.id === selectedClassId), [classes, selectedClassId]);
     const currentDiploma = useMemo(() => currentClass?.diploma_id ? diplomas.find(d => d.id === currentClass.diploma_id) : null, [currentClass, diplomas]);
     const programName = currentDiploma?.name || currentClass?.name || 'Academic Record';
+
+    const programMonths = useMemo(() => {
+      const enrollment = enrollments.find(
+        (e) => e.student_id === studentData?.id && e.class_id === selectedClassId,
+      );
+      const startRaw =
+        currentClass?.start_date || enrollment?.enrollment_date || enrollment?.created_at || null;
+      const endRaw = currentClass?.end_date || null;
+      return {
+        startMonth: formatMonthYear(startRaw) || '—',
+        completionMonth: formatMonthYear(endRaw) || '—',
+      };
+    }, [currentClass, enrollments, studentData?.id, selectedClassId]);
 
     // Scanner Logic
     useEffect(() => {
@@ -387,6 +402,8 @@ const TranscriptView = ({ studentId, onClose }: any) => {
         footerText: transcriptFooter || undefined,
         studentName: studentData.name || studentData.full_name || 'Student',
         studentId: studentData.student_code,
+        startMonth: programMonths.startMonth,
+        completionMonth: programMonths.completionMonth,
         programName,
         className: currentClass?.name,
         certificateNumber: credentialNumber,
@@ -411,6 +428,8 @@ const TranscriptView = ({ studentId, onClose }: any) => {
       transcriptFooter,
       programName,
       currentClass?.name,
+      programMonths.startMonth,
+      programMonths.completionMonth,
       credentialNumber,
       verifyCode,
       verifyUrl,
@@ -441,13 +460,20 @@ const TranscriptView = ({ studentId, onClose }: any) => {
     };
 
     const handlePrint = async () => {
+      setIsDownloading(true);
       try {
         if (useCustomLayout && customRenderData) {
-          setIsDownloading(true);
           await printDesignPDF(customRenderData, brand);
           return;
         }
-        window.print();
+        const page1 = document.getElementById('transcript-page-1');
+        const page2 = document.getElementById('transcript-page-2');
+        const pages = [page1, page2].filter(Boolean) as HTMLElement[];
+        if (!pages.length) {
+          window.print();
+          return;
+        }
+        await printDomPagesPdf(pages);
       } catch (error) {
         console.error('Print failed', error);
         window.print();
@@ -481,10 +507,11 @@ const TranscriptView = ({ studentId, onClose }: any) => {
                         <>
                             <Button 
                                 variant="outline" 
-                                onClick={handlePrint} 
-                                className="gap-2 border-slate-900 hover:bg-slate-100 text-black font-bold"
+                                onClick={handlePrint}
+                                disabled={isDownloading}
+                                className="gap-2 border-slate-300 bg-white text-slate-900 hover:bg-slate-100 hover:text-slate-900 font-bold"
                             >
-                                <Printer className="h-4 w-4" /> Print
+                                {isDownloading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Printer className="h-4 w-4" />} Print
                             </Button>
                             <Button 
                                 variant="default" 
@@ -502,7 +529,7 @@ const TranscriptView = ({ studentId, onClose }: any) => {
                         if(!open) resetScanner();
                     }}>
                         <DialogTrigger asChild>
-                            <Button variant="outline" className="gap-2 border-black text-black font-bold"><ScanLine className="h-4 w-4" /> Scan QR</Button>
+                            <Button variant="outline" className="gap-2 border-slate-300 bg-white text-slate-900 hover:bg-slate-100 hover:text-slate-900 font-bold"><ScanLine className="h-4 w-4" /> Scan QR</Button>
                         </DialogTrigger>
                         <DialogContent className="sm:max-w-md bg-slate-950 border-slate-800 text-white">
                             <DialogHeader>
@@ -641,7 +668,12 @@ const TranscriptView = ({ studentId, onClose }: any) => {
                     {/* Program Title Bar */}
                     <div
                       className={`mt-4 py-2 px-3 text-center print:mt-2 ${chrome.titleBar} ${chrome.titleBarText}`}
-                      style={layoutStyles.titleBarBg ? { backgroundColor: layoutStyles.titleBarBg } : undefined}
+                      style={{
+                        backgroundColor: layoutStyles.titleBarBg,
+                        color: layoutStyles.titleBarColor,
+                        WebkitPrintColorAdjust: 'exact',
+                        printColorAdjust: 'exact',
+                      }}
                     >
                         <h3 className="text-base font-bold uppercase tracking-wider">{programName}</h3>
                     </div>
@@ -654,12 +686,18 @@ const TranscriptView = ({ studentId, onClose }: any) => {
                         <div className="flex-1 grid grid-cols-2 gap-8">
                             <div>
                                 <h3 className={`text-[10px] font-bold text-black uppercase tracking-wider pb-1 mb-2 print:text-black ${chrome.sectionRule}`}>Student Details</h3>
-                                <div className="grid grid-cols-[100px_1fr] gap-y-1 text-xs print:text-xs">
+                                <div className="grid grid-cols-[128px_1fr] gap-y-1 text-xs print:text-xs">
                                     <span className="text-black font-bold uppercase">Full Name:</span>
                                     <span className="font-bold text-black text-sm uppercase">{studentData.name}</span>
                                     
                                     <span className="text-black font-bold uppercase">Student ID:</span>
                                     <span className="font-bold text-black font-mono">{studentData.student_code}</span>
+
+                                    <span className="text-black font-bold uppercase">Start Month:</span>
+                                    <span className="font-bold text-black uppercase">{programMonths.startMonth}</span>
+
+                                    <span className="text-black font-bold uppercase">Completion Month:</span>
+                                    <span className="font-bold text-black uppercase">{programMonths.completionMonth}</span>
                                 </div>
                             </div>
                             <div>

@@ -62,7 +62,12 @@ const TranscriptCanvas = ({ data, compact = false }: Props) => {
         </div>
         <div
           className={`mt-1.5 py-1 px-2 text-center ${chrome.titleBar} ${chrome.titleBarText}`}
-          style={styles.titleBarBg ? { backgroundColor: styles.titleBarBg } : undefined}
+          style={{
+            backgroundColor: styles.titleBarBg,
+            color: styles.titleBarColor,
+            WebkitPrintColorAdjust: 'exact',
+            printColorAdjust: 'exact',
+          }}
         >
           <p className={`font-bold uppercase tracking-wide ${compact ? 'text-[5px]' : 'text-[9px]'}`}>{data.programName}</p>
         </div>
@@ -76,6 +81,12 @@ const TranscriptCanvas = ({ data, compact = false }: Props) => {
             </p>
             <p className={`font-bold uppercase ${compact ? 'text-[5px]' : 'text-[8px]'}`}>{data.studentName}</p>
             <p className={`font-mono ${compact ? 'text-[4px]' : 'text-[7px]'}`}>{data.studentCode}</p>
+            <p className={`${compact ? 'text-[4px]' : 'text-[7px]'}`}>
+              Start {data.startMonth || 'January 2026'}
+            </p>
+            <p className={`${compact ? 'text-[4px]' : 'text-[7px]'}`}>
+              Complete {data.completionMonth || 'December 2026'}
+            </p>
           </div>
           <div>
             <p className={`font-bold uppercase ${chrome.sectionRule} pb-0.5 mb-1 ${compact ? 'text-[4px]' : 'text-[7px]'}`}>

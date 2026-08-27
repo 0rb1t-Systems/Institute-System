@@ -135,6 +135,18 @@ export const formatDate = (dateString?: string | Date | null) => {
   }
 };
 
+/** Month + year for program duration on transcripts (e.g. January 2026). */
+export const formatMonthYear = (dateString?: string | Date | null) => {
+  if (!dateString) return '';
+  try {
+    const date = parseLocalDate(dateString);
+    if (!date) return '';
+    return date.toLocaleDateString('en-US', { year: 'numeric', month: 'long' });
+  } catch {
+    return '';
+  }
+};
+
 /** Date + time for assignment deadlines (local). */
 export const formatDateTime = (dateString?: string | Date | null) => {
   if (!dateString) return 'N/A';

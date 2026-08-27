@@ -68,6 +68,8 @@ import {
 
   downloadDomPagesPdf,
 
+  printDomPagesPdf,
+
 } from '@/lib/documentPdf'
 
 import InvoiceCanvas from '@/components/finance/InvoiceCanvas'
@@ -501,13 +503,23 @@ const InvoiceView = ({ student, payments, enrollment, activeClass, onEditPayment
 
   const handlePrint = async () => {
 
+    setIsDownloading(true)
+
     try {
 
       if (useCustomLayout && customRenderData) {
 
-        setIsDownloading(true)
-
         await printDesignPDF(customRenderData, institution)
+
+        return
+
+      }
+
+      const element = document.getElementById('printable-invoice')
+
+      if (element) {
+
+        await printDomPagesPdf([element])
 
         return
 
@@ -625,7 +637,12 @@ const InvoiceView = ({ student, payments, enrollment, activeClass, onEditPayment
 
       <div className="flex justify-center gap-4 mt-6 print:hidden">
 
-        <Button variant="outline" onClick={handlePrint} disabled={isDownloading}>
+        <Button
+          variant="outline"
+          onClick={handlePrint}
+          disabled={isDownloading}
+          className="border-slate-300 bg-white text-slate-900 hover:bg-slate-100 hover:text-slate-900"
+        >
 
           <Printer className="mr-2 h-4 w-4" /> Print Invoice
 

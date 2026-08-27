@@ -257,7 +257,7 @@
   button,
   .print-hide,
   [data-radix-dialog-overlay],
-  [role="dialog"] > *:not(:has(#printable-certificate)):not(:has(#printable-transcript)):not(:has(#printable-invoice)) {
+  [role="dialog"] > *:not(:has(#printable-certificate)):not(:has(#printable-transcript)):not(:has(#printable-invoice)):not(#printable-certificate):not(#printable-transcript):not(#printable-invoice) {
     display: none !important;
   }
 
@@ -273,6 +273,8 @@
   #printable-invoice,
   #printable-invoice * {
     visibility: visible !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
   }
 
   #printable-certificate,

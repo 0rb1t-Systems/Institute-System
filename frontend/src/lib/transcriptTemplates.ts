@@ -132,6 +132,8 @@ export type TranscriptRenderData = {
   logoUrl?: string | null
   studentName: string
   studentCode: string
+  startMonth?: string
+  completionMonth?: string
   programName: string
   credentialNumber: string
   footerText?: string
@@ -251,19 +253,30 @@ export function getTranscriptLayoutChrome(
 export function getTranscriptLayoutStyles(
   layoutKey: TranscriptLayoutKey,
   primary: string,
-): { headerBorderColor?: string; titleBarBg?: string; sectionRuleColor?: string; tableBorderColor?: string; badgeBorderColor?: string } {
+): {
+  headerBorderColor?: string
+  titleBarBg?: string
+  titleBarColor?: string
+  sectionRuleColor?: string
+  tableBorderColor?: string
+  badgeBorderColor?: string
+} {
   const p = primary || '#111827'
   if (layoutKey === 'modern' || layoutKey === 'institutional') {
     return {
       headerBorderColor: p,
       titleBarBg: p,
+      titleBarColor: '#ffffff',
       sectionRuleColor: p,
       tableBorderColor: p,
       badgeBorderColor: p,
     }
   }
   if (layoutKey === 'academic') {
-    return { titleBarBg: '#1E3A5F' }
+    return { titleBarBg: '#1E3A5F', titleBarColor: '#ffffff' }
   }
-  return {}
+  if (layoutKey === 'minimal') {
+    return { titleBarBg: '#f1f5f9', titleBarColor: '#0f172a' }
+  }
+  return { titleBarBg: '#000000', titleBarColor: '#ffffff' }
 }

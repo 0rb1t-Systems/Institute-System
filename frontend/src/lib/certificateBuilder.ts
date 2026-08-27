@@ -26,6 +26,8 @@ export const BUILDER_BINDINGS = [
   { key: 'none', label: 'Static text (free)' },
   { key: 'studentName', label: 'Student name' },
   { key: 'studentId', label: 'Student ID' },
+  { key: 'startMonth', label: 'Start month' },
+  { key: 'completionMonth', label: 'Completion month' },
   { key: 'programName', label: 'Course / program' },
   { key: 'className', label: 'Class name' },
   { key: 'certificateNumber', label: 'Document number' },
@@ -57,6 +59,8 @@ export function getDocumentBuilderQuickFields(
     return [
       { key: 'studentName', label: 'Student name' },
       { key: 'studentId', label: 'Student ID' },
+      { key: 'startMonth', label: 'Start month' },
+      { key: 'completionMonth', label: 'Completion month' },
       { key: 'programName', label: 'Program' },
       { key: 'className', label: 'Class' },
       { key: 'gpa', label: 'GPA' },
@@ -3021,6 +3025,8 @@ export function resolveBuilderText(
   data: {
     studentName?: string
     studentId?: string
+    startMonth?: string
+    completionMonth?: string
     programName?: string
     className?: string
     certificateNumber?: string
@@ -3046,6 +3052,10 @@ export function resolveBuilderText(
       return data.studentName || el.text || 'Student Name'
     case 'studentId':
       return data.studentId || el.text || 'Student ID'
+    case 'startMonth':
+      return data.startMonth || el.text || 'Start month'
+    case 'completionMonth':
+      return data.completionMonth || el.text || 'Completion month'
     case 'programName':
       return data.programName || el.text || 'Program'
     case 'className':

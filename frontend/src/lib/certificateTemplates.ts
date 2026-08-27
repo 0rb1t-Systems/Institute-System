@@ -160,6 +160,8 @@ export type CertificateRenderData = {
   footerText?: string
   studentName: string
   studentId?: string
+  startMonth?: string
+  completionMonth?: string
   programName: string
   className?: string
   certificateNumber: string
