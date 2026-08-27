@@ -690,10 +690,15 @@ export function institutionNameInitials(name?: string | null): string {
   return (out || 'ST').slice(0, 4)
 }
 
+/** Auth requires passwords >= 6 characters; first password is the student ID. */
+export const MIN_STUDENT_ID_LENGTH = 6
+
 export function formatStudentIdSample(prefix: string, n: number, pad = 3): string {
   const serial = String(Math.max(1, Math.floor(Number(n) || 1)))
-  const width = Math.min(9, Math.max(1, Math.floor(Number(pad) || 3)))
-  return `${prefix || ''}${serial.padStart(Math.max(width, serial.length), '0')}`
+  const requested = Math.min(9, Math.max(1, Math.floor(Number(pad) || 3)))
+  const minForAuth = Math.max(1, MIN_STUDENT_ID_LENGTH - String(prefix || '').length)
+  const width = Math.max(requested, serial.length, minForAuth)
+  return `${prefix || ''}${serial.padStart(width, '0')}`
 }
 
 export function defaultStudentIdSample(institutionName?: string | null): string {
@@ -707,7 +712,8 @@ export function parseStudentIdSample(raw: string): { prefix: string; start: numb
   const prefix = m[1]
   const start = Math.floor(Number(m[2]))
   if (!Number.isFinite(start) || start < 1) throw new Error('INVALID_STUDENT_ID_SAMPLE')
-  return { prefix, start, pad: m[2].length }
+  const minPad = Math.max(m[2].length, MIN_STUDENT_ID_LENGTH - prefix.length, 1)
+  return { prefix, start, pad: Math.min(9, minPad) }
 }
 
 export function nextStudentIdPreview(institution?: InstitutionBrand, sample?: string): string {

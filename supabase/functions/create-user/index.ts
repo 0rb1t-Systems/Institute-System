@@ -282,13 +282,18 @@ Deno.serve(async (req) => {
         await admin.auth.admin.deleteUser(newUserId)
         return json({ error: 'STUDENT_ID_REQUIRED' }, 400)
       }
+      if (studentCode.length < 6) {
+        await admin.auth.admin.deleteUser(newUserId)
+        return json({ error: 'STUDENT_ID_TOO_SHORT' }, 400)
+      }
       const { error: pwErr } = await admin.auth.admin.updateUserById(newUserId, {
         password: studentCode,
       })
       if (pwErr) {
         await admin.auth.admin.deleteUser(newUserId)
         console.error('[create-user] student ID password failed', pwErr.message)
-        return json({ error: pwErr.message }, 400)
+        const short = /at least \d+ characters/i.test(pwErr.message || '')
+        return json({ error: short ? 'STUDENT_ID_TOO_SHORT' : 'STUDENT_PASSWORD_FAILED' }, 400)
       }
       returnedPassword = studentCode
     }

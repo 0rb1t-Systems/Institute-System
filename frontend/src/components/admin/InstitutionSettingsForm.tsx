@@ -314,7 +314,7 @@ const InstitutionSettingsForm = ({ onUpdated }) => {
     } catch {
       toast({
         title: 'Validation',
-        description: 'Student ID must look like brce002, DI123, or 134855.',
+        description: 'Student ID must look like brce002, DI0123, or 134855.',
         variant: 'destructive',
       })
       return
@@ -709,9 +709,9 @@ const InstitutionSettingsForm = ({ onUpdated }) => {
             <div>
               <CardTitle className="text-white text-base">Student ID structure</CardTitle>
               <CardDescription>
-                Example: brce002, DI1234, or 134855. The next student gets the next unused number. The first
-                login password is this Student ID (then they can change it). Use at least 6 characters so login
-                is accepted. IDs never go backwards and two students cannot share the same ID.
+                Example: brce002, DI0123, or 134855. The next student gets the next unused number. The first
+                login password is this Student ID (then they can change it). IDs are at least 6 characters so
+                login is accepted. IDs never go backwards and two students cannot share the same ID.
               </CardDescription>
             </div>
           </div>

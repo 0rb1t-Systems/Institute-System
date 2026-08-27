@@ -408,6 +408,19 @@ export const createNewUser = async (data) => {
     if (lower.includes('staff may only create student')) {
       throw new Error('FORBIDDEN_ROLE')
     }
+    if (
+      lower.includes('student_id_too_short') ||
+      lower.includes('password should be at least') ||
+      /at least \d+ characters/.test(lower)
+    ) {
+      throw new Error('STUDENT_ID_TOO_SHORT')
+    }
+    if (lower.includes('student_id_required')) {
+      throw new Error('STUDENT_ID_REQUIRED')
+    }
+    if (lower.includes('student_password_failed')) {
+      throw new Error('STUDENT_PASSWORD_FAILED')
+    }
     if (lower.includes('not allowed') || lower.includes('forbidden')) {
       throw new Error('FORBIDDEN')
     }
@@ -1223,9 +1236,10 @@ export const updateInstitution = async (updates) => {
     if (!Number.isFinite(pad) || pad < 1 || pad > 9) {
       throw new Error('INVALID_STUDENT_ID_SAMPLE')
     }
+    const minPad = Math.max(1, 6 - prefix.length)
     allowed.student_id_prefix = prefix
     allowed.student_id_start = start
-    allowed.student_id_pad = pad
+    allowed.student_id_pad = Math.min(9, Math.max(pad, minPad))
   }
   if (updates.grading_scale !== undefined) {
     // null clears custom scale (fallback to platform default)

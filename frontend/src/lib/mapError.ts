@@ -174,7 +174,20 @@ const CODE_MAP = {
   },
   INVALID_STUDENT_ID_SAMPLE: {
     title: 'Invalid student ID structure',
-    description: 'Use letters plus a number (brce002) or numbers only (134855).',
+    description: 'Use letters plus a number (brce002) or numbers only (134855). Use at least 6 characters.',
+  },
+  STUDENT_ID_REQUIRED: {
+    title: 'Student ID missing',
+    description: 'The student account was created without an ID. Try again or contact support.',
+  },
+  STUDENT_ID_TOO_SHORT: {
+    title: 'Student ID too short',
+    description:
+      'The first login password is the Student ID, and it must be at least 6 characters (for example DI0123). Update Student ID structure in Institution Settings, then try again.',
+  },
+  STUDENT_PASSWORD_FAILED: {
+    title: 'Could not set student password',
+    description: 'The student account could not be finished. Please try again.',
   },
   CERTIFICATE_NUMBER_EXHAUSTED: {
     title: 'Certificate numbering failed',

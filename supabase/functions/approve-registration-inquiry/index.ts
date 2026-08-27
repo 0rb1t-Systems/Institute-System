@@ -280,6 +280,14 @@ Deno.serve(async (req) => {
           .eq('id', inquiryId)
         return json({ error: 'STUDENT_ID_REQUIRED' }, 400)
       }
+      if (studentCode.length < 6) {
+        await admin.auth.admin.deleteUser(studentId)
+        await admin
+          .from('registration_inquiries')
+          .update({ status: 'pending', updated_at: new Date().toISOString() })
+          .eq('id', inquiryId)
+        return json({ error: 'STUDENT_ID_TOO_SHORT' }, 400)
+      }
       const { error: pwErr } = await admin.auth.admin.updateUserById(studentId, {
         password: studentCode,
       })
@@ -290,7 +298,8 @@ Deno.serve(async (req) => {
           .update({ status: 'pending', updated_at: new Date().toISOString() })
           .eq('id', inquiryId)
         console.error('[approve-registration-inquiry] student ID password failed', pwErr.message)
-        return json({ error: pwErr.message }, 400)
+        const short = /at least \d+ characters/i.test(pwErr.message || '')
+        return json({ error: short ? 'STUDENT_ID_TOO_SHORT' : 'STUDENT_PASSWORD_FAILED' }, 400)
       }
       tempPassword = studentCode
     } else if (inquiry.affiliate_id) {
