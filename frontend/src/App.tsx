@@ -50,7 +50,6 @@ import CoursesPage from '@/pages/CoursesPage';
 import AttendancePage from '@/pages/AttendancePage';
 import UserManagementPage from '@/pages/admin/UserManagementPage';
 import InstructorsPage from '@/pages/admin/InstructorsPage';
-import AdminProfilePage from '@/pages/admin/AdminProfilePage';
 import InstructorDashboard from '@/pages/instructor/InstructorDashboard';
 import InstructorClassesPage from '@/pages/instructor/InstructorClassesPage';
 import InstructorProfilePage from '@/pages/instructor/InstructorProfilePage';
@@ -79,6 +78,7 @@ const ReportsPage = lazy(() => import('@/pages/ReportsPage'));
 const CertificatePage = lazy(() => import('@/pages/CertificatePage'));
 const AdminExamMarkingPage = lazy(() => import('@/pages/admin/AdminExamMarkingPage'));
 const LandingCustomizePage = lazy(() => import('@/pages/admin/LandingCustomizePage'));
+const AdminProfilePage = lazy(() => import('@/pages/admin/AdminProfilePage'));
 const OnlineFormsPage = lazy(() => import('@/pages/admin/OnlineFormsPage'));
 const InstructorIdPage = lazy(() => import('@/pages/instructor/InstructorIdPage'));
 const AssignmentsPage = lazy(() => import('@/pages/instructor/AssignmentsPage'));
@@ -304,7 +304,7 @@ const App = () => {
             <Route path="/dashboard" element={<ProtectedRoute roles={['admin', 'staff']}><DashboardPage /></ProtectedRoute>} />
             <Route path="/admin/users" element={<ProtectedRoute roles={['admin']}><UserManagementPage /></ProtectedRoute>} />
             <Route path="/admin/instructors" element={<ProtectedRoute roles={['admin', 'staff']}><InstructorsPage /></ProtectedRoute>} />
-            <Route path="/admin/profile" element={<ProtectedRoute roles={['admin']}><AdminProfilePage /></ProtectedRoute>} />
+            <Route path="/admin/profile" element={<ProtectedRoute roles={['admin']}><Lazy><AdminProfilePage /></Lazy></ProtectedRoute>} />
             <Route path="/admin/landing" element={<ProtectedRoute roles={['admin']}><Lazy><LandingCustomizePage /></Lazy></ProtectedRoute>} />
             <Route path="/admin/certificates" element={<ProtectedRoute roles={['admin', 'staff']}><Navigate to="/reports?tab=certificates" replace /></ProtectedRoute>} />
             <Route path="/admin/grading" element={<ProtectedRoute roles={['admin']}><Lazy><AdminExamMarkingPage /></Lazy></ProtectedRoute>} />

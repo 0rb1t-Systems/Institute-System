@@ -12,7 +12,7 @@ import { useAuth } from '@/contexts/AuthContext'
 import { getInstitutionDisplayName } from '@/lib/institution'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Button } from '@/components/ui/button'
-import { Award, Building2, Receipt, ScrollText, UserRound } from 'lucide-react'
+import { Award, Building2, Receipt, ScrollText, User } from 'lucide-react'
 
 const AdminProfilePage = () => {
   const { user, institution, refreshUser } = useAuth()
@@ -50,7 +50,7 @@ const AdminProfilePage = () => {
               Invoices
             </TabsTrigger>
             <TabsTrigger value="account" className="gap-1.5 text-xs sm:text-sm">
-              <UserRound className="h-3.5 w-3.5" />
+              <User className="h-3.5 w-3.5" />
               Account
             </TabsTrigger>
           </TabsList>
