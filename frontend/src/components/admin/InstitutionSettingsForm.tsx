@@ -45,6 +45,7 @@ import { MESSAGES } from '@/lib/messages'
 import GradingSystemSettings from '@/components/admin/GradingSystemSettings'
 import LogoBrandColorPicker from '@/components/admin/LogoBrandColorPicker'
 import { extractLogoBrandPalette, normalizeHexColor } from '@/lib/logoBrandColors'
+import { settingsSubListClass, settingsSubTriggerClass } from '@/components/admin/settingsNav'
 
 const CURRENCY_OPTIONS = [
   { code: 'USD', symbol: '$', label: 'USD — US Dollar' },
@@ -428,36 +429,38 @@ const InstitutionSettingsForm = ({ onUpdated }) => {
         </Alert>
       ) : null}
 
-      <form id="institution-settings-form" onSubmit={handleSave} className="space-y-4">
+      <form id="institution-settings-form" onSubmit={handleSave} className="space-y-0">
         <Tabs value={section} onValueChange={setSection} className="w-full">
-          <TabsList className="w-full justify-start bg-slate-900 border border-slate-800 h-auto gap-0.5 p-1 overflow-x-auto">
-            <TabsTrigger value="profile" className="gap-1.5 text-xs sm:text-sm">
-              <Building2 className="h-3.5 w-3.5 hidden sm:block" />
-              Profile
-            </TabsTrigger>
-            <TabsTrigger value="brand" className="gap-1.5 text-xs sm:text-sm">
-              <Palette className="h-3.5 w-3.5 hidden sm:block" />
-              Brand
-            </TabsTrigger>
-            <TabsTrigger value="documents" className="gap-1.5 text-xs sm:text-sm">
-              <FileText className="h-3.5 w-3.5 hidden sm:block" />
-              Documents
-            </TabsTrigger>
-            <TabsTrigger value="ids" className="gap-1.5 text-xs sm:text-sm">
-              <Hash className="h-3.5 w-3.5 hidden sm:block" />
-              IDs
-            </TabsTrigger>
-            <TabsTrigger value="finance" className="gap-1.5 text-xs sm:text-sm">
-              <Wallet className="h-3.5 w-3.5 hidden sm:block" />
-              Finance
-            </TabsTrigger>
-            <TabsTrigger value="grading" className="gap-1.5 text-xs sm:text-sm">
-              <GraduationCap className="h-3.5 w-3.5 hidden sm:block" />
-              Grading
-            </TabsTrigger>
-          </TabsList>
+          <div className="px-2 sm:px-3">
+            <TabsList className={settingsSubListClass}>
+              <TabsTrigger value="profile" className={settingsSubTriggerClass}>
+                <Building2 className="h-3.5 w-3.5" />
+                Profile
+              </TabsTrigger>
+              <TabsTrigger value="brand" className={settingsSubTriggerClass}>
+                <Palette className="h-3.5 w-3.5" />
+                Brand
+              </TabsTrigger>
+              <TabsTrigger value="documents" className={settingsSubTriggerClass}>
+                <FileText className="h-3.5 w-3.5" />
+                Documents
+              </TabsTrigger>
+              <TabsTrigger value="ids" className={settingsSubTriggerClass}>
+                <Hash className="h-3.5 w-3.5" />
+                IDs
+              </TabsTrigger>
+              <TabsTrigger value="finance" className={settingsSubTriggerClass}>
+                <Wallet className="h-3.5 w-3.5" />
+                Finance
+              </TabsTrigger>
+              <TabsTrigger value="grading" className={settingsSubTriggerClass}>
+                <GraduationCap className="h-3.5 w-3.5" />
+                Grading
+              </TabsTrigger>
+            </TabsList>
+          </div>
 
-          <TabsContent value="profile" className="mt-4 rounded-xl border border-slate-800 bg-slate-900 p-4 sm:p-5">
+          <TabsContent value="profile" className="mt-0 p-4 sm:p-5">
             <div className="grid gap-3 sm:grid-cols-2">
               <Field label="Institution name *" htmlFor="inst_name" className="sm:col-span-2">
                 <Input
@@ -542,7 +545,7 @@ const InstitutionSettingsForm = ({ onUpdated }) => {
             </div>
           </TabsContent>
 
-          <TabsContent value="brand" className="mt-4 rounded-xl border border-slate-800 bg-slate-900 p-4 sm:p-5 space-y-4">
+          <TabsContent value="brand" className="mt-0 p-4 sm:p-5 space-y-4">
             <div className="grid gap-4 sm:grid-cols-3">
               <AssetUploadField
                 id="inst_logo"
@@ -605,7 +608,7 @@ const InstitutionSettingsForm = ({ onUpdated }) => {
             />
           </TabsContent>
 
-          <TabsContent value="documents" className="mt-4 rounded-xl border border-slate-800 bg-slate-900 p-4 sm:p-5 space-y-5">
+          <TabsContent value="documents" className="mt-0 p-4 sm:p-5 space-y-5">
             <div>
               <p className="text-xs font-medium text-slate-400 mb-3">Signatories</p>
               <div className="grid gap-3 sm:grid-cols-2">
@@ -674,7 +677,7 @@ const InstitutionSettingsForm = ({ onUpdated }) => {
             </div>
           </TabsContent>
 
-          <TabsContent value="ids" className="mt-4 rounded-xl border border-slate-800 bg-slate-900 p-4 sm:p-5">
+          <TabsContent value="ids" className="mt-0 p-4 sm:p-5">
             <div className="grid gap-6 sm:grid-cols-2">
               <Field
                 label="Certificate start"
@@ -728,7 +731,7 @@ const InstitutionSettingsForm = ({ onUpdated }) => {
             </div>
           </TabsContent>
 
-          <TabsContent value="finance" className="mt-4 rounded-xl border border-slate-800 bg-slate-900 p-4 sm:p-5">
+          <TabsContent value="finance" className="mt-0 p-4 sm:p-5">
             <div className="grid gap-3 sm:grid-cols-2">
               <Field label="Currency" htmlFor="currency">
                 <Select value={form.currency} onValueChange={handleCurrencyChange}>
@@ -796,14 +799,14 @@ const InstitutionSettingsForm = ({ onUpdated }) => {
             </div>
           </TabsContent>
 
-          <TabsContent value="grading" className="mt-4">
+          <TabsContent value="grading" className="mt-0 p-4 sm:p-5">
             <GradingSystemSettings onUpdated={onUpdated} />
           </TabsContent>
         </Tabs>
       </form>
 
       {section !== 'grading' ? (
-        <div className="sticky bottom-3 z-10 flex items-center justify-between gap-3 rounded-xl border border-slate-800 bg-slate-950/95 px-4 py-3 shadow-lg backdrop-blur">
+        <div className="flex items-center justify-between gap-3 border-t border-slate-800 px-4 py-3">
           <p className="text-xs text-slate-500 hidden sm:block">Saves Profile, Brand, Documents, IDs, and Finance.</p>
           <Button type="submit" form="institution-settings-form" disabled={saving} className="ml-auto">
             {saving ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
