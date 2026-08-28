@@ -12,6 +12,7 @@ import { useAuth } from '@/contexts/AuthContext'
 import { getInstitutionDisplayName } from '@/lib/institution'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Button } from '@/components/ui/button'
+import { Award, Building2, Receipt, ScrollText, UserRound } from 'lucide-react'
 
 const AdminProfilePage = () => {
   const { user, institution, refreshUser } = useAuth()
@@ -23,29 +24,38 @@ const AdminProfilePage = () => {
         <title>Settings — {institutionName}</title>
       </Helmet>
 
-      <PageHeader
-        title="Institution Settings"
-        subtitle="Manage branding, landing templates, certificate/transcript/invoice templates, financial settings, and your administrator account."
-      />
+      <PageHeader title="Settings" subtitle="Institution, documents, and your account.">
+        <Button asChild variant="outline" size="sm" className="border-slate-700">
+          <Link to="/admin/landing">Landing page</Link>
+        </Button>
+      </PageHeader>
 
       <div className="max-w-5xl mx-auto">
-        <div className="mb-4">
-          <Button asChild variant="outline" size="sm" className="border-slate-700">
-            <Link to="/admin/landing">Landing page templates</Link>
-          </Button>
-        </div>
         <Tabs defaultValue="institution" className="w-full">
-          <TabsList className="bg-slate-900 border border-slate-800 mb-4 flex-wrap h-auto gap-1">
-            <TabsTrigger value="institution">Institution</TabsTrigger>
-            <TabsTrigger value="certificates">Certificate Management</TabsTrigger>
-            <TabsTrigger value="transcripts">Transcript Management</TabsTrigger>
-            <TabsTrigger value="invoices">Invoice Management</TabsTrigger>
-            <TabsTrigger value="account">My Account</TabsTrigger>
+          <TabsList className="bg-slate-900 border border-slate-800 mb-4 w-full justify-start h-auto gap-0.5 p-1 overflow-x-auto">
+            <TabsTrigger value="institution" className="gap-1.5 text-xs sm:text-sm">
+              <Building2 className="h-3.5 w-3.5" />
+              Institution
+            </TabsTrigger>
+            <TabsTrigger value="certificates" className="gap-1.5 text-xs sm:text-sm">
+              <Award className="h-3.5 w-3.5" />
+              Certificates
+            </TabsTrigger>
+            <TabsTrigger value="transcripts" className="gap-1.5 text-xs sm:text-sm">
+              <ScrollText className="h-3.5 w-3.5" />
+              Transcripts
+            </TabsTrigger>
+            <TabsTrigger value="invoices" className="gap-1.5 text-xs sm:text-sm">
+              <Receipt className="h-3.5 w-3.5" />
+              Invoices
+            </TabsTrigger>
+            <TabsTrigger value="account" className="gap-1.5 text-xs sm:text-sm">
+              <UserRound className="h-3.5 w-3.5" />
+              Account
+            </TabsTrigger>
           </TabsList>
           <TabsContent value="institution">
-            <div className="max-w-3xl">
-              <InstitutionSettingsForm onUpdated={() => refreshUser?.()} />
-            </div>
+            <InstitutionSettingsForm onUpdated={() => refreshUser?.()} />
           </TabsContent>
           <TabsContent value="certificates">
             <CertificateManagementPanel />

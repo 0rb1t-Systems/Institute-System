@@ -1,6 +1,5 @@
 import React, { useEffect, useState } from 'react'
 import { FileUp, Loader2, Sparkles } from 'lucide-react'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { useToast } from '@/components/ui/use-toast'
@@ -259,39 +258,31 @@ const CertificateUploadOwn = ({
 
   if (loading) {
     return (
-      <Card className="bg-slate-900 border-slate-800">
-        <CardContent className="flex justify-center py-12">
-          <Loader2 className="h-6 w-6 animate-spin text-slate-400" />
-        </CardContent>
-      </Card>
+      <div className="rounded-xl border border-slate-800 bg-slate-900 flex justify-center py-12">
+        <Loader2 className="h-6 w-6 animate-spin text-slate-400" />
+      </div>
     )
   }
 
   return (
-    <div className="space-y-4 max-w-3xl">
-      <Card className="bg-slate-900 border-slate-800">
-        <CardHeader className="pb-2">
-          <div className="flex items-center justify-between gap-2">
-            <CardTitle className="text-white text-base">Upload Own {docLabel}</CardTitle>
-            {active && hasTemplate ? (
-              <Badge className="bg-emerald-600/20 text-emerald-300 border-emerald-700/40">
-                Active
-              </Badge>
-            ) : null}
+    <div className="space-y-4">
+      <div className="rounded-xl border border-slate-800 bg-slate-900 p-4">
+        <div className="flex items-center justify-between gap-2 mb-3">
+          <div>
+            <p className="text-sm font-medium text-white">Upload a sample</p>
+            <p className="text-xs text-slate-500 mt-0.5">PDF or PNG for page size and colors, then generate editable layers.</p>
           </div>
-          <CardDescription>
-            Upload a sample PDF for page size and colors — then we generate a full certificate as
-            editable layers (not an image with fields on top).
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="rounded-lg border border-dashed border-slate-700 bg-slate-950 p-8 text-center space-y-3">
-            <FileUp className="h-8 w-8 text-slate-500 mx-auto" />
-            {meta?.file_name ? (
-              <p className="text-sm text-slate-300 truncate max-w-md mx-auto">{meta.file_name}</p>
-            ) : (
-              <p className="text-sm text-slate-400">PDF or PNG</p>
-            )}
+          {active && hasTemplate ? (
+            <Badge className="bg-emerald-600/20 text-emerald-300 border-emerald-700/40">Active</Badge>
+          ) : null}
+        </div>
+        <div className="flex flex-col sm:flex-row sm:items-center gap-3">
+          <div className="flex-1 rounded-lg border border-dashed border-slate-700 bg-slate-950 px-4 py-4 text-center sm:text-left">
+            <p className="text-sm text-slate-300 truncate">
+              {meta?.file_name || 'No file yet'}
+            </p>
+          </div>
+          <div className="flex flex-wrap gap-2">
             <label className="inline-flex">
               <input
                 type="file"
@@ -303,49 +294,25 @@ const CertificateUploadOwn = ({
                   e.target.value = ''
                 }}
               />
-              <Button type="button" disabled={busy} className="bg-indigo-600 hover:bg-indigo-500" asChild>
+              <Button type="button" disabled={busy} variant="outline" className="border-slate-700" asChild>
                 <span>
-                  {busy ? (
-                    <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                  ) : (
-                    <FileUp className="h-4 w-4 mr-2" />
-                  )}
-                  {meta?.storage_path ? 'Replace file' : `Upload ${docLabel.toLowerCase()}`}
+                  {busy ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <FileUp className="h-4 w-4 mr-2" />}
+                  {meta?.storage_path ? 'Replace' : 'Upload'}
                 </span>
               </Button>
             </label>
+            <Button
+              type="button"
+              disabled={busy || !meta?.storage_path}
+              className="bg-indigo-600 hover:bg-indigo-500"
+              onClick={() => void handleGenerate()}
+            >
+              {busy ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Sparkles className="h-4 w-4 mr-2" />}
+              {hasTemplate ? 'Regenerate' : 'Generate'}
+            </Button>
           </div>
-        </CardContent>
-      </Card>
-
-      <Card className="bg-slate-900 border-slate-800">
-        <CardHeader className="pb-2">
-          <CardTitle className="text-white text-base">Generate template</CardTitle>
-          <CardDescription>
-            Builds the whole certificate (text, lines, logo, seal, QR) to match your upload’s
-            proportions and palette. Everything is editable. Real student data fills dynamic fields
-            when you issue.
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <Button
-            type="button"
-            disabled={busy || !meta?.storage_path}
-            className="bg-indigo-600 hover:bg-indigo-500"
-            onClick={() => void handleGenerate()}
-          >
-            {busy ? (
-              <Loader2 className="h-4 w-4 animate-spin mr-2" />
-            ) : (
-              <Sparkles className="h-4 w-4 mr-2" />
-            )}
-            {hasTemplate ? 'Regenerate template' : 'Generate template'}
-          </Button>
-          {!meta?.storage_path ? (
-            <p className="text-xs text-slate-500 mt-2">Upload a file first.</p>
-          ) : null}
-        </CardContent>
-      </Card>
+        </div>
+      </div>
 
       {hasTemplate ? (
         <CertificateUploadTemplateEditor documentType={docType} remountKey={editorKey} />

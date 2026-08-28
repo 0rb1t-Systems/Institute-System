@@ -144,11 +144,9 @@ const UserProfileSettings = ({ user, onUpdate }) => {
 
   return (
     <Card className="bg-slate-900 border-slate-800 text-slate-100 shadow-xl">
-      <CardHeader>
-        <CardTitle>Profile Settings</CardTitle>
-        <CardDescription>
-          Update your photo, personal details, and password. Changes appear on your ID card and dashboard.
-        </CardDescription>
+      <CardHeader className="pb-4">
+        <CardTitle className="text-white text-base">Your account</CardTitle>
+        <CardDescription>Photo, name, and password.</CardDescription>
       </CardHeader>
       <form onSubmit={handleSubmit}>
         <CardContent className="space-y-6">

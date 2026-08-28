@@ -1,8 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-import { Loader2, CheckCircle2, Award } from 'lucide-react'
+import { Loader2, CheckCircle2 } from 'lucide-react'
 import { useAuth } from '@/contexts/AuthContext'
 import { getDocumentTemplate, setActiveCertificateTemplate } from '@/lib/api'
 import {
@@ -113,115 +112,86 @@ const CertificateTemplateLibrary = () => {
   }
 
   return (
-    <Card className="bg-slate-900 border-slate-800">
-      <CardHeader>
-        <div className="flex items-center gap-2">
-          <Award className="h-5 w-5 text-amber-400" />
-          <div>
-            <CardTitle className="text-white text-base">Certificate Template Library</CardTitle>
-            <CardDescription>
-              Preview professional designs and choose one active template. Your institution branding is applied automatically.
-            </CardDescription>
-          </div>
+    <div className="rounded-xl border border-slate-800 bg-slate-900 p-4 space-y-4">
+      {loading ? (
+        <div className="flex justify-center py-10">
+          <Loader2 className="h-6 w-6 animate-spin text-slate-400" />
         </div>
-      </CardHeader>
-      <CardContent className="space-y-5">
-        {loading ? (
-          <div className="flex justify-center py-10">
-            <Loader2 className="h-6 w-6 animate-spin text-slate-400" />
-          </div>
-        ) : (
-          <>
-            <div className="grid gap-3 sm:grid-cols-2">
-              {CERTIFICATE_TEMPLATE_LIBRARY.map((tpl) => {
-                const isActive = tpl.key === activeKey
-                const isPreview = tpl.key === previewKey
-                return (
-                  <button
-                    key={tpl.key}
-                    type="button"
-                    onClick={() => setPreviewKey(tpl.key)}
-                    className={`text-left rounded-lg border p-3 transition ${
-                      isPreview
-                        ? 'border-indigo-500 bg-slate-950 ring-1 ring-indigo-500/40'
-                        : 'border-slate-800 bg-slate-950/50 hover:border-slate-600'
-                    }`}
-                  >
-                    <div className="flex items-start justify-between gap-2 mb-2">
-                      <div>
-                        <p className="text-sm font-medium text-white">{tpl.name}</p>
-                        <p className="text-[11px] text-slate-500">{tpl.category}</p>
-                      </div>
-                      {isActive ? (
-                        <Badge className="bg-emerald-600/20 text-emerald-300 border-emerald-700/40">Active</Badge>
-                      ) : (
-                        <span
-                          className="h-2.5 w-2.5 rounded-full mt-1.5 shrink-0"
-                          style={{ backgroundColor: tpl.accentHint }}
-                        />
-                      )}
-                    </div>
-                    <p className="text-[11px] text-slate-400 line-clamp-2 mb-2">{tpl.description}</p>
-                    <div className="pointer-events-none max-h-36 overflow-hidden rounded border border-slate-800 bg-white">
-                      <CertificateCanvas
-                        compact
-                        data={{ ...sampleData, layoutKey: tpl.key }}
-                      />
-                    </div>
-                  </button>
-                )
-              })}
-            </div>
-
-            {!isBuiltInCertificateLayoutKey(activeKey) ? (
-              <p className="text-xs text-emerald-200/90 rounded-md border border-emerald-700/40 bg-emerald-950/30 px-3 py-2">
-                <strong className="text-emerald-300">
-                  {activeKey === 'logo_builder'
-                    ? 'Certificate Page Builder'
-                    : activeKey === 'custom_upload'
-                      ? 'Upload Own Certificate'
-                      : activeKey}{' '}
-                  is active
-                </strong>
-                {' — '}
-                Report Center download/print uses this design. Do not click “Set as active template” on a
-                library card unless you want to switch away from your custom design.
-              </p>
-            ) : null}
-
-            <div className="rounded-lg border border-slate-800 bg-slate-950 p-3">
-              <div className="flex flex-wrap items-center justify-between gap-2 mb-3">
-                <p className="text-sm text-slate-300">
-                  Preview:{' '}
-                  <span className="text-white font-medium">
-                    {CERTIFICATE_TEMPLATE_LIBRARY.find((t) => t.key === previewKey)?.name}
-                  </span>
-                </p>
-                <Button
+      ) : (
+        <>
+          {!isBuiltInCertificateLayoutKey(activeKey) ? (
+            <p className="text-xs text-emerald-200/90 rounded-lg border border-emerald-700/40 bg-emerald-950/30 px-3 py-2">
+              Using {activeKey === 'logo_builder' ? 'Builder' : 'Upload'} as the live certificate. Choose a library design only if you want to switch.
+            </p>
+          ) : null}
+          <div className="grid gap-2.5 sm:grid-cols-2 lg:grid-cols-3">
+            {CERTIFICATE_TEMPLATE_LIBRARY.map((tpl) => {
+              const isActive = tpl.key === activeKey
+              const isPreview = tpl.key === previewKey
+              return (
+                <button
+                  key={tpl.key}
                   type="button"
-                  size="sm"
-                  disabled={saving || previewKey === activeKey}
-                  onClick={() => handleActivate(previewKey)}
-                  className="bg-indigo-600 hover:bg-indigo-500"
+                  onClick={() => setPreviewKey(tpl.key)}
+                  className={`text-left rounded-lg border p-2.5 transition ${
+                    isPreview
+                      ? 'border-indigo-500 bg-slate-950 ring-1 ring-indigo-500/40'
+                      : 'border-slate-800 bg-slate-950/50 hover:border-slate-600'
+                  }`}
                 >
-                  {saving ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
-                  {previewKey === activeKey ? (
-                    <>
-                      <CheckCircle2 className="h-4 w-4 mr-1" /> Active template
-                    </>
-                  ) : (
-                    'Set as active template'
-                  )}
-                </Button>
-              </div>
-              <div className="max-w-md mx-auto bg-white rounded overflow-hidden">
-                <CertificateCanvas data={sampleData} />
-              </div>
+                  <div className="flex items-center justify-between gap-2 mb-2">
+                    <p className="text-sm font-medium text-white truncate">{tpl.name}</p>
+                    {isActive ? (
+                      <Badge className="bg-emerald-600/20 text-emerald-300 border-emerald-700/40 text-[10px]">
+                        Active
+                      </Badge>
+                    ) : (
+                      <span
+                        className="h-2 w-2 rounded-full shrink-0"
+                        style={{ backgroundColor: tpl.accentHint }}
+                      />
+                    )}
+                  </div>
+                  <div className="pointer-events-none max-h-28 overflow-hidden rounded border border-slate-800 bg-white">
+                    <CertificateCanvas compact data={{ ...sampleData, layoutKey: tpl.key }} />
+                  </div>
+                </button>
+              )
+            })}
+          </div>
+
+          <div className="rounded-lg border border-slate-800 bg-slate-950 p-3">
+            <div className="flex flex-wrap items-center justify-between gap-2 mb-3">
+              <p className="text-sm text-slate-300">
+                Preview:{' '}
+                <span className="text-white font-medium">
+                  {CERTIFICATE_TEMPLATE_LIBRARY.find((t) => t.key === previewKey)?.name}
+                </span>
+              </p>
+              <Button
+                type="button"
+                size="sm"
+                disabled={saving || previewKey === activeKey}
+                onClick={() => handleActivate(previewKey)}
+                className="bg-indigo-600 hover:bg-indigo-500"
+              >
+                {saving ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
+                {previewKey === activeKey ? (
+                  <>
+                    <CheckCircle2 className="h-4 w-4 mr-1" /> In use
+                  </>
+                ) : (
+                  'Use this design'
+                )}
+              </Button>
             </div>
-          </>
-        )}
-      </CardContent>
-    </Card>
+            <div className="max-w-md mx-auto bg-white rounded overflow-hidden">
+              <CertificateCanvas data={sampleData} />
+            </div>
+          </div>
+        </>
+      )}
+    </div>
   )
 }
 

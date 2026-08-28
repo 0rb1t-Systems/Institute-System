@@ -1308,7 +1308,7 @@ const CertificateLogoPageBuilder = ({
         <div className="flex flex-wrap items-center justify-between gap-2">
           <div className="min-w-0 flex items-center gap-2 flex-wrap">
             <CardTitle className="text-white text-base">
-              {isUploadEdit ? `Edit uploaded ${docLabel}` : `${docLabel} Page Builder`}
+              {isUploadEdit ? 'Edit uploaded design' : 'Page builder'}
             </CardTitle>
             {activeLayout === 'logo_builder' ? (
               <Badge className="bg-emerald-600/20 text-emerald-300 border-emerald-700/40 text-[10px]">
