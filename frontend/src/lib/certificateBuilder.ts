@@ -8,6 +8,7 @@
  * - Builder image elements store private storage paths (signed URLs resolved at render).
  */
 
+/** System stacks first — indexes 0 and 4 are used by starter templates. Then OFL Google Fonts. */
 export const BUILDER_FONT_FAMILIES = [
   'Georgia, serif',
   'Times New Roman, Times, serif',
@@ -19,7 +20,32 @@ export const BUILDER_FONT_FAMILIES = [
   'Verdana, Geneva, sans-serif',
   'Courier New, Courier, monospace',
   'Impact, Charcoal, sans-serif',
+  '"Playfair Display", Georgia, serif',
+  '"Cormorant Garamond", Garamond, serif',
+  '"EB Garamond", Garamond, serif',
+  '"Libre Baskerville", Georgia, serif',
+  '"Source Serif 4", Georgia, serif',
+  '"Merriweather", Georgia, serif',
+  '"Lora", Georgia, serif',
+  '"Spectral", Georgia, serif',
+  '"Cardo", Georgia, serif',
+  '"Cinzel", Palatino, serif',
+  '"Cinzel Decorative", Cinzel, Palatino, serif',
+  '"Great Vibes", "Segoe Script", cursive',
+  '"Allura", "Segoe Script", cursive',
+  '"Tangerine", "Segoe Script", cursive',
+  '"Pinyon Script", "Segoe Script", cursive',
+  '"Italianno", "Segoe Script", cursive',
+  '"Montserrat", Arial, sans-serif',
+  '"DM Sans", Arial, sans-serif',
 ] as const
+
+export function builderFontLabel(stack: string): string {
+  return String(stack || '')
+    .split(',')[0]
+    .replace(/['"]/g, '')
+    .trim()
+}
 
 /** Dynamic fields users can bind to text — QR is system-managed separately. */
 export const BUILDER_BINDINGS = [
@@ -2459,24 +2485,64 @@ export function createBorderFrameElements(canvas: {
   ]
 }
 
-/** Ready decorative ornaments for certificates — borders, medals, seals, flourishes. */
+/** Ready decorative ornaments for certificates. */
 export const DECORATIVE_SHAPE_CATEGORIES = [
   { id: 'borders', label: 'Borders & frames' },
-  { id: 'badges', label: 'Badges, seals & medals' },
+  { id: 'lines', label: 'Lines & rules' },
+  { id: 'headers', label: 'Header ornaments' },
+  { id: 'guilloche', label: 'Guilloche patterns' },
+  { id: 'watermarks', label: 'Watermarks' },
+  { id: 'geometric', label: 'Geometric patterns' },
+  { id: 'flourishes', label: 'Flourishes & swashes' },
+  { id: 'dividers', label: 'Decorative dividers' },
+  { id: 'badges', label: 'Badges, seals & emblems' },
   { id: 'corners', label: 'Corner ornaments' },
-  { id: 'dividers', label: 'Dividers & flourishes' },
   { id: 'modern', label: 'Modern accents' },
 ] as const
 
 export const DECORATIVE_SHAPES = [
-  // Borders
   { key: 'border_classic_double', label: 'Classic double frame', category: 'borders', size: 0, fullPage: true },
   { key: 'border_gold_ornate', label: 'Ornate gold frame', category: 'borders', size: 0, fullPage: true },
   { key: 'border_navy_block', label: 'Navy corner blocks', category: 'borders', size: 0, fullPage: true },
   { key: 'border_elegant_thin', label: 'Elegant thin frame', category: 'borders', size: 0, fullPage: true },
   { key: 'border_maroon_gold', label: 'Maroon & gold frame', category: 'borders', size: 0, fullPage: true },
   { key: 'border_green_filigree', label: 'Green filigree frame', category: 'borders', size: 0, fullPage: true },
-  // Badges / seals / medals
+  { key: 'line_double_rule', label: 'Double rule', category: 'lines', size: 280 },
+  { key: 'line_triple_rule', label: 'Triple rule', category: 'lines', size: 280 },
+  { key: 'line_ornate_rule', label: 'Ornate rule', category: 'lines', size: 280 },
+  { key: 'line_dashed', label: 'Dashed rule', category: 'lines', size: 280 },
+  { key: 'line_vertical', label: 'Vertical rule', category: 'lines', size: 36 },
+  { key: 'line_bracket', label: 'Bracket rule', category: 'lines', size: 260 },
+  { key: 'header_pediment', label: 'Classic pediment', category: 'headers', size: 300 },
+  { key: 'header_greek_key', label: 'Greek-key header', category: 'headers', size: 300 },
+  { key: 'header_crest_bar', label: 'Crest header bar', category: 'headers', size: 300 },
+  { key: 'header_sunburst', label: 'Sunburst header', category: 'headers', size: 300 },
+  { key: 'header_banner', label: 'Ribbon header', category: 'headers', size: 300 },
+  { key: 'guilloche_rosette', label: 'Guilloche rosette', category: 'guilloche', size: 160 },
+  { key: 'guilloche_oval', label: 'Guilloche oval', category: 'guilloche', size: 220 },
+  { key: 'guilloche_border', label: 'Guilloche border', category: 'guilloche', size: 0, fullPage: true },
+  { key: 'guilloche_engine', label: 'Engine-turned disc', category: 'guilloche', size: 150 },
+  { key: 'watermark_seal', label: 'Seal watermark', category: 'watermarks', size: 0, fullPage: true, watermark: true },
+  { key: 'watermark_diamond', label: 'Diamond watermark', category: 'watermarks', size: 0, fullPage: true, watermark: true },
+  { key: 'watermark_laurel', label: 'Laurel watermark', category: 'watermarks', size: 0, fullPage: true, watermark: true },
+  { key: 'watermark_grid', label: 'Security grid', category: 'watermarks', size: 0, fullPage: true, watermark: true },
+  { key: 'geo_greek_key', label: 'Greek key band', category: 'geometric', size: 280 },
+  { key: 'geo_chevrons', label: 'Chevron band', category: 'geometric', size: 280 },
+  { key: 'geo_diamonds', label: 'Diamond lattice', category: 'geometric', size: 220 },
+  { key: 'geo_hex', label: 'Hex motif', category: 'geometric', size: 140 },
+  { key: 'geo_triangles', label: 'Triangle row', category: 'geometric', size: 260 },
+  { key: 'flourish_scroll', label: 'Scroll flourish', category: 'flourishes', size: 200 },
+  { key: 'flourish_swash_left', label: 'Swash left', category: 'flourishes', size: 160 },
+  { key: 'flourish_swash_right', label: 'Swash right', category: 'flourishes', size: 160 },
+  { key: 'flourish_vine', label: 'Vine flourish', category: 'flourishes', size: 220 },
+  { key: 'flourish_ampersand', label: 'Calligraphic swirl', category: 'flourishes', size: 90 },
+  { key: 'ribbon', label: 'Ribbon banner', category: 'dividers', size: 240 },
+  { key: 'divider_ornate', label: 'Ornate divider', category: 'dividers', size: 280 },
+  { key: 'divider_diamond', label: 'Diamond divider', category: 'dividers', size: 260 },
+  { key: 'divider_dots', label: 'Dotted divider', category: 'dividers', size: 260 },
+  { key: 'divider_laurel', label: 'Laurel divider', category: 'dividers', size: 240 },
+  { key: 'crown', label: 'Crown', category: 'dividers', size: 80 },
+  { key: 'stars_row', label: 'Stars row', category: 'dividers', size: 180 },
   { key: 'medal_gold', label: 'Gold medal + ribbon', category: 'badges', size: 120 },
   { key: 'medal_navy', label: 'Navy medal + ribbon', category: 'badges', size: 120 },
   { key: 'seal_wax', label: 'Wax seal', category: 'badges', size: 100 },
@@ -2488,20 +2554,13 @@ export const DECORATIVE_SHAPES = [
   { key: 'laurel_star', label: 'Laurel + star', category: 'badges', size: 120 },
   { key: 'rosette', label: 'Rosette', category: 'badges', size: 100 },
   { key: 'diamond_seal', label: 'Diamond seal', category: 'badges', size: 90 },
-  // Corners
+  { key: 'emblem_shield', label: 'Shield emblem', category: 'badges', size: 110 },
+  { key: 'emblem_cross', label: 'Cross medallion', category: 'badges', size: 100 },
   { key: 'corner_flourish', label: 'Corner flourish', category: 'corners', size: 90 },
   { key: 'corner_filigree', label: 'Corner filigree', category: 'corners', size: 100 },
   { key: 'corner_geometric', label: 'Corner geometric', category: 'corners', size: 90 },
   { key: 'corner_floral', label: 'Corner floral', category: 'corners', size: 95 },
   { key: 'corner_celtic', label: 'Corner celtic', category: 'corners', size: 90 },
-  // Dividers & flourishes
-  { key: 'ribbon', label: 'Ribbon banner', category: 'dividers', size: 240 },
-  { key: 'divider_ornate', label: 'Ornate divider', category: 'dividers', size: 280 },
-  { key: 'divider_diamond', label: 'Diamond divider', category: 'dividers', size: 260 },
-  { key: 'flourish_scroll', label: 'Scroll flourish', category: 'dividers', size: 200 },
-  { key: 'crown', label: 'Crown', category: 'dividers', size: 80 },
-  { key: 'stars_row', label: 'Stars row', category: 'dividers', size: 180 },
-  // Modern
   { key: 'modern_wave_top', label: 'Wave header', category: 'modern', size: 0, fullPage: true },
   { key: 'modern_side_bar', label: 'Side accent bar', category: 'modern', size: 0, fullPage: true },
   { key: 'modern_corner_sweep', label: 'Corner sweep', category: 'modern', size: 180 },
@@ -2526,7 +2585,12 @@ export function buildDecorativeSvg(
 ): { svg: string; viewW: number; viewH: number } {
   const p = primary
   const a = accent
-  const g = '#1a5c3a' // secondary green accent for multi-tone ornaments
+  const g = '#1a5c3a'
+  const rings = (cx: number, cy: number, count: number, start = 10, step = 5.5) =>
+    Array.from({ length: count }, (_, i) => {
+      const r = start + i * step
+      return `<circle cx="${cx}" cy="${cy}" r="${r}" fill="none" stroke="${i % 2 ? a : p}" stroke-width="0.55"/>`
+    }).join('')
 
   switch (key) {
     case 'border_classic_double':
@@ -2708,6 +2772,232 @@ export function buildDecorativeSvg(
           )
           .join('')}</svg>`,
       }
+    case 'line_double_rule':
+      return {
+        viewW: 280,
+        viewH: 16,
+        svg: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 280 16"><line x1="8" y1="5" x2="272" y2="5" stroke="${p}" stroke-width="1.6"/><line x1="8" y1="11" x2="272" y2="11" stroke="${a}" stroke-width="1.2"/></svg>`,
+      }
+    case 'line_triple_rule':
+      return {
+        viewW: 280,
+        viewH: 20,
+        svg: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 280 20"><line x1="8" y1="4" x2="272" y2="4" stroke="${p}" stroke-width="1.2"/><line x1="8" y1="10" x2="272" y2="10" stroke="${a}" stroke-width="2.2"/><line x1="8" y1="16" x2="272" y2="16" stroke="${p}" stroke-width="1.2"/></svg>`,
+      }
+    case 'line_ornate_rule':
+      return {
+        viewW: 280,
+        viewH: 22,
+        svg: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 280 22"><path d="M10 11 H118 M162 11 H270" stroke="${p}" stroke-width="1.6"/><path d="M140 3 L148 11 L140 19 L132 11 Z" fill="${a}"/><circle cx="140" cy="11" r="2.4" fill="${p}"/></svg>`,
+      }
+    case 'line_dashed':
+      return {
+        viewW: 280,
+        viewH: 12,
+        svg: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 280 12"><line x1="8" y1="6" x2="272" y2="6" stroke="${p}" stroke-width="1.6" stroke-dasharray="8 6"/></svg>`,
+      }
+    case 'line_vertical':
+      return {
+        viewW: 16,
+        viewH: 200,
+        svg: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 200"><line x1="5" y1="8" x2="5" y2="192" stroke="${p}" stroke-width="1.6"/><line x1="11" y1="8" x2="11" y2="192" stroke="${a}" stroke-width="1.2"/></svg>`,
+      }
+    case 'line_bracket':
+      return {
+        viewW: 260,
+        viewH: 18,
+        svg: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 260 18"><path d="M12 14 V4 H248 V14" fill="none" stroke="${p}" stroke-width="1.8"/><path d="M20 14 V8 H240 V14" fill="none" stroke="${a}" stroke-width="1"/></svg>`,
+      }
+    case 'header_pediment':
+      return {
+        viewW: 300,
+        viewH: 70,
+        svg: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 300 70"><path d="M10 62 L150 8 L290 62 Z" fill="none" stroke="${p}" stroke-width="3"/><path d="M28 62 L150 18 L272 62 Z" fill="none" stroke="${a}" stroke-width="1.4"/><rect x="8" y="60" width="284" height="6" fill="${p}"/><circle cx="150" cy="28" r="5" fill="${a}"/></svg>`,
+      }
+    case 'header_greek_key':
+      return {
+        viewW: 300,
+        viewH: 28,
+        svg: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 300 28"><rect x="0" y="4" width="300" height="20" fill="none" stroke="${p}" stroke-width="2"/>${Array.from({ length: 12 }, (_, i) => {
+          const x = 8 + i * 24
+          return `<path d="M${x} 20 V8 H${x + 10} V16 H${x + 16} V8 H${x + 22}" fill="none" stroke="${a}" stroke-width="1.6"/>`
+        }).join('')}</svg>`,
+      }
+    case 'header_crest_bar':
+      return {
+        viewW: 300,
+        viewH: 48,
+        svg: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 300 48"><rect x="0" y="18" width="300" height="12" fill="${p}"/><rect x="0" y="30" width="300" height="4" fill="${a}"/><path d="M128 18 L150 4 L172 18 Z" fill="${a}"/><circle cx="150" cy="22" r="8" fill="${p}" stroke="${a}" stroke-width="2"/></svg>`,
+      }
+    case 'header_sunburst':
+      return {
+        viewW: 300,
+        viewH: 80,
+        svg: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 300 80"><path d="M0 80 C80 20 220 20 300 80" fill="none" stroke="${p}" stroke-width="3"/>${Array.from({ length: 11 }, (_, i) => {
+          const ang = ((i - 5) * 12 * Math.PI) / 180
+          const x2 = 150 + Math.sin(ang) * 70
+          const y2 = 78 - Math.cos(ang) * 62
+          return `<line x1="150" y1="78" x2="${x2}" y2="${y2}" stroke="${a}" stroke-width="1.4"/>`
+        }).join('')}<circle cx="150" cy="72" r="7" fill="${a}"/></svg>`,
+      }
+    case 'header_banner':
+      return {
+        viewW: 300,
+        viewH: 44,
+        svg: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 300 44"><path d="M18 6 H282 L268 22 L282 38 H18 L32 22 Z" fill="${p}"/><path d="M36 12 H264 L254 22 L264 32 H36 L46 22 Z" fill="none" stroke="${a}" stroke-width="1.6"/></svg>`,
+      }
+    case 'guilloche_rosette':
+      return {
+        viewW: 160,
+        viewH: 160,
+        svg: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 160 160">${rings(80, 80, 12, 8, 5.5)}${Array.from({ length: 12 }, (_, i) => {
+          const ang = (i * 30 * Math.PI) / 180
+          const cx = 80 + Math.cos(ang) * 28
+          const cy = 80 + Math.sin(ang) * 28
+          return `<circle cx="${cx}" cy="${cy}" r="18" fill="none" stroke="${a}" stroke-width="0.7"/>`
+        }).join('')}</svg>`,
+      }
+    case 'guilloche_oval':
+      return {
+        viewW: 220,
+        viewH: 140,
+        svg: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 220 140">${Array.from({ length: 8 }, (_, i) => `<ellipse cx="110" cy="70" rx="${40 + i * 9}" ry="${22 + i * 6}" fill="none" stroke="${i % 2 ? a : p}" stroke-width="0.7"/>`).join('')}</svg>`,
+      }
+    case 'guilloche_border':
+      return {
+        viewW: 300,
+        viewH: 420,
+        svg: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 300 420"><rect x="16" y="16" width="268" height="388" fill="none" stroke="${p}" stroke-width="1.2"/>${[
+          [40, 40],
+          [260, 40],
+          [40, 380],
+          [260, 380],
+          [150, 40],
+          [150, 380],
+        ]
+          .map(([cx, cy]) => rings(cx, cy, 6, 6, 4))
+          .join('')}</svg>`,
+      }
+    case 'guilloche_engine':
+      return {
+        viewW: 150,
+        viewH: 150,
+        svg: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 150 150">${rings(75, 75, 14, 6, 4.4)}${Array.from({ length: 18 }, (_, i) => {
+          const ang = (i * 20 * Math.PI) / 180
+          return `<line x1="${75 + Math.cos(ang) * 18}" y1="${75 + Math.sin(ang) * 18}" x2="${75 + Math.cos(ang) * 68}" y2="${75 + Math.sin(ang) * 68}" stroke="${a}" stroke-width="0.45"/>`
+        }).join('')}</svg>`,
+      }
+    case 'watermark_seal':
+      return {
+        viewW: 300,
+        viewH: 420,
+        svg: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 300 420"><g transform="translate(150 210)">${rings(0, 0, 8, 18, 8)}<circle cx="0" cy="0" r="22" fill="none" stroke="${a}" stroke-width="3"/><path d="M0 -14 L4 0 L14 0 L6 8 L9 20 L0 12 L-9 20 L-6 8 L-14 0 L-4 0 Z" fill="${p}"/></g></svg>`,
+      }
+    case 'watermark_diamond':
+      return {
+        viewW: 300,
+        viewH: 420,
+        svg: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 300 420"><g transform="translate(150 210) rotate(-18)"><path d="M0 -90 L78 0 L0 90 L-78 0 Z" fill="none" stroke="${p}" stroke-width="3"/><path d="M0 -58 L50 0 L0 58 L-50 0 Z" fill="none" stroke="${a}" stroke-width="2"/></g></svg>`,
+      }
+    case 'watermark_laurel':
+      return {
+        viewW: 300,
+        viewH: 420,
+        svg: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 300 420"><g transform="translate(90 140) scale(1.6)" opacity="0.9"><path d="M65 118 C20 100 12 55 28 28 C40 48 48 70 52 95 C42 78 30 58 28 40 C18 70 28 105 65 118 Z" fill="${a}"/><path d="M65 118 C110 100 118 55 102 28 C90 48 82 70 78 95 C88 78 100 58 102 40 C112 70 102 105 65 118 Z" fill="${a}"/></g></svg>`,
+      }
+    case 'watermark_grid':
+      return {
+        viewW: 300,
+        viewH: 420,
+        svg: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 300 420">${Array.from({ length: 15 }, (_, i) => `<line x1="${20 + i * 18}" y1="20" x2="${20 + i * 18}" y2="400" stroke="${p}" stroke-width="0.4"/>`).join('')}${Array.from({ length: 20 }, (_, i) => `<line x1="20" y1="${20 + i * 19}" x2="280" y2="${20 + i * 19}" stroke="${a}" stroke-width="0.4"/>`).join('')}</svg>`,
+      }
+    case 'geo_greek_key':
+      return {
+        viewW: 280,
+        viewH: 22,
+        svg: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 280 22">${Array.from({ length: 11 }, (_, i) => {
+          const x = 6 + i * 25
+          return `<path d="M${x} 18 V4 H${x + 8} V12 H${x + 14} V4 H${x + 20} V18" fill="none" stroke="${p}" stroke-width="1.5"/>`
+        }).join('')}</svg>`,
+      }
+    case 'geo_chevrons':
+      return {
+        viewW: 280,
+        viewH: 24,
+        svg: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 280 24">${Array.from({ length: 14 }, (_, i) => `<path d="M${8 + i * 20} 20 L${18 + i * 20} 6 L${28 + i * 20} 20" fill="none" stroke="${i % 2 ? a : p}" stroke-width="1.8"/>`).join('')}</svg>`,
+      }
+    case 'geo_diamonds':
+      return {
+        viewW: 220,
+        viewH: 80,
+        svg: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 220 80">${Array.from({ length: 5 }, (_, r) =>
+          Array.from({ length: 8 }, (_, c) => {
+            const x = 18 + c * 26 + (r % 2) * 13
+            const y = 14 + r * 14
+            return `<path d="M${x} ${y - 8} L${x + 8} ${y} L${x} ${y + 8} L${x - 8} ${y} Z" fill="none" stroke="${(r + c) % 2 ? a : p}" stroke-width="1"/>`
+          }).join(''),
+        ).join('')}</svg>`,
+      }
+    case 'geo_hex':
+      return {
+        viewW: 140,
+        viewH: 140,
+        svg: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 140 140"><polygon points="70,12 118,40 118,96 70,124 22,96 22,40" fill="none" stroke="${p}" stroke-width="3"/><polygon points="70,32 102,50 102,86 70,104 38,86 38,50" fill="none" stroke="${a}" stroke-width="2"/><circle cx="70" cy="70" r="12" fill="${a}"/></svg>`,
+      }
+    case 'geo_triangles':
+      return {
+        viewW: 260,
+        viewH: 22,
+        svg: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 260 22">${Array.from({ length: 13 }, (_, i) => `<path d="M${10 + i * 19} 18 L${19 + i * 19} 4 L${28 + i * 19} 18 Z" fill="${i % 2 ? a : p}"/>`).join('')}</svg>`,
+      }
+    case 'flourish_swash_left':
+      return {
+        viewW: 160,
+        viewH: 48,
+        svg: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 160 48"><path d="M150 24 C110 8 80 8 50 24 C28 36 18 36 10 24 C22 16 40 28 62 24 C90 18 120 28 150 24" fill="none" stroke="${a}" stroke-width="2.2"/><path d="M18 24 C30 12 44 12 56 22" fill="none" stroke="${p}" stroke-width="1.3"/></svg>`,
+      }
+    case 'flourish_swash_right':
+      return {
+        viewW: 160,
+        viewH: 48,
+        svg: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 160 48"><path d="M10 24 C50 8 80 8 110 24 C132 36 142 36 150 24 C138 16 120 28 98 24 C70 18 40 28 10 24" fill="none" stroke="${a}" stroke-width="2.2"/><path d="M142 24 C130 12 116 12 104 22" fill="none" stroke="${p}" stroke-width="1.3"/></svg>`,
+      }
+    case 'flourish_vine':
+      return {
+        viewW: 220,
+        viewH: 36,
+        svg: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 220 36"><path d="M8 22 C40 6 70 30 100 18 C130 6 160 30 212 16" fill="none" stroke="${p}" stroke-width="1.8"/><circle cx="48" cy="12" r="4" fill="${a}"/><circle cx="108" cy="14" r="4" fill="${a}"/><circle cx="168" cy="20" r="4" fill="${a}"/></svg>`,
+      }
+    case 'flourish_ampersand':
+      return {
+        viewW: 90,
+        viewH: 90,
+        svg: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 90 90"><path d="M58 18 C40 8 18 22 22 42 C26 62 52 64 58 48 C64 34 40 30 36 46 C32 64 54 78 72 68" fill="none" stroke="${a}" stroke-width="3.2" stroke-linecap="round"/><path d="M28 70 C44 82 70 78 78 58" fill="none" stroke="${p}" stroke-width="1.6"/></svg>`,
+      }
+    case 'divider_dots':
+      return {
+        viewW: 260,
+        viewH: 16,
+        svg: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 260 16">${Array.from({ length: 17 }, (_, i) => `<circle cx="${16 + i * 14}" cy="8" r="${i === 8 ? 3.2 : 1.8}" fill="${i === 8 ? a : p}"/>`).join('')}</svg>`,
+      }
+    case 'divider_laurel':
+      return {
+        viewW: 240,
+        viewH: 28,
+        svg: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 28"><path d="M12 14 H96 M144 14 H228" stroke="${p}" stroke-width="1.5"/><path d="M108 8 C112 16 116 16 120 8 C124 16 128 16 132 8" fill="none" stroke="${a}" stroke-width="2"/><circle cx="120" cy="16" r="3" fill="${a}"/></svg>`,
+      }
+    case 'emblem_shield':
+      return {
+        viewW: 110,
+        viewH: 130,
+        svg: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 110 130"><path d="M55 8 L98 24 V62 C98 92 78 114 55 122 C32 114 12 92 12 62 V24 Z" fill="${p}" stroke="${a}" stroke-width="3"/><path d="M55 20 L86 32 V62 C86 84 72 102 55 108 C38 102 24 84 24 62 V32 Z" fill="none" stroke="${a}" stroke-width="1.6"/><path d="M55 42 L60 54 L74 54 L63 62 L67 76 L55 68 L43 76 L47 62 L36 54 L50 54 Z" fill="${a}"/></svg>`,
+      }
+    case 'emblem_cross':
+      return {
+        viewW: 100,
+        viewH: 100,
+        svg: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><circle cx="50" cy="50" r="46" fill="${p}"/><circle cx="50" cy="50" r="36" fill="none" stroke="${a}" stroke-width="3"/><path d="M46 22 H54 V46 H78 V54 H54 V78 H46 V54 H22 V46 H46 Z" fill="${a}"/></svg>`,
+      }
     case 'modern_wave_top':
       return {
         viewW: 300,
@@ -2768,6 +3058,7 @@ export function createDecorativeShapeElement(
   const meta = DECORATIVE_SHAPES.find((s) => s.key === key) || DECORATIVE_SHAPES[0]
   const built = buildDecorativeSvg(key, primary, accent)
   const fullPage = 'fullPage' in meta && meta.fullPage
+  const watermark = 'watermark' in meta && meta.watermark
 
   if (fullPage) {
     return {
@@ -2778,9 +3069,9 @@ export function createDecorativeShapeElement(
       width: canvas.width,
       height: canvas.height,
       rotation: 0,
-      zIndex: 1,
+      zIndex: watermark ? 2 : 1,
       src: svgDataUri(built.svg),
-      opacity: 1,
+      opacity: watermark ? 0.16 : 1,
       bind: 'none',
       text: meta.label,
       decorKey: key,

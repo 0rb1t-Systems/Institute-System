@@ -56,7 +56,7 @@ const CURRENCY_OPTIONS = [
   { code: 'ETB', symbol: 'Br', label: 'ETB — Ethiopian Birr' },
 ]
 
-const inputCls = 'bg-slate-950 border-slate-800 h-9'
+const inputCls = 'bg-[var(--tenant-bg-2)] border-[var(--tenant-line)] text-[var(--tenant-text)] h-9'
 const empty = {
   name: '',
   logo_url: '',
@@ -91,29 +91,29 @@ const empty = {
 const Field = ({ label, htmlFor, hint, className, children }) => (
   <div className={cn('space-y-1.5', className)}>
     {label ? (
-      <Label htmlFor={htmlFor} className="text-slate-300 text-[13px]">
+      <Label htmlFor={htmlFor} className="text-[var(--tenant-text)] text-[13px]">
         {label}
       </Label>
     ) : null}
     {children}
-    {hint ? <p className="text-[11px] text-slate-500 leading-snug">{hint}</p> : null}
+    {hint ? <p className="text-[11px] text-[var(--tenant-muted)] leading-snug">{hint}</p> : null}
   </div>
 )
 
 const AssetUploadField = ({ id, label, hint = '', value, onUrlChange, onFile, uploading }) => (
   <Field label={label} htmlFor={id} hint={hint}>
-    <div className="flex items-center gap-3 rounded-lg border border-slate-800 bg-slate-950/60 p-2.5">
-      <div className="h-12 w-12 shrink-0 rounded-md border border-slate-800 bg-slate-950 flex items-center justify-center overflow-hidden">
+    <div className="flex items-center gap-3 rounded-lg border border-[var(--tenant-line)] bg-[var(--tenant-bg-2)] p-2.5">
+      <div className="h-12 w-12 shrink-0 rounded-md border border-[var(--tenant-line)] bg-[var(--tenant-surface)] flex items-center justify-center overflow-hidden">
         {value ? (
           <img src={brandedImageSrc(value)} alt="" className="max-h-full max-w-full object-contain" />
         ) : (
-          <span className="text-[9px] text-slate-600">None</span>
+          <span className="text-[9px] text-[var(--tenant-muted)]">None</span>
         )}
       </div>
       <div className="flex flex-wrap items-center gap-1.5">
         <Label
           htmlFor={id}
-          className="inline-flex items-center gap-1.5 text-xs text-slate-300 cursor-pointer m-0 rounded-md border border-slate-700 px-2.5 py-1.5 hover:bg-slate-800"
+          className="inline-flex items-center gap-1.5 text-xs text-[var(--tenant-text)] cursor-pointer m-0 rounded-md border border-[var(--tenant-line)] px-2.5 py-1.5 hover:bg-[var(--tenant-bg)]"
         >
           {uploading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Upload className="h-3.5 w-3.5" />}
           {value ? 'Replace' : 'Upload'}
@@ -131,7 +131,7 @@ const AssetUploadField = ({ id, label, hint = '', value, onUrlChange, onFile, up
             type="button"
             variant="ghost"
             size="sm"
-            className="h-7 px-2 text-xs text-slate-400 hover:text-red-300"
+            className="h-7 px-2 text-xs text-[var(--tenant-muted)] hover:text-red-600"
             onClick={() => onUrlChange('')}
             disabled={uploading}
           >
@@ -143,7 +143,9 @@ const AssetUploadField = ({ id, label, hint = '', value, onUrlChange, onFile, up
   </Field>
 )
 
-const InstitutionSettingsForm = ({ onUpdated }) => {
+const FORM_SECTIONS = ['profile', 'brand', 'documents', 'ids', 'finance', 'grading']
+
+const InstitutionSettingsForm = ({ onUpdated, section: controlledSection, onNeedSection }) => {
   const { institution, refreshUser } = useAuth()
   const { toast } = useToast()
   const [form, setForm] = useState(empty)
@@ -151,7 +153,13 @@ const InstitutionSettingsForm = ({ onUpdated }) => {
   const [uploading, setUploading] = useState(null)
   const [logoSwatches, setLogoSwatches] = useState([])
   const [detectingColors, setDetectingColors] = useState(false)
-  const [section, setSection] = useState('profile')
+  const [section, setSection] = useState(controlledSection || 'profile')
+  const activeSection = FORM_SECTIONS.includes(controlledSection) ? controlledSection : section
+  const showTabList = !controlledSection
+  const goSection = (next) => {
+    if (controlledSection) onNeedSection?.(next)
+    else setSection(next)
+  }
 
   useEffect(() => {
     if (!institution) return
@@ -279,34 +287,34 @@ const InstitutionSettingsForm = ({ onUpdated }) => {
   const handleSave = async (e) => {
     e.preventDefault()
     if (!form.name.trim()) {
-      setSection('profile')
+      goSection('profile')
       toast({ title: 'Validation', description: 'Institution name is required.', variant: 'destructive' })
       return
     }
     if (!form.email.trim() || !isValidEmail(form.email)) {
-      setSection('profile')
+      goSection('profile')
       toast({ title: 'Validation', description: 'A valid institution email is required.', variant: 'destructive' })
       return
     }
     if (!form.phone.trim()) {
-      setSection('profile')
+      goSection('profile')
       toast({ title: 'Validation', description: 'Institution phone is required.', variant: 'destructive' })
       return
     }
     if (!form.address.trim()) {
-      setSection('profile')
+      goSection('profile')
       toast({ title: 'Validation', description: 'Institution address is required.', variant: 'destructive' })
       return
     }
     const currency = String(form.currency || '').trim().toUpperCase()
     if (!/^[A-Z]{3}$/.test(currency)) {
-      setSection('finance')
+      goSection('finance')
       toast({ title: 'Validation', description: 'Currency must be a 3-letter code (e.g. USD).', variant: 'destructive' })
       return
     }
     const symbol = String(form.currency_symbol || '').trim()
     if (!symbol || symbol.length > 8) {
-      setSection('finance')
+      goSection('finance')
       toast({ title: 'Validation', description: 'Currency symbol is required (max 8 characters).', variant: 'destructive' })
       return
     }
@@ -315,7 +323,7 @@ const InstitutionSettingsForm = ({ onUpdated }) => {
     try {
       serial = parseCertificateNumberStart(form.certificate_number_start)
     } catch {
-      setSection('ids')
+      goSection('ids')
       toast({
         title: 'Validation',
         description: 'Certificate start must be a number like 0001.',
@@ -330,7 +338,7 @@ const InstitutionSettingsForm = ({ onUpdated }) => {
         form.student_id_sample || defaultStudentIdSample(form.name || institution?.name),
       )
     } catch {
-      setSection('ids')
+      goSection('ids')
       toast({
         title: 'Validation',
         description: 'Student ID must look like brce002, DI0123, or 134855.',
@@ -420,8 +428,8 @@ const InstitutionSettingsForm = ({ onUpdated }) => {
 
   return (
     <div className="space-y-4">
-      {!settingsComplete ? (
-        <Alert className="bg-amber-950/40 border-amber-800 text-amber-100 py-2.5">
+      {!settingsComplete && activeSection === 'profile' ? (
+        <Alert className="bg-amber-50 border-amber-200 text-amber-900 py-2.5 [html[data-platform-theme='dark']_&]:bg-amber-950/40 [html[data-platform-theme='dark']_&]:border-amber-800 [html[data-platform-theme='dark']_&]:text-amber-100">
           <AlertCircle className="h-4 w-4" />
           <AlertDescription className="text-sm">
             Add name, address, phone, and email before issuing certificates, transcripts, or invoices.
@@ -430,35 +438,37 @@ const InstitutionSettingsForm = ({ onUpdated }) => {
       ) : null}
 
       <form id="institution-settings-form" onSubmit={handleSave} className="space-y-0">
-        <Tabs value={section} onValueChange={setSection} className="w-full">
-          <div className="px-2 sm:px-3">
-            <TabsList className={settingsSubListClass}>
-              <TabsTrigger value="profile" className={settingsSubTriggerClass}>
-                <Building2 className="h-3.5 w-3.5" />
-                Profile
-              </TabsTrigger>
-              <TabsTrigger value="brand" className={settingsSubTriggerClass}>
-                <Palette className="h-3.5 w-3.5" />
-                Brand
-              </TabsTrigger>
-              <TabsTrigger value="documents" className={settingsSubTriggerClass}>
-                <FileText className="h-3.5 w-3.5" />
-                Documents
-              </TabsTrigger>
-              <TabsTrigger value="ids" className={settingsSubTriggerClass}>
-                <Hash className="h-3.5 w-3.5" />
-                IDs
-              </TabsTrigger>
-              <TabsTrigger value="finance" className={settingsSubTriggerClass}>
-                <Wallet className="h-3.5 w-3.5" />
-                Finance
-              </TabsTrigger>
-              <TabsTrigger value="grading" className={settingsSubTriggerClass}>
-                <GraduationCap className="h-3.5 w-3.5" />
-                Grading
-              </TabsTrigger>
-            </TabsList>
-          </div>
+        <Tabs value={activeSection} onValueChange={goSection} className="w-full">
+          {showTabList ? (
+            <div className="px-2 sm:px-3">
+              <TabsList className={settingsSubListClass}>
+                <TabsTrigger value="profile" className={settingsSubTriggerClass}>
+                  <Building2 className="h-3.5 w-3.5" />
+                  Profile
+                </TabsTrigger>
+                <TabsTrigger value="brand" className={settingsSubTriggerClass}>
+                  <Palette className="h-3.5 w-3.5" />
+                  Branding
+                </TabsTrigger>
+                <TabsTrigger value="documents" className={settingsSubTriggerClass}>
+                  <FileText className="h-3.5 w-3.5" />
+                  Documents
+                </TabsTrigger>
+                <TabsTrigger value="ids" className={settingsSubTriggerClass}>
+                  <Hash className="h-3.5 w-3.5" />
+                  IDs
+                </TabsTrigger>
+                <TabsTrigger value="finance" className={settingsSubTriggerClass}>
+                  <Wallet className="h-3.5 w-3.5" />
+                  Finance
+                </TabsTrigger>
+                <TabsTrigger value="grading" className={settingsSubTriggerClass}>
+                  <GraduationCap className="h-3.5 w-3.5" />
+                  Grading
+                </TabsTrigger>
+              </TabsList>
+            </div>
+          ) : null}
 
           <TabsContent value="profile" className="mt-0 p-4 sm:p-5">
             <div className="grid gap-3 sm:grid-cols-2">
@@ -517,7 +527,7 @@ const InstitutionSettingsForm = ({ onUpdated }) => {
                   id="inst_subdomain"
                   value={form.subdomain}
                   disabled
-                  className={cn(inputCls, 'font-mono text-slate-400')}
+                  className={cn(inputCls, 'font-mono text-[var(--tenant-muted)]')}
                 />
               </Field>
               <Field label="Short description" htmlFor="inst_description" className="sm:col-span-2">
@@ -525,22 +535,22 @@ const InstitutionSettingsForm = ({ onUpdated }) => {
                   id="inst_description"
                   value={form.description}
                   onChange={(e) => setField('description', e.target.value)}
-                  className="bg-slate-950 border-slate-800 min-h-[72px]"
+                  className="bg-[var(--tenant-bg-2)] border-[var(--tenant-line)] text-[var(--tenant-text)] min-h-[72px]"
                 />
               </Field>
             </div>
-            <div className="mt-4 rounded-lg border border-slate-800 bg-slate-950/50 px-3 py-2.5 text-[11px] text-slate-400 space-y-1">
+            <div className="mt-4 rounded-lg border border-[var(--tenant-line)] bg-[var(--tenant-bg-2)] px-3 py-2.5 text-[11px] text-[var(--tenant-muted)] space-y-1">
               <p>
-                <span className="text-slate-500">Landing</span>{' '}
+                <span className="text-[var(--tenant-muted)]">Landing</span>{' '}
                 <a href={landingUrl} target="_blank" rel="noreferrer" className="text-teal-400 hover:underline break-all">
                   {landingUrl}
                 </a>
               </p>
               <p>
-                <span className="text-slate-500">Login</span> {loginUrl}
+                <span className="text-[var(--tenant-muted)]">Login</span> {loginUrl}
               </p>
               <p>
-                <span className="text-slate-500">Dashboard</span> {dashboardUrl}
+                <span className="text-[var(--tenant-muted)]">Dashboard</span> {dashboardUrl}
               </p>
             </div>
           </TabsContent>
@@ -610,7 +620,7 @@ const InstitutionSettingsForm = ({ onUpdated }) => {
 
           <TabsContent value="documents" className="mt-0 p-4 sm:p-5 space-y-5">
             <div>
-              <p className="text-xs font-medium text-slate-400 mb-3">Signatories</p>
+              <p className="text-xs font-medium text-[var(--tenant-muted)] mb-3">Signatories</p>
               <div className="grid gap-3 sm:grid-cols-2">
                 <Field label="Left title" htmlFor="sig_left_title">
                   <Input
@@ -647,14 +657,14 @@ const InstitutionSettingsForm = ({ onUpdated }) => {
               </div>
             </div>
             <div>
-              <p className="text-xs font-medium text-slate-400 mb-3">Footer lines</p>
+              <p className="text-xs font-medium text-[var(--tenant-muted)] mb-3">Footer lines</p>
               <div className="grid gap-3 lg:grid-cols-3">
                 <Field label="Certificate" htmlFor="cert_footer">
                   <Textarea
                     id="cert_footer"
                     value={form.certificate_footer_text}
                     onChange={(e) => setField('certificate_footer_text', e.target.value)}
-                    className="bg-slate-950 border-slate-800 min-h-[72px]"
+                    className="bg-[var(--tenant-bg-2)] border-[var(--tenant-line)] text-[var(--tenant-text)] min-h-[72px]"
                   />
                 </Field>
                 <Field label="Transcript" htmlFor="tr_footer">
@@ -662,7 +672,7 @@ const InstitutionSettingsForm = ({ onUpdated }) => {
                     id="tr_footer"
                     value={form.transcript_footer_text}
                     onChange={(e) => setField('transcript_footer_text', e.target.value)}
-                    className="bg-slate-950 border-slate-800 min-h-[72px]"
+                    className="bg-[var(--tenant-bg-2)] border-[var(--tenant-line)] text-[var(--tenant-text)] min-h-[72px]"
                   />
                 </Field>
                 <Field label="Invoice" htmlFor="inv_footer">
@@ -670,7 +680,7 @@ const InstitutionSettingsForm = ({ onUpdated }) => {
                     id="inv_footer"
                     value={form.invoice_footer_text}
                     onChange={(e) => setField('invoice_footer_text', e.target.value)}
-                    className="bg-slate-950 border-slate-800 min-h-[72px]"
+                    className="bg-[var(--tenant-bg-2)] border-[var(--tenant-line)] text-[var(--tenant-text)] min-h-[72px]"
                   />
                 </Field>
               </div>
@@ -692,7 +702,7 @@ const InstitutionSettingsForm = ({ onUpdated }) => {
                 }`}
               >
                 <div className="flex items-center gap-2">
-                  <span className="font-mono text-slate-400 shrink-0 text-sm">CERT-</span>
+                  <span className="font-mono text-[var(--tenant-muted)] shrink-0 text-sm">CERT-</span>
                   <Input
                     id="cert_number_start"
                     value={form.certificate_number_start}
@@ -805,9 +815,9 @@ const InstitutionSettingsForm = ({ onUpdated }) => {
         </Tabs>
       </form>
 
-      {section !== 'grading' ? (
-        <div className="flex items-center justify-between gap-3 border-t border-slate-800 px-4 py-3">
-          <p className="text-xs text-slate-500 hidden sm:block">Saves Profile, Brand, Documents, IDs, and Finance.</p>
+      {activeSection !== 'grading' ? (
+        <div className="flex items-center justify-between gap-3 border-t border-[var(--tenant-line)] px-4 py-3">
+          <p className="text-xs text-[var(--tenant-muted)] hidden sm:block">Saves institution profile, branding, IDs, finance, and document text.</p>
           <Button type="submit" form="institution-settings-form" disabled={saving} className="ml-auto">
             {saving ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
             Save settings

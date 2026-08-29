@@ -1,11 +1,11 @@
 import React, { useEffect, useMemo, useState } from 'react'
 import { Helmet } from 'react-helmet'
-import { Link } from 'react-router-dom'
 import { ArrowLeft, Loader2, Save } from 'lucide-react'
 import AnimatedPage from '@/components/AnimatedPage'
 import PageHeader from '@/components/PageHeader'
 import { Button } from '@/components/ui/button'
 import { Alert, AlertDescription } from '@/components/ui/alert'
+import { AdminSettingsShell } from '@/components/admin/AdminSettingsShell'
 import { useAuth } from '@/contexts/AuthContext'
 import { getMyInstitution, updateInstitution, uploadInstitutionAsset } from '@/lib/api'
 import { getInstitutionDisplayName, getTenantPortalUrl, publishInstitutionBrand } from '@/lib/institution'
@@ -163,71 +163,67 @@ const LandingCustomizePage = () => {
   return (
     <AnimatedPage>
       <Helmet>
-        <title>Landing page — {name}</title>
+        <title>Settings — {name}</title>
       </Helmet>
 
-      <PageHeader
-        title="Landing page templates"
-        subtitle="Choose a template, then fill About and Programs so each page has balanced, custom copy. Changes appear on your public institution portal."
-      />
+      <div className="max-w-6xl mx-auto">
+        <PageHeader
+          title="Settings"
+          subtitle="Landing page templates, design, and customization."
+        />
 
-      <div className="mx-auto max-w-5xl space-y-4">
-        <div className="flex flex-wrap items-center gap-3">
-          <Button asChild variant="outline" size="sm" className="border-[var(--tenant-line)]">
-            <a href={landingPath} target="_blank" rel="noreferrer">
-              <ArrowLeft className="mr-1.5 h-3.5 w-3.5" />
-              View public landing
-            </a>
-          </Button>
-          <Button asChild variant="ghost" size="sm">
-            <Link to="/admin/profile">Institution settings</Link>
-          </Button>
-        </div>
-
-        {error && (
-          <Alert variant="destructive">
-            <AlertDescription>{error}</AlertDescription>
-          </Alert>
-        )}
-        {success && (
-          <Alert className="border-teal-600/30 bg-teal-500/10 text-teal-800 [html[data-platform-theme='dark']_&]:text-teal-100">
-            <AlertDescription>{success}</AlertDescription>
-          </Alert>
-        )}
-
-        {loading ? (
-          <div className="flex items-center justify-center py-20 text-[var(--tenant-muted)]">
-            <Loader2 className="h-6 w-6 animate-spin" />
-          </div>
-        ) : (
-          <div className="rounded-2xl border border-[var(--tenant-line)] bg-[var(--tenant-surface)] p-4 sm:p-6">
-            <LandingTemplatePicker
-              baseInstitution={baseInstitution}
-              values={landing}
-              onChange={(patch) => setLanding((prev) => ({ ...prev, ...patch }))}
-            />
-            <div className="mt-6 flex justify-end">
-              <Button
-                type="button"
-                onClick={handleSave}
-                disabled={saving}
-                className="bg-teal-500 font-semibold text-[#04201c] hover:bg-teal-400"
-              >
-                {saving ? (
-                  <>
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    Saving…
-                  </>
-                ) : (
-                  <>
-                    <Save className="mr-2 h-4 w-4" />
-                    Save landing page
-                  </>
-                )}
+        <AdminSettingsShell active="landing">
+          <div className="p-4 sm:p-5 space-y-4">
+            <div className="flex flex-wrap items-center gap-3">
+              <Button asChild variant="outline" size="sm" className="h-9 border-[var(--tenant-line)]">
+                <a href={landingPath} target="_blank" rel="noreferrer">
+                  <ArrowLeft className="mr-1.5 h-3.5 w-3.5" />
+                  View public landing
+                </a>
               </Button>
             </div>
+
+            {error && (
+              <Alert variant="destructive">
+                <AlertDescription>{error}</AlertDescription>
+              </Alert>
+            )}
+            {success && (
+              <Alert className="border-teal-600/30 bg-teal-500/10 text-teal-800 [html[data-platform-theme='dark']_&]:text-teal-100">
+                <AlertDescription>{success}</AlertDescription>
+              </Alert>
+            )}
+
+            {loading ? (
+              <div className="flex items-center justify-center py-20 text-[var(--tenant-muted)]">
+                <Loader2 className="h-6 w-6 animate-spin" />
+              </div>
+            ) : (
+              <div className="space-y-4">
+                <LandingTemplatePicker
+                  baseInstitution={baseInstitution}
+                  values={landing}
+                  onChange={(patch) => setLanding((prev) => ({ ...prev, ...patch }))}
+                />
+                <div className="flex justify-end border-t border-[var(--tenant-line)] pt-4">
+                  <Button type="button" onClick={handleSave} disabled={saving}>
+                    {saving ? (
+                      <>
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        Saving…
+                      </>
+                    ) : (
+                      <>
+                        <Save className="mr-2 h-4 w-4" />
+                        Save landing page
+                      </>
+                    )}
+                  </Button>
+                </div>
+              </div>
+            )}
           </div>
-        )}
+        </AdminSettingsShell>
       </div>
     </AnimatedPage>
   )

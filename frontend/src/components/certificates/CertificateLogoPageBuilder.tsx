@@ -47,6 +47,7 @@ import {
 import {
   BUILDER_BINDINGS,
   BUILDER_FONT_FAMILIES,
+  builderFontLabel,
   DECORATIVE_SHAPES,
   DECORATIVE_SHAPE_CATEGORIES,
   PAPER_SIZES,
@@ -1593,7 +1594,7 @@ const CertificateLogoPageBuilder = ({
                     <ChevronDown className="h-3 w-3 ml-1 opacity-70" />
                   </Button>
                   {shapesOpen ? (
-                    <div className="absolute left-0 top-full mt-1 z-30 w-72 max-h-80 overflow-y-auto rounded-md border border-slate-700 bg-slate-950 shadow-xl p-1">
+                    <div className="absolute left-0 top-full mt-1 z-30 w-80 max-h-96 overflow-y-auto rounded-md border border-slate-700 bg-slate-950 shadow-xl p-1">
                       {DECORATIVE_SHAPE_CATEGORIES.map((cat) => (
                         <div key={cat.id}>
                           <p className="px-2 pt-2 pb-1 text-[10px] uppercase tracking-wide text-amber-400/80">
@@ -1872,8 +1873,8 @@ const CertificateLogoPageBuilder = ({
                         onChange={(e) => updateSelected({ fontFamily: e.target.value })}
                       >
                         {BUILDER_FONT_FAMILIES.map((f) => (
-                          <option key={f} value={f}>
-                            {f.split(',')[0]}
+                          <option key={f} value={f} style={{ fontFamily: f }}>
+                            {builderFontLabel(f)}
                           </option>
                         ))}
                       </select>

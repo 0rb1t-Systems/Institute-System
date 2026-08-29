@@ -143,20 +143,20 @@ const UserProfileSettings = ({ user, onUpdate }) => {
   const displaySrc = avatarPreview || avatarUrl;
 
   return (
-    <Card className="bg-slate-900 border-slate-800 text-slate-100 shadow-xl">
+    <Card className="bg-[var(--tenant-surface)] border-[var(--tenant-line)] text-[var(--tenant-text)] shadow-none">
       <CardHeader className="pb-4">
-        <CardTitle className="text-white text-base">Your account</CardTitle>
+        <CardTitle className="text-[var(--tenant-text)] text-base">Your account</CardTitle>
         <CardDescription>Photo, name, and password.</CardDescription>
       </CardHeader>
       <form onSubmit={handleSubmit}>
         <CardContent className="space-y-6">
           <div className="space-y-3">
-            <h3 className="font-medium text-white">Profile Picture</h3>
+            <h3 className="font-medium text-[var(--tenant-text)]">Profile Picture</h3>
             <div className="flex flex-col sm:flex-row items-start gap-5">
               <div className="relative shrink-0">
-                <Avatar className="h-28 w-28 border-4 border-slate-800 shadow-xl">
+                <Avatar className="h-28 w-28 border-4 border-[var(--tenant-line)] shadow-sm">
                   <AvatarImage src={displaySrc} className="object-cover" />
-                  <AvatarFallback className="text-2xl bg-slate-800 text-slate-400">
+                  <AvatarFallback className="text-2xl bg-[var(--tenant-bg-2)] text-[var(--tenant-muted)]">
                     {name?.charAt(0) || <User />}
                   </AvatarFallback>
                 </Avatar>
@@ -189,12 +189,12 @@ const UserProfileSettings = ({ user, onUpdate }) => {
                   'flex-1 w-full min-h-[112px] rounded-xl border-2 border-dashed px-4 py-6 text-center cursor-pointer transition-colors',
                   dragging
                     ? 'border-indigo-500 bg-indigo-500/10'
-                    : 'border-slate-700 bg-slate-950/50 hover:border-slate-500 hover:bg-slate-900/80',
+                    : 'border-[var(--tenant-line)] bg-[var(--tenant-bg-2)] hover:border-[var(--brand-primary)] hover:bg-[var(--tenant-bg)]',
                 )}
               >
-                <Upload className="h-5 w-5 text-slate-400 mx-auto mb-2" />
-                <p className="text-sm text-slate-300">Click or drag image here to upload</p>
-                <p className="text-xs text-slate-500 mt-1">JPG, PNG, GIF, WEBP — max 2MB</p>
+                <Upload className="h-5 w-5 text-[var(--tenant-muted)] mx-auto mb-2" />
+                <p className="text-sm text-[var(--tenant-text)]">Click or drag image here to upload</p>
+                <p className="text-xs text-[var(--tenant-muted)] mt-1">JPG, PNG, GIF, WEBP — max 2MB</p>
                 {avatarFile && (
                   <p className="text-xs text-emerald-400 mt-2">Selected: {avatarFile.name}</p>
                 )}
@@ -211,22 +211,22 @@ const UserProfileSettings = ({ user, onUpdate }) => {
 
           <div className="grid gap-4 md:grid-cols-2">
             <div className="space-y-2">
-              <Label htmlFor="name" className="text-slate-300">Full Name</Label>
+              <Label htmlFor="name" className="text-[var(--tenant-text)]">Full Name</Label>
               <Input
                 id="name"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
-                className="bg-slate-800 border-slate-700 text-white"
+                className="bg-[var(--tenant-bg-2)] border-[var(--tenant-line)] text-[var(--tenant-text)]"
                 placeholder="Your full name"
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="username" className="text-slate-300">Username (ID)</Label>
+              <Label htmlFor="username" className="text-[var(--tenant-text)]">Username (ID)</Label>
               <Input
                 id="username"
                 value={username}
                 onChange={(e) => setUsername(e.target.value)}
-                className="bg-slate-800 border-slate-700 text-white font-mono"
+                className="bg-[var(--tenant-bg-2)] border-[var(--tenant-line)] text-[var(--tenant-text)] font-mono"
                 placeholder="e.g. INST1234"
                 readOnly={user?.role !== 'admin'}
                 disabled={user?.role !== 'admin'}
@@ -234,19 +234,19 @@ const UserProfileSettings = ({ user, onUpdate }) => {
             </div>
           </div>
 
-          <div className="space-y-4 border-t border-slate-800 pt-4">
-            <h3 className="text-sm font-medium text-slate-300 flex items-center gap-2">
+          <div className="space-y-4 border-t border-[var(--tenant-line)] pt-4">
+            <h3 className="text-sm font-medium text-[var(--tenant-text)] flex items-center gap-2">
               <Lock className="h-4 w-4" /> Security
             </h3>
             
             <div className="space-y-2">
-              <Label htmlFor="email" className="text-slate-300">Email Address</Label>
+              <Label htmlFor="email" className="text-[var(--tenant-text)]">Email Address</Label>
               <Input
                 id="email"
                 type="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                className="bg-slate-800 border-slate-700 text-white"
+                className="bg-[var(--tenant-bg-2)] border-[var(--tenant-line)] text-[var(--tenant-text)]"
               />
               <p className="text-xs text-muted-foreground flex items-center">
                 <AlertTriangle className="h-3 w-3 mr-1 text-yellow-500" />
@@ -256,25 +256,25 @@ const UserProfileSettings = ({ user, onUpdate }) => {
 
             <div className="grid gap-4 md:grid-cols-2 pt-2">
               <div className="space-y-2">
-                <Label htmlFor="current-password" className="text-slate-300">Current Password</Label>
+                <Label htmlFor="current-password" className="text-[var(--tenant-text)]">Current Password</Label>
                 <Input
                   id="current-password"
                   type="password"
                   value={currentPassword}
                   onChange={(e) => setCurrentPassword(e.target.value)}
-                  className="bg-slate-800 border-slate-700 text-white"
+                  className="bg-[var(--tenant-bg-2)] border-[var(--tenant-line)] text-[var(--tenant-text)]"
                   placeholder="Required to change password"
                   autoComplete="current-password"
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="new-password" className="text-slate-300">New Password</Label>
+                <Label htmlFor="new-password" className="text-[var(--tenant-text)]">New Password</Label>
                 <Input
                   id="new-password"
                   type="password"
                   value={newPassword}
                   onChange={(e) => setNewPassword(e.target.value)}
-                  className="bg-slate-800 border-slate-700 text-white"
+                  className="bg-[var(--tenant-bg-2)] border-[var(--tenant-line)] text-[var(--tenant-text)]"
                   placeholder="Min. 8 characters"
                   autoComplete="new-password"
                 />
@@ -282,7 +282,7 @@ const UserProfileSettings = ({ user, onUpdate }) => {
             </div>
           </div>
         </CardContent>
-        <CardFooter className="border-t border-slate-800 pt-6">
+        <CardFooter className="border-t border-[var(--tenant-line)] pt-6">
           <Button type="submit" disabled={isLoading} className="bg-indigo-600 hover:bg-indigo-500">
             {isLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
             Save Changes

@@ -15,6 +15,7 @@ import {
 } from '@/lib/api'
 import {
   BUILDER_FONT_FAMILIES,
+  builderFontLabel,
   createBoundTextElement,
   createVerificationQrElement,
   getBuilderLayerLabel,
@@ -545,8 +546,8 @@ const CertificateUploadTemplateEditor = ({
                     onChange={(e) => updateSelected({ fontFamily: e.target.value })}
                   >
                     {BUILDER_FONT_FAMILIES.map((f) => (
-                      <option key={f} value={f}>
-                        {f.split(',')[0]}
+                      <option key={f} value={f} style={{ fontFamily: f }}>
+                        {builderFontLabel(f)}
                       </option>
                     ))}
                   </select>

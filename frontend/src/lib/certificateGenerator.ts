@@ -520,6 +520,13 @@ export async function generateCertificatePDF(certificateData: Record<string, any
       /* ignore */
     }
     await wait(200)
+    if (typeof document !== 'undefined' && document.fonts?.ready) {
+      try {
+        await document.fonts.ready
+      } catch {
+        /* keep going with fallbacks */
+      }
+    }
 
     const el = host.firstElementChild as HTMLElement | null
     if (!el) throw new Error('Certificate canvas failed to mount')

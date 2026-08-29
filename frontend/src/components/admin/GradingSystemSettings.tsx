@@ -188,12 +188,12 @@ const GradingSystemSettings = ({ onUpdated }: { onUpdated?: (inst: unknown) => v
   }
 
   return (
-    <Card className="bg-slate-900 border-slate-800">
+    <Card className="bg-[var(--tenant-bg-2)] border-[var(--tenant-line)] shadow-none">
       <CardHeader>
         <div className="flex items-center gap-2">
           <GraduationCap className="h-5 w-5 text-indigo-400" />
           <div>
-            <CardTitle className="text-white text-base">Grading System</CardTitle>
+            <CardTitle className="text-[var(--tenant-text)] text-base">Grading System</CardTitle>
             <CardDescription>
               Set your institution&apos;s Key to Grades. Used on gradebooks, dashboards, GPA, and
               transcripts. Leave default until you customize.
@@ -206,7 +206,7 @@ const GradingSystemSettings = ({ onUpdated }: { onUpdated?: (inst: unknown) => v
           className={
             isCustom
               ? 'bg-emerald-950/40 border-emerald-800 text-emerald-100'
-              : 'bg-slate-950/60 border-slate-700 text-slate-300'
+              : 'bg-[var(--tenant-bg)] border-[var(--tenant-line)] text-[var(--tenant-text)]'
           }
         >
           {isCustom ? (
@@ -226,9 +226,9 @@ const GradingSystemSettings = ({ onUpdated }: { onUpdated?: (inst: unknown) => v
           <div className="flex flex-wrap items-center gap-2">
             <Label
               htmlFor="grading_key_upload"
-              className="inline-flex items-center gap-2 text-sm text-slate-300 cursor-pointer m-0"
+              className="inline-flex items-center gap-2 text-sm text-[var(--tenant-text)] cursor-pointer m-0"
             >
-              <span className="inline-flex items-center gap-1 rounded-md border border-slate-700 px-3 py-1.5 hover:bg-slate-800">
+              <span className="inline-flex items-center gap-1 rounded-md border border-[var(--tenant-line)] px-3 py-1.5 hover:bg-[var(--tenant-bg)]">
                 {extracting ? (
                   <Loader2 className="h-4 w-4 animate-spin" />
                 ) : (
@@ -245,7 +245,7 @@ const GradingSystemSettings = ({ onUpdated }: { onUpdated?: (inst: unknown) => v
                 disabled={extracting || saving}
               />
             </Label>
-            <p className="text-xs text-slate-500">
+            <p className="text-xs text-[var(--tenant-muted)]">
               OCR extracts mark %, letter, and grade points for review before save.
             </p>
           </div>
@@ -262,9 +262,9 @@ const GradingSystemSettings = ({ onUpdated }: { onUpdated?: (inst: unknown) => v
         </div>
 
         {rawPreview ? (
-          <details className="rounded-md border border-slate-800 bg-slate-950/50 p-3">
-            <summary className="text-xs text-slate-400 cursor-pointer">OCR text preview</summary>
-            <pre className="mt-2 text-[11px] text-slate-500 whitespace-pre-wrap max-h-40 overflow-auto">
+          <details className="rounded-md border border-[var(--tenant-line)] bg-[var(--tenant-bg)] p-3">
+            <summary className="text-xs text-[var(--tenant-muted)] cursor-pointer">OCR text preview</summary>
+            <pre className="mt-2 text-[11px] text-[var(--tenant-muted)] whitespace-pre-wrap max-h-40 overflow-auto">
               {rawPreview}
             </pre>
           </details>
@@ -281,7 +281,7 @@ const GradingSystemSettings = ({ onUpdated }: { onUpdated?: (inst: unknown) => v
               step={0.1}
               value={scale.pass_mark}
               onChange={(e) => setScale((p) => ({ ...p, pass_mark: Number(e.target.value) }))}
-              className="bg-slate-950 border-slate-800"
+              className="bg-[var(--tenant-surface)] border-[var(--tenant-line)]"
             />
           </div>
           <div className="space-y-2">
@@ -294,7 +294,7 @@ const GradingSystemSettings = ({ onUpdated }: { onUpdated?: (inst: unknown) => v
               step={0.1}
               value={scale.scale_max}
               onChange={(e) => setScale((p) => ({ ...p, scale_max: Number(e.target.value) }))}
-              className="bg-slate-950 border-slate-800"
+              className="bg-[var(--tenant-surface)] border-[var(--tenant-line)]"
             />
           </div>
         </div>
@@ -306,7 +306,7 @@ const GradingSystemSettings = ({ onUpdated }: { onUpdated?: (inst: unknown) => v
               type="button"
               variant="outline"
               size="sm"
-              className="h-8 border-slate-700"
+              className="h-8 border-[var(--tenant-line)]"
               onClick={() => setScale((p) => ({ ...p, bands: [...p.bands, emptyBand()] }))}
               disabled={saving}
             >
@@ -314,8 +314,8 @@ const GradingSystemSettings = ({ onUpdated }: { onUpdated?: (inst: unknown) => v
               Add band
             </Button>
           </div>
-          <div className="rounded-md border border-slate-800 overflow-hidden">
-            <div className="grid grid-cols-[1fr_1fr_0.7fr_0.7fr_2rem] gap-1 bg-slate-950 px-2 py-2 text-[11px] uppercase text-slate-500 font-semibold">
+          <div className="rounded-md border border-[var(--tenant-line)] overflow-hidden">
+            <div className="grid grid-cols-[1fr_1fr_0.7fr_0.7fr_2rem] gap-1 bg-[var(--tenant-bg)] px-2 py-2 text-[11px] uppercase text-[var(--tenant-muted)] font-semibold">
               <span>Min %</span>
               <span>Max %</span>
               <span>Letter</span>
@@ -325,39 +325,39 @@ const GradingSystemSettings = ({ onUpdated }: { onUpdated?: (inst: unknown) => v
             {scale.bands.map((band, idx) => (
               <div
                 key={`${band.letter}-${idx}`}
-                className="grid grid-cols-[1fr_1fr_0.7fr_0.7fr_2rem] gap-1 border-t border-slate-800 px-2 py-1.5 items-center"
+                className="grid grid-cols-[1fr_1fr_0.7fr_0.7fr_2rem] gap-1 border-t border-[var(--tenant-line)] px-2 py-1.5 items-center"
               >
                 <Input
                   type="number"
                   step="0.1"
                   value={band.min}
                   onChange={(e) => updateBand(idx, { min: Number(e.target.value) })}
-                  className="h-8 bg-slate-950 border-slate-800 text-sm"
+                  className="h-8 bg-[var(--tenant-surface)] border-[var(--tenant-line)] text-sm"
                 />
                 <Input
                   type="number"
                   step="0.1"
                   value={band.max}
                   onChange={(e) => updateBand(idx, { max: Number(e.target.value) })}
-                  className="h-8 bg-slate-950 border-slate-800 text-sm"
+                  className="h-8 bg-[var(--tenant-surface)] border-[var(--tenant-line)] text-sm"
                 />
                 <Input
                   value={band.letter}
                   onChange={(e) => updateBand(idx, { letter: e.target.value })}
-                  className="h-8 bg-slate-950 border-slate-800 text-sm"
+                  className="h-8 bg-[var(--tenant-surface)] border-[var(--tenant-line)] text-sm"
                 />
                 <Input
                   type="number"
                   step="0.1"
                   value={band.points}
                   onChange={(e) => updateBand(idx, { points: Number(e.target.value) })}
-                  className="h-8 bg-slate-950 border-slate-800 text-sm"
+                  className="h-8 bg-[var(--tenant-surface)] border-[var(--tenant-line)] text-sm"
                 />
                 <Button
                   type="button"
                   variant="ghost"
                   size="icon"
-                  className="h-8 w-8 text-slate-500 hover:text-red-400"
+                  className="h-8 w-8 text-[var(--tenant-muted)] hover:text-red-600"
                   onClick={() =>
                     setScale((p) => ({
                       ...p,
@@ -380,7 +380,7 @@ const GradingSystemSettings = ({ onUpdated }: { onUpdated?: (inst: unknown) => v
               type="button"
               variant="outline"
               size="sm"
-              className="h-8 border-slate-700"
+              className="h-8 border-[var(--tenant-line)]"
               onClick={() =>
                 setScale((p) => ({
                   ...p,
@@ -401,7 +401,7 @@ const GradingSystemSettings = ({ onUpdated }: { onUpdated?: (inst: unknown) => v
                 <Input
                   value={c.name}
                   onChange={(e) => updateClassification(idx, { name: e.target.value })}
-                  className="h-8 bg-slate-950 border-slate-800 text-sm"
+                  className="h-8 bg-[var(--tenant-surface)] border-[var(--tenant-line)] text-sm"
                   placeholder="Classification name"
                 />
                 <Input
@@ -409,7 +409,7 @@ const GradingSystemSettings = ({ onUpdated }: { onUpdated?: (inst: unknown) => v
                   step="0.01"
                   value={c.min}
                   onChange={(e) => updateClassification(idx, { min: Number(e.target.value) })}
-                  className="h-8 bg-slate-950 border-slate-800 text-sm"
+                  className="h-8 bg-[var(--tenant-surface)] border-[var(--tenant-line)] text-sm"
                   placeholder="Min"
                 />
                 <Input
@@ -417,14 +417,14 @@ const GradingSystemSettings = ({ onUpdated }: { onUpdated?: (inst: unknown) => v
                   step="0.01"
                   value={c.max}
                   onChange={(e) => updateClassification(idx, { max: Number(e.target.value) })}
-                  className="h-8 bg-slate-950 border-slate-800 text-sm"
+                  className="h-8 bg-[var(--tenant-surface)] border-[var(--tenant-line)] text-sm"
                   placeholder="Max"
                 />
                 <Button
                   type="button"
                   variant="ghost"
                   size="icon"
-                  className="h-8 w-8 text-slate-500 hover:text-red-400"
+                  className="h-8 w-8 text-[var(--tenant-muted)] hover:text-red-600"
                   onClick={() =>
                     setScale((p) => ({
                       ...p,
@@ -437,9 +437,9 @@ const GradingSystemSettings = ({ onUpdated }: { onUpdated?: (inst: unknown) => v
               </div>
             ))}
             {scale.classifications.length === 0 ? (
-              <p className="text-xs text-slate-500">No classifications (optional).</p>
+              <p className="text-xs text-[var(--tenant-muted)]">No classifications (optional).</p>
             ) : (
-              <p className="text-xs text-slate-500">
+              <p className="text-xs text-[var(--tenant-muted)]">
                 Preview:{' '}
                 {scale.classifications
                   .map((c) => `${c.name} (${formatClassificationRange(c)})`)
@@ -462,7 +462,7 @@ const GradingSystemSettings = ({ onUpdated }: { onUpdated?: (inst: unknown) => v
           <Button
             type="button"
             variant="outline"
-            className="border-slate-700"
+            className="border-[var(--tenant-line)]"
             disabled={saving || extracting || !isCustom}
             onClick={handleResetDefault}
           >
