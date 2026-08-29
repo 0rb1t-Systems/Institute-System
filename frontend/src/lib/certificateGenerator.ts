@@ -26,6 +26,7 @@ import {
 } from '@/lib/institution'
 import {
   extractCertStoragePath,
+  getDesignPdfPageMm,
   normalizeLogoBuilderDesign,
   normalizePaperLayers,
   normalizeVerificationQr,
@@ -454,21 +455,28 @@ export async function generateCertificatePDF(certificateData: Record<string, any
       ? Math.max(400, Math.round(pageWpx / Math.max(0.4, aspect)))
       : Math.round(pageWpx * (297 / 210))
 
-  // PDF page mm always matches capture pixel aspect — prevents stretch/qallooc
+  // PDF page mm matches builder paper (A4/Letter/custom) so export equals canvas
   let pageWmm: number
   let pageHmm: number
   let orientation: 'portrait' | 'landscape'
   let format: [number, number]
 
-  const canvasAspect = pageWpx / pageHpx
-  if (canvasAspect >= 1) {
-    orientation = 'landscape'
-    pageWmm = 297
-    pageHmm = Math.round((297 / canvasAspect) * 100) / 100
+  if (isBuilder) {
+    const page = getDesignPdfPageMm(data.logoBuilderDesign!.canvas)
+    pageWmm = page.wmm
+    pageHmm = page.hmm
+    orientation = page.orientation
   } else {
-    orientation = 'portrait'
-    pageWmm = 210
-    pageHmm = Math.round((210 / canvasAspect) * 100) / 100
+    const canvasAspect = pageWpx / pageHpx
+    if (canvasAspect >= 1) {
+      orientation = 'landscape'
+      pageWmm = 297
+      pageHmm = Math.round((297 / canvasAspect) * 100) / 100
+    } else {
+      orientation = 'portrait'
+      pageWmm = 210
+      pageHmm = Math.round((210 / canvasAspect) * 100) / 100
+    }
   }
   format = [pageWmm, pageHmm]
 

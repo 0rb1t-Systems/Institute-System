@@ -2,6 +2,7 @@ import React from 'react'
 import QRCode from 'react-qr-code'
 import {
   resolveBuilderText,
+  isFullPageDecorElement,
   type BuilderElement,
   type LogoBuilderDesign,
   type PaperContentLayer,
@@ -318,12 +319,17 @@ const CertificateDesignRenderer = ({
           }
 
           if (el.type === 'rect' || el.type === 'line') {
+            const g = el.type === 'rect' ? el.fillGradient : null
             return (
               <div
                 key={el.id}
                 style={{
                   ...style,
-                  backgroundColor: el.type === 'line' ? el.stroke || '#002147' : el.fill || 'transparent',
+                  backgroundColor: el.type === 'line' ? el.stroke || '#002147' : g ? undefined : el.fill || 'transparent',
+                  backgroundImage:
+                    el.type === 'rect' && g
+                      ? `linear-gradient(${g.angle ?? 180}deg, ${g.from}, ${g.to})`
+                      : undefined,
                   border:
                     el.type === 'rect'
                       ? `${el.strokeWidth || 1}px solid ${el.stroke || 'transparent'}`
@@ -335,13 +341,17 @@ const CertificateDesignRenderer = ({
           }
 
           if (el.type === 'ellipse') {
+            const g = el.fillGradient
             return (
               <div
                 key={el.id}
                 style={{
                   ...style,
                   borderRadius: '50%',
-                  backgroundColor: el.fill || 'transparent',
+                  backgroundColor: g ? undefined : el.fill || 'transparent',
+                  backgroundImage: g
+                    ? `linear-gradient(${g.angle ?? 180}deg, ${g.from}, ${g.to})`
+                    : undefined,
                   border: `${el.strokeWidth || 1}px solid ${el.stroke || 'transparent'}`,
                 }}
               />
@@ -360,12 +370,13 @@ const CertificateDesignRenderer = ({
                 el.y === 0 &&
                 Math.abs(el.width - canvasW) < 2 &&
                 Math.abs(el.height - canvasH) < 2)
+            const fillBox = isPaper || isFullPageDecorElement(el)
             return (
               <img
                 key={el.id}
                 src={el.src}
                 alt=""
-                style={{ ...style, objectFit: isPaper ? 'fill' : 'contain' }}
+                style={{ ...style, objectFit: fillBox ? 'fill' : 'contain' }}
                 {...(!isData && isRemote ? { crossOrigin: 'anonymous' as const } : {})}
               />
             )
@@ -412,7 +423,9 @@ const CertificateDesignRenderer = ({
                   : el.fontSize || 16,
                 fontWeight: el.fontWeight || 'normal',
                 fontStyle: el.fontStyle || 'normal',
+                textDecoration: el.textDecoration === 'underline' ? 'underline' : 'none',
                 textAlign: el.textAlign || 'center',
+                letterSpacing: el.letterSpacing ? `${el.letterSpacing}px` : undefined,
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent:
@@ -421,7 +434,7 @@ const CertificateDesignRenderer = ({
                     : el.textAlign === 'right'
                       ? 'flex-end'
                       : 'center',
-                lineHeight: 1.2,
+                lineHeight: el.lineHeight || 1.2,
                 overflow: 'hidden',
                 whiteSpace: 'pre-wrap',
                 wordBreak: 'break-word',

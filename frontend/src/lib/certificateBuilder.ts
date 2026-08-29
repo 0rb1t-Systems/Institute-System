@@ -1,3 +1,5 @@
+import { getCertificatePatchMeta, rebuildCertificatePatch } from './certificatePatches'
+
 /**
  * Logo / page builder + custom upload types for Certificate Management.
  * Designs are stored on document_templates.config (tenant-scoped via RLS/RPC).
@@ -38,6 +40,11 @@ export const BUILDER_FONT_FAMILIES = [
   '"Italianno", "Segoe Script", cursive',
   '"Montserrat", Arial, sans-serif',
   '"DM Sans", Arial, sans-serif',
+  '"Poppins", Arial, sans-serif',
+  '"Josefin Sans", Arial, sans-serif',
+  '"Crimson Text", Georgia, serif',
+  '"Unna", Georgia, serif',
+  '"Marcellus", Palatino, serif',
 ] as const
 
 export function builderFontLabel(stack: string): string {
@@ -143,14 +150,21 @@ export type BuilderElement = {
   fontSize?: number
   fontWeight?: 'normal' | 'bold'
   fontStyle?: 'normal' | 'italic'
+  textDecoration?: 'none' | 'underline'
   textAlign?: 'left' | 'center' | 'right'
+  letterSpacing?: number
+  lineHeight?: number
   color?: string
   fill?: string
+  /** Optional linear fill for rect/ellipse (CSS). Ignored on decorative SVG. */
+  fillGradient?: { from: string; to: string; angle?: number } | null
   stroke?: string
   strokeWidth?: number
   opacity?: number
   src?: string
   bind?: BuilderBinding
+  /** Optional Layers-panel name (does not change printed text). */
+  name?: string
   /** Locked elements cannot be moved/resized/deleted until unlocked. */
   locked?: boolean
   /** Hidden elements are omitted from canvas/PDF until shown again. */
@@ -162,6 +176,8 @@ export type BuilderElement = {
   groupId?: string
   /** Ready decorative ornament key — allows recolor while keeping the shape. */
   decorKey?: string
+  /** Ready certificate patch (ribbon/seal/badge) — text and colors are editable. */
+  patchKey?: string
 }
 
 export type LogoBuilderDesign = {
@@ -647,6 +663,16 @@ export const PAPER_SIZES = [
     pdfFormat: [210, 210] as unknown as 'a4',
     pdfWmm: 210,
     pdfHmm: 210,
+  },
+  {
+    key: 'custom',
+    label: 'Custom size',
+    width: 794,
+    height: 1123,
+    pdfOrientation: 'portrait' as const,
+    pdfFormat: 'a4' as const,
+    pdfWmm: 210,
+    pdfHmm: 297,
   },
 ] as const
 
@@ -1561,6 +1587,7 @@ export function createStarterCertificateDesign(paperKey: PaperSizeKey = 'a4-port
     return z
   }
 
+  const borderGroupId = createElementId()
   const borderOuter: BuilderElement = {
     id: createElementId(),
     type: 'rect',
@@ -1576,6 +1603,7 @@ export function createStarterCertificateDesign(paperKey: PaperSizeKey = 'a4-port
     opacity: 1,
     bind: 'none',
     text: 'border-outer',
+    groupId: borderGroupId,
   }
   const borderInner: BuilderElement = {
     id: createElementId(),
@@ -1592,6 +1620,7 @@ export function createStarterCertificateDesign(paperKey: PaperSizeKey = 'a4-port
     opacity: 1,
     bind: 'none',
     text: 'border-inner',
+    groupId: borderGroupId,
   }
 
   const elements: BuilderElement[] = [
@@ -2449,6 +2478,7 @@ export function createBorderFrameElements(canvas: {
 }, primary = '#002147', accent = '#c9a227'): BuilderElement[] {
   const w = canvas.width
   const h = canvas.height
+  const groupId = createElementId()
   return [
     {
       id: createElementId(),
@@ -2465,6 +2495,7 @@ export function createBorderFrameElements(canvas: {
       opacity: 1,
       bind: 'none',
       text: 'border-outer',
+      groupId,
     },
     {
       id: createElementId(),
@@ -2481,6 +2512,7 @@ export function createBorderFrameElements(canvas: {
       opacity: 1,
       bind: 'none',
       text: 'border-inner',
+      groupId,
     },
   ]
 }
@@ -2575,6 +2607,24 @@ function svgDataUri(svg: string) {
 
 export function isDecorativeElement(el: BuilderElement | null | undefined): boolean {
   return !!(el && el.decorKey && DECORATIVE_SHAPES.some((s) => s.key === el.decorKey))
+}
+
+export function isFullPageDecorKey(key?: string | null): boolean {
+  if (!key) return false
+  const meta = DECORATIVE_SHAPES.find((s) => s.key === key)
+  return !!(meta && 'fullPage' in meta && meta.fullPage)
+}
+
+export function isFullPageDecorElement(el?: BuilderElement | null): boolean {
+  return isFullPageDecorKey(el?.decorKey)
+}
+
+function decorativeImageSrc(key: string, primary: string, accent: string) {
+  const built = buildDecorativeSvg(key, primary, accent)
+  const svg = isFullPageDecorKey(key)
+    ? built.svg.replace(/<svg\b/, '<svg preserveAspectRatio="none"')
+    : built.svg
+  return svgDataUri(svg)
 }
 
 /** Generate SVG markup for a decorative shape using primary/accent colors. */
@@ -3038,12 +3088,11 @@ export function recolorDecorativeElement(
   accent: string,
 ): BuilderElement {
   if (!el.decorKey) return { ...el, fill: primary, stroke: accent }
-  const built = buildDecorativeSvg(el.decorKey, primary, accent)
   return {
     ...el,
     fill: primary,
     stroke: accent,
-    src: svgDataUri(built.svg),
+    src: decorativeImageSrc(el.decorKey, primary, accent),
   }
 }
 
@@ -3070,7 +3119,7 @@ export function createDecorativeShapeElement(
       height: canvas.height,
       rotation: 0,
       zIndex: watermark ? 2 : 1,
-      src: svgDataUri(built.svg),
+      src: decorativeImageSrc(key, primary, accent),
       opacity: watermark ? 0.16 : 1,
       bind: 'none',
       text: meta.label,
@@ -3095,7 +3144,7 @@ export function createDecorativeShapeElement(
     height,
     rotation: 0,
     zIndex: 40,
-    src: svgDataUri(built.svg),
+    src: decorativeImageSrc(key, primary, accent),
     opacity: 1,
     bind: 'none',
     text: meta.label,
@@ -3112,6 +3161,7 @@ export function isQrElement(el: BuilderElement | null | undefined): boolean {
 
 /** Human-readable layer name for the builder Layers panel. */
 export function getBuilderLayerLabel(el: BuilderElement): string {
+  if (el.name && String(el.name).trim()) return String(el.name).trim()
   if (isQrElement(el)) return 'verification-qr'
   if (el.type === 'image' && String(el.text || '').trim()) return String(el.text).trim()
   if (
@@ -3119,6 +3169,9 @@ export function getBuilderLayerLabel(el: BuilderElement): string {
     String(el.text || '').trim()
   ) {
     return String(el.text).trim()
+  }
+  if (el.patchKey) {
+    return getCertificatePatchMeta(el.patchKey)?.label || el.text || el.patchKey
   }
   if (el.decorKey) {
     return DECORATIVE_SHAPES.find((s) => s.key === el.decorKey)?.label || el.decorKey
@@ -3184,29 +3237,105 @@ export function ensureRequiredQr(design: LogoBuilderDesign): LogoBuilderDesign {
   return normalizeVerificationQr(design)
 }
 
-export function applyPaperSize(design: LogoBuilderDesign, paperKey: PaperSizeKey): LogoBuilderDesign {
-  const paper = getPaperSize(paperKey)
-  const prevW = design.canvas.width || paper.width
-  const prevH = design.canvas.height || paper.height
-  const scaleX = paper.width / prevW
-  const scaleY = paper.height / prevH
+export function scaleDesignToCanvas(
+  design: LogoBuilderDesign,
+  width: number,
+  height: number,
+  paperKey: string,
+): LogoBuilderDesign {
+  const w = Math.max(200, Math.min(2800, Math.round(width)))
+  const h = Math.max(200, Math.min(2800, Math.round(height)))
+  const prevW = design.canvas.width || w
+  const prevH = design.canvas.height || h
+  const scaleX = w / prevW
+  const scaleY = h / prevH
   const next: LogoBuilderDesign = {
     version: 1,
     canvas: {
-      width: paper.width,
-      height: paper.height,
+      width: w,
+      height: h,
       background: design.canvas.background || '#ffffff',
-      paperKey: paper.key,
+      paperKey,
     },
-    elements: (design.elements || []).map((el) => ({
-      ...el,
-      x: el.x * scaleX,
-      y: el.y * scaleY,
-      width: Math.max(8, el.width * scaleX),
-      height: Math.max(8, el.height * scaleY),
-    })),
+    elements: (design.elements || []).map((el) => {
+      const scaled = {
+        ...el,
+        x: el.x * scaleX,
+        y: el.y * scaleY,
+        width: Math.max(8, el.width * scaleX),
+        height: Math.max(8, el.height * scaleY),
+      }
+      const coveredPage =
+        el.x <= 8 &&
+        el.y <= 8 &&
+        el.x + el.width >= prevW - 8 &&
+        el.y + el.height >= prevH - 8
+      if (isFullPageDecorElement(el) || (el.decorKey && coveredPage)) {
+        return recolorDecorativeElement(
+          { ...scaled, x: 0, y: 0, width: w, height: h },
+          el.fill || '#002147',
+          el.stroke || '#c9a227',
+        )
+      }
+      return scaled
+    }),
   }
   return normalizeVerificationQr(next)
+}
+
+export function applyPaperSize(design: LogoBuilderDesign, paperKey: PaperSizeKey): LogoBuilderDesign {
+  if (paperKey === 'custom') {
+    return {
+      ...design,
+      canvas: { ...design.canvas, paperKey: 'custom' },
+    }
+  }
+  const paper = getPaperSize(paperKey)
+  return scaleDesignToCanvas(design, paper.width, paper.height, paper.key)
+}
+
+export function applyCustomPaperSize(
+  design: LogoBuilderDesign,
+  widthPx: number,
+  heightPx: number,
+): LogoBuilderDesign {
+  return scaleDesignToCanvas(design, widthPx, heightPx, 'custom')
+}
+
+/** PDF page size in mm — matches builder paper so export does not stretch. */
+export function getDesignPdfPageMm(canvas?: {
+  width?: number
+  height?: number
+  paperKey?: string
+}): { wmm: number; hmm: number; orientation: 'portrait' | 'landscape' } {
+  const w = Math.max(1, canvas?.width || DEFAULT_BUILDER_CANVAS.width)
+  const h = Math.max(1, canvas?.height || DEFAULT_BUILDER_CANVAS.height)
+  const key = String(canvas?.paperKey || '')
+  if (key && key !== 'custom') {
+    const paper = PAPER_SIZES.find((p) => p.key === key)
+    if (paper && paper.key !== 'custom') {
+      return {
+        wmm: paper.pdfWmm,
+        hmm: paper.pdfHmm,
+        orientation: paper.pdfOrientation,
+      }
+    }
+  }
+  const wmm = Math.round((w * 25.4) / 96 * 100) / 100
+  const hmm = Math.round((h * 25.4) / 96 * 100) / 100
+  return {
+    wmm,
+    hmm,
+    orientation: wmm >= hmm ? 'landscape' : 'portrait',
+  }
+}
+
+export function pxToMm(px: number, canvasWidthPx: number, canvasWidthMm: number) {
+  return Math.round((px * canvasWidthMm) / Math.max(1, canvasWidthPx) * 10) / 10
+}
+
+export function mmToPx(mm: number, canvasWidthPx: number, canvasWidthMm: number) {
+  return (mm * canvasWidthPx) / Math.max(1, canvasWidthMm)
 }
 
 export function normalizeLogoBuilderDesign(raw: unknown): LogoBuilderDesign {
@@ -3219,13 +3348,19 @@ export function normalizeLogoBuilderDesign(raw: unknown): LogoBuilderDesign {
   const elements = Array.isArray(obj.elements) ? obj.elements : []
   const allowedBinds = new Set<string>([...BUILDER_BINDINGS.map((b) => b.key), 'qr'])
   const paperKey = String(canvasRaw.paperKey || '')
+  const isCustomPaper = paperKey === 'custom'
   let paper = getPaperSize(paperKey || undefined)
   const width = Number(canvasRaw.width) > 0 ? Number(canvasRaw.width) : paper.width
   const height = Number(canvasRaw.height) > 0 ? Number(canvasRaw.height) : paper.height
   // If paperKey missing/mismatched, pick the closest predefined paper by aspect
-  if (!paperKey || Math.abs(paper.width / paper.height - width / height) > 0.05) {
+  if (
+    !isCustomPaper &&
+    (!paperKey || Math.abs(paper.width / paper.height - width / height) > 0.05)
+  ) {
     const match = PAPER_SIZES.find(
-      (p) => Math.abs(p.width / p.height - width / Math.max(1, height)) < 0.05,
+      (p) =>
+        p.key !== 'custom' &&
+        Math.abs(p.width / p.height - width / Math.max(1, height)) < 0.05,
     )
     if (match) paper = match
   }
@@ -3236,7 +3371,7 @@ export function normalizeLogoBuilderDesign(raw: unknown): LogoBuilderDesign {
       width,
       height,
       background: String(canvasRaw.background || '#ffffff'),
-      paperKey: paper.key,
+      paperKey: isCustomPaper ? 'custom' : paper.key,
     },
     elements: elements
       .filter((el): el is Record<string, unknown> => !!el && typeof el === 'object')
@@ -3265,11 +3400,16 @@ export function normalizeLogoBuilderDesign(raw: unknown): LogoBuilderDesign {
           zIndex: Number.isFinite(Number(el.zIndex)) ? Number(el.zIndex) : index,
           text: el.text != null ? String(el.text) : 'Text',
           fontFamily: String(el.fontFamily || BUILDER_FONT_FAMILIES[0]),
-          fontSize: Math.max(8, Math.min(120, Number(el.fontSize) || 16)),
+          fontSize: Math.max(8, Math.min(200, Number(el.fontSize) || 16)),
           fontWeight: el.fontWeight === 'bold' ? 'bold' : 'normal',
           fontStyle: el.fontStyle === 'italic' ? 'italic' : 'normal',
+          textDecoration: el.textDecoration === 'underline' ? 'underline' : 'none',
           textAlign:
             el.textAlign === 'left' || el.textAlign === 'right' ? el.textAlign : 'center',
+          letterSpacing: Number.isFinite(Number(el.letterSpacing))
+            ? Math.max(-4, Math.min(40, Number(el.letterSpacing)))
+            : 0,
+          lineHeight: Number(el.lineHeight) > 0 ? Math.max(0.8, Math.min(3, Number(el.lineHeight))) : 1.2,
           color: String(el.color || '#0f172a'),
           // Text/image never use fill as a painted background in the editor —
           // defaulting missing fill to slate (#e2e8f0) made PDF/print show
@@ -3287,19 +3427,35 @@ export function normalizeLogoBuilderDesign(raw: unknown): LogoBuilderDesign {
           })(),
           stroke: el.stroke != null ? String(el.stroke) : '#002147',
           strokeWidth: Math.max(0, Number(el.strokeWidth) || 1),
-          opacity: Math.min(1, Math.max(0.1, Number(el.opacity) || 1)),
+          opacity: Math.min(1, Math.max(0, Number(el.opacity) || 1)),
           src: el.src ? String(el.src) : undefined,
           bind: isQr ? 'qr' : bind,
+          name: el.name != null && String(el.name).trim() ? String(el.name).slice(0, 80) : undefined,
           locked: el.locked === true,
           hidden: el.hidden === true,
           groupId,
           decorKey: el.decorKey ? String(el.decorKey) : undefined,
+          patchKey: el.patchKey ? String(el.patchKey).slice(0, 64) : undefined,
+          fillGradient: (() => {
+            const g = el.fillGradient
+            if (!g || typeof g !== 'object') return undefined
+            const rec = g as Record<string, unknown>
+            const from = String(rec.from || '')
+            const to = String(rec.to || '')
+            if (!/^#[0-9a-fA-F]{3,8}$/.test(from) || !/^#[0-9a-fA-F]{3,8}$/.test(to)) return undefined
+            return {
+              from,
+              to,
+              angle: Number.isFinite(Number(rec.angle)) ? Number(rec.angle) : 180,
+            }
+          })(),
         }
       }),
   }
 
   // Refresh decorative SVG colors from stored fill/stroke if present
   normalized.elements = normalized.elements.map((el) => {
+    if (el.patchKey) return rebuildCertificatePatch(el)
     if (!el.decorKey) return el
     return recolorDecorativeElement(
       el,

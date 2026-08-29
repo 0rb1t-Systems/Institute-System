@@ -33,7 +33,7 @@ const DocumentDesignPanel = ({ templates, builder, upload }: Props) => {
       <TabsContent value="templates" className="mt-0 p-4 sm:p-5">
         {templates}
       </TabsContent>
-      <TabsContent value="builder" className="mt-0 p-4 sm:p-5">
+      <TabsContent value="builder" className="mt-0 p-0">
         {builder}
       </TabsContent>
       <TabsContent value="upload" className="mt-0 p-4 sm:p-5">

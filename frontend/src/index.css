@@ -1051,3 +1051,55 @@ html[data-platform-theme='light'][data-tenant-chrome='1'] .bg-clip-text.text-tra
   color: var(--tenant-text) !important;
 }
 
+html[data-platform-theme='light'][data-tenant-chrome='1'] .bg-violet-600,
+html[data-platform-theme='light'][data-tenant-chrome='1'] .hover\:bg-violet-500:hover {
+  color: #fff !important;
+}
+
+html[data-platform-theme='light'][data-tenant-chrome='1'] .hover\:bg-slate-800:hover,
+html[data-platform-theme='light'][data-tenant-chrome='1'] .hover\:bg-slate-800\/80:hover {
+  background-color: #eef2f7 !important;
+}
+
+/* Certificate Page Builder — follows platform light/dark */
+.cert-page-builder {
+  --builder-chrome: #0f1117;
+  --builder-bar: #14161e;
+  --builder-desk: #1a1d27;
+  --builder-text: #e2e8f0;
+  --builder-muted: #94a3b8;
+  --builder-line: rgba(148, 163, 184, 0.22);
+  --builder-input: #0f172a;
+  background: var(--builder-chrome);
+  color: var(--builder-text);
+  border-color: var(--builder-line);
+}
+
+html[data-platform-theme='light'] .cert-page-builder {
+  --builder-chrome: var(--tenant-surface, #ffffff);
+  --builder-bar: var(--tenant-bg-2, #f4f7fb);
+  --builder-desk: #dce3ee;
+  --builder-text: var(--tenant-text, #0f172a);
+  --builder-muted: var(--tenant-muted, #475569);
+  --builder-line: var(--tenant-line, #e2e8f0);
+  --builder-input: #ffffff;
+}
+
+html[data-platform-theme='light'] .cert-page-builder .text-white {
+  color: var(--builder-text) !important;
+}
+
+html[data-platform-theme='light'] .cert-page-builder .bg-violet-600,
+html[data-platform-theme='light'] .cert-page-builder .bg-violet-600 .text-white,
+html[data-platform-theme='light'] .cert-page-builder button.bg-violet-600 {
+  color: #fff !important;
+}
+
+html[data-platform-theme='light'] .cert-page-builder input,
+html[data-platform-theme='light'] .cert-page-builder select,
+html[data-platform-theme='light'] .cert-page-builder textarea {
+  background-color: var(--builder-input);
+  color: var(--builder-text);
+  border-color: var(--builder-line);
+}
+
