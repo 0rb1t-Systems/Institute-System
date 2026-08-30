@@ -3079,7 +3079,7 @@ async function enrichCertificates(rows) {
 
   const [{ data: profiles }, { data: classRows }] = await Promise.all([
     studentIds.length
-      ? supabase.from('profiles').select('id, full_name, email, student_code').in('id', studentIds)
+      ? supabase.from('profiles').select('id, full_name, email, student_code, avatar_url').in('id', studentIds)
       : Promise.resolve({ data: [] }),
     classIds.length
       ? supabase

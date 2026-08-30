@@ -219,6 +219,18 @@ function buildPatchSvg(
   }
 }
 
+export function getCertificatePatchPreviewSrc(
+  key: string,
+  primary = '#002147',
+  accent = '#c9a227',
+  ink = '#ffffff',
+  text?: string,
+) {
+  const meta = getCertificatePatchMeta(key)
+  const built = buildPatchSvg(key, text || meta?.defaultText || 'AWARD', primary, accent, ink)
+  return svgDataUri(built.svg)
+}
+
 export function rebuildCertificatePatch(el: BuilderElement): BuilderElement {
   if (!el.patchKey) return el
   const primary = el.fill && el.fill !== 'transparent' ? el.fill : '#002147'

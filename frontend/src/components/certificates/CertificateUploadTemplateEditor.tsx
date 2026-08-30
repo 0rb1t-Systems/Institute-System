@@ -16,6 +16,7 @@ import {
 import {
   BUILDER_FONT_FAMILIES,
   builderFontLabel,
+  createBoundPhotoElement,
   createBoundTextElement,
   createVerificationQrElement,
   getBuilderLayerLabel,
@@ -301,7 +302,10 @@ const CertificateUploadTemplateEditor = ({
       return
     }
     const z = design.elements.reduce((m, e) => Math.max(m, e.zIndex || 0), 0) + 1
-    const el = createBoundTextElement(key, design.canvas, { zIndex: z, fill: 'transparent' })
+    const el =
+      key === 'studentPhoto'
+        ? createBoundPhotoElement(design.canvas, { zIndex: z })
+        : createBoundTextElement(key, design.canvas, { zIndex: z, fill: 'transparent' })
     const next = cloneDesign(design)
     next.elements.push(el)
     pushDesign(next)

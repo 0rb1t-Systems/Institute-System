@@ -27,10 +27,12 @@ import {
 import {
   extractCertStoragePath,
   getDesignPdfPageMm,
+  isFullPageDecorElement,
   normalizeLogoBuilderDesign,
   normalizePaperLayers,
   normalizeVerificationQr,
   normalizeUploadFieldLayout,
+  type BuilderElement,
   type LogoBuilderDesign,
 } from '@/lib/certificateBuilder'
 import { getCertificateTemplateSignedUrl, getDocumentTemplate } from '@/lib/api'
@@ -217,6 +219,17 @@ export function toCertificateRenderData(certificateData: Record<string, any>): C
     // Institution description is for landing/settings only — never print on documents
     description: undefined,
     logoUrl: brand?.logo_url,
+    studentPhotoUrl:
+      String(
+        certificateData.studentPhotoUrl ||
+          certificateData.student?.avatar_url ||
+          certificateData.student?.photo_url ||
+          '',
+      ).trim() || null,
+    institutionEmail: String(brand?.email || '').trim() || undefined,
+    institutionPhone: String(brand?.phone || '').trim() || undefined,
+    institutionAddress: String(brand?.address || '').trim() || undefined,
+    institutionWebsite: String(brand?.website || '').trim() || undefined,
     sealUrl: brand?.seal_url,
     signatureUrl: brand?.signature_url,
     leftTitle: getSignatoryLeftTitle(brand),
@@ -347,6 +360,98 @@ function wait(ms: number) {
   return new Promise((resolve) => setTimeout(resolve, ms))
 }
 
+function isSvgImageSrc(src: string): boolean {
+  const s = String(src || '').trim()
+  return s.startsWith('data:image/svg+xml') || /\.svg(\?|#|$)/i.test(s)
+}
+
+function loadHtmlImage(src: string): Promise<HTMLImageElement> {
+  return new Promise((resolve, reject) => {
+    const img = new Image()
+    if (!src.startsWith('data:')) img.crossOrigin = 'anonymous'
+    img.onload = () => resolve(img)
+    img.onerror = () => reject(new Error('image load failed'))
+    img.src = src
+  })
+}
+
+/** Bake SVG (or any img) to PNG at the on-page box size. html2canvas ignores object-fit on SVG. */
+async function rasterizeImageToPng(
+  src: string,
+  destW: number,
+  destH: number,
+  fit: 'fill' | 'contain',
+): Promise<string> {
+  const img = await loadHtmlImage(src)
+  const w = Math.max(1, Math.round(destW))
+  const h = Math.max(1, Math.round(destH))
+  const c = document.createElement('canvas')
+  c.width = w
+  c.height = h
+  const ctx = c.getContext('2d')
+  if (!ctx) return src
+  if (fit === 'fill') {
+    ctx.drawImage(img, 0, 0, w, h)
+  } else {
+    const nw = img.naturalWidth || w
+    const nh = img.naturalHeight || h
+    const scale = Math.min(w / Math.max(1, nw), h / Math.max(1, nh))
+    const dw = nw * scale
+    const dh = nh * scale
+    ctx.drawImage(img, (w - dw) / 2, (h - dh) / 2, dw, dh)
+  }
+  return c.toDataURL('image/png')
+}
+
+function imageElementFit(el: BuilderElement, canvasW: number, canvasH: number): 'fill' | 'contain' {
+  const isPaper =
+    el.text === '__upload_paper__' ||
+    el.text === 'background-art' ||
+    (el.locked === true &&
+      el.x === 0 &&
+      el.y === 0 &&
+      Math.abs(el.width - canvasW) < 2 &&
+      Math.abs(el.height - canvasH) < 2)
+  return isPaper || isFullPageDecorElement(el) ? 'fill' : 'contain'
+}
+
+/** Replace leftover SVG <img> / inline <svg> so html2canvas cannot leave white holes. */
+async function rasterizeSvgNodesInHost(root: HTMLElement) {
+  for (const svg of Array.from(root.querySelectorAll('svg'))) {
+    const parent = svg.parentElement
+    if (!parent) continue
+    const w = Math.max(32, Math.round(parent.clientWidth || 96))
+    const h = Math.max(32, Math.round(parent.clientHeight || 96))
+    const xml = new XMLSerializer().serializeToString(svg)
+    const svgUrl = `data:image/svg+xml;charset=utf-8,${encodeURIComponent(xml)}`
+    try {
+      const png = await rasterizeImageToPng(svgUrl, w * 2, h * 2, 'fill')
+      const img = document.createElement('img')
+      img.src = png
+      img.alt = ''
+      img.style.cssText = 'width:100%;height:100%;display:block;object-fit:fill'
+      svg.replaceWith(img)
+    } catch {
+      /* keep svg */
+    }
+  }
+
+  await Promise.all(
+    Array.from(root.querySelectorAll('img')).map(async (img) => {
+      const src = img.getAttribute('src') || ''
+      if (!isSvgImageSrc(src)) return
+      const w = Math.max(8, img.clientWidth || img.naturalWidth || 64)
+      const h = Math.max(8, img.clientHeight || img.naturalHeight || 64)
+      const fit = getComputedStyle(img).objectFit === 'contain' ? 'contain' : 'fill'
+      try {
+        img.src = await rasterizeImageToPng(src, w * 2, h * 2, fit)
+      } catch {
+        /* keep svg */
+      }
+    }),
+  )
+}
+
 /** Fetch a remote image and return a data-URL so html2canvas can paint it (CORS-safe). */
 async function inlineImageSrc(src: string | null | undefined): Promise<string | null> {
   if (!src) return null
@@ -396,21 +501,38 @@ async function inlineImageSrc(src: string | null | undefined): Promise<string | 
 
 /** Inline every remote bitmap on the certificate so PDF capture matches on-screen preview. */
 async function prepareDataForPdfCapture(data: CertificateRenderData): Promise<CertificateRenderData> {
-  const [logoUrl, sealUrl, signatureUrl, customBackgroundUrl] = await Promise.all([
+  const [logoUrl, sealUrl, signatureUrl, customBackgroundUrl, studentPhotoUrl] = await Promise.all([
     inlineImageSrc(data.logoUrl),
     inlineImageSrc(data.sealUrl),
     inlineImageSrc(data.signatureUrl),
     inlineImageSrc(data.customBackgroundUrl),
+    inlineImageSrc(data.studentPhotoUrl),
   ])
 
   let logoBuilderDesign = data.logoBuilderDesign
   if (logoBuilderDesign?.elements?.length) {
+    const canvasW = logoBuilderDesign.canvas?.width || 794
+    const canvasH = logoBuilderDesign.canvas?.height || 1123
     const elements = await Promise.all(
       logoBuilderDesign.elements.map(async (el) => {
         if (el.type !== 'image' || !el.src) return el
-        if (String(el.src).startsWith('data:')) return el
-        const inlined = await inlineImageSrc(el.src)
-        return inlined ? { ...el, src: inlined } : el
+        let src = String(el.src)
+        if (!src.startsWith('data:')) {
+          src = (await inlineImageSrc(src)) || src
+        }
+        if (isSvgImageSrc(src)) {
+          try {
+            src = await rasterizeImageToPng(
+              src,
+              Math.max(8, el.width) * 2,
+              Math.max(8, el.height) * 2,
+              imageElementFit(el, canvasW, canvasH),
+            )
+          } catch {
+            /* keep svg — host pass may still fix it */
+          }
+        }
+        return src !== el.src ? { ...el, src } : el
       }),
     )
     logoBuilderDesign = { ...logoBuilderDesign, elements }
@@ -419,6 +541,7 @@ async function prepareDataForPdfCapture(data: CertificateRenderData): Promise<Ce
   return {
     ...data,
     logoUrl: logoUrl || data.logoUrl,
+    studentPhotoUrl: studentPhotoUrl || data.studentPhotoUrl,
     sealUrl: sealUrl || data.sealUrl,
     signatureUrl: signatureUrl || data.signatureUrl,
     customBackgroundUrl: customBackgroundUrl || data.customBackgroundUrl,
@@ -480,6 +603,11 @@ export async function generateCertificatePDF(certificateData: Record<string, any
   }
   format = [pageWmm, pageHmm]
 
+  const pageBg =
+    isBuilder && data.logoBuilderDesign?.canvas?.background
+      ? String(data.logoBuilderDesign.canvas.background)
+      : '#ffffff'
+
   const host = document.createElement('div')
   host.setAttribute('data-certificate-pdf-host', '1')
   // Off-screen but fully opaque — opacity:0 breaks html2canvas painting of images/SVG
@@ -493,7 +621,7 @@ export async function generateCertificatePDF(certificateData: Record<string, any
     'pointer-events:none',
     'z-index:-1',
     'overflow:hidden',
-    'background:#ffffff',
+    `background:${pageBg}`,
   ].join(';')
   document.body.appendChild(host)
 
@@ -553,17 +681,34 @@ export async function generateCertificatePDF(certificateData: Record<string, any
       'margin:0',
       'padding:0',
       'overflow:hidden',
-      'background:#ffffff',
+      `background:${pageBg}`,
       'position:relative',
     ].join(';')
     void el.offsetHeight
     await wait(50)
+    await rasterizeSvgNodesInHost(host)
+    await Promise.all(
+      Array.from(host.querySelectorAll('img')).map(
+        (img) =>
+          new Promise<void>((resolve) => {
+            if (img.complete && img.naturalWidth > 0) {
+              resolve()
+              return
+            }
+            const done = () => resolve()
+            img.addEventListener('load', done, { once: true })
+            img.addEventListener('error', done, { once: true })
+            window.setTimeout(done, 4000)
+          }),
+      ),
+    )
+    await wait(80)
 
     const canvas = await html2canvas(el, {
       scale: 2,
       useCORS: true,
       allowTaint: false,
-      backgroundColor: '#ffffff',
+      backgroundColor: pageBg,
       logging: false,
       imageTimeout: 20000,
       foreignObjectRendering: false,
@@ -574,11 +719,13 @@ export async function generateCertificatePDF(certificateData: Record<string, any
         cloned.style.width = `${pageWpx}px`
         cloned.style.height = `${pageHpx}px`
         cloned.style.overflow = 'hidden'
+        cloned.style.background = pageBg
+        cloned.style.backgroundColor = pageBg
         // Strip accidental text highlight boxes (legacy fill defaults / selection paint)
         cloned.querySelectorAll('[data-cert-mode="logo-builder"] [style]').forEach((node) => {
-          const el = node as HTMLElement
-          if (el.tagName === 'IMG' || el.querySelector('img, svg, canvas')) return
-          const bg = (el.style.backgroundColor || el.style.background || '').toLowerCase()
+          const nodeEl = node as HTMLElement
+          if (nodeEl.tagName === 'IMG' || nodeEl.querySelector('img, svg, canvas')) return
+          const bg = (nodeEl.style.backgroundColor || nodeEl.style.background || '').toLowerCase()
           if (
             !bg ||
             bg === 'transparent' ||
@@ -596,30 +743,8 @@ export async function generateCertificatePDF(certificateData: Record<string, any
             bg === '#cbd5e1' ||
             bg === '#f1f5f9'
           ) {
-            el.style.background = 'transparent'
-            el.style.backgroundColor = 'transparent'
-          }
-        })
-        // Rasterize QR SVG → canvas so it is not missing in PDF
-        cloned.querySelectorAll('svg').forEach((svg) => {
-          try {
-            const parent = svg.parentElement
-            if (!parent) return
-            const rect = parent.getBoundingClientRect()
-            const w = Math.max(32, Math.round(rect.width || parent.clientWidth || 96))
-            const h = Math.max(32, Math.round(rect.height || parent.clientHeight || 96))
-            const xml = new XMLSerializer().serializeToString(svg)
-            const svgUrl = `data:image/svg+xml;charset=utf-8,${encodeURIComponent(xml)}`
-            const img = cloned.ownerDocument.createElement('img')
-            img.src = svgUrl
-            img.width = w
-            img.height = h
-            img.style.width = '100%'
-            img.style.height = '100%'
-            img.style.display = 'block'
-            svg.replaceWith(img)
-          } catch {
-            /* keep svg */
+            nodeEl.style.background = 'transparent'
+            nodeEl.style.backgroundColor = 'transparent'
           }
         })
       },

@@ -151,6 +151,12 @@ export type CertificateRenderData = {
   motto?: string
   description?: string
   logoUrl?: string | null
+  /** Live student ID / profile photo (from profiles.avatar_url). */
+  studentPhotoUrl?: string | null
+  institutionEmail?: string
+  institutionPhone?: string
+  institutionAddress?: string
+  institutionWebsite?: string
   sealUrl?: string | null
   signatureUrl?: string | null
   leftTitle: string

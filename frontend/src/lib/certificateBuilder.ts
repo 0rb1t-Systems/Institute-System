@@ -66,6 +66,12 @@ export const BUILDER_BINDINGS = [
   { key: 'certificateNumber', label: 'Document number' },
   { key: 'dateIssued', label: 'Date issued' },
   { key: 'institutionName', label: 'Institution name' },
+  { key: 'motto', label: 'Institution motto' },
+  { key: 'institutionEmail', label: 'Institution email' },
+  { key: 'institutionPhone', label: 'Institution phone' },
+  { key: 'institutionAddress', label: 'Institution address' },
+  { key: 'institutionWebsite', label: 'Institution website' },
+  { key: 'studentPhoto', label: 'Student photo' },
   { key: 'leftName', label: 'Left signatory name' },
   { key: 'leftTitle', label: 'Left signatory title' },
   { key: 'rightName', label: 'Right signatory name' },
@@ -101,6 +107,12 @@ export function getDocumentBuilderQuickFields(
       { key: 'certificateNumber', label: 'Credential No.' },
       { key: 'dateIssued', label: 'Date' },
       { key: 'institutionName', label: 'Institution' },
+      { key: 'motto', label: 'Motto' },
+      { key: 'institutionEmail', label: 'Email' },
+      { key: 'institutionPhone', label: 'Phone' },
+      { key: 'institutionAddress', label: 'Address' },
+      { key: 'institutionWebsite', label: 'Website' },
+      { key: 'studentPhoto', label: 'Student photo' },
       { key: 'verifyCode', label: 'Verify code' },
     ]
   }
@@ -116,6 +128,10 @@ export function getDocumentBuilderQuickFields(
       { key: 'balance', label: 'Balance' },
       { key: 'lineItemsSummary', label: 'Fee lines' },
       { key: 'institutionName', label: 'Institution' },
+      { key: 'institutionEmail', label: 'Email' },
+      { key: 'institutionPhone', label: 'Phone' },
+      { key: 'institutionAddress', label: 'Address' },
+      { key: 'studentPhoto', label: 'Student photo' },
     ]
   }
   return [
@@ -127,6 +143,12 @@ export function getDocumentBuilderQuickFields(
     { key: 'dateIssued', label: 'Date' },
     { key: 'gpa', label: 'Grade / GPA' },
     { key: 'institutionName', label: 'Institution' },
+    { key: 'motto', label: 'Motto' },
+    { key: 'institutionEmail', label: 'Email' },
+    { key: 'institutionPhone', label: 'Phone' },
+    { key: 'institutionAddress', label: 'Address' },
+    { key: 'institutionWebsite', label: 'Website' },
+    { key: 'studentPhoto', label: 'Student photo' },
     { key: 'leftName', label: 'Left name' },
     { key: 'leftTitle', label: 'Left title' },
     { key: 'rightName', label: 'Right name' },
@@ -1527,6 +1549,11 @@ export function createBoundTextElement(
     certificateNumber: 'Document No.',
     dateIssued: 'Date Issued',
     institutionName: 'Institution Name',
+    motto: 'Institution motto',
+    institutionEmail: 'Email',
+    institutionPhone: 'Phone',
+    institutionAddress: 'Address',
+    institutionWebsite: 'Website',
     leftName: 'Left Signatory Name',
     leftTitle: 'Left Signatory Title',
     rightName: 'Right Signatory Name',
@@ -1572,11 +1599,61 @@ export function createBoundTextElement(
   }
 }
 
+export function isStudentPhotoElement(el?: BuilderElement | null): boolean {
+  return !!el && el.bind === 'studentPhoto'
+}
+
+/** Placeholder shown in the builder until a real student photo is issued. */
+export const STUDENT_PHOTO_PLACEHOLDER_SRC =
+  'data:image/svg+xml;charset=utf-8,' +
+  encodeURIComponent(
+    `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 150"><rect width="120" height="150" fill="#e2e8f0"/><circle cx="60" cy="56" r="26" fill="#94a3b8"/><path d="M22 138 C22 104 40 90 60 90 C80 90 98 104 98 138 Z" fill="#94a3b8"/><rect x="4" y="4" width="112" height="142" fill="none" stroke="#64748b" stroke-width="2"/></svg>`,
+  )
+
+export function createBoundPhotoElement(
+  canvas: { width: number; height: number },
+  overrides: Partial<BuilderElement> = {},
+): BuilderElement {
+  const w = 118
+  const h = 148
+  return {
+    id: createElementId(),
+    type: 'image',
+    x: Math.round(canvas.width - w - 48),
+    y: 56,
+    width: w,
+    height: h,
+    rotation: 0,
+    zIndex: 20,
+    text: 'Student photo',
+    name: 'Student photo',
+    opacity: 1,
+    fill: 'transparent',
+    stroke: 'transparent',
+    ...overrides,
+    bind: 'studentPhoto',
+    type: 'image',
+  }
+}
+
+export function resolveBuilderImageSrc(
+  el: BuilderElement,
+  data?: { studentPhotoUrl?: string | null },
+): string {
+  if (el.bind === 'studentPhoto') {
+    return String(data?.studentPhotoUrl || '').trim() || STUDENT_PHOTO_PLACEHOLDER_SRC
+  }
+  return String(el.src || '').trim()
+}
+
 /**
  * Starter professional certificate layout — essential fields already placed
  * so the institution can finish (logo, stamp, colors) instead of starting blank.
  */
-export function createStarterCertificateDesign(paperKey: PaperSizeKey = 'a4-portrait'): LogoBuilderDesign {
+export function createStarterCertificateDesign(
+  paperKey: PaperSizeKey = 'a4-portrait',
+  brand?: DocumentBrandOpts,
+): LogoBuilderDesign {
   const paper = getPaperSize(paperKey)
   const w = paper.width
   const h = paper.height
@@ -1779,8 +1856,55 @@ export function createStarterCertificateDesign(paperKey: PaperSizeKey = 'a4-port
       color: primary,
       zIndex: nextZ(),
     }),
-    // QR is optional — add via toolbar “Verification QR” only if needed
   ]
+
+  const leftTitle = String(brand?.leftTitle || '').trim()
+  const rightTitle = String(brand?.rightTitle || '').trim()
+  if (leftTitle) {
+    elements.push(
+      createBoundTextElement('leftTitle', { width: w, height: h }, {
+        x: w * 0.12,
+        y: h * 0.855,
+        width: w * 0.28,
+        height: 24,
+        fontSize: 12,
+        fontWeight: 'normal',
+        fontStyle: 'normal',
+        textAlign: 'center',
+        color: '#475569',
+        text: leftTitle,
+        zIndex: nextZ(),
+      }),
+    )
+  }
+  if (rightTitle) {
+    elements.push(
+      createBoundTextElement('rightTitle', { width: w, height: h }, {
+        x: w * 0.6,
+        y: h * 0.855,
+        width: w * 0.28,
+        height: 24,
+        fontSize: 12,
+        fontWeight: 'normal',
+        fontStyle: 'normal',
+        textAlign: 'center',
+        color: '#475569',
+        text: rightTitle,
+        zIndex: nextZ(),
+      }),
+    )
+  }
+
+  const qrSize = 88
+  elements.push({
+    ...createVerificationQrElement({ width: w, height: h }),
+    x: Math.round(w / 2 - qrSize / 2),
+    y: Math.round(h * 0.68),
+    width: qrSize,
+    height: qrSize,
+    zIndex: nextZ(),
+    locked: false,
+  })
 
   return normalizeVerificationQr({
     version: 1,
@@ -2465,10 +2589,11 @@ export function createStarterInvoiceDesign(
 export function createStarterDocumentDesign(
   kind: DocumentBuilderKind,
   paperKey: PaperSizeKey = 'a4-portrait',
+  brand?: DocumentBrandOpts,
 ): LogoBuilderDesign {
-  if (kind === 'transcript') return createStarterTranscriptDesign(paperKey)
-  if (kind === 'invoice') return createStarterInvoiceDesign(paperKey)
-  return createStarterCertificateDesign(paperKey)
+  if (kind === 'transcript') return createStarterTranscriptDesign(paperKey, brand)
+  if (kind === 'invoice') return createStarterInvoiceDesign(paperKey, brand)
+  return createStarterCertificateDesign(paperKey, brand)
 }
 
 /** Double border frame for the current canvas. */
@@ -2619,7 +2744,7 @@ export function isFullPageDecorElement(el?: BuilderElement | null): boolean {
   return isFullPageDecorKey(el?.decorKey)
 }
 
-function decorativeImageSrc(key: string, primary: string, accent: string) {
+export function decorativeImageSrc(key: string, primary: string, accent: string) {
   const built = buildDecorativeSvg(key, primary, accent)
   const svg = isFullPageDecorKey(key)
     ? built.svg.replace(/<svg\b/, '<svg preserveAspectRatio="none"')
@@ -3427,7 +3552,11 @@ export function normalizeLogoBuilderDesign(raw: unknown): LogoBuilderDesign {
           })(),
           stroke: el.stroke != null ? String(el.stroke) : '#002147',
           strokeWidth: Math.max(0, Number(el.strokeWidth) || 1),
-          opacity: Math.min(1, Math.max(0, Number(el.opacity) || 1)),
+          opacity: (() => {
+            const n = Number(el.opacity)
+            if (!Number.isFinite(n)) return 1
+            return Math.min(1, Math.max(0, n))
+          })(),
           src: el.src ? String(el.src) : undefined,
           bind: isQr ? 'qr' : bind,
           name: el.name != null && String(el.name).trim() ? String(el.name).slice(0, 80) : undefined,
@@ -3479,7 +3608,13 @@ export function resolveBuilderText(
     certificateNumber?: string
     dateIssued?: string | null
     institutionName?: string
+    motto?: string
+    institutionEmail?: string
+    institutionPhone?: string
+    institutionAddress?: string
+    institutionWebsite?: string
     logoUrl?: string | null
+    studentPhotoUrl?: string | null
     verifyCode?: string
     leftName?: string
     leftTitle?: string
@@ -3515,6 +3650,18 @@ export function resolveBuilderText(
       // Logo XOR name — never both on issued documents
       if (String(data.logoUrl || '').trim()) return ''
       return data.institutionName || el.text || 'Institution'
+    case 'motto':
+      return data.motto || el.text || 'Motto'
+    case 'institutionEmail':
+      return data.institutionEmail || el.text || 'email@institution.edu'
+    case 'institutionPhone':
+      return data.institutionPhone || el.text || 'Phone'
+    case 'institutionAddress':
+      return data.institutionAddress || el.text || 'Address'
+    case 'institutionWebsite':
+      return data.institutionWebsite || el.text || 'Website'
+    case 'studentPhoto':
+      return ''
     case 'leftName':
       return data.leftName || el.text || 'Signatory'
     case 'leftTitle':

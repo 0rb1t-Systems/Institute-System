@@ -56,12 +56,14 @@ import {
   BUILDER_BINDINGS,
   BUILDER_FONT_FAMILIES,
   builderFontLabel,
+  decorativeImageSrc,
   DECORATIVE_SHAPES,
   DECORATIVE_SHAPE_CATEGORIES,
   PAPER_SIZES,
   applyCustomPaperSize,
   applyPaperSize,
   getDesignPdfPageMm,
+  createBoundPhotoElement,
   createBoundTextElement,
   createBorderFrameElements,
   createDecorativeShapeElement,
@@ -74,6 +76,7 @@ import {
   isFullPageDecorElement,
   isPrivateCertStoragePath,
   isQrElement,
+  isStudentPhotoElement,
   isUploadPaperElement,
   isBackgroundArtElement,
   getBuilderLayerLabel,
@@ -84,6 +87,7 @@ import {
   extractCertStoragePath,
   recolorDecorativeElement,
   resolveBuilderText,
+  STUDENT_PHOTO_PLACEHOLDER_SRC,
   type BuilderBinding,
   type BuilderElement,
   type BuilderElementType,
@@ -93,6 +97,7 @@ import {
 } from '@/lib/certificateBuilder'
 import {
   CERTIFICATE_PATCHES,
+  getCertificatePatchPreviewSrc,
   createCertificatePatchElement,
   isCertificatePatchElement,
   rebuildCertificatePatch,
@@ -212,13 +217,14 @@ const CertificateLogoPageBuilder = ({
   const [showGrid, setShowGrid] = useState(true)
   const [showRulers, setShowRulers] = useState(false)
   const [snapEnabled, setSnapEnabled] = useState(true)
-  const [zoom, setZoom] = useState(1)
-  const [zoomMode, setZoomMode] = useState<'width' | 'page' | 'manual'>('page')
+  const [zoom, setZoom] = useState(0.9)
+  const [zoomMode, setZoomMode] = useState<'width' | 'page' | 'manual'>('manual')
   const workspaceRef = useRef<HTMLDivElement | null>(null)
   const [selectedIds, setSelectedIds] = useState<string[]>([])
   const [guides, setGuides] = useState<{ x: number | null; y: number | null }>({ x: null, y: null })
   const [starterOpen, setStarterOpen] = useState(false)
   const [toolbarMenu, setToolbarMenu] = useState<'none' | 'fields' | 'decor' | 'layers' | 'patches' | 'fonts'>('none')
+  const [pickerPreviewKey, setPickerPreviewKey] = useState<string | null>(null)
   const [chromeTab, setChromeTab] = useState<'insert' | 'design' | 'format'>('insert')
   const [draftTick, setDraftTick] = useState(0)
   const [activeLayout, setActiveLayout] = useState<string>('classic')
@@ -331,6 +337,7 @@ const CertificateLogoPageBuilder = ({
 
   const imageSrcFor = useCallback(
     (el: BuilderElement) => {
+      if (isStudentPhotoElement(el)) return STUDENT_PHOTO_PLACEHOLDER_SRC
       if (!el.src) return ''
       if (isPrivateCertStoragePath(el.src)) return resolvedImageUrls[el.id] || ''
       return el.src
@@ -504,15 +511,23 @@ const CertificateLogoPageBuilder = ({
 
   const addBoundField = (bind: Exclude<BuilderBinding, 'qr'>) => {
     const z = design.elements.reduce((m, e) => Math.max(m, e.zIndex || 0), 0) + 1
-    const el = createBoundTextElement(bind, design.canvas, { zIndex: z })
-    el.y = Math.min(design.canvas.height - 60, el.y + (design.elements.length % 6) * 28)
+    const el =
+      bind === 'studentPhoto'
+        ? createBoundPhotoElement(design.canvas, { zIndex: z })
+        : createBoundTextElement(bind, design.canvas, { zIndex: z })
+    if (bind !== 'studentPhoto') {
+      el.y = Math.min(design.canvas.height - 60, el.y + (design.elements.length % 6) * 28)
+    }
     const next = cloneDesign(design)
     next.elements.push(el)
     pushHistory(next)
     setSelectedId(el.id)
     toast({
       title: 'Field added',
-      description: `“${getDocumentBuilderQuickFields(docType).find((f) => f.key === bind)?.label || BUILDER_BINDINGS.find((b) => b.key === bind)?.label}” will fill from live ${docLabel.toLowerCase()} data.`,
+      description:
+        bind === 'studentPhoto'
+          ? 'Student photo will show the ID picture uploaded for each student.'
+          : `“${getDocumentBuilderQuickFields(docType).find((f) => f.key === bind)?.label || BUILDER_BINDINGS.find((b) => b.key === bind)?.label}” will fill from live ${docLabel.toLowerCase()} data.`,
     })
   }
 
@@ -641,9 +656,21 @@ const CertificateLogoPageBuilder = ({
     const paperKey = (paperOverride ||
       (design.canvas.paperKey as PaperSizeKey) ||
       'a4-portrait') as PaperSizeKey
+    const leftTitle = String(institution?.signatory_left_title || '').trim()
+    const rightTitle = String(institution?.signatory_right_title || '').trim()
     const starter = createStarterDocumentDesign(
       docType,
       paperKey === 'custom' ? 'a4-portrait' : paperKey,
+      {
+        leftTitle: leftTitle || undefined,
+        rightTitle: rightTitle || undefined,
+        leftName: String(institution?.signatory_left_name || '').trim() || undefined,
+        rightName: String(institution?.signatory_right_name || '').trim() || undefined,
+        institutionName: getInstitutionDisplayName(institution),
+        primary: getInstitutionPrimary(institution),
+        accent: getInstitutionAccent(institution),
+        logoUrl: institution?.logo_url,
+      },
     )
     // Inject institution branding assets with clear layer names
     if (institution?.logo_url) {
@@ -1616,6 +1643,12 @@ const CertificateLogoPageBuilder = ({
       primary: getInstitutionPrimary(institution),
       accent: getInstitutionAccent(institution),
       logoUrl: institution?.logo_url,
+      studentPhotoUrl: STUDENT_PHOTO_PLACEHOLDER_SRC,
+      motto: institution?.motto || undefined,
+      institutionEmail: institution?.email || undefined,
+      institutionPhone: institution?.phone || undefined,
+      institutionAddress: institution?.address || undefined,
+      institutionWebsite: institution?.website || undefined,
       sealUrl: institution?.seal_url,
       signatureUrl: institution?.signature_url,
       studentName: 'Amina Hassan',
@@ -1733,6 +1766,20 @@ const CertificateLogoPageBuilder = ({
   const pdfMm = getDesignPdfPageMm(design.canvas)
   const brandPrimary = getInstitutionPrimary(institution) || '#002147'
   const brandAccent = getInstitutionAccent(institution) || '#c9a227'
+  const decorThumbSrc = useMemo(() => {
+    const map: Record<string, string> = {}
+    for (const s of DECORATIVE_SHAPES) {
+      map[s.key] = decorativeImageSrc(s.key, brandPrimary, brandAccent)
+    }
+    return map
+  }, [brandPrimary, brandAccent])
+  const patchThumbSrc = useMemo(() => {
+    const map: Record<string, string> = {}
+    for (const s of CERTIFICATE_PATCHES) {
+      map[s.key] = getCertificatePatchPreviewSrc(s.key, brandPrimary, brandAccent, '#ffffff')
+    }
+    return map
+  }, [brandPrimary, brandAccent])
 
   const filteredDecor = DECORATIVE_SHAPES.filter((s) => {
     const q = elementSearch.trim().toLowerCase()
@@ -1740,6 +1787,10 @@ const CertificateLogoPageBuilder = ({
     const qOk = !q || s.label.toLowerCase().includes(q) || s.category.includes(q)
     return catOk && qOk
   })
+
+  const decorPreview = filteredDecor.find((s) => s.key === pickerPreviewKey) || filteredDecor[0]
+  const patchPreview =
+    CERTIFICATE_PATCHES.find((s) => s.key === pickerPreviewKey) || CERTIFICATE_PATCHES[0]
 
   if (loading) {
     return (
@@ -1877,11 +1928,37 @@ const CertificateLogoPageBuilder = ({
                 ) : null}
               </div>
               <div className="relative z-50">
-                <ToolBtn title="Decorations" active={toolbarMenu === 'decor'} onClick={() => setToolbarMenu((m) => (m === 'decor' ? 'none' : 'decor'))}>
+                <ToolBtn
+                  title="Decorations"
+                  active={toolbarMenu === 'decor'}
+                  onClick={() => {
+                    setToolbarMenu((m) => {
+                      const next = m === 'decor' ? 'none' : 'decor'
+                      if (next === 'decor') setPickerPreviewKey(filteredDecor[0]?.key || null)
+                      return next
+                    })
+                  }}
+                >
                   <Sparkles className="h-3.5 w-3.5" /> Decor
                 </ToolBtn>
                 {toolbarMenu === 'decor' ? (
-                  <div className="absolute left-0 top-full z-[60] mt-1 w-64 overflow-hidden rounded-md border border-slate-700 bg-[#0b0d14] p-1.5 shadow-2xl">
+                  <div className="absolute left-0 top-full z-[60] mt-1 w-80 overflow-hidden rounded-md border border-slate-700 bg-[#0b0d14] p-2 shadow-2xl">
+                    <div className="mb-2 rounded-md bg-white p-2">
+                      <div className="flex h-36 items-center justify-center">
+                        {decorPreview && decorThumbSrc[decorPreview.key] ? (
+                          <img
+                            src={decorThumbSrc[decorPreview.key]}
+                            alt=""
+                            className="max-h-36 max-w-full object-contain"
+                          />
+                        ) : (
+                          <span className="text-[11px] text-slate-400">Hover a decoration</span>
+                        )}
+                      </div>
+                      <p className="mt-1 text-center text-[11px] font-medium text-slate-700">
+                        {decorPreview?.label || 'Decoration'}
+                      </p>
+                    </div>
                     <select
                       className="mb-1 h-7 w-full rounded bg-slate-900 border border-slate-700 text-[11px] px-1"
                       value={libraryCategory}
@@ -1898,18 +1975,26 @@ const CertificateLogoPageBuilder = ({
                       placeholder="Search ornaments…"
                       className="mb-1 h-7 bg-slate-900 border-slate-700 text-xs"
                     />
-                    <div className="max-h-52 overflow-y-auto space-y-0.5">
+                    <div className="grid max-h-52 grid-cols-3 gap-1 overflow-y-auto">
                       {filteredDecor.map((s) => (
                         <button
                           key={s.key}
                           type="button"
+                          onMouseEnter={() => setPickerPreviewKey(s.key)}
+                          onFocus={() => setPickerPreviewKey(s.key)}
                           onClick={() => {
                             addDecorativeShape(s.key)
                             setToolbarMenu('none')
                           }}
-                          className="w-full rounded px-2 py-1 text-left text-[11px] text-slate-300 hover:bg-slate-800"
+                          className={`rounded border p-1 ${
+                            decorPreview?.key === s.key
+                              ? 'border-violet-500 bg-violet-600/20'
+                              : 'border-slate-800 hover:border-slate-600'
+                          }`}
+                          title={s.label}
                         >
-                          {s.label}
+                          <img src={decorThumbSrc[s.key]} alt="" className="mx-auto h-12 w-full object-contain bg-white rounded-sm" />
+                          <span className="mt-0.5 block truncate text-[9px] text-slate-300">{s.label}</span>
                         </button>
                       ))}
                     </div>
@@ -1917,24 +2002,55 @@ const CertificateLogoPageBuilder = ({
                 ) : null}
               </div>
               <div className="relative z-50">
-                <ToolBtn title="Certificate patches" active={toolbarMenu === 'patches'} onClick={() => setToolbarMenu((m) => (m === 'patches' ? 'none' : 'patches'))}>
+                <ToolBtn
+                  title="Certificate patches"
+                  active={toolbarMenu === 'patches'}
+                  onClick={() => {
+                    setToolbarMenu((m) => {
+                      const next = m === 'patches' ? 'none' : 'patches'
+                      if (next === 'patches') setPickerPreviewKey(CERTIFICATE_PATCHES[0].key)
+                      return next
+                    })
+                  }}
+                >
                   <Award className="h-3.5 w-3.5" /> Patches
                 </ToolBtn>
                 {toolbarMenu === 'patches' ? (
-                  <div className="absolute left-0 top-full z-[60] mt-1 w-64 overflow-hidden rounded-md border border-slate-700 bg-[#0b0d14] p-1.5 shadow-2xl">
-                    <p className="px-1 pb-1 text-[10px] text-slate-500">Ready badges — edit text &amp; colors after placing</p>
-                    <div className="max-h-60 overflow-y-auto space-y-0.5">
+                  <div className="absolute left-0 top-full z-[60] mt-1 w-80 overflow-hidden rounded-md border border-slate-700 bg-[#0b0d14] p-2 shadow-2xl">
+                    <div className="mb-2 rounded-md bg-white p-2">
+                      <div className="flex h-40 items-center justify-center">
+                        {patchPreview && patchThumbSrc[patchPreview.key] ? (
+                          <img
+                            src={patchThumbSrc[patchPreview.key]}
+                            alt=""
+                            className="max-h-40 max-w-full object-contain"
+                          />
+                        ) : null}
+                      </div>
+                      <p className="mt-1 text-center text-[11px] font-medium text-slate-700">
+                        {patchPreview?.label || 'Patch'}
+                      </p>
+                    </div>
+                    <div className="grid max-h-56 grid-cols-3 gap-1 overflow-y-auto">
                       {CERTIFICATE_PATCHES.map((s) => (
                         <button
                           key={s.key}
                           type="button"
+                          onMouseEnter={() => setPickerPreviewKey(s.key)}
+                          onFocus={() => setPickerPreviewKey(s.key)}
                           onClick={() => {
                             addCertificatePatch(s.key)
                             setToolbarMenu('none')
                           }}
-                          className="w-full rounded px-2 py-1.5 text-left text-[11px] text-amber-100 hover:bg-amber-600/20"
+                          className={`rounded border p-1 ${
+                            patchPreview?.key === s.key
+                              ? 'border-amber-400 bg-amber-600/20'
+                              : 'border-slate-800 hover:border-slate-600'
+                          }`}
+                          title={s.label}
                         >
-                          {s.label}
+                          <img src={patchThumbSrc[s.key]} alt="" className="mx-auto h-14 w-full object-contain bg-white rounded-sm" />
+                          <span className="mt-0.5 block truncate text-[9px] text-amber-100">{s.label}</span>
                         </button>
                       ))}
                     </div>
@@ -2185,9 +2301,25 @@ const CertificateLogoPageBuilder = ({
                 />
                 <Input type="number" step={0.5} value={selected.rotation || 0} onChange={(e) => updateSelected({ rotation: Number(e.target.value) || 0 })} className="h-7 w-12 bg-slate-900 border-slate-700 text-xs" />
                 <span className="text-[10px] text-slate-500">°</span>
-                <Input type="number" min={0} max={1} step={0.1} title="Opacity" value={selected.opacity ?? 1} onChange={(e) => updateSelected({ opacity: Number(e.target.value) || 1 })} className="h-7 w-11 bg-slate-900 border-slate-700 text-xs" />
+                <label className="ml-1 flex items-center gap-1" title="Opacity">
+                  <span className="text-[10px] text-slate-500">Op</span>
+                  <input
+                    type="range"
+                    min={0}
+                    max={100}
+                    step={1}
+                    value={Math.round(Math.min(1, Math.max(0, selected.opacity ?? 1)) * 100)}
+                    onChange={(e) => updateSelected({ opacity: Number(e.target.value) / 100 })}
+                    className="w-20 accent-violet-600"
+                  />
+                  <span className="w-8 text-[10px] tabular-nums text-slate-400">
+                    {Math.round(Math.min(1, Math.max(0, selected.opacity ?? 1)) * 100)}%
+                  </span>
+                </label>
                 {selectedIsQr ? (
                   <Badge className="bg-amber-600/20 text-amber-200 border-amber-700/40">Verify QR</Badge>
+                ) : isStudentPhotoElement(selected) ? (
+                  <Badge className="bg-sky-600/20 text-sky-200 border-sky-700/40">Student photo</Badge>
                 ) : isCertificatePatchElement(selected) ? (
                   <>
                     <Input
@@ -2204,7 +2336,7 @@ const CertificateLogoPageBuilder = ({
                   <>
                     <Input value={selected.text || ''} onChange={(e) => updateSelected({ text: e.target.value })} placeholder="Text" className="h-7 w-32 bg-slate-900 border-slate-700 text-xs" />
                     <select className="h-7 max-w-[8rem] rounded-md bg-slate-900 border border-slate-700 text-xs text-white px-1" value={selected.bind || 'none'} onChange={(e) => updateSelected({ bind: e.target.value as BuilderElement['bind'] })}>
-                      {[{ key: 'none', label: 'Static' }, ...getDocumentBuilderQuickFields(docType)].map((b) => (
+                      {[{ key: 'none', label: 'Static' }, ...getDocumentBuilderQuickFields(docType).filter((b) => b.key !== 'studentPhoto')].map((b) => (
                         <option key={b.key} value={b.key}>{b.label}</option>
                       ))}
                     </select>
@@ -2439,7 +2571,7 @@ const CertificateLogoPageBuilder = ({
                       </>
                     ) : null}
                     {el.type === 'image' && imageSrcFor(el) ? (
-                      <img src={imageSrcFor(el)} alt="" className={`w-full h-full pointer-events-none ${isPageFrame ? 'object-fill' : 'object-contain'}`} />
+                      <img src={imageSrcFor(el)} alt="" className={`w-full h-full pointer-events-none ${isStudentPhotoElement(el) ? 'object-cover' : isPageFrame ? 'object-fill' : 'object-contain'}`} />
                     ) : el.type === 'image' ? (
                       <span className="w-full text-center text-[9px] text-slate-400">Image</span>
                     ) : isQr ? (

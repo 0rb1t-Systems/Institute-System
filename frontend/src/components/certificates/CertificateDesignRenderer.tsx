@@ -2,7 +2,9 @@ import React from 'react'
 import QRCode from 'react-qr-code'
 import {
   resolveBuilderText,
+  resolveBuilderImageSrc,
   isFullPageDecorElement,
+  isStudentPhotoElement,
   type BuilderElement,
   type LogoBuilderDesign,
   type PaperContentLayer,
@@ -358,9 +360,13 @@ const CertificateDesignRenderer = ({
             )
           }
 
-          if (el.type === 'image' && el.src) {
-            const isData = String(el.src).startsWith('data:')
-            const isRemote = /^https?:\/\//i.test(el.src)
+          if (el.type === 'image' && (el.src || isStudentPhotoElement(el))) {
+            const src = isStudentPhotoElement(el)
+              ? resolveBuilderImageSrc(el, { studentPhotoUrl: data.studentPhotoUrl })
+              : el.src || ''
+            if (!src) return null
+            const isData = String(src).startsWith('data:')
+            const isRemote = /^https?:\/\//i.test(src)
             // Uploaded certificate paper must fill the canvas 100% (no letterboxing)
             const isPaper =
               el.text === '__upload_paper__' ||
@@ -374,9 +380,12 @@ const CertificateDesignRenderer = ({
             return (
               <img
                 key={el.id}
-                src={el.src}
+                src={src}
                 alt=""
-                style={{ ...style, objectFit: fillBox ? 'fill' : 'contain' }}
+                style={{
+                  ...style,
+                  objectFit: isStudentPhotoElement(el) ? 'cover' : fillBox ? 'fill' : 'contain',
+                }}
                 {...(!isData && isRemote ? { crossOrigin: 'anonymous' as const } : {})}
               />
             )
