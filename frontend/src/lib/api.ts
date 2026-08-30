@@ -1821,7 +1821,7 @@ export const getDiplomaCourses = async () => {
   return data || []
 }
 
-export const assignCourseToDiploma = async (diplomaId, courseId) => {
+export const assignCourseToDiploma = async (diplomaId, courseId, semesterId = null) => {
   const me = await getMyProfile()
   const sortOrder = await nextDiplomaCourseSort(diplomaId)
   const { data: row, error } = await supabase
@@ -1831,6 +1831,7 @@ export const assignCourseToDiploma = async (diplomaId, courseId) => {
       diploma_id: diplomaId,
       course_id: courseId,
       sort_order: sortOrder,
+      semester_id: semesterId || null,
     })
     .select()
     .single()
@@ -1846,6 +1847,74 @@ export const removeCourseFromDiploma = async (diplomaId, courseId) => {
     .eq('course_id', courseId)
   if (error) throw error
   return true
+}
+
+export const getDiplomaSemesters = async () => {
+  const { data, error } = await supabase
+    .from('diploma_semesters')
+    .select('*')
+    .order('sort_order', { ascending: true })
+    .order('created_at', { ascending: true })
+  if (error) throw error
+  return data || []
+}
+
+export const createDiplomaSemester = async (diplomaId, name) => {
+  const me = await getMyProfile()
+  const label = String(name || '').trim()
+  if (!diplomaId || !label) throw new Error('INVALID_INPUT')
+  const { data: maxRow } = await supabase
+    .from('diploma_semesters')
+    .select('sort_order')
+    .eq('diploma_id', diplomaId)
+    .order('sort_order', { ascending: false })
+    .limit(1)
+    .maybeSingle()
+  const sortOrder = Number(maxRow?.sort_order || 0) + 1
+  const { data: row, error } = await supabase
+    .from('diploma_semesters')
+    .insert({
+      institution_id: me.institution_id,
+      diploma_id: diplomaId,
+      name: label,
+      sort_order: sortOrder,
+    })
+    .select()
+    .single()
+  if (error) throw error
+  return row
+}
+
+export const updateDiplomaSemester = async (id, data) => {
+  const updates = {}
+  if (data.name !== undefined) updates.name = String(data.name || '').trim()
+  if (data.sort_order !== undefined) updates.sort_order = Number(data.sort_order) || 1
+  const { data: row, error } = await supabase
+    .from('diploma_semesters')
+    .update(updates)
+    .eq('id', id)
+    .select()
+    .single()
+  if (error) throw error
+  return row
+}
+
+export const deleteDiplomaSemester = async (id) => {
+  const { error } = await supabase.from('diploma_semesters').delete().eq('id', id)
+  if (error) throw error
+  return true
+}
+
+export const setDiplomaCourseSemester = async (diplomaId, courseId, semesterId) => {
+  const { data: row, error } = await supabase
+    .from('diploma_courses')
+    .update({ semester_id: semesterId || null })
+    .eq('diploma_id', diplomaId)
+    .eq('course_id', courseId)
+    .select()
+    .single()
+  if (error) throw error
+  return row
 }
 
 // --- Courses ---
@@ -1880,6 +1949,9 @@ export const createCourse = async (data) => {
 
   if (diplomaIds.length) {
     await syncCourseDiplomas(row.id, diplomaIds)
+    if (data.semester_id && primaryDiplomaId) {
+      await setDiplomaCourseSemester(primaryDiplomaId, row.id, data.semester_id)
+    }
   }
   return row
 }
@@ -1900,6 +1972,9 @@ export const updateCourse = async (id, data) => {
     const { data: row, error } = await supabase.from('courses').update(updates).eq('id', id).select().single()
     if (error) throw error
     await syncCourseDiplomas(id, diplomaIds)
+    if (diplomaIds[0]) {
+      await setDiplomaCourseSemester(diplomaIds[0], id, data.semester_id || null)
+    }
     return row
   }
 
@@ -1949,12 +2024,12 @@ export const createDiploma = async (data) => {
 }
 
 export const updateDiploma = async (id, data) => {
+  const updates: any = {}
+  if (data.name !== undefined) updates.name = data.name
+  if (data.description !== undefined) updates.description = data.description
   const { data: row, error } = await supabase
     .from('diplomas')
-    .update({
-      name: data.name,
-      description: data.description,
-    })
+    .update(updates)
     .eq('id', id)
     .select()
     .single()

@@ -21,9 +21,9 @@ const TranscriptCanvas = ({ data, compact = false }: Props) => {
     data.courses?.length
       ? data.courses
       : [
-          { code: 'IT101', name: 'Introduction to Computing', marks: '88', grade: 'B' },
-          { code: 'ENG102', name: 'Business English', marks: '92', grade: 'A' },
-          { code: 'ACC110', name: 'Accounting Basics', marks: '79', grade: 'C' },
+          { code: 'ACC101', name: 'Bookkeeping', marks: '80', grade: 'B', semester: 'Semester 1' },
+          { code: 'ACC110', name: 'Taxation', marks: '72', grade: 'C', semester: 'Semester 1' },
+          { code: 'ACC201', name: 'Auditing', marks: '68', grade: 'D', semester: 'Semester 2' },
         ]
 
   return (
@@ -107,14 +107,37 @@ const TranscriptCanvas = ({ data, compact = false }: Props) => {
             </tr>
           </thead>
           <tbody>
-            {courses.map((c) => (
-              <tr key={c.code} className="border-b border-inherit">
-                <td className={`font-mono py-0.5 px-1 border-r border-inherit ${compact ? 'text-[4px]' : 'text-[7px]'}`}>{c.code}</td>
-                <td className={`py-0.5 px-1 border-r border-inherit uppercase ${compact ? 'text-[4px]' : 'text-[7px]'}`}>{c.name}</td>
-                <td className={`text-center py-0.5 px-1 border-r border-inherit ${compact ? 'text-[4px]' : 'text-[7px]'}`}>{c.marks}</td>
-                <td className={`text-center font-bold py-0.5 px-1 ${compact ? 'text-[4px]' : 'text-[7px]'}`}>{c.grade}</td>
-              </tr>
-            ))}
+            {(() => {
+              const grouped = [];
+              for (const c of courses) {
+                const key = c.semester || '';
+                let g = grouped.find((x) => x.name === key);
+                if (!g) {
+                  g = { name: key, courses: [] };
+                  grouped.push(g);
+                }
+                g.courses.push(c);
+              }
+              return grouped.map((g) => (
+                <React.Fragment key={g.name || 'all'}>
+                  {g.name ? (
+                    <tr className="border-b border-inherit">
+                      <td colSpan={4} className={`font-black uppercase py-0.5 px-1 ${compact ? 'text-[4px]' : 'text-[7px]'}`}>
+                        {g.name}
+                      </td>
+                    </tr>
+                  ) : null}
+                  {g.courses.map((c) => (
+                    <tr key={c.code} className="border-b border-inherit">
+                      <td className={`font-mono py-0.5 px-1 border-r border-inherit ${compact ? 'text-[4px]' : 'text-[7px]'}`}>{c.code}</td>
+                      <td className={`py-0.5 px-1 border-r border-inherit uppercase ${compact ? 'text-[4px]' : 'text-[7px]'}`}>{c.name}</td>
+                      <td className={`text-center py-0.5 px-1 border-r border-inherit ${compact ? 'text-[4px]' : 'text-[7px]'}`}>{c.marks}</td>
+                      <td className={`text-center font-bold py-0.5 px-1 ${compact ? 'text-[4px]' : 'text-[7px]'}`}>{c.grade}</td>
+                    </tr>
+                  ))}
+                </React.Fragment>
+              ));
+            })()}
           </tbody>
         </table>
 

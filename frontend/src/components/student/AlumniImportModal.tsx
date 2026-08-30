@@ -136,7 +136,7 @@ export default function AlumniImportModal({ open, onClose, onSuccess }) {
             Alumni Import
           </DialogTitle>
           <DialogDescription className="text-slate-400">
-            Hal sadar = hal arday. Diploma course-yada ku qor tiirarka course_1 / mark_1, course_2 / mark_2, …
+            Hal sadar = hal arday. program_name waa inuu u dhigmaa magaca diploma-ga Academic Programs. Hal class ayaa loo sameeyaa, ma aha class semester kasta.
           </DialogDescription>
         </DialogHeader>
 
@@ -145,13 +145,13 @@ export default function AlumniImportModal({ open, onClose, onSuccess }) {
             <div className="rounded-md border border-indigo-900/60 bg-indigo-950/30 p-3 text-sm text-slate-200 space-y-2">
               <p className="font-medium text-indigo-200">Tusaale: Amina — 1 sadar, 3 course</p>
               <p className="text-slate-400 text-xs">
-                program_type = diploma. Magaca diploma-da = program_name. Course kasta = tiir.
+                program_type = diploma. program_name = magaca diploma-ga (tusaale: deploma test). Course + mark + semester (ikhtiyaari) = tiir.
               </p>
               <div className="overflow-auto text-xs font-mono text-slate-300 whitespace-nowrap">
-                Amina | diploma | Accounting Diploma | Bookkeeping 80 | Taxation 72 | Auditing 68
+                Amina | diploma | Accounting Diploma | Bookkeeping 80 Sem1 | Taxation 72 Sem1 | Auditing 68 Sem2
               </div>
               <p className="text-xs text-slate-500">
-                System-ku wuxuu ka dhigaa 1 arday, 1 diploma, 3 course, 1 transcript, 1 shahaado.
+                System-ku wuxuu ku xidhaa diploma-ga jira. Class-ka waa magaca diploma + Alumni + year (lacag $0). Transcript-ku wuxuu u kala qaadaa semester.
               </p>
             </div>
             <div className="rounded-md border border-slate-800 bg-slate-950/60 p-3 text-xs text-slate-400 space-y-1">

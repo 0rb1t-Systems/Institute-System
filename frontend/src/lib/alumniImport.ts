@@ -7,6 +7,7 @@ import {
   createClass,
   createCourse,
   createDiploma,
+  createDiplomaSemester,
   createEnrollment,
   createExam,
   createOrUpdateExamResult,
@@ -17,9 +18,12 @@ import {
   getClasses,
   getCourses,
   getDiplomaCourses,
+  getDiplomaSemesters,
   getDiplomas,
   getEnrollments,
   getExams,
+  setDiplomaCourseSemester,
+  updateClass,
 } from '@/lib/api'
 
 export const ALUMNI_COURSE_SLOTS = 8
@@ -34,8 +38,10 @@ export const ALUMNI_IMPORT_COLUMNS = [
   { key: 'year', label: 'year', required: false, mapsTo: 'alumni class year' },
   { key: 'course_1', label: 'course_1', required: true, mapsTo: 'first course name' },
   { key: 'mark_1', label: 'mark_1', required: true, mapsTo: 'first course mark 0–100' },
+  { key: 'semester_1', label: 'semester_1', required: false, mapsTo: 'semester name for course 1' },
   { key: 'course_2', label: 'course_2', required: false, mapsTo: 'diploma course 2' },
   { key: 'mark_2', label: 'mark_2', required: false, mapsTo: 'diploma mark 2' },
+  { key: 'semester_2', label: 'semester_2', required: false, mapsTo: 'semester for course 2' },
   { key: 'course_3', label: 'course_3', required: false, mapsTo: 'diploma course 3' },
   { key: 'mark_3', label: 'mark_3', required: false, mapsTo: 'diploma mark 3' },
 ] as const
@@ -48,7 +54,11 @@ export const ALUMNI_TEMPLATE_HEADERS = [
   'program_type',
   'program_name',
   'year',
-  ...Array.from({ length: ALUMNI_COURSE_SLOTS }, (_, i) => [`course_${i + 1}`, `mark_${i + 1}`]).flat(),
+  ...Array.from({ length: ALUMNI_COURSE_SLOTS }, (_, i) => [
+    `course_${i + 1}`,
+    `mark_${i + 1}`,
+    `semester_${i + 1}`,
+  ]).flat(),
 ]
 
 const HEADER_ALIASES: Record<string, string> = {
@@ -133,6 +143,8 @@ function numberedField(header: string): string | null {
   if (mark) return `mark_${Number(mark[1])}`
   const code = n.match(/^(?:course_code|code)_?(\d+)$/)
   if (code) return `code_${Number(code[1])}`
+  const sem = n.match(/^(?:semester|semister|sem|term)_?(\d+)$/)
+  if (sem) return `semester_${Number(sem[1])}`
   if (['course_name', 'subject', 'module', 'maadada'].includes(n)) return 'course_1'
   if (['mark', 'score', 'grade', 'final_mark', 'dhibcaha'].includes(n)) return 'mark_1'
   if (['course_code', 'code'].includes(n)) return 'code_1'
@@ -160,6 +172,7 @@ export function downloadAlumniTemplate() {
     Array.from({ length: ALUMNI_COURSE_SLOTS }, (_, i) => [
       [`course_${i + 1}`, ''],
       [`mark_${i + 1}`, ''],
+      [`semester_${i + 1}`, ''],
     ]).flat(),
   )
   const example = [
@@ -186,10 +199,13 @@ export function downloadAlumniTemplate() {
       ...emptySlots,
       course_1: 'Bookkeeping',
       mark_1: 80,
+      semester_1: 'Semester one',
       course_2: 'Taxation',
       mark_2: 72,
+      semester_2: 'Semester one',
       course_3: 'Auditing',
       mark_3: 68,
+      semester_3: 'Semester two',
     },
   ]
   const wb = XLSX.utils.book_new()
@@ -202,9 +218,12 @@ export function downloadAlumniTemplate() {
     ...ALUMNI_IMPORT_COLUMNS.map((c) => [c.label, c.required ? 'yes' : 'no', c.mapsTo]),
     ['course_4 … course_8', 'no', 'more diploma courses if needed'],
     [''],
+    ['program_name must match the diploma name in Academic Programs (e.g. deploma test).'],
+    ['Alumni are placed in one $0 class: {program_name} — Alumni {year} — not one class per semester.'],
+    ['semester_1 … semester_8 optional. If empty, the course keeps the diploma semester already assigned.'],
     ['Diploma: Amina is ONE row — course_1 Bookkeeping 80, course_2 Taxation 72, course_3 Auditing 68.'],
     ['Single course: fill course_1 and mark_1 only.'],
-    ['mark is 0–100. Certificates require 60+ on every course listed for that student.'],
+    ['mark is 0–100. Certificates require 60+ on every course of that diploma.'],
   ])
   XLSX.utils.book_append_sheet(wb, guide, 'Guide')
   XLSX.writeFile(wb, 'alumni-import-template.xlsx')
@@ -222,21 +241,23 @@ export type AlumniMappedRow = {
   course_name: string
   course_code: string
   mark: number
+  semester_name: string
 }
 
 function collectCourseSlots(out: Record<string, string>) {
-  const slots: { n: number; name: string; mark: number | null; code: string }[] = []
+  const slots: { n: number; name: string; mark: number | null; code: string; semester: string }[] = []
   const indexes = new Set<number>()
   for (const key of Object.keys(out)) {
-    const m = key.match(/^(?:course|mark|code)_(\d+)$/)
+    const m = key.match(/^(?:course|mark|code|semester)_(\d+)$/)
     if (m) indexes.add(Number(m[1]))
   }
   for (const n of [...indexes].sort((a, b) => a - b)) {
     const name = String(out[`course_${n}`] || '').trim()
     const markRaw = String(out[`mark_${n}`] || '').trim()
     const code = String(out[`code_${n}`] || '').trim().toUpperCase()
+    const semester = String(out[`semester_${n}`] || '').trim()
     if (!name && !markRaw) continue
-    slots.push({ n, name, mark: markRaw ? parseMark(markRaw) : null, code })
+    slots.push({ n, name, mark: markRaw ? parseMark(markRaw) : null, code, semester })
   }
   return slots
 }
@@ -271,7 +292,7 @@ export function mapAndValidateRows(
     let slots = collectCourseSlots(out)
     if (!slots.length && program_type === 'course' && program_name) {
       const mark = parseMark(out.mark_1 || '')
-      if (mark != null) slots = [{ n: 1, name: program_name, mark, code: '' }]
+      if (mark != null) slots = [{ n: 1, name: program_name, mark, code: '', semester: '' }]
     }
 
     if (!full_name) errors.push(`Row ${rowNumber}: full_name is required`)
@@ -301,6 +322,7 @@ export function mapAndValidateRows(
         course_name: slot.name,
         course_code: slot.code,
         mark: slot.mark,
+        semester_name: slot.semester,
       })
     }
   })
@@ -331,12 +353,13 @@ export async function runAlumniImport(
   const sendWelcomeEmail = options.sendWelcomeEmail === true
   const issueDocuments = options.issueDocuments !== false
 
-  const [diplomas, courses, classes, classCourses, diplomaCourses, exams, enrollments] = await Promise.all([
+  const [diplomas, courses, classes, classCourses, diplomaCourses, diplomaSemesters, exams, enrollments] = await Promise.all([
     getDiplomas(),
     getCourses(),
     getClasses(),
     getClassCourses(),
     getDiplomaCourses(),
+    getDiplomaSemesters(),
     getExams(),
     getEnrollments(),
   ])
@@ -346,6 +369,7 @@ export async function runAlumniImport(
   const classList = [...(classes || [])]
   const classCourseList = [...(classCourses || [])]
   const diplomaCourseList = [...(diplomaCourses || [])]
+  const semesterList = [...(diplomaSemesters || [])]
   const examList = [...(exams || [])]
   const enrollmentList = [...(enrollments || [])]
   const studentByEmail = new Map<string, any>()
@@ -359,24 +383,56 @@ export async function runAlumniImport(
   const findClassByName = (name: string) =>
     classList.find((c) => String(c.name || '').trim().toLowerCase() === name.trim().toLowerCase())
 
-  async function ensureDiploma(name: string) {
-    const hit = findDiploma(name)
-    if (hit) return hit
-    const row = await createDiploma({ name, description: 'Alumni import' })
+  function namesMatch(a: string, b: string) {
+    return String(a || '').trim().toLowerCase() === String(b || '').trim().toLowerCase()
+  }
+
+  async function ensureDiploma(programName: string, year: number) {
+    const exact = findDiploma(programName)
+    if (exact) return exact
+    const legacy = findDiploma(`${programName} — Alumni ${year}`)
+    if (legacy) return legacy
+    const row = await createDiploma({ name: programName })
     diplomaList.push(row)
     return row
   }
 
-  async function ensureCourse(name: string, code: string, diplomaId: string | null) {
-    const byCode = code ? findCourseByCode(code) : null
-    const hit = byCode || findCourseByName(name)
+  async function ensureSemester(diplomaId: string, name: string) {
+    const label = String(name || '').trim()
+    if (!diplomaId || !label) return null
+    const hit = semesterList.find((s) => s.diploma_id === diplomaId && namesMatch(s.name, label))
+    if (hit) return hit
+    const row = await createDiplomaSemester(diplomaId, label)
+    semesterList.push(row)
+    return row
+  }
+
+  async function ensureCourse(name: string, code: string, diplomaId: string | null, semesterId: string | null) {
+    const onDiploma = diplomaId
+      ? courseList.filter((c) => diplomaCourseList.some((l) => l.diploma_id === diplomaId && l.course_id === c.id))
+      : []
+    const byCodeOnDiploma = code
+      ? onDiploma.find((c) => String(c.code || '').toUpperCase() === code.toUpperCase())
+      : null
+    const byNameOnDiploma = onDiploma.find((c) => namesMatch(c.name, name))
+    const hit = byCodeOnDiploma || byNameOnDiploma || (code ? findCourseByCode(code) : null) || findCourseByName(name)
     if (hit) {
-      if (diplomaId && !diplomaCourseList.some((l) => l.diploma_id === diplomaId && l.course_id === hit.id)) {
-        try {
-          const link = await assignCourseToDiploma(diplomaId, hit.id)
-          diplomaCourseList.push(link)
-        } catch {
-          /* already linked */
+      if (diplomaId) {
+        const link = diplomaCourseList.find((l) => l.diploma_id === diplomaId && l.course_id === hit.id)
+        if (!link) {
+          try {
+            const created = await assignCourseToDiploma(diplomaId, hit.id, semesterId)
+            diplomaCourseList.push(created)
+          } catch {
+            /* already linked */
+          }
+        } else if (semesterId && link.semester_id !== semesterId) {
+          try {
+            const updated = await setDiplomaCourseSemester(diplomaId, hit.id, semesterId)
+            Object.assign(link, updated)
+          } catch {
+            /* ignore */
+          }
         }
       }
       return hit
@@ -387,10 +443,11 @@ export async function runAlumniImport(
       code: unique,
       type: 'regular',
       diploma_ids: diplomaId ? [diplomaId] : [],
+      semester_id: semesterId,
     })
     courseList.push(row)
     if (diplomaId) {
-      diplomaCourseList.push({ diploma_id: diplomaId, course_id: row.id })
+      diplomaCourseList.push({ diploma_id: diplomaId, course_id: row.id, semester_id: semesterId || null })
     }
     return row
   }
@@ -398,7 +455,15 @@ export async function runAlumniImport(
   async function ensureClass(programType: 'course' | 'diploma', programName: string, year: number, courseId: string | null, diplomaId: string | null) {
     const name = classNameFor(programName, year)
     const hit = findClassByName(name)
-    if (hit) return hit
+    if (hit) {
+      if (programType === 'diploma' && diplomaId && hit.diploma_id !== diplomaId) {
+        const row = await updateClass(hit.id, { diploma_id: diplomaId, program_type: 'diploma' })
+        const idx = classList.findIndex((c) => c.id === hit.id)
+        if (idx >= 0) classList[idx] = row
+        return row
+      }
+      return hit
+    }
     const start = `${year}-01-01`
     const end = `${year}-12-31`
     const row = await createClass({
@@ -527,20 +592,24 @@ export async function runAlumniImport(
         let diplomaId: string | null = null
         let primaryCourseId: string | null = null
         if (sample.program_type === 'diploma') {
-          diplomaId = (await ensureDiploma(`${sample.program_name} — Alumni ${sample.year}`)).id
+          diplomaId = (await ensureDiploma(sample.program_name, sample.year)).id
         }
         const courseIds: string[] = []
         for (const r of classRows) {
+          const semester = diplomaId && r.semester_name
+            ? await ensureSemester(diplomaId, r.semester_name)
+            : null
           const course = await ensureCourse(
             r.course_name,
             r.course_code,
             sample.program_type === 'diploma' ? diplomaId : null,
+            semester?.id || null,
           )
           courseIds.push(course.id)
           if (sample.program_type === 'course') primaryCourseId = course.id
         }
         if (sample.program_type === 'course' && !primaryCourseId) {
-          const c = await ensureCourse(sample.program_name, sample.course_code, null)
+          const c = await ensureCourse(sample.program_name, sample.course_code, null, null)
           primaryCourseId = c.id
         }
         const cls = await ensureClass(

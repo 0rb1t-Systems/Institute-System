@@ -51,7 +51,7 @@ import {
   getLetterGradeFromScale,
   isCoursePassedFromScale,
 } from '@/lib/gradingScale';
-import { coursesForDiploma } from '@/lib/diplomaCourses';
+import { coursesForDiploma, groupTranscriptRowsBySemester, semestersForDiploma } from '@/lib/diplomaCourses';
 import { formatMonthYear } from '@/lib/utils';
 
 const TranscriptView = ({ studentId, onClose }: any) => {
@@ -65,6 +65,7 @@ const TranscriptView = ({ studentId, onClose }: any) => {
       classes,
       classCourses,
       diplomaCourses = [],
+      diplomaSemesters = [],
       exams,
       diplomas,
       gradebookEntries = [],
@@ -290,6 +291,18 @@ const TranscriptView = ({ studentId, onClose }: any) => {
                 status = isCoursePassedFromScale(percentageValue, gradeScale) ? 'Pass' : 'Fail';
             }
 
+            const liveSemesters = currentClass?.diploma_id
+              ? semestersForDiploma(diplomaSemesters, currentClass.diploma_id)
+              : [];
+            const liveSem = liveSemesters.find((s) => s.id === course.semester_id);
+            const semesterName = (te?.semester_name && String(te.semester_name).trim()) || liveSem?.name || null;
+            const semesterSort =
+              te?.semester_sort != null && te.semester_sort !== ''
+                ? Number(te.semester_sort)
+                : liveSem
+                  ? Number(liveSem.sort_order ?? 0)
+                  : 9999;
+
             return {
                 id: course.id,
                 code: course.code || `CRS-${course.id.substring(0,4).toUpperCase()}`,
@@ -302,10 +315,12 @@ const TranscriptView = ({ studentId, onClose }: any) => {
                 grade: grade,
                 status: status,
                 credits: course.credits || 3,
-                date: bestResult ? new Date(bestResult.submission_date || bestResult.graded_at || Date.now()).toLocaleDateString() : '-'
+                date: bestResult ? new Date(bestResult.submission_date || bestResult.graded_at || Date.now()).toLocaleDateString() : '-',
+                semester_name: semesterName,
+                semester_sort: semesterSort,
             };
         });
-    }, [studentData, selectedClassId, classes, courses, results, classCourses, diplomaCourses, exams, currentClass, gradebookEntries, transcripts, gradeScale]);
+    }, [studentData, selectedClassId, classes, courses, results, classCourses, diplomaCourses, diplomaSemesters, exams, currentClass, gradebookEntries, transcripts, gradeScale]);
 
     const stats = useMemo(() => {
         const graded = transcriptData.filter(t => t.marks !== null);
@@ -320,6 +335,11 @@ const TranscriptView = ({ studentId, onClose }: any) => {
         const gpa = graded.length > 0 ? (totalPoints / graded.length).toFixed(2) : "0.00";
         return { total: transcriptData.length, passed, failed, gpa };
     }, [transcriptData, gradeScale]);
+
+    const transcriptGroups = useMemo(
+      () => groupTranscriptRowsBySemester(transcriptData),
+      [transcriptData],
+    );
 
     const issuedTranscript = useMemo(() => {
       if (!studentData?.id || !selectedClassId) return null;
@@ -380,10 +400,14 @@ const TranscriptView = ({ studentId, onClose }: any) => {
 
     const gradesSummary = useMemo(
       () =>
-        transcriptData
-          .map((t) => `${t.code}  ${t.name}  ${t.percentage ?? '-'}  ${t.grade}`)
-          .join('\n'),
-      [transcriptData],
+        transcriptGroups
+          .map((g) => {
+            const head = g.name ? `${g.name}\n` : '';
+            const lines = g.rows.map((t) => `${t.code}  ${t.name}  ${t.percentage ?? '-'}  ${t.grade}`).join('\n');
+            return `${head}${lines}`;
+          })
+          .join('\n\n'),
+      [transcriptGroups],
     );
 
     const customRenderData: CertificateRenderData | null = useMemo(() => {
@@ -765,15 +789,26 @@ const TranscriptView = ({ studentId, onClose }: any) => {
                                 </TableRow>
                             </TableHeader>
                             <TableBody>
-                                {transcriptData.length > 0 ? transcriptData.map((row, index) => (
-                                    <TableRow key={index} className="bg-white hover:bg-slate-50 h-auto border-b border-black">
-                                        <TableCell className="font-mono font-bold text-black text-xs py-2 pl-2 border-r border-black">{row.code}</TableCell>
-                                        <TableCell className="py-2 px-2 border-r border-black">
-                                            <div className="font-bold text-black text-xs uppercase">{row.name}</div>
-                                        </TableCell>
-                                        <TableCell className="text-center font-bold text-black text-xs py-2 border-r border-black">{row.marks !== null ? row.marks : '-'}</TableCell>
-                                        <TableCell className="text-center font-bold text-black text-xs py-2 pr-2">{row.grade}</TableCell>
-                                    </TableRow>
+                                {transcriptGroups.length > 0 ? transcriptGroups.map((group) => (
+                                    <React.Fragment key={group.key}>
+                                        {group.name ? (
+                                            <TableRow className="bg-slate-100 hover:bg-slate-100 border-b border-black">
+                                                <TableCell colSpan={4} className="py-1.5 px-2 font-black uppercase text-[10px] tracking-wide text-black">
+                                                    {group.name}
+                                                </TableCell>
+                                            </TableRow>
+                                        ) : null}
+                                        {group.rows.map((row) => (
+                                            <TableRow key={row.id} className="bg-white hover:bg-slate-50 h-auto border-b border-black">
+                                                <TableCell className="font-mono font-bold text-black text-xs py-2 pl-2 border-r border-black">{row.code}</TableCell>
+                                                <TableCell className="py-2 px-2 border-r border-black">
+                                                    <div className="font-bold text-black text-xs uppercase">{row.name}</div>
+                                                </TableCell>
+                                                <TableCell className="text-center font-bold text-black text-xs py-2 border-r border-black">{row.marks !== null ? row.marks : '-'}</TableCell>
+                                                <TableCell className="text-center font-bold text-black text-xs py-2 pr-2">{row.grade}</TableCell>
+                                            </TableRow>
+                                        ))}
+                                    </React.Fragment>
                                 )) : (
                                     <TableRow><TableCell colSpan={4} className="text-center py-8 text-black italic text-xs">No grades found in transcript.</TableCell></TableRow>
                                 )}

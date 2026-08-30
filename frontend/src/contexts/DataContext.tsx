@@ -24,7 +24,7 @@ const DataContext = createContext<any>(null);
  */
 
 /** Which slices each fetcher owns. */
-const CORE_KEYS = ['students', 'courses', 'diplomas', 'diplomaCourses', 'classes', 'enrollments', 'payments', 'generalRegistrations'];
+const CORE_KEYS = ['students', 'courses', 'diplomas', 'diplomaCourses', 'diplomaSemesters', 'classes', 'enrollments', 'payments', 'generalRegistrations'];
 const SECONDARY_KEYS = [
   'users',
   'affiliateSettlements',
@@ -45,6 +45,7 @@ const FETCHERS = {
   courses: api.getCourses,
   diplomas: api.getDiplomas,
   diplomaCourses: api.getDiplomaCourses,
+  diplomaSemesters: api.getDiplomaSemesters,
   classes: api.getClasses,
   enrollments: api.getEnrollments,
   payments: api.getPayments,
@@ -71,8 +72,8 @@ const FETCHERS = {
 const MUTATION_SCOPES = {
   student: ['students', 'generalRegistrations'],
   studentEnrolled: ['students', 'enrollments', 'generalRegistrations'],
-  course: ['courses', 'diplomaCourses'],
-  diploma: ['diplomas', 'courses', 'diplomaCourses'],
+  course: ['courses', 'diplomaCourses', 'diplomaSemesters'],
+  diploma: ['diplomas', 'courses', 'diplomaCourses', 'diplomaSemesters'],
   class: ['classes', 'classCourses'],
   enrollment: ['enrollments'],
   payment: ['payments', 'instructorEarnings', 'affiliateSettlements'],
@@ -118,6 +119,7 @@ export const DataProvider = ({ children }) => {
   const [courses, setCourses] = useState([]);
   const [diplomas, setDiplomas] = useState([]);
   const [diplomaCourses, setDiplomaCourses] = useState([]);
+  const [diplomaSemesters, setDiplomaSemesters] = useState([]);
   const [classes, setClasses] = useState([]);
   const [enrollments, setEnrollments] = useState([]);
   const [payments, setPayments] = useState([]);
@@ -156,6 +158,7 @@ export const DataProvider = ({ children }) => {
     courses: setCourses,
     diplomas: setDiplomas,
     diplomaCourses: setDiplomaCourses,
+    diplomaSemesters: setDiplomaSemesters,
     classes: setClasses,
     enrollments: setEnrollments,
     payments: setPayments,
@@ -356,10 +359,18 @@ export const DataProvider = ({ children }) => {
       deleteCourse: (id) => runMutation('course', () => api.deleteCourse(id)),
       reorderDiplomaCourses: (diplomaId, courseIds) =>
         runMutation('course', () => api.reorderDiplomaCourses(diplomaId, courseIds)),
-      assignCourseToDiploma: (diplomaId, courseId) =>
-        runMutation('course', () => api.assignCourseToDiploma(diplomaId, courseId)),
+      assignCourseToDiploma: (diplomaId, courseId, semesterId) =>
+        runMutation('course', () => api.assignCourseToDiploma(diplomaId, courseId, semesterId)),
       removeCourseFromDiploma: (diplomaId, courseId) =>
         runMutation('course', () => api.removeCourseFromDiploma(diplomaId, courseId)),
+      addDiplomaSemester: (diplomaId, name) =>
+        runMutation('diploma', () => api.createDiplomaSemester(diplomaId, name)),
+      updateDiplomaSemesterData: (id, data) =>
+        runMutation('diploma', () => api.updateDiplomaSemester(id, data)),
+      deleteDiplomaSemesterData: (id) =>
+        runMutation('diploma', () => api.deleteDiplomaSemester(id)),
+      setDiplomaCourseSemester: (diplomaId, courseId, semesterId) =>
+        runMutation('course', () => api.setDiplomaCourseSemester(diplomaId, courseId, semesterId)),
 
       addDiploma: (d) => runMutation('diploma', () => api.createDiploma(d)),
       updateDiplomaData: (id, u) => runMutation('diploma', () => api.updateDiploma(id, u)),
@@ -452,6 +463,7 @@ export const DataProvider = ({ children }) => {
       courses,
       diplomas,
       diplomaCourses,
+      diplomaSemesters,
       classes,
       classCourses,
       enrollments,
@@ -484,6 +496,7 @@ export const DataProvider = ({ children }) => {
       courses,
       diplomas,
       diplomaCourses,
+      diplomaSemesters,
       classes,
       classCourses,
       enrollments,
