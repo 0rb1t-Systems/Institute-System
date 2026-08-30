@@ -112,6 +112,9 @@ Deno.serve(async (req) => {
     const full_name = String(body.full_name || '').trim()
     const role = String(body.role || '').trim().toLowerCase()
     const phone = body.phone ? String(body.phone).trim() : null
+    const requestedStudentCode = body.student_code
+      ? String(body.student_code).trim().toUpperCase()
+      : ''
     const password = body.password
     const settlement_model =
       role === 'instructor' && String(body.settlement_model || '').trim() === 'fixed_fee'
@@ -131,6 +134,20 @@ Deno.serve(async (req) => {
 
     if (!email || !full_name || !role) {
       return json({ error: 'email, full_name, role are required' }, 400)
+    }
+    if (role === 'student' && requestedStudentCode) {
+      if (requestedStudentCode.length < 6) {
+        return json({ error: 'STUDENT_ID_TOO_SHORT' }, 400)
+      }
+      const { data: codeTaken } = await admin
+        .from('profiles')
+        .select('id')
+        .eq('institution_id', caller.institution_id)
+        .ilike('student_code', requestedStudentCode)
+        .maybeSingle()
+      if (codeTaken) {
+        return json({ error: 'STUDENT_ID_EXISTS' }, 409)
+      }
     }
     if (role === 'instructor' && settlement_model === 'fixed_fee' && fixed_fee_amount <= 0) {
       return json({ error: 'fixed_fee_amount must be greater than 0 for fixed-fee instructors' }, 400)
@@ -258,6 +275,7 @@ Deno.serve(async (req) => {
       full_name,
       email,
       phone,
+      ...(role === 'student' && requestedStudentCode ? { student_code: requestedStudentCode } : {}),
       settlement_model: role === 'instructor' ? settlement_model : 'commission',
       fixed_fee_amount: role === 'instructor' ? fixed_fee_amount : 0,
       instructor_commission_rate: role === 'instructor' ? instructor_commission_rate : null,

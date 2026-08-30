@@ -317,6 +317,8 @@ export const createNewUser = async (data) => {
       full_name,
       role,
       phone: meta.phone || data.phone || null,
+      student_code: data.student_code || meta.student_code || null,
+      skipWelcomeEmail: data.skipWelcomeEmail === true,
       settlement_model: role === 'instructor' ? settlementModel : undefined,
       fixed_fee_amount: role === 'instructor' ? fixedFeeAmount : undefined,
       instructor_commission_rate: role === 'instructor' ? instructorCommissionRate : undefined,
@@ -720,8 +722,11 @@ export const createStudentWithAutoCode = async (data) => {
       name: data.name || data.full_name,
       role: 'student',
       phone: data.phone,
+      student_code: data.student_code,
     },
     phone: data.phone,
+    student_code: data.student_code,
+    skipWelcomeEmail: data.skipWelcomeEmail === true,
   })
   const profile = await getProfile(result.user.id)
   const student = mapStudent({
@@ -828,6 +833,19 @@ export const findStudentByPhone = async (phone) => {
     .select('*')
     .eq('role', 'student')
     .eq('phone', phone.trim())
+    .maybeSingle()
+  if (error) throw error
+  return mapStudent(data)
+}
+
+export const findStudentByEmail = async (email) => {
+  const key = String(email || '').trim().toLowerCase()
+  if (!key) return null
+  const { data, error } = await supabase
+    .from('profiles')
+    .select('*')
+    .eq('role', 'student')
+    .eq('email', key)
     .maybeSingle()
   if (error) throw error
   return mapStudent(data)

@@ -31,6 +31,7 @@ import { formatDate } from '@/lib/utils';
 import StudentIdCard from '@/components/StudentIdCard';
 import StudentRegistrationModal from '@/components/student/StudentRegistrationModal';
 import BulkImportStudentsModal from '@/components/student/BulkImportStudentsModal';
+import AlumniImportModal from '@/components/student/AlumniImportModal';
 import EditStudentModal from '@/components/student/EditStudentModal';
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
@@ -98,6 +99,7 @@ const StudentsPage = () => {
     const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
     const [isRegistrationModalOpen, setIsRegistrationModalOpen] = useState(false);
     const [isBulkImportOpen, setIsBulkImportOpen] = useState(false);
+    const [isAlumniImportOpen, setIsAlumniImportOpen] = useState(false);
     const [editingStudent, setEditingStudent] = useState(null);
     const [transferDialogStudent, setTransferDialogStudent] = useState(null);
     const [printData, setPrintData] = useState(null);
@@ -222,36 +224,29 @@ const StudentsPage = () => {
         <AnimatedPage>
             <Helmet><title>Students - Portal</title></Helmet>
 
-            {canManageStudents ? (
-                <div className="mb-4">
-                    <Button
-                        asChild
-                        variant="outline"
-                        size="sm"
-                        className="h-9 gap-2 border-blue-500/30 bg-blue-950/40 text-blue-300 hover:bg-blue-900/50 hover:text-blue-200 hover:border-blue-400/40 shadow-sm"
-                    >
-                        <a href={verifyCredentialPath} target="_blank" rel="noopener noreferrer">
-                            <ShieldCheck className="h-4 w-4" />
-                            Verify Credential
-                        </a>
-                    </Button>
-                </div>
-            ) : null}
+            <PageHeader title="Student Management" subtitle={`Total Approved Students: ${filteredStudents.length}`} />
 
-            <PageHeader title="Student Management" subtitle={`Total Approved Students: ${filteredStudents.length}`}>
-                <div className="flex flex-col sm:flex-row gap-3 w-full sm:w-auto">
-                    <Input type="search" placeholder="Search students..." className="w-full sm:w-[250px] bg-slate-900 border-slate-700 text-white" value={searchTerm} onChange={e => { setSearchTerm(e.target.value); setCurrentPage(1); }} />
-                    <div className="flex flex-wrap gap-2">
-                        {canManageStudents && (
-                          <>
-                            <Button variant="outline" onClick={() => navigate('/students/forms')} className="bg-slate-800 border-slate-700 hover:bg-slate-700 text-slate-200 flex-1 sm:flex-none"><FileText className="mr-2 h-4 w-4 shrink-0" /> Forms</Button>
-                            <Button variant="outline" onClick={() => setIsBulkImportOpen(true)} className="bg-slate-800 border-slate-700 hover:bg-slate-700 text-slate-200 flex-1 sm:flex-none"><Upload className="mr-2 h-4 w-4 shrink-0" /> Bulk Import</Button>
-                            <Button onClick={() => setIsRegistrationModalOpen(true)} className="bg-indigo-600 hover:bg-indigo-700 text-white w-full sm:w-auto"><UserPlus className="mr-2 h-4 w-4 shrink-0" /> Register New Student</Button>
-                          </>
-                        )}
+            <div className="mb-5 flex min-w-0 flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center">
+                <Input type="search" placeholder="Search students..." className="w-full min-w-[12rem] bg-slate-900 border-slate-700 text-white sm:max-w-xs" value={searchTerm} onChange={e => { setSearchTerm(e.target.value); setCurrentPage(1); }} />
+                {canManageStudents ? (
+                    <div className="flex min-w-0 flex-wrap gap-2">
+                        <Button
+                            asChild
+                            variant="outline"
+                            className="h-9 gap-2 border-blue-500/30 bg-blue-950/40 text-blue-300 hover:bg-blue-900/50 hover:text-blue-200 hover:border-blue-400/40"
+                        >
+                            <a href={verifyCredentialPath} target="_blank" rel="noopener noreferrer">
+                                <ShieldCheck className="h-4 w-4 shrink-0" />
+                                Verify Credential
+                            </a>
+                        </Button>
+                        <Button variant="outline" onClick={() => navigate('/students/forms')} className="bg-slate-800 border-slate-700 hover:bg-slate-700 text-slate-200"><FileText className="mr-2 h-4 w-4 shrink-0" /> Forms</Button>
+                        <Button variant="outline" onClick={() => setIsBulkImportOpen(true)} className="bg-slate-800 border-slate-700 hover:bg-slate-700 text-slate-200"><Upload className="mr-2 h-4 w-4 shrink-0" /> Bulk Import</Button>
+                        <Button variant="outline" onClick={() => setIsAlumniImportOpen(true)} className="bg-slate-800 border-slate-700 hover:bg-slate-700 text-slate-200"><Upload className="mr-2 h-4 w-4 shrink-0" /> Alumni Import</Button>
+                        <Button onClick={() => setIsRegistrationModalOpen(true)} className="bg-indigo-600 hover:bg-indigo-700 text-white"><UserPlus className="mr-2 h-4 w-4 shrink-0" /> Register New Student</Button>
                     </div>
-                </div>
-            </PageHeader>
+                ) : null}
+            </div>
 
             <StudentRegistrationModal 
                 isOpen={isRegistrationModalOpen} 
@@ -266,6 +261,12 @@ const StudentsPage = () => {
                 onClose={() => setIsBulkImportOpen(false)}
                 onSuccess={() => refreshData()}
                 classes={classes}
+            />
+
+            <AlumniImportModal
+                open={isAlumniImportOpen}
+                onClose={() => setIsAlumniImportOpen(false)}
+                onSuccess={() => refreshData()}
             />
 
             <EditStudentModal 
