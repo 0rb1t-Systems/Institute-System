@@ -5,7 +5,6 @@ import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Alert, AlertDescription } from '@/components/ui/alert'
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import {
   Loader2,
   Upload,
@@ -15,7 +14,6 @@ import {
   FileText,
   Hash,
   Wallet,
-  GraduationCap,
 } from 'lucide-react'
 import { useAuth } from '@/contexts/AuthContext'
 import { updateInstitution, uploadInstitutionAsset } from '@/lib/api'
@@ -45,8 +43,6 @@ import { MESSAGES } from '@/lib/messages'
 import GradingSystemSettings from '@/components/admin/GradingSystemSettings'
 import LogoBrandColorPicker from '@/components/admin/LogoBrandColorPicker'
 import { extractLogoBrandPalette, normalizeHexColor } from '@/lib/logoBrandColors'
-import { settingsSubListClass, settingsSubTriggerClass } from '@/components/admin/settingsNav'
-
 const CURRENCY_OPTIONS = [
   { code: 'USD', symbol: '$', label: 'USD — US Dollar' },
   { code: 'SOS', symbol: 'Sh.so', label: 'SOS — Somali Shilling' },
@@ -143,9 +139,25 @@ const AssetUploadField = ({ id, label, hint = '', value, onUrlChange, onFile, up
   </Field>
 )
 
-const FORM_SECTIONS = ['profile', 'brand', 'documents', 'ids', 'finance', 'grading']
+const SECTION_FOCUS = {
+  profile: 'inst_name',
+  brand: 'inst_logo',
+  ids: 'cert_number_start',
+  finance: 'currency',
+  documents: 'sig_left_title',
+}
 
-const InstitutionSettingsForm = ({ onUpdated, section: controlledSection, onNeedSection }) => {
+const SectionBlock = ({ id, icon: Icon, title, children }) => (
+  <section id={id} className="scroll-mt-6 border-b border-[var(--tenant-line)] p-4 sm:p-5">
+    <div className="mb-4 flex items-center gap-2">
+      <Icon className="h-4 w-4 shrink-0 text-[var(--brand-primary,#4f46e5)]" />
+      <h3 className="text-sm font-semibold text-[var(--tenant-text)]">{title}</h3>
+    </div>
+    {children}
+  </section>
+)
+
+const InstitutionSettingsForm = ({ onUpdated, section: controlledSection }) => {
   const { institution, refreshUser } = useAuth()
   const { toast } = useToast()
   const [form, setForm] = useState(empty)
@@ -153,12 +165,11 @@ const InstitutionSettingsForm = ({ onUpdated, section: controlledSection, onNeed
   const [uploading, setUploading] = useState(null)
   const [logoSwatches, setLogoSwatches] = useState([])
   const [detectingColors, setDetectingColors] = useState(false)
-  const [section, setSection] = useState(controlledSection || 'profile')
-  const activeSection = FORM_SECTIONS.includes(controlledSection) ? controlledSection : section
-  const showTabList = !controlledSection
+  const isGrading = controlledSection === 'grading'
   const goSection = (next) => {
-    if (controlledSection) onNeedSection?.(next)
-    else setSection(next)
+    const el = document.getElementById(SECTION_FOCUS[next] || next)
+    el?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+    el?.focus?.()
   }
 
   useEffect(() => {
@@ -426,10 +437,18 @@ const InstitutionSettingsForm = ({ onUpdated, section: controlledSection, onNeed
 
   const studentNext = nextStudentIdPreview(institution, form.student_id_sample)
 
+  if (isGrading) {
+    return (
+      <div className="p-4 sm:p-5">
+        <GradingSystemSettings onUpdated={onUpdated} />
+      </div>
+    )
+  }
+
   return (
-    <div className="space-y-4">
-      {!settingsComplete && activeSection === 'profile' ? (
-        <Alert className="bg-amber-50 border-amber-200 text-amber-900 py-2.5 [html[data-platform-theme='dark']_&]:bg-amber-950/40 [html[data-platform-theme='dark']_&]:border-amber-800 [html[data-platform-theme='dark']_&]:text-amber-100">
+    <div>
+      {!settingsComplete ? (
+        <Alert className="mx-4 mt-4 bg-amber-50 border-amber-200 text-amber-900 py-2.5 [html[data-platform-theme='dark']_&]:bg-amber-950/40 [html[data-platform-theme='dark']_&]:border-amber-800 [html[data-platform-theme='dark']_&]:text-amber-100">
           <AlertCircle className="h-4 w-4" />
           <AlertDescription className="text-sm">
             Add name, address, phone, and email before issuing certificates, transcripts, or invoices.
@@ -438,39 +457,7 @@ const InstitutionSettingsForm = ({ onUpdated, section: controlledSection, onNeed
       ) : null}
 
       <form id="institution-settings-form" onSubmit={handleSave} className="space-y-0">
-        <Tabs value={activeSection} onValueChange={goSection} className="w-full">
-          {showTabList ? (
-            <div className="px-2 sm:px-3">
-              <TabsList className={settingsSubListClass}>
-                <TabsTrigger value="profile" className={settingsSubTriggerClass}>
-                  <Building2 className="h-3.5 w-3.5" />
-                  Profile
-                </TabsTrigger>
-                <TabsTrigger value="brand" className={settingsSubTriggerClass}>
-                  <Palette className="h-3.5 w-3.5" />
-                  Branding
-                </TabsTrigger>
-                <TabsTrigger value="documents" className={settingsSubTriggerClass}>
-                  <FileText className="h-3.5 w-3.5" />
-                  Documents
-                </TabsTrigger>
-                <TabsTrigger value="ids" className={settingsSubTriggerClass}>
-                  <Hash className="h-3.5 w-3.5" />
-                  IDs
-                </TabsTrigger>
-                <TabsTrigger value="finance" className={settingsSubTriggerClass}>
-                  <Wallet className="h-3.5 w-3.5" />
-                  Finance
-                </TabsTrigger>
-                <TabsTrigger value="grading" className={settingsSubTriggerClass}>
-                  <GraduationCap className="h-3.5 w-3.5" />
-                  Grading
-                </TabsTrigger>
-              </TabsList>
-            </div>
-          ) : null}
-
-          <TabsContent value="profile" className="mt-0 p-4 sm:p-5">
+        <SectionBlock id="settings-profile" icon={Building2} title="Profile">
             <div className="grid gap-3 sm:grid-cols-2">
               <Field label="Institution name *" htmlFor="inst_name" className="sm:col-span-2">
                 <Input
@@ -553,9 +540,9 @@ const InstitutionSettingsForm = ({ onUpdated, section: controlledSection, onNeed
                 <span className="text-[var(--tenant-muted)]">Dashboard</span> {dashboardUrl}
               </p>
             </div>
-          </TabsContent>
+        </SectionBlock>
 
-          <TabsContent value="brand" className="mt-0 p-4 sm:p-5 space-y-4">
+        <SectionBlock id="settings-brand" icon={Palette} title="Branding">
             <div className="grid gap-4 sm:grid-cols-3">
               <AssetUploadField
                 id="inst_logo"
@@ -616,9 +603,132 @@ const InstitutionSettingsForm = ({ onUpdated, section: controlledSection, onNeed
               onAccentChange={(hex) => setField('theme_accent', hex)}
               onTertiaryChange={(hex) => setField('theme_tertiary', hex)}
             />
-          </TabsContent>
+        </SectionBlock>
 
-          <TabsContent value="documents" className="mt-0 p-4 sm:p-5 space-y-5">
+        <SectionBlock id="settings-ids" icon={Hash} title="IDs">
+            <div className="grid gap-6 sm:grid-cols-2">
+              <Field
+                label="Certificate start"
+                htmlFor="cert_number_start"
+                hint={`Next: ${certNext}${
+                  institution?.certificate_number_last
+                    ? ` · last issued ${formatCertificateSerial(
+                        institution.certificate_number_last,
+                        institution.certificate_number_pad,
+                      )}`
+                    : ''
+                }`}
+              >
+                <div className="flex items-center gap-2">
+                  <span className="font-mono text-[var(--tenant-muted)] shrink-0 text-sm">CERT-</span>
+                  <Input
+                    id="cert_number_start"
+                    value={form.certificate_number_start}
+                    onChange={(e) =>
+                      setField('certificate_number_start', e.target.value.replace(/[^\d]/g, '').slice(0, 9))
+                    }
+                    inputMode="numeric"
+                    placeholder="001"
+                    className={cn(inputCls, 'font-mono')}
+                  />
+                </div>
+              </Field>
+              <Field
+                label="Student ID start"
+                htmlFor="student_id_sample"
+                hint={`Next: ${studentNext}${
+                  institution?.student_id_last
+                    ? ` · last issued ${formatStudentIdSample(
+                        institution.student_id_prefix || '',
+                        institution.student_id_last,
+                        institution.student_id_pad,
+                      )}`
+                    : ''
+                }. First password = this ID (min 6 characters).`}
+              >
+                <Input
+                  id="student_id_sample"
+                  value={form.student_id_sample}
+                  onChange={(e) =>
+                    setField('student_id_sample', e.target.value.replace(/[^A-Za-z0-9]/g, '').slice(0, 21))
+                  }
+                  placeholder={defaultStudentIdSample(form.name || institution?.name)}
+                  className={cn(inputCls, 'font-mono')}
+                />
+              </Field>
+            </div>
+        </SectionBlock>
+
+        <SectionBlock id="settings-finance" icon={Wallet} title="Finance">
+            <div className="grid gap-3 sm:grid-cols-2">
+              <Field label="Currency" htmlFor="currency">
+                <Select value={form.currency} onValueChange={handleCurrencyChange}>
+                  <SelectTrigger id="currency" className={inputCls}>
+                    <SelectValue placeholder="Select currency" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {CURRENCY_OPTIONS.map((opt) => (
+                      <SelectItem key={opt.code} value={opt.code}>
+                        {opt.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </Field>
+              <Field label="Symbol" htmlFor="currency_symbol">
+                <Input
+                  id="currency_symbol"
+                  value={form.currency_symbol}
+                  onChange={(e) => setField('currency_symbol', e.target.value)}
+                  maxLength={8}
+                  className={inputCls}
+                />
+              </Field>
+              <Field label="Registration fee" htmlFor="reg_fee" hint="0 = free. Applies to new registrations only.">
+                <Input
+                  id="reg_fee"
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  value={form.registration_fee_amount}
+                  onChange={(e) => setField('registration_fee_amount', e.target.value)}
+                  className={inputCls}
+                />
+              </Field>
+              <Field label="Affiliate commission %" htmlFor="aff_rate" hint="On completed tuition from referred students.">
+                <Input
+                  id="aff_rate"
+                  type="number"
+                  min="0"
+                  max="100"
+                  step="0.1"
+                  value={form.affiliate_commission_rate}
+                  onChange={(e) => setField('affiliate_commission_rate', e.target.value)}
+                  className={inputCls}
+                />
+              </Field>
+              <Field
+                label="Instructor commission %"
+                htmlFor="inst_rate"
+                className="sm:col-span-2"
+                hint="Default for commission classes. Unique instructor rates and class fixed fees are not overwritten."
+              >
+                <Input
+                  id="inst_rate"
+                  type="number"
+                  min="0"
+                  max="100"
+                  step="0.1"
+                  value={form.default_instructor_commission_rate}
+                  onChange={(e) => setField('default_instructor_commission_rate', e.target.value)}
+                  className={inputCls}
+                />
+              </Field>
+            </div>
+        </SectionBlock>
+
+        <SectionBlock id="settings-documents" icon={FileText} title="Signatories & footers">
+          <div className="space-y-5">
             <div>
               <p className="text-xs font-medium text-[var(--tenant-muted)] mb-3">Signatories</p>
               <div className="grid gap-3 sm:grid-cols-2">
@@ -685,145 +795,19 @@ const InstitutionSettingsForm = ({ onUpdated, section: controlledSection, onNeed
                 </Field>
               </div>
             </div>
-          </TabsContent>
-
-          <TabsContent value="ids" className="mt-0 p-4 sm:p-5">
-            <div className="grid gap-6 sm:grid-cols-2">
-              <Field
-                label="Certificate start"
-                htmlFor="cert_number_start"
-                hint={`Next: ${certNext}${
-                  institution?.certificate_number_last
-                    ? ` · last issued ${formatCertificateSerial(
-                        institution.certificate_number_last,
-                        institution.certificate_number_pad,
-                      )}`
-                    : ''
-                }`}
-              >
-                <div className="flex items-center gap-2">
-                  <span className="font-mono text-[var(--tenant-muted)] shrink-0 text-sm">CERT-</span>
-                  <Input
-                    id="cert_number_start"
-                    value={form.certificate_number_start}
-                    onChange={(e) =>
-                      setField('certificate_number_start', e.target.value.replace(/[^\d]/g, '').slice(0, 9))
-                    }
-                    inputMode="numeric"
-                    placeholder="001"
-                    className={cn(inputCls, 'font-mono')}
-                  />
-                </div>
-              </Field>
-              <Field
-                label="Student ID start"
-                htmlFor="student_id_sample"
-                hint={`Next: ${studentNext}${
-                  institution?.student_id_last
-                    ? ` · last issued ${formatStudentIdSample(
-                        institution.student_id_prefix || '',
-                        institution.student_id_last,
-                        institution.student_id_pad,
-                      )}`
-                    : ''
-                }. First password = this ID (min 6 characters).`}
-              >
-                <Input
-                  id="student_id_sample"
-                  value={form.student_id_sample}
-                  onChange={(e) =>
-                    setField('student_id_sample', e.target.value.replace(/[^A-Za-z0-9]/g, '').slice(0, 21))
-                  }
-                  placeholder={defaultStudentIdSample(form.name || institution?.name)}
-                  className={cn(inputCls, 'font-mono')}
-                />
-              </Field>
-            </div>
-          </TabsContent>
-
-          <TabsContent value="finance" className="mt-0 p-4 sm:p-5">
-            <div className="grid gap-3 sm:grid-cols-2">
-              <Field label="Currency" htmlFor="currency">
-                <Select value={form.currency} onValueChange={handleCurrencyChange}>
-                  <SelectTrigger id="currency" className={inputCls}>
-                    <SelectValue placeholder="Select currency" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {CURRENCY_OPTIONS.map((opt) => (
-                      <SelectItem key={opt.code} value={opt.code}>
-                        {opt.label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </Field>
-              <Field label="Symbol" htmlFor="currency_symbol">
-                <Input
-                  id="currency_symbol"
-                  value={form.currency_symbol}
-                  onChange={(e) => setField('currency_symbol', e.target.value)}
-                  maxLength={8}
-                  className={inputCls}
-                />
-              </Field>
-              <Field label="Registration fee" htmlFor="reg_fee" hint="0 = free. Applies to new registrations only.">
-                <Input
-                  id="reg_fee"
-                  type="number"
-                  min="0"
-                  step="0.01"
-                  value={form.registration_fee_amount}
-                  onChange={(e) => setField('registration_fee_amount', e.target.value)}
-                  className={inputCls}
-                />
-              </Field>
-              <Field label="Affiliate commission %" htmlFor="aff_rate" hint="On completed tuition from referred students.">
-                <Input
-                  id="aff_rate"
-                  type="number"
-                  min="0"
-                  max="100"
-                  step="0.1"
-                  value={form.affiliate_commission_rate}
-                  onChange={(e) => setField('affiliate_commission_rate', e.target.value)}
-                  className={inputCls}
-                />
-              </Field>
-              <Field
-                label="Instructor commission %"
-                htmlFor="inst_rate"
-                className="sm:col-span-2"
-                hint="Default for commission classes. Unique instructor rates and class fixed fees are not overwritten."
-              >
-                <Input
-                  id="inst_rate"
-                  type="number"
-                  min="0"
-                  max="100"
-                  step="0.1"
-                  value={form.default_instructor_commission_rate}
-                  onChange={(e) => setField('default_instructor_commission_rate', e.target.value)}
-                  className={inputCls}
-                />
-              </Field>
-            </div>
-          </TabsContent>
-
-          <TabsContent value="grading" className="mt-0 p-4 sm:p-5">
-            <GradingSystemSettings onUpdated={onUpdated} />
-          </TabsContent>
-        </Tabs>
+          </div>
+        </SectionBlock>
       </form>
 
-      {activeSection !== 'grading' ? (
-        <div className="flex items-center justify-between gap-3 border-t border-[var(--tenant-line)] px-4 py-3">
-          <p className="text-xs text-[var(--tenant-muted)] hidden sm:block">Saves institution profile, branding, IDs, finance, and document text.</p>
-          <Button type="submit" form="institution-settings-form" disabled={saving} className="ml-auto">
-            {saving ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
-            Save settings
-          </Button>
-        </div>
-      ) : null}
+      <div className="flex items-center justify-between gap-3 border-t border-[var(--tenant-line)] px-4 py-3">
+        <p className="text-xs text-[var(--tenant-muted)] hidden sm:block">
+          Saves institution profile, branding, IDs, finance, and document text.
+        </p>
+        <Button type="submit" form="institution-settings-form" disabled={saving} className="ml-auto">
+          {saving ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
+          Save settings
+        </Button>
+      </div>
     </div>
   )
 }

@@ -11,24 +11,24 @@ import {
 export const SETTINGS_GROUPS = [
   {
     id: 'institution',
-    to: '/admin/profile?group=institution',
+    to: '/admin/settings?group=institution',
     icon: Building2,
     title: 'Institution',
-    hint: 'Profile, Branding, IDs',
+    hint: 'Profile, branding, IDs, finance',
   },
   {
     id: 'academic',
-    to: '/admin/profile?group=academic',
+    to: '/admin/settings?group=academic',
     icon: GraduationCap,
     title: 'Academic',
     hint: 'Grading & Transcripts',
   },
   {
     id: 'documents',
-    to: '/admin/profile?group=documents',
+    to: '/admin/settings?group=documents',
     icon: FileText,
-    title: 'Documents & Finance',
-    hint: 'Certificates, Finance & Invoices',
+    title: 'Documents',
+    hint: 'Certificates & Invoices',
   },
   {
     id: 'landing',
@@ -51,7 +51,7 @@ export function resolveSettingsGroup(pathname: string, groupParam: string | null
 
 export function AdminSettingsGroupNav({ active }: { active: SettingsGroupId }) {
   return (
-    <nav className={cn(settingsPrimaryListClass, 'sm:grid-cols-2 lg:grid-cols-4')} aria-label="Settings groups">
+    <nav className={cn(settingsPrimaryListClass, 'sm:grid-cols-2 lg:grid-cols-4')} aria-label="Institution settings">
       {SETTINGS_GROUPS.map(({ id, to, icon: Icon, title, hint }) => {
         const isActive = id === active
         return (

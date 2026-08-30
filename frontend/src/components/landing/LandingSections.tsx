@@ -1,8 +1,10 @@
 import React from 'react'
 import { motion } from 'framer-motion'
-import { Award, BookOpen, GraduationCap, ShieldCheck, Sparkles, Users } from 'lucide-react'
+import { Award, GraduationCap, Sparkles, Users } from 'lucide-react'
 import type { LandingInstitution } from '@/components/landing/types'
 import LandingHeroSocials from '@/components/landing/LandingHeroSocials'
+import { landingProgramIcon } from '@/components/landing/landingProgramIcons'
+import { brandedImageSrc } from '@/lib/institution'
 import {
   DEFAULT_ABOUT_HIGHLIGHTS,
   DEFAULT_PROGRAMS,
@@ -18,7 +20,6 @@ export {
   scrollToLandingSection,
 } from '@/components/landing/LandingNav'
 
-const PROGRAM_ICONS = [GraduationCap, BookOpen, ShieldCheck, Users, Sparkles]
 const HIGHLIGHT_ICONS = [Sparkles, GraduationCap, Users, Award]
 
 type SectionsProps = {
@@ -155,27 +156,53 @@ export function LandingContentSections({
             ) : null}
 
             {programs.length ? (
-              <div className="mt-8 grid gap-4 sm:grid-cols-2">
+              <div className="mt-8 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
                 {programs.map((p, i) => {
-                  const Icon = PROGRAM_ICONS[i % PROGRAM_ICONS.length]
+                  const Icon = landingProgramIcon(
+                    p.icon || (['graduation', 'book', 'code', 'palette', 'briefcase', 'laptop', 'award', 'users'][i % 8] as const),
+                  )
                   const palette = [primary, accent, String(institution.theme_tertiary || '').trim() || accent]
                   const color = palette[i % palette.length]
+                  const photo = String(p.image_url || '').trim()
                   return (
                     <article
                       key={`${p.title}-${i}`}
-                      className={`flex gap-3 rounded-2xl border p-4 sm:gap-4 sm:p-5 ${cardCls}`}
+                      className={`group overflow-hidden rounded-2xl border transition duration-300 hover:-translate-y-1 ${cardCls} ${
+                        dark
+                          ? 'hover:border-white/20 hover:bg-white/[0.07]'
+                          : 'hover:border-slate-300 hover:shadow-[0_16px_40px_rgba(15,23,42,0.08)]'
+                      }`}
                     >
-                      <span
-                        className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl"
-                        style={{ backgroundColor: `${color}18`, color }}
-                      >
-                        <Icon className="h-5 w-5" />
-                      </span>
-                      <div className="min-w-0">
-                        {p.title ? <h3 className={`text-base font-semibold ${titleCls}`}>{p.title}</h3> : null}
-                        {p.description ? (
-                          <p className={`mt-1.5 text-sm leading-relaxed ${bodyCls}`}>{p.description}</p>
-                        ) : null}
+                      {photo ? (
+                        <div className="relative aspect-[16/10] overflow-hidden bg-slate-200/40">
+                          <img
+                            src={brandedImageSrc(photo)}
+                            alt=""
+                            className="h-full w-full object-cover transition duration-500 group-hover:scale-[1.03]"
+                          />
+                          <span
+                            className="absolute left-3 top-3 inline-flex h-10 w-10 items-center justify-center rounded-xl shadow-sm"
+                            style={{ backgroundColor: '#fff', color }}
+                          >
+                            <Icon className="h-5 w-5" />
+                          </span>
+                        </div>
+                      ) : null}
+                      <div className="flex gap-3 p-4 sm:gap-4 sm:p-5">
+                        {photo ? null : (
+                          <span
+                            className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl"
+                            style={{ backgroundColor: `${color}18`, color }}
+                          >
+                            <Icon className="h-5 w-5" />
+                          </span>
+                        )}
+                        <div className="min-w-0">
+                          {p.title ? <h3 className={`text-base font-semibold ${titleCls}`}>{p.title}</h3> : null}
+                          {p.description ? (
+                            <p className={`mt-1.5 text-sm leading-relaxed ${bodyCls}`}>{p.description}</p>
+                          ) : null}
+                        </div>
                       </div>
                     </article>
                   )

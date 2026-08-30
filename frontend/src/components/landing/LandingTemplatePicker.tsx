@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react'
-import { Check, ImagePlus, Plus, Trash2, Upload } from 'lucide-react'
+import { Check, ImagePlus, Loader2, Plus, Trash2, Upload } from 'lucide-react'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
@@ -14,11 +14,18 @@ import {
 } from '@/lib/landingTemplates'
 import { extractLogoBrandPalette } from '@/lib/logoBrandColors'
 import { brandedImageSrc } from '@/lib/institution'
+import { uploadInstitutionAsset } from '@/lib/api'
 import {
   EMPTY_LANDING_CONTENT,
+  emptyLandingProgram,
   sanitizeLandingContent,
   type LandingContent,
+  type LandingProgramIconId,
 } from '@/lib/landingContent'
+import { getUserMessage } from '@/lib/mapError'
+import { MESSAGES } from '@/lib/messages'
+import { LANDING_PROGRAM_ICON_OPTIONS } from '@/components/landing/landingProgramIcons'
+import { useToast } from '@/components/ui/use-toast'
 
 export type LandingCustomizeValues = {
   landing_template_id: LandingTemplateId
@@ -35,6 +42,7 @@ export type LandingCustomizeValues = {
   heroPreviewUrl: string | null
   logoFile: File | null
   heroFile: File | null
+  programImageFiles: Record<number, File>
   landing_content: LandingContent
 }
 
@@ -65,8 +73,10 @@ function fileToObjectUrl(file: File | null, prev: string | null) {
  */
 export default function LandingTemplatePicker({ baseInstitution, values, onChange }: Props) {
   const meta = getLandingTemplate(values.landing_template_id)
+  const { toast } = useToast()
   const [logoSwatches, setLogoSwatches] = useState<string[]>([])
   const [detectingColors, setDetectingColors] = useState(false)
+  const [uploadingProgram, setUploadingProgram] = useState<number | null>(null)
   const content = sanitizeLandingContent(values.landing_content)
 
   const setContent = (patch: Partial<LandingContent>) => {
@@ -399,7 +409,7 @@ export default function LandingTemplatePicker({ baseInstitution, values, onChang
           <div>
             <h3 className={`text-sm font-semibold ${titleCls}`}>Programs page</h3>
             <p className={`mt-1 text-xs ${mutedCls}`}>
-              Optional. Add up to 8 programs. Leave empty to hide Programs on the landing page.
+              Optional. Add up to 8 programs with a photo and icon. Leave empty to hide Programs on the landing page.
             </p>
           </div>
           <Button
@@ -410,7 +420,7 @@ export default function LandingTemplatePicker({ baseInstitution, values, onChang
             disabled={content.programs.length >= 8}
             onClick={() =>
               setContent({
-                programs: [...content.programs, { title: '', description: '' }],
+                programs: [...content.programs, emptyLandingProgram()],
               })
             }
           >
@@ -432,47 +442,179 @@ export default function LandingTemplatePicker({ baseInstitution, values, onChang
           {content.programs.map((p, i) => (
             <div
               key={i}
-              className="grid gap-2 rounded-xl border border-[var(--tenant-line)] bg-[var(--tenant-bg)] p-3 sm:grid-cols-[1fr_auto] [.platform-public_&]:border-[var(--pf-line)] [.platform-public_&]:bg-[var(--pf-bg)]"
+              className="rounded-xl border border-[var(--tenant-line)] bg-[var(--tenant-bg)] p-3 [.platform-public_&]:border-[var(--pf-line)] [.platform-public_&]:bg-[var(--pf-bg)]"
             >
-              <div className="space-y-2">
-                <Input
-                  value={p.title}
-                  maxLength={80}
-                  onChange={(e) => {
-                    const next = content.programs.map((row, idx) =>
-                      idx === i ? { ...row, title: e.target.value } : row,
-                    )
-                    setContent({ programs: next })
-                  }}
-                  placeholder="Program title"
-                  className={`border-[var(--tenant-line)] bg-transparent ${titleCls}`}
-                />
-                <Textarea
-                  value={p.description}
-                  maxLength={280}
-                  onChange={(e) => {
-                    const next = content.programs.map((row, idx) =>
-                      idx === i ? { ...row, description: e.target.value } : row,
-                    )
-                    setContent({ programs: next })
-                  }}
-                  placeholder="One or two sentences about this program."
-                  className={`min-h-[64px] border-[var(--tenant-line)] bg-transparent ${titleCls}`}
-                />
+              <div className="flex items-start justify-between gap-2">
+                <p className={`text-xs font-medium ${mutedCls}`}>Program {i + 1}</p>
+                <Button
+                  type="button"
+                  size="icon"
+                  variant="ghost"
+                  className={`h-8 w-8 hover:text-red-500 ${mutedCls}`}
+                  onClick={() =>
+                    setContent({
+                      programs: content.programs.filter((_, idx) => idx !== i),
+                    })
+                  }
+                >
+                  <Trash2 className="h-4 w-4" />
+                </Button>
               </div>
-              <Button
-                type="button"
-                size="icon"
-                variant="ghost"
-                className={`h-9 w-9 hover:text-red-500 ${mutedCls}`}
-                onClick={() =>
-                  setContent({
-                    programs: content.programs.filter((_, idx) => idx !== i),
-                  })
-                }
-              >
-                <Trash2 className="h-4 w-4" />
-              </Button>
+              <div className="mt-2 grid gap-3 sm:grid-cols-[minmax(0,11rem)_1fr]">
+                <div className="space-y-2">
+                  <div className="relative overflow-hidden rounded-lg border border-dashed border-[var(--tenant-line)] bg-[var(--tenant-surface)] aspect-[16/10] [.platform-public_&]:border-[var(--pf-line)] [.platform-public_&]:bg-[var(--pf-surface)]">
+                    {p.image_url ? (
+                      <img
+                        src={brandedImageSrc(p.image_url)}
+                        alt=""
+                        className="h-full w-full object-cover"
+                      />
+                    ) : (
+                      <div className={`flex h-full flex-col items-center justify-center gap-1 px-2 text-center text-[11px] ${mutedCls}`}>
+                        <ImagePlus className="h-5 w-5" />
+                        Photo
+                      </div>
+                    )}
+                    {uploadingProgram === i ? (
+                      <div className="absolute inset-0 flex items-center justify-center bg-black/40">
+                        <Loader2 className="h-5 w-5 animate-spin text-white" />
+                      </div>
+                    ) : null}
+                  </div>
+                  <div className="flex flex-wrap gap-1.5">
+                    <Label
+                      htmlFor={`program-photo-${i}`}
+                      className="inline-flex cursor-pointer items-center gap-1 rounded-md border border-[var(--tenant-line)] px-2 py-1 text-[11px] font-medium text-[var(--tenant-text)] [.platform-public_&]:border-[var(--pf-line)] [.platform-public_&]:text-[var(--pf-text)]"
+                    >
+                      <Upload className="h-3 w-3" />
+                      {p.image_url ? 'Replace' : 'Upload'}
+                      <input
+                        id={`program-photo-${i}`}
+                        type="file"
+                        accept="image/png,image/jpeg,image/webp"
+                        className="hidden"
+                        disabled={uploadingProgram !== null}
+                        onChange={async (e) => {
+                          const file = e.target.files?.[0]
+                          e.target.value = ''
+                          if (!file) return
+                          const prev = p.image_url
+                          if (prev?.startsWith('blob:')) URL.revokeObjectURL(prev)
+                          const preview = URL.createObjectURL(file)
+                          const nextPrograms = content.programs.map((row, idx) =>
+                            idx === i ? { ...row, image_url: preview } : row,
+                          )
+                          onChange({
+                            landing_content: { ...content, programs: nextPrograms },
+                            programImageFiles: { ...(values.programImageFiles || {}), [i]: file },
+                          })
+                          setUploadingProgram(i)
+                          try {
+                            const url = await uploadInstitutionAsset(file, 'program')
+                            if (!url) throw new Error('UPLOAD_FAILED')
+                            URL.revokeObjectURL(preview)
+                            const saved = content.programs.map((row, idx) =>
+                              idx === i ? { ...row, image_url: url } : row,
+                            )
+                            const pending = { ...(values.programImageFiles || {}) }
+                            delete pending[i]
+                            onChange({
+                              landing_content: { ...content, programs: saved },
+                              programImageFiles: pending,
+                            })
+                          } catch (err) {
+                            toast({
+                              title: 'Could not upload photo',
+                              description: getUserMessage(err, { fallback: MESSAGES.SAVE_FAILED }),
+                              variant: 'destructive',
+                            })
+                          } finally {
+                            setUploadingProgram(null)
+                          }
+                        }}
+                      />
+                    </Label>
+                    {p.image_url ? (
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        className={`h-7 px-2 text-[11px] ${mutedCls}`}
+                        onClick={() => {
+                          if (p.image_url.startsWith('blob:')) URL.revokeObjectURL(p.image_url)
+                          const next = content.programs.map((row, idx) =>
+                            idx === i ? { ...row, image_url: '' } : row,
+                          )
+                          const pending = { ...(values.programImageFiles || {}) }
+                          delete pending[i]
+                          onChange({
+                            landing_content: { ...content, programs: next },
+                            programImageFiles: pending,
+                          })
+                        }}
+                      >
+                        Remove
+                      </Button>
+                    ) : null}
+                  </div>
+                </div>
+                <div className="space-y-2 min-w-0">
+                  <Input
+                    value={p.title}
+                    maxLength={80}
+                    onChange={(e) => {
+                      const next = content.programs.map((row, idx) =>
+                        idx === i ? { ...row, title: e.target.value } : row,
+                      )
+                      setContent({ programs: next })
+                    }}
+                    placeholder="Program title"
+                    className={`border-[var(--tenant-line)] bg-transparent ${titleCls}`}
+                  />
+                  <Textarea
+                    value={p.description}
+                    maxLength={280}
+                    onChange={(e) => {
+                      const next = content.programs.map((row, idx) =>
+                        idx === i ? { ...row, description: e.target.value } : row,
+                      )
+                      setContent({ programs: next })
+                    }}
+                    placeholder="One or two sentences about this program."
+                    className={`min-h-[64px] border-[var(--tenant-line)] bg-transparent ${titleCls}`}
+                  />
+                  <div>
+                    <p className={`mb-1.5 text-[11px] ${mutedCls}`}>Icon (shown on the landing page)</p>
+                    <div className="flex flex-wrap gap-1">
+                      {LANDING_PROGRAM_ICON_OPTIONS.map(({ id, Icon }) => {
+                        const active = p.icon === id
+                        return (
+                          <button
+                            key={id}
+                            type="button"
+                            title={id}
+                            onClick={() => {
+                              const next = content.programs.map((row, idx) =>
+                                idx === i
+                                  ? { ...row, icon: (active ? '' : id) as LandingProgramIconId | '' }
+                                  : row,
+                              )
+                              setContent({ programs: next })
+                            }}
+                            className={`inline-flex h-8 w-8 items-center justify-center rounded-md border ${
+                              active
+                                ? 'border-teal-500 bg-teal-500/15 text-teal-700 [html[data-platform-theme=\'dark\']_&]:text-teal-200'
+                                : `border-transparent ${mutedCls} hover:border-[var(--tenant-line)]`
+                            }`}
+                          >
+                            <Icon className="h-4 w-4" />
+                          </button>
+                        )
+                      })}
+                    </div>
+                  </div>
+                </div>
+              </div>
             </div>
           ))}
         </div>
@@ -498,6 +640,7 @@ export function emptyLandingCustomize(templateId: LandingTemplateId = 'aurora'):
     heroPreviewUrl: null,
     logoFile: null,
     heroFile: null,
+    programImageFiles: {},
     landing_content: { ...EMPTY_LANDING_CONTENT },
   }
 }

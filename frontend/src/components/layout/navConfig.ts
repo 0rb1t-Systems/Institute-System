@@ -65,7 +65,8 @@ export function getNavItemsForRole(role?: string | null): NavItem[] {
         { href: '/gradebook', icon: PenTool, label: 'Gradebook' },
         { href: '/reports', icon: FileBarChart, label: 'Reports Center' },
         { href: '/admin/users', icon: Users, label: 'Staff & Affiliates' },
-        { href: '/admin/profile', icon: Settings, label: 'Institution Settings' },
+        { href: '/admin/settings', icon: Building2, label: 'Institution Settings' },
+        { href: '/admin/profile', icon: User, label: 'Account' },
       ];
     case 'staff':
       return [
@@ -121,6 +122,9 @@ export function getNavItemsForRole(role?: string | null): NavItem[] {
 
 /** Active nav href: exact match first, otherwise longest prefix (avoids /attendance lighting /attendance/reports). */
 export function resolveActiveNavHref(pathname: string, navItems: NavItem[]): string | null {
+  if (pathname.startsWith('/admin/landing') && navItems.some((item) => item.href === '/admin/settings')) {
+    return '/admin/settings'
+  }
   const exact = navItems.find((item) => item.href === pathname);
   if (exact) return exact.href;
   const prefixes = navItems

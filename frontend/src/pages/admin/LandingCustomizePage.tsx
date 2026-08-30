@@ -55,6 +55,7 @@ const LandingCustomizePage = () => {
           heroPreviewUrl: data?.hero_image_url || null,
           logoFile: null,
           heroFile: null,
+          programImageFiles: {},
           landing_content: sanitizeLandingContent(data?.landing_content),
         })
       } catch (err) {
@@ -118,6 +119,15 @@ const LandingCustomizePage = () => {
         hero_image_url = await uploadInstitutionAsset(landing.heroFile, 'hero')
       }
 
+      const programs = landing.landing_content.programs.map((row) => ({ ...row }))
+      const pendingFiles = landing.programImageFiles || {}
+      for (let i = 0; i < programs.length; i += 1) {
+        const file = pendingFiles[i]
+        if (!file) continue
+        const url = await uploadInstitutionAsset(file, 'program')
+        if (url) programs[i].image_url = url
+      }
+
       const updated = await updateInstitution({
         landing_template_id: landing.landing_template_id,
         hero_headline: landing.hero_headline.trim() || null,
@@ -130,7 +140,7 @@ const LandingCustomizePage = () => {
           : null,
         logo_url: logo_url || null,
         hero_image_url: hero_image_url || null,
-        landing_content: landing.landing_content,
+        landing_content: { ...landing.landing_content, programs },
         social_whatsapp: landing.social_whatsapp.trim() || null,
         social_facebook: landing.social_facebook.trim() || null,
         social_tiktok: landing.social_tiktok.trim() || null,
@@ -141,8 +151,10 @@ const LandingCustomizePage = () => {
         ...prev,
         logoFile: null,
         heroFile: null,
+        programImageFiles: {},
         logoPreviewUrl: updated?.logo_url || prev.logoPreviewUrl,
         heroPreviewUrl: updated?.hero_image_url || prev.heroPreviewUrl,
+        landing_content: sanitizeLandingContent(updated?.landing_content || { ...prev.landing_content, programs }),
       }))
       await refreshUser?.()
       publishInstitutionBrand({
@@ -163,12 +175,12 @@ const LandingCustomizePage = () => {
   return (
     <AnimatedPage>
       <Helmet>
-        <title>Settings — {name}</title>
+        <title>Institution Settings — {name}</title>
       </Helmet>
 
       <div className="max-w-6xl mx-auto">
         <PageHeader
-          title="Settings"
+          title="Institution Settings"
           subtitle="Landing page templates, design, and customization."
         />
 

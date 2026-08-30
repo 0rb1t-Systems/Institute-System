@@ -3,9 +3,57 @@
  * Plain text only — never render as HTML.
  */
 
+export const LANDING_PROGRAM_ICON_IDS = [
+  'graduation',
+  'book',
+  'code',
+  'palette',
+  'briefcase',
+  'laptop',
+  'camera',
+  'globe',
+  'languages',
+  'calculator',
+  'music',
+  'stethoscope',
+  'wrench',
+  'megaphone',
+  'award',
+  'users',
+] as const
+
+export type LandingProgramIconId = (typeof LANDING_PROGRAM_ICON_IDS)[number]
+
 export type LandingProgramItem = {
   title: string
   description: string
+  image_url: string
+  icon: LandingProgramIconId | ''
+}
+
+export function emptyLandingProgram(): LandingProgramItem {
+  return { title: '', description: '', image_url: '', icon: '' }
+}
+
+export function isLandingProgramIconId(value: string): value is LandingProgramIconId {
+  return (LANDING_PROGRAM_ICON_IDS as readonly string[]).includes(value)
+}
+
+export function sanitizeProgramIcon(value: unknown): LandingProgramIconId | '' {
+  const s = String(value ?? '')
+    .trim()
+    .toLowerCase()
+  return isLandingProgramIconId(s) ? s : ''
+}
+
+/** Persist only http(s) image URLs. Blob previews stay in the editor until upload. */
+export function sanitizeProgramImageUrl(value: unknown, allowBlob = false): string {
+  const s = String(value ?? '').trim()
+  if (!s) return ''
+  if (allowBlob && s.startsWith('blob:')) return s.slice(0, 2000)
+  if (!/^https?:\/\//i.test(s)) return ''
+  if (/[\s<>'"]/.test(s) || /javascript:/i.test(s) || /^data:/i.test(s)) return ''
+  return s.slice(0, 2000)
 }
 
 export type LandingContent = {
@@ -21,10 +69,7 @@ export const EMPTY_LANDING_CONTENT: LandingContent = {
   about_body: '',
   about_highlights: ['', '', '', ''],
   programs_intro: '',
-  programs: [
-    { title: '', description: '' },
-    { title: '', description: '' },
-  ],
+  programs: [emptyLandingProgram(), emptyLandingProgram()],
 }
 
 const LIMITS = {
@@ -64,10 +109,12 @@ export function sanitizeLandingContent(raw?: unknown): LandingContent {
     return {
       title: sanitizePlainText(item.title, LIMITS.program_title),
       description: sanitizePlainText(item.description, LIMITS.program_description),
+      image_url: sanitizeProgramImageUrl(item.image_url, true),
+      icon: sanitizeProgramIcon(item.icon),
     }
   })
 
-  while (programs.length < 2) programs.push({ title: '', description: '' })
+  while (programs.length < 2) programs.push(emptyLandingProgram())
 
   return {
     about_title: sanitizePlainText(src.about_title, LIMITS.about_title),
@@ -83,7 +130,10 @@ export function landingContentForSave(content: LandingContent): LandingContent {
   return {
     ...clean,
     about_highlights: clean.about_highlights.filter(Boolean).slice(0, LIMITS.max_highlights),
-    programs: clean.programs.filter((p) => p.title || p.description).slice(0, LIMITS.max_programs),
+    programs: clean.programs
+      .map((p) => ({ ...p, image_url: sanitizeProgramImageUrl(p.image_url, false) }))
+      .filter((p) => p.title || p.description || p.image_url)
+      .slice(0, LIMITS.max_programs),
   }
 }
 
@@ -98,7 +148,12 @@ export function filledAboutHighlights(content: LandingContent): string[] {
 }
 
 export function filledLandingPrograms(content: LandingContent): LandingProgramItem[] {
-  return content.programs.filter((p) => String(p.title || '').trim() || String(p.description || '').trim())
+  return content.programs.filter(
+    (p) =>
+      String(p.title || '').trim() ||
+      String(p.description || '').trim() ||
+      String(p.image_url || '').trim(),
+  )
 }
 
 /** About block is optional — only render what the institution actually wrote. */
@@ -119,17 +174,25 @@ export const DEFAULT_PROGRAMS: LandingProgramItem[] = [
   {
     title: 'Professional programs',
     description: 'Structured learning paths designed for career-ready skills and recognised credentials.',
+    image_url: '',
+    icon: 'graduation',
   },
   {
     title: 'Short courses',
     description: 'Focused training you can complete alongside work, with clear outcomes.',
+    image_url: '',
+    icon: 'book',
   },
   {
     title: 'Credentials',
     description: 'Institution-branded certificates and transcripts that employers can verify.',
+    image_url: '',
+    icon: 'award',
   },
   {
     title: 'Student support',
     description: 'Guidance from enrolment through attendance, exams, and graduation.',
+    image_url: '',
+    icon: 'users',
   },
 ]
