@@ -28,38 +28,94 @@ import {
 
 export const ALUMNI_COURSE_SLOTS = 8
 
-export const ALUMNI_IMPORT_COLUMNS = [
-  { key: 'full_name', label: 'full_name', required: true, mapsTo: 'profiles.full_name' },
-  { key: 'email', label: 'email', required: true, mapsTo: 'profiles.email' },
-  { key: 'phone', label: 'phone', required: false, mapsTo: 'profiles.phone' },
-  { key: 'student_code', label: 'student_code', required: false, mapsTo: 'profiles.student_code' },
-  { key: 'program_type', label: 'program_type', required: true, mapsTo: 'course | diploma' },
-  { key: 'program_name', label: 'program_name', required: true, mapsTo: 'diploma or single course name' },
-  { key: 'year', label: 'year', required: false, mapsTo: 'alumni class year' },
-  { key: 'course_1', label: 'course_1', required: true, mapsTo: 'first course name' },
-  { key: 'mark_1', label: 'mark_1', required: true, mapsTo: 'first course mark 0–100' },
-  { key: 'semester_1', label: 'semester_1', required: false, mapsTo: 'semester name for course 1' },
-  { key: 'course_2', label: 'course_2', required: false, mapsTo: 'diploma course 2' },
-  { key: 'mark_2', label: 'mark_2', required: false, mapsTo: 'diploma mark 2' },
-  { key: 'semester_2', label: 'semester_2', required: false, mapsTo: 'semester for course 2' },
-  { key: 'course_3', label: 'course_3', required: false, mapsTo: 'diploma course 3' },
-  { key: 'mark_3', label: 'mark_3', required: false, mapsTo: 'diploma mark 3' },
-] as const
+export type AlumniTemplateKind = 'course' | 'diploma' | 'diploma_semester' | 'full'
 
-export const ALUMNI_TEMPLATE_HEADERS = [
-  'full_name',
-  'email',
-  'phone',
-  'student_code',
-  'program_type',
-  'program_name',
-  'year',
-  ...Array.from({ length: ALUMNI_COURSE_SLOTS }, (_, i) => [
-    `course_${i + 1}`,
-    `mark_${i + 1}`,
-    `semester_${i + 1}`,
-  ]).flat(),
+const IDENTITY_HEADERS = ['full_name', 'email', 'phone', 'student_code', 'year'] as const
+
+function slotHeaders(withSemester: boolean, count = ALUMNI_COURSE_SLOTS) {
+  return Array.from({ length: count }, (_, i) => {
+    const n = i + 1
+    return withSemester ? [`course_${n}`, `mark_${n}`, `semester_${n}`] : [`course_${n}`, `mark_${n}`]
+  }).flat()
+}
+
+export const ALUMNI_TEMPLATES: {
+  kind: AlumniTemplateKind
+  title: string
+  subtitle: string
+  hint: string
+  filename: string
+  headers: string[]
+  columns: { key: string; required: boolean; mapsTo: string }[]
+}[] = [
+  {
+    kind: 'course',
+    title: 'Courses',
+    subtitle: 'Single course only',
+    hint: 'One student, one course, one mark. No diploma or semester columns.',
+    filename: 'alumni-template-courses.xlsx',
+    headers: [...IDENTITY_HEADERS.slice(0, 4), 'course_name', 'year', 'mark'],
+    columns: [
+      { key: 'full_name', required: true, mapsTo: 'student name' },
+      { key: 'email', required: true, mapsTo: 'account email' },
+      { key: 'phone', required: false, mapsTo: 'phone' },
+      { key: 'student_code', required: false, mapsTo: 'previous ID (6+ chars)' },
+      { key: 'course_name', required: true, mapsTo: 'course name' },
+      { key: 'year', required: false, mapsTo: 'completion year' },
+      { key: 'mark', required: true, mapsTo: '0–100' },
+    ],
+  },
+  {
+    kind: 'diploma',
+    title: 'Diplomas',
+    subtitle: 'Diploma courses, no semester',
+    hint: 'One row = one student. diploma_name plus course_1/mark_1 … course_8. No semester columns.',
+    filename: 'alumni-template-diplomas.xlsx',
+    headers: [...IDENTITY_HEADERS.slice(0, 4), 'diploma_name', 'year', ...slotHeaders(false)],
+    columns: [
+      { key: 'full_name', required: true, mapsTo: 'student name' },
+      { key: 'email', required: true, mapsTo: 'account email' },
+      { key: 'phone', required: false, mapsTo: 'phone' },
+      { key: 'student_code', required: false, mapsTo: 'previous ID (6+ chars)' },
+      { key: 'diploma_name', required: true, mapsTo: 'diploma name in Academic Programs' },
+      { key: 'year', required: false, mapsTo: 'completion year' },
+      { key: 'course_1 / mark_1 … course_8 / mark_8', required: true, mapsTo: 'each subject and mark' },
+    ],
+  },
+  {
+    kind: 'diploma_semester',
+    title: 'Diploma + semester',
+    subtitle: 'Diploma with semesters',
+    hint: 'Same as diploma, plus semester_1 … semester_8 for each course (e.g. Semester one).',
+    filename: 'alumni-template-diploma-semesters.xlsx',
+    headers: [...IDENTITY_HEADERS.slice(0, 4), 'diploma_name', 'year', ...slotHeaders(true)],
+    columns: [
+      { key: 'full_name', required: true, mapsTo: 'student name' },
+      { key: 'email', required: true, mapsTo: 'account email' },
+      { key: 'phone', required: false, mapsTo: 'phone' },
+      { key: 'student_code', required: false, mapsTo: 'previous ID (6+ chars)' },
+      { key: 'diploma_name', required: true, mapsTo: 'diploma name in Academic Programs' },
+      { key: 'year', required: false, mapsTo: 'completion year' },
+      { key: 'course_n / mark_n / semester_n', required: true, mapsTo: 'subject, mark, and semester name' },
+    ],
+  },
+  {
+    kind: 'full',
+    title: 'Full',
+    subtitle: 'All columns (course + diploma + semester)',
+    hint: 'Use when one file mixes course and diploma rows. Set program_type to course or diploma.',
+    filename: 'alumni-template-full.xlsx',
+    headers: ['full_name', 'email', 'phone', 'student_code', 'program_type', 'program_name', 'year', ...slotHeaders(true)],
+    columns: [
+      { key: 'program_type', required: true, mapsTo: 'course or diploma' },
+      { key: 'program_name', required: true, mapsTo: 'course or diploma name' },
+      { key: 'course_n / mark_n / semester_n', required: false, mapsTo: 'semester is optional' },
+    ],
+  },
 ]
+
+export const ALUMNI_IMPORT_COLUMNS = ALUMNI_TEMPLATES.find((t) => t.kind === 'full')!.columns
+export const ALUMNI_TEMPLATE_HEADERS = ALUMNI_TEMPLATES.find((t) => t.kind === 'full')!.headers
 
 const HEADER_ALIASES: Record<string, string> = {
   full_name: 'full_name',
@@ -167,66 +223,203 @@ export function rowsFromWorkbook(buf: ArrayBuffer) {
   return json
 }
 
-export function downloadAlumniTemplate() {
-  const emptySlots = Object.fromEntries(
-    Array.from({ length: ALUMNI_COURSE_SLOTS }, (_, i) => [
-      [`course_${i + 1}`, ''],
-      [`mark_${i + 1}`, ''],
-      [`semester_${i + 1}`, ''],
-    ]).flat(),
-  )
-  const example = [
-    {
-      full_name: 'Ahmed Ali',
-      email: 'ahmed.ali@example.com',
-      phone: '0612345678',
-      student_code: '',
-      program_type: 'course',
-      program_name: 'Computer Basics',
-      year: 2022,
-      ...emptySlots,
-      course_1: 'Computer Basics',
-      mark_1: 78,
-    },
-    {
-      full_name: 'Amina Yusuf',
-      email: 'amina.yusuf@example.com',
-      phone: '',
-      student_code: 'ACC2022001',
-      program_type: 'diploma',
-      program_name: 'Accounting Diploma',
-      year: 2022,
-      ...emptySlots,
-      course_1: 'Bookkeeping',
-      mark_1: 80,
-      semester_1: 'Semester one',
-      course_2: 'Taxation',
-      mark_2: 72,
-      semester_2: 'Semester one',
-      course_3: 'Auditing',
-      mark_3: 68,
-      semester_3: 'Semester two',
-    },
-  ]
+function inferProgramType(
+  out: Record<string, string>,
+  slots: { name: string; semester: string }[],
+): 'course' | 'diploma' | null {
+  const parsed = parseProgramType(out.program_type || '')
+  if (parsed) return parsed
+  if (slots.some((s) => s.semester)) return 'diploma'
+  const named = slots.filter((s) => s.name)
+  if (named.length >= 2) return 'diploma'
+  const programName = String(out.program_name || '').trim()
+  if (programName && named[0]?.name && programName.toLowerCase() !== named[0].name.toLowerCase()) {
+    return 'diploma'
+  }
+  if (named.length === 1 || programName) return 'course'
+  return null
+}
+
+function writeAlumniWorkbook(filename: string, headers: string[], rows: Record<string, unknown>[], guide: string[][]) {
   const wb = XLSX.utils.book_new()
-  const ws = XLSX.utils.json_to_sheet(example, { header: [...ALUMNI_TEMPLATE_HEADERS] })
+  const ws = XLSX.utils.json_to_sheet(rows, { header: headers })
   XLSX.utils.book_append_sheet(wb, ws, 'Alumni')
-  const guide = XLSX.utils.aoa_to_sheet([
-    ['One row = one student. Diploma courses go in course_1/mark_1, course_2/mark_2, …'],
-    [''],
-    ['Column', 'Required', 'Meaning'],
-    ...ALUMNI_IMPORT_COLUMNS.map((c) => [c.label, c.required ? 'yes' : 'no', c.mapsTo]),
-    ['course_4 … course_8', 'no', 'more diploma courses if needed'],
-    [''],
-    ['program_name must match the diploma name in Academic Programs (e.g. deploma test).'],
-    ['Alumni are placed in one $0 class: {program_name} — Alumni {year} — not one class per semester.'],
-    ['semester_1 … semester_8 optional. If empty, the course keeps the diploma semester already assigned.'],
-    ['Diploma: Amina is ONE row — course_1 Bookkeeping 80, course_2 Taxation 72, course_3 Auditing 68.'],
-    ['Single course: fill course_1 and mark_1 only.'],
-    ['mark is 0–100. Certificates require 60+ on every course of that diploma.'],
-  ])
-  XLSX.utils.book_append_sheet(wb, guide, 'Guide')
-  XLSX.writeFile(wb, 'alumni-import-template.xlsx')
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(guide), 'Guide')
+  XLSX.writeFile(wb, filename)
+}
+
+export function downloadAlumniTemplate(kind: AlumniTemplateKind = 'full') {
+  const spec = ALUMNI_TEMPLATES.find((t) => t.kind === kind) || ALUMNI_TEMPLATES.find((t) => t.kind === 'full')
+  if (!spec) return
+
+  if (spec.kind === 'course') {
+    writeAlumniWorkbook(
+      spec.filename,
+      spec.headers,
+      [
+        {
+          full_name: 'Ahmed Ali',
+          email: 'ahmed.ali@example.com',
+          phone: '0612345678',
+          student_code: '',
+          course_name: 'Computer Basics',
+          year: 2022,
+          mark: 78,
+        },
+      ],
+      [
+        ['Template: Courses only. One row = one student = one course.'],
+        ['Do not add diploma or semester columns.'],
+        [''],
+        ['Column', 'Required', 'Meaning'],
+        ...spec.columns.map((c) => [c.key, c.required ? 'yes' : 'no', c.mapsTo]),
+        [''],
+        ['mark is 0–100. Upload this file in Alumni Import.'],
+      ],
+    )
+    return
+  }
+
+  if (spec.kind === 'diploma') {
+    const empty = Object.fromEntries(slotHeaders(false).map((h) => [h, '']))
+    writeAlumniWorkbook(
+      spec.filename,
+      spec.headers,
+      [
+        {
+          full_name: 'Amina Yusuf',
+          email: 'amina.yusuf@example.com',
+          phone: '',
+          student_code: 'ACC2022001',
+          diploma_name: 'Accounting Diploma',
+          year: 2022,
+          ...empty,
+          course_1: 'Bookkeeping',
+          mark_1: 80,
+          course_2: 'Taxation',
+          mark_2: 72,
+          course_3: 'Auditing',
+          mark_3: 68,
+        },
+      ],
+      [
+        ['Template: Diploma without semester columns.'],
+        ['diploma_name must match Academic Programs. One row = one student.'],
+        ['One alumni class for the whole diploma — not one class per semester.'],
+        [''],
+        ['Column', 'Required', 'Meaning'],
+        ...spec.columns.map((c) => [c.key, c.required ? 'yes' : 'no', c.mapsTo]),
+        [''],
+        ['Fill only the course_n / mark_n pairs you need. Leave the rest empty.'],
+      ],
+    )
+    return
+  }
+
+  if (spec.kind === 'diploma_semester') {
+    const empty = Object.fromEntries(slotHeaders(true).map((h) => [h, '']))
+    writeAlumniWorkbook(
+      spec.filename,
+      spec.headers,
+      [
+        {
+          full_name: 'Amina Yusuf',
+          email: 'amina.yusuf@example.com',
+          phone: '',
+          student_code: 'ACC2022001',
+          diploma_name: 'deploma test',
+          year: 2022,
+          ...empty,
+          course_1: 'Taxation',
+          mark_1: 80,
+          semester_1: 'semister one',
+          course_2: 'Auditing',
+          mark_2: 72,
+          semester_2: 'semister one',
+          course_3: 'Web Development',
+          mark_3: 68,
+          semester_3: 'semister two',
+        },
+      ],
+      [
+        ['Template: Diploma with semester per course.'],
+        ['diploma_name must match Academic Programs. semester_n is the semester name for that course.'],
+        ['One alumni class for the whole diploma — not one class per semester.'],
+        [''],
+        ['Column', 'Required', 'Meaning'],
+        ...spec.columns.map((c) => [c.key, c.required ? 'yes' : 'no', c.mapsTo]),
+      ],
+    )
+    return
+  }
+
+  const empty = Object.fromEntries(slotHeaders(true).map((h) => [h, '']))
+  writeAlumniWorkbook(
+    spec.filename,
+    spec.headers,
+    [
+      {
+        full_name: 'Ahmed Ali',
+        email: 'ahmed.ali@example.com',
+        phone: '0612345678',
+        student_code: '',
+        program_type: 'course',
+        program_name: 'Computer Basics',
+        year: 2022,
+        ...empty,
+        course_1: 'Computer Basics',
+        mark_1: 78,
+      },
+      {
+        full_name: 'Amina Yusuf',
+        email: 'amina.yusuf@example.com',
+        phone: '0611111111',
+        student_code: 'ACC2022001',
+        program_type: 'diploma',
+        program_name: 'Accounting Diploma',
+        year: 2022,
+        ...empty,
+        course_1: 'Bookkeeping',
+        mark_1: 80,
+        course_2: 'Taxation',
+        mark_2: 72,
+        course_3: 'Auditing',
+        mark_3: 68,
+      },
+      {
+        full_name: 'Hassan Mohamed',
+        email: 'hassan.mohamed@example.com',
+        phone: '0612222222',
+        student_code: 'DIP2023001',
+        program_type: 'diploma',
+        program_name: 'deploma test',
+        year: 2023,
+        ...empty,
+        course_1: 'Taxation',
+        mark_1: 80,
+        semester_1: 'semister one',
+        course_2: 'Auditing',
+        mark_2: 72,
+        semester_2: 'semister one',
+        course_3: 'Web Development',
+        mark_3: 68,
+        semester_3: 'semister two',
+        course_4: 'Graphic Design',
+        mark_4: 75,
+        semester_4: 'semister two',
+      },
+    ],
+    [
+      ['Full template — 3 example students. Replace them with real alumni, then upload.'],
+      ['Row 1 Ahmed: COURSE — only course_1 and mark_1. Leave semester empty.'],
+      ['Row 2 Amina: DIPLOMA — several courses, no semester columns.'],
+      ['Row 3 Hassan: DIPLOMA WITH SEMESTER — courses plus semester_1, semester_2, …'],
+      ['program_type must be course or diploma. diploma program_name must match Academic Programs.'],
+      [''],
+      ['Column', 'Required', 'Meaning'],
+      ...spec.columns.map((c) => [c.key, c.required ? 'yes' : 'no', c.mapsTo]),
+    ],
+  )
 }
 
 export type AlumniMappedRow = {
@@ -268,14 +461,13 @@ export function mapAndValidateRows(
 ): { rows: AlumniMappedRow[]; errors: string[] } {
   const errors: string[] = []
   const rows: AlumniMappedRow[] = []
-  const identityRequired = ['full_name', 'email', 'program_type', 'program_name']
-  for (const key of identityRequired) {
-    if (!Object.values(mapping).includes(key)) errors.push(`Missing column: ${key}`)
-  }
-  const hasCourseCol = Object.values(mapping).some((v) => String(v).startsWith('course_'))
-  const hasMarkCol = Object.values(mapping).some((v) => String(v).startsWith('mark_'))
-  if (!hasCourseCol) errors.push('Missing column: course_1')
-  if (!hasMarkCol) errors.push('Missing column: mark_1')
+  const dests = Object.values(mapping)
+  if (!dests.includes('full_name')) errors.push('Missing column: full_name')
+  if (!dests.includes('email')) errors.push('Missing column: email')
+  const hasCourseCol = dests.some((v) => String(v).startsWith('course_')) || dests.includes('program_name')
+  const hasMarkCol = dests.some((v) => String(v).startsWith('mark_'))
+  if (!hasCourseCol) errors.push('Missing column: course_name or course_1')
+  if (!hasMarkCol) errors.push('Missing column: mark or mark_1')
   if (errors.length) return { rows, errors }
 
   rawRows.forEach((raw, i) => {
@@ -284,12 +476,14 @@ export function mapAndValidateRows(
     for (const [src, dest] of Object.entries(mapping)) {
       if (dest && dest !== 'skip') out[dest] = cell(raw, src)
     }
-    const program_type = parseProgramType(out.program_type || '')
     const email = String(out.email || '').trim().toLowerCase()
     const full_name = String(out.full_name || '').trim()
-    const program_name = String(out.program_name || '').trim()
-    const student_code = String(out.student_code || '').trim().toUpperCase()
     let slots = collectCourseSlots(out)
+    if (!full_name && !email && !slots.length) return
+    const program_type = inferProgramType(out, slots)
+    let program_name = String(out.program_name || '').trim()
+    if (!program_name && slots[0]?.name) program_name = slots[0].name
+    const student_code = String(out.student_code || '').trim().toUpperCase()
     if (!slots.length && program_type === 'course' && program_name) {
       const mark = parseMark(out.mark_1 || '')
       if (mark != null) slots = [{ n: 1, name: program_name, mark, code: '', semester: '' }]
@@ -297,8 +491,8 @@ export function mapAndValidateRows(
 
     if (!full_name) errors.push(`Row ${rowNumber}: full_name is required`)
     if (!email || !isEmail(email)) errors.push(`Row ${rowNumber}: valid email is required`)
-    if (!program_type) errors.push(`Row ${rowNumber}: program_type must be course or diploma`)
-    if (!program_name) errors.push(`Row ${rowNumber}: program_name is required`)
+    if (!program_type) errors.push(`Row ${rowNumber}: could not tell course vs diploma — add program_type or extra courses`)
+    if (!program_name) errors.push(`Row ${rowNumber}: course_name or diploma_name is required`)
     if (student_code && student_code.length < 6) {
       errors.push(`Row ${rowNumber}: student_code must be at least 6 characters`)
     }

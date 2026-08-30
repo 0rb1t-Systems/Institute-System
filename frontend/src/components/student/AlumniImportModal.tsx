@@ -8,7 +8,7 @@ import { useToast } from '@/components/ui/use-toast';
 import { notify, MESSAGES } from '@/lib/notify';
 import { Download, GraduationCap, Loader2, Upload } from 'lucide-react';
 import {
-  ALUMNI_IMPORT_COLUMNS,
+  ALUMNI_TEMPLATES,
   MAX_ALUMNI_IMPORT_ROWS,
   downloadAlumniTemplate,
   mapAlumniHeaders,
@@ -129,53 +129,67 @@ export default function AlumniImportModal({ open, onClose, onSuccess }) {
 
   return (
     <Dialog open={open} onOpenChange={(o) => !o && handleClose()}>
-      <DialogContent className="sm:max-w-2xl bg-slate-900 border-slate-800 text-slate-100 max-h-[90vh] overflow-y-auto">
+      <DialogContent className="sm:max-w-3xl bg-slate-900 border-slate-800 text-slate-100 max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <GraduationCap className="h-5 w-5 text-indigo-400" />
             Alumni Import
           </DialogTitle>
           <DialogDescription className="text-slate-400">
-            Hal sadar = hal arday. program_name waa inuu u dhigmaa magaca diploma-ga Academic Programs. Hal class ayaa loo sameeyaa, ma aha class semester kasta.
+            Download the matching template, fill it in, then upload. Any of the four files is accepted.
           </DialogDescription>
         </DialogHeader>
 
         {step === 'upload' && (
           <div className="space-y-4 py-2">
-            <div className="rounded-md border border-indigo-900/60 bg-indigo-950/30 p-3 text-sm text-slate-200 space-y-2">
-              <p className="font-medium text-indigo-200">Tusaale: Amina — 1 sadar, 3 course</p>
-              <p className="text-slate-400 text-xs">
-                program_type = diploma. program_name = magaca diploma-ga (tusaale: deploma test). Course + mark + semester (ikhtiyaari) = tiir.
-              </p>
-              <div className="overflow-auto text-xs font-mono text-slate-300 whitespace-nowrap">
-                Amina | diploma | Accounting Diploma | Bookkeeping 80 Sem1 | Taxation 72 Sem1 | Auditing 68 Sem2
-              </div>
-              <p className="text-xs text-slate-500">
-                System-ku wuxuu ku xidhaa diploma-ga jira. Class-ka waa magaca diploma + Alumni + year (lacag $0). Transcript-ku wuxuu u kala qaadaa semester.
-              </p>
-            </div>
-            <div className="rounded-md border border-slate-800 bg-slate-950/60 p-3 text-xs text-slate-400 space-y-1">
-              {ALUMNI_IMPORT_COLUMNS.map((c) => (
-                <div key={c.key} className="flex gap-2">
-                  <span className="font-mono text-slate-200 w-32 shrink-0">{c.label}</span>
-                  <span>{c.required ? 'required' : 'optional'} — {c.mapsTo}</span>
+            <p className="text-sm text-slate-300">Three dedicated templates — each has only the columns it needs. The full template combines all of them.</p>
+            <div className="grid gap-3 sm:grid-cols-3">
+              {ALUMNI_TEMPLATES.filter((t) => t.kind !== 'full').map((t) => (
+                <div key={t.kind} className="rounded-lg border border-slate-800 bg-slate-950/70 p-3 flex flex-col gap-2 min-w-0">
+                  <p className="font-medium text-slate-100 text-sm">{t.title}</p>
+                  <p className="text-xs text-indigo-300">{t.subtitle}</p>
+                  <p className="text-xs text-slate-500 flex-1">{t.hint}</p>
+                  <ul className="text-[11px] font-mono text-slate-400 space-y-0.5">
+                    {t.columns.map((c) => (
+                      <li key={c.key} className="truncate" title={`${c.key} — ${c.mapsTo}`}>
+                        {c.key}{c.required ? '' : ' (optional)'}
+                      </li>
+                    ))}
+                  </ul>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    className="mt-1 w-full border-slate-700"
+                    onClick={() => downloadAlumniTemplate(t.kind)}
+                  >
+                    <Download className="h-4 w-4 mr-2 shrink-0" />
+                    Download
+                  </Button>
                 </div>
               ))}
             </div>
-            <div className="flex flex-wrap gap-2">
-              <Button
-                type="button"
-                variant="outline"
-                className="border-slate-700"
-                onClick={() => downloadAlumniTemplate()}
-              >
-                <Download className="h-4 w-4 mr-2" />
-                Download template
-              </Button>
-            </div>
+            {ALUMNI_TEMPLATES.filter((t) => t.kind === 'full').map((t) => (
+              <div key={t.kind} className="rounded-lg border border-slate-800 bg-slate-900/80 p-3 flex flex-col sm:flex-row sm:items-center gap-3">
+                <div className="min-w-0 flex-1">
+                  <p className="font-medium text-slate-100 text-sm">{t.title} template</p>
+                  <p className="text-xs text-slate-500">{t.hint}</p>
+                </div>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="border-slate-700 shrink-0"
+                  onClick={() => downloadAlumniTemplate('full')}
+                >
+                  <Download className="h-4 w-4 mr-2" />
+                  Download full
+                </Button>
+              </div>
+            ))}
             <Label className="flex flex-col items-center justify-center gap-3 border border-dashed border-slate-700 rounded-lg p-8 cursor-pointer hover:bg-slate-800/50">
               <Upload className="h-8 w-8 text-slate-400" />
-              <span className="text-sm text-slate-300">Choose the Alumni Excel file</span>
+              <span className="text-sm text-slate-300">Upload any of these Excel templates</span>
               <input type="file" accept=".csv,.xlsx,.xls" className="hidden" onChange={onFile} />
             </Label>
           </div>
