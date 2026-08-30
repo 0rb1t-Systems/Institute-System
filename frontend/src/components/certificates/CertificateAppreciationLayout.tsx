@@ -5,6 +5,7 @@ import type { CertificateRenderData } from '@/lib/certificateTemplates'
 type Props = {
   data: CertificateRenderData
   compact?: boolean
+  forPdf?: boolean
 }
 
 /**
@@ -12,7 +13,7 @@ type Props = {
  * Matches the uploaded design style (navy / gold / seal / signatures)
  * without compositing on top of a sample scan — no double text, no cover boxes.
  */
-const CertificateAppreciationLayout = ({ data, compact = false }: Props) => {
+const CertificateAppreciationLayout = ({ data, compact = false, forPdf = false }: Props) => {
   const primary = data.primary || '#001f3f'
   const accent = data.accent || '#c9a227'
   const dateLabel = data.dateIssued ? String(data.dateIssued).slice(0, 10) : ''
@@ -29,10 +30,15 @@ const CertificateAppreciationLayout = ({ data, compact = false }: Props) => {
   return (
     <div
       className={`w-full relative overflow-hidden bg-white text-slate-900 ${
-        compact ? 'rounded border border-slate-200' : 'rounded-lg shadow-xl border border-slate-200'
+        compact ? 'rounded border border-slate-200' : forPdf ? '' : 'rounded-lg shadow-xl border border-slate-200'
       }`}
-      style={{ aspectRatio: '297 / 210' }}
+      style={
+        forPdf
+          ? { width: '100%', height: '100%' }
+          : { aspectRatio: '297 / 210' }
+      }
       data-cert-layout="appreciation"
+      data-cert-pdf={forPdf ? '1' : undefined}
     >
       {/* Navy header */}
       <div
@@ -142,6 +148,27 @@ const CertificateAppreciationLayout = ({ data, compact = false }: Props) => {
         >
           {data.programName || ''}
         </p>
+        {[
+          data.studentId ? `ID ${data.studentId}` : null,
+          data.className || null,
+          data.startMonth && data.completionMonth
+            ? `${data.startMonth} – ${data.completionMonth}`
+            : data.completionMonth || data.startMonth || null,
+        ]
+          .filter(Boolean)
+          .length ? (
+          <p className="text-slate-500" style={{ marginTop: 4, fontSize: fs(9) }}>
+            {[
+              data.studentId ? `ID ${data.studentId}` : null,
+              data.className || null,
+              data.startMonth && data.completionMonth
+                ? `${data.startMonth} – ${data.completionMonth}`
+                : data.completionMonth || data.startMonth || null,
+            ]
+              .filter(Boolean)
+              .join('  ·  ')}
+          </p>
+        ) : null}
 
         <p
           className="text-center text-slate-500 line-clamp-3 max-w-[88%]"

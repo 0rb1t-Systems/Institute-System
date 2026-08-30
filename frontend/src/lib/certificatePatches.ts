@@ -17,16 +17,21 @@ function svgDataUri(svg: string) {
 }
 
 export const CERTIFICATE_PATCHES = [
+  { key: 'star_ribbon', label: 'Star Ribbon', defaultText: 'STAR', w: 150, h: 210 },
+  { key: 'award_rosette', label: 'Award Rosette', defaultText: 'CERTIFICATE OF AWARD', w: 180, h: 230 },
   { key: 'certificate_seal', label: 'Certificate Seal', defaultText: 'SEAL', w: 150, h: 150 },
   { key: 'achievement_badge', label: 'Achievement Badge', defaultText: 'ACHIEVE', w: 136, h: 136 },
-  { key: 'award_rosette', label: 'Award Rosette', defaultText: 'CERTIFICATE OF AWARD', w: 180, h: 230 },
-  { key: 'academic_emblem', label: 'Academic Emblem', defaultText: 'ACADEMY', w: 140, h: 150 },
   { key: 'certificate_medallion', label: 'Certificate Medallion', defaultText: 'CERTIFICATE OF MERIT', w: 180, h: 230 },
   { key: 'laurel_wreath_badge', label: 'Laurel Wreath Badge', defaultText: 'HONOR', w: 160, h: 154 },
   { key: 'certificate_crest', label: 'Certificate Crest', defaultText: 'CREST', w: 128, h: 148 },
   { key: 'gold_foil_seal', label: 'Gold Foil Seal', defaultText: 'FOIL', w: 148, h: 148 },
   { key: 'ribbon_badge', label: 'Ribbon Badge', defaultText: 'CERTIFICATE OF HONOR', w: 180, h: 230 },
   { key: 'guilloche_seal', label: 'Guilloche Seal', defaultText: 'SECURE', w: 150, h: 150 },
+  { key: 'jewel_star', label: 'Jewel Star', defaultText: 'STAR', w: 140, h: 140 },
+  { key: 'enamel_badge', label: 'Enamel Badge', defaultText: 'HONOR', w: 136, h: 136 },
+  { key: 'sunburst_medal', label: 'Sunburst Medal', defaultText: 'MERIT', w: 150, h: 150 },
+  { key: 'tri_ribbon', label: 'Tri-Color Ribbon', defaultText: 'AWARD', w: 160, h: 210 },
+  { key: 'academic_emblem', label: 'Academic Emblem', defaultText: 'ACADEMY', w: 140, h: 150 },
 ] as const
 
 export type CertificatePatchKey = (typeof CERTIFICATE_PATCHES)[number]['key']
@@ -130,6 +135,23 @@ function twinRibbons(cx: number, top: number, fill: string, gold: string) {
   return `<path d="${left}" fill="${fill}" stroke="${gold}" stroke-width="1.8"/><path d="${right}" fill="${fill}" stroke="${gold}" stroke-width="1.8"/>`
 }
 
+function hangingTwinRibbons(cx: number, top: number, fill: string, gold: string) {
+  const left = `M${cx - 30} ${top} L${cx - 6} ${top + 3} L${cx - 10} ${top + 94} L${cx - 20} ${top + 80} L${cx - 30} ${top + 96} Z`
+  const right = `M${cx + 6} ${top + 3} L${cx + 30} ${top} L${cx + 30} ${top + 96} L${cx + 20} ${top + 80} L${cx + 10} ${top + 94} Z`
+  return `<path d="${left}" fill="${fill}" stroke="${gold}" stroke-width="2.2" stroke-linejoin="round"/><path d="${right}" fill="${fill}" stroke="${gold}" stroke-width="2.2" stroke-linejoin="round"/>`
+}
+
+function threeGoldTails(cx: number, y: number, gold: string) {
+  const left = `M${cx - 40} ${y + 6} L${cx - 6} ${y} L${cx - 30} ${y + 76} Z`
+  const mid = `M${cx - 16} ${y} L${cx + 16} ${y} L${cx} ${y + 92} Z`
+  const right = `M${cx + 6} ${y} L${cx + 40} ${y + 6} L${cx + 30} ${y + 76} Z`
+  return `<path d="${left}" fill="${gold}"/><path d="${right}" fill="${gold}"/><path d="${mid}" fill="${gold}"/>`
+}
+
+function fiveStar(cx: number, cy: number, rOuter: number, rInner: number, fill: string) {
+  return starBurst(cx, cy, 5, rOuter, rInner, fill)
+}
+
 function circularText(pathId: string, cx: number, cy: number, r: number, text: string, fill: string, size = 6.4) {
   return `<path id="${pathId}" fill="none" d="M ${(cx - r).toFixed(1)},${cy} a ${r},${r} 0 1,1 ${(r * 2).toFixed(1)},0 a ${r},${r} 0 1,1 -${(r * 2).toFixed(1)},0"/><text font-family="Georgia, serif" font-size="${size}" font-weight="700" letter-spacing="1.8" fill="${fill}"><textPath href="#${pathId}" xlink:href="#${pathId}" startOffset="25%">${text}</textPath></text>`
 }
@@ -147,6 +169,18 @@ function buildPatchSvg(
   const c = ink
 
   switch (key) {
+    case 'star_ribbon':
+      return {
+        viewW: 150,
+        viewH: 210,
+        svg: `${svgOpen('0 0 150 210')}${threeGoldTails(75, 128, a)}<circle cx="75" cy="78" r="62" fill="${a}"/><circle cx="75" cy="78" r="48" fill="#f4eee0"/><circle cx="75" cy="78" r="48" fill="none" stroke="${p}" stroke-width="3.2"/>${fiveStar(75, 80, 30, 12.5, p)}</svg>`,
+      }
+    case 'award_rosette':
+      return {
+        viewW: 200,
+        viewH: 240,
+        svg: `${svgOpen('0 0 200 240')}${glossDefs('ar', p, a)}${hangingTwinRibbons(100, 138, p, a)}${starBurst(100, 88, 24, 78, 62, a)}<circle cx="100" cy="88" r="54" fill="${p}"/><circle cx="100" cy="88" r="46" fill="none" stroke="${a}" stroke-width="2.6"/>${circularText('arArc', 100, 88, 34, t, a, 5.8)}${laurelWreath(100, 92, a)}</svg>`,
+      }
     case 'certificate_seal':
       return {
         viewW: 150,
@@ -158,12 +192,6 @@ function buildPatchSvg(
         viewW: 136,
         viewH: 136,
         svg: `${svgOpen('0 0 136 136')}${glossDefs('ab', p, a)}<polygon points="68,8 83,44 122,48 93,76 101,114 68,94 35,114 43,76 14,48 53,44" fill="url(#abgold)"/><polygon points="68,16 80,44 114,48 90,72 96,104 68,88 40,104 46,72 22,48 56,44" fill="url(#abcore)"/><circle cx="68" cy="66" r="24" fill="url(#abgold)"/><circle cx="68" cy="66" r="18" fill="${p}"/>${circularText('abArc', 68, 66, 13.5, t, a, 4.6)}</svg>`,
-      }
-    case 'award_rosette':
-      return {
-        viewW: 200,
-        viewH: 240,
-        svg: `${svgOpen('0 0 200 240')}${glossDefs('ar', p, a)}${twinRibbons(100, 148, p, a)}${starBurst(100, 96, 22, 78, 64, `url(#argold)`)}<circle cx="100" cy="96" r="52" fill="url(#argold)"/><circle cx="100" cy="96" r="42" fill="${p}"/><circle cx="100" cy="96" r="36" fill="none" stroke="url(#argold)" stroke-width="3"/>${circularText('arArc', 100, 96, 30, t, a, 6)}${laurelWreath(100, 100, a)}</svg>`,
       }
     case 'academic_emblem':
       return {
@@ -209,6 +237,30 @@ function buildPatchSvg(
           const ang = (i * 15 * Math.PI) / 180
           return `<line x1="${(75 + Math.cos(ang) * 18).toFixed(1)}" y1="${(75 + Math.sin(ang) * 18).toFixed(1)}" x2="${(75 + Math.cos(ang) * 62).toFixed(1)}" y2="${(75 + Math.sin(ang) * 62).toFixed(1)}" stroke="${a}" stroke-width="0.45"/>`
         }).join('')}<circle cx="75" cy="75" r="20" fill="url(#gsgold)"/><circle cx="75" cy="75" r="16" fill="url(#gscore)"/><text x="75" y="79" text-anchor="middle" font-family="Georgia, serif" font-size="8" font-weight="700" fill="${c}">${t}</text></svg>`,
+      }
+    case 'jewel_star':
+      return {
+        viewW: 140,
+        viewH: 140,
+        svg: `${svgOpen('0 0 140 140')}${glossDefs('js', p, a)}${starBurst(70, 70, 12, 64, 28, `url(#jsgold)`)}<circle cx="70" cy="70" r="26" fill="url(#jscore)"/><circle cx="70" cy="70" r="20" fill="none" stroke="${a}" stroke-width="2.4"/>${goldBeads(70, 70, 18, 12, a)}<text x="70" y="74" text-anchor="middle" font-family="Georgia, serif" font-size="8" font-weight="700" fill="${c}">${t}</text></svg>`,
+      }
+    case 'enamel_badge':
+      return {
+        viewW: 136,
+        viewH: 136,
+        svg: `${svgOpen('0 0 136 136')}${glossDefs('eb', p, a)}<circle cx="68" cy="68" r="62" fill="#2563eb"/><circle cx="68" cy="68" r="54" fill="url(#ebgold)"/><circle cx="68" cy="68" r="46" fill="#dc2626"/><circle cx="68" cy="68" r="36" fill="url(#ebcore)"/>${circularText('ebArc', 68, 68, 28, t, a, 5.4)}${laurelWreath(68, 70, a)}</svg>`,
+      }
+    case 'sunburst_medal':
+      return {
+        viewW: 150,
+        viewH: 150,
+        svg: `${svgOpen('0 0 150 150')}${glossDefs('sm', p, a)}${starBurst(75, 75, 20, 70, 52, `url(#smgold)`)}<circle cx="75" cy="75" r="40" fill="#0f766e"/><circle cx="75" cy="75" r="32" fill="url(#smcore)"/>${circularText('smArc', 75, 75, 24, t, a, 5.6)}</svg>`,
+      }
+    case 'tri_ribbon':
+      return {
+        viewW: 170,
+        viewH: 220,
+        svg: `${svgOpen('0 0 170 220')}${glossDefs('tr', p, a)}${twinRibbons(85, 128, '#dc2626', a)}${twinRibbons(85, 136, '#2563eb', a)}${starBurst(85, 86, 14, 68, 54, `url(#trgold)`)}<circle cx="85" cy="86" r="42" fill="${p}"/><circle cx="85" cy="86" r="34" fill="none" stroke="url(#trgold)" stroke-width="3"/>${circularText('trArc', 85, 86, 26, t, a, 5.8)}</svg>`,
       }
     default:
       return {

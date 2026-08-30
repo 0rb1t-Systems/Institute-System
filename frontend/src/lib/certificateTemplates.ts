@@ -15,6 +15,21 @@ export const CERTIFICATE_LAYOUT_KEYS = [
   'formal',
   'contemporary',
   'heritage',
+  'appreciation',
+  'ornate',
+  'medallion',
+  'horizon',
+  'laurel',
+  'regal',
+] as const
+
+/** A4 landscape library designs (297×210). Portrait keys stay 210×297. */
+export const CERTIFICATE_LANDSCAPE_KEYS = [
+  'appreciation',
+  'ornate',
+  'medallion',
+  'horizon',
+  'laurel',
 ] as const
 
 /** Built-in library keys plus custom Certificate Management modes. */
@@ -59,6 +74,11 @@ export function isBuiltInCertificateLayoutKey(raw?: string | null): boolean {
     .trim()
     .toLowerCase()
   return key === 'default' || (CERTIFICATE_LAYOUT_KEYS as readonly string[]).includes(key)
+}
+
+export function isLandscapeCertificateLayout(raw?: string | null): boolean {
+  const key = normalizeCertificateLayoutKey(raw)
+  return (CERTIFICATE_LANDSCAPE_KEYS as readonly string[]).includes(key)
 }
 
 export const CERTIFICATE_TEMPLATE_LIBRARY: CertificateTemplateMeta[] = [
@@ -132,13 +152,56 @@ export const CERTIFICATE_TEMPLATE_LIBRARY: CertificateTemplateMeta[] = [
     description: 'Ribbon title banner and classic crest placement.',
     accentHint: '#9F1239',
   },
+  {
+    key: 'appreciation',
+    name: 'Appreciation',
+    category: 'Landscape',
+    description: 'A4 landscape navy header, gold wave, seal-forward layout.',
+    accentHint: '#001F3F',
+  },
+  {
+    key: 'ornate',
+    name: 'Ornate Frame',
+    category: 'Landscape',
+    description: 'Landscape cream paper with triple gold filigree frames.',
+    accentHint: '#C9A227',
+  },
+  {
+    key: 'medallion',
+    name: 'Medallion',
+    category: 'Landscape',
+    description: 'Colorful corner seals and a central medallion on landscape.',
+    accentHint: '#DC2626',
+  },
+  {
+    key: 'horizon',
+    name: 'Horizon',
+    category: 'Landscape',
+    description: 'Wide landscape with a brand side panel and gold rules.',
+    accentHint: '#0F766E',
+  },
+  {
+    key: 'laurel',
+    name: 'Laurel',
+    category: 'Landscape',
+    description: 'Landscape laurel sides, ribbon title, and honor patches.',
+    accentHint: '#15803D',
+  },
+  {
+    key: 'regal',
+    name: 'Regal',
+    category: 'Classic',
+    description: 'Portrait baroque gold frame with corner ornaments.',
+    accentHint: '#92400E',
+  },
 ]
 
 export function getCertificateTemplateMeta(key?: string | null): CertificateTemplateMeta {
   const normalized = normalizeCertificateLayoutKey(key)
   return (
     CERTIFICATE_TEMPLATE_LIBRARY.find((t) => t.key === normalized) ||
-    CERTIFICATE_TEMPLATE_LIBRARY[1]
+    CERTIFICATE_TEMPLATE_LIBRARY.find((t) => t.key === 'classic') ||
+    CERTIFICATE_TEMPLATE_LIBRARY[0]
   )
 }
 

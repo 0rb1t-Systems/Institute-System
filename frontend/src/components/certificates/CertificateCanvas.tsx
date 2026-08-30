@@ -1,7 +1,15 @@
 import React from 'react'
 import QRCode from 'react-qr-code'
-import type { CertificateRenderData } from '@/lib/certificateTemplates'
+import { isLandscapeCertificateLayout, type CertificateRenderData } from '@/lib/certificateTemplates'
 import CertificateDesignRenderer from '@/components/certificates/CertificateDesignRenderer'
+import CertificateAppreciationLayout from '@/components/certificates/CertificateAppreciationLayout'
+import {
+  HorizonCertificateLayout,
+  LaurelCertificateLayout,
+  MedallionCertificateLayout,
+  OrnateCertificateLayout,
+  RegalCertificateLayout,
+} from '@/components/certificates/CertificateLibraryLayouts'
 
 type Props = {
   data: CertificateRenderData
@@ -115,6 +123,7 @@ const CertificateCanvas = ({ data: rawData, compact = false, forPdf = false }: P
   const layout = data.layoutKey
   const hasLogo = Boolean(String(data.logoUrl || '').trim())
   const brandName = hasLogo ? '' : data.institutionName || ''
+  const landscape = isLandscapeCertificateLayout(layout)
 
   if (layout === 'logo_builder' || layout === 'custom_upload') {
     return (
@@ -146,7 +155,7 @@ const CertificateCanvas = ({ data: rawData, compact = false, forPdf = false }: P
             : 'rounded-lg shadow-xl border border-slate-200'
       } ${extraClass}`}
       style={{
-        aspectRatio: forPdf ? undefined : '210/297',
+        aspectRatio: forPdf ? undefined : landscape ? '297/210' : '210/297',
         width: forPdf ? '100%' : undefined,
         height: forPdf ? '100%' : undefined,
         ['--cert-primary' as string]: primary,
@@ -158,6 +167,25 @@ const CertificateCanvas = ({ data: rawData, compact = false, forPdf = false }: P
       <div className="absolute inset-0 overflow-hidden">{content}</div>
     </div>
   )
+
+  if (layout === 'appreciation') {
+    return <CertificateAppreciationLayout data={data} compact={compact} forPdf={forPdf} />
+  }
+  if (layout === 'ornate') {
+    return <OrnateCertificateLayout data={data} compact={compact} forPdf={forPdf} />
+  }
+  if (layout === 'medallion') {
+    return <MedallionCertificateLayout data={data} compact={compact} forPdf={forPdf} />
+  }
+  if (layout === 'horizon') {
+    return <HorizonCertificateLayout data={data} compact={compact} forPdf={forPdf} />
+  }
+  if (layout === 'laurel') {
+    return <LaurelCertificateLayout data={data} compact={compact} forPdf={forPdf} />
+  }
+  if (layout === 'regal') {
+    return <RegalCertificateLayout data={data} compact={compact} forPdf={forPdf} />
+  }
 
   if (layout === 'modern') {
     return shell(

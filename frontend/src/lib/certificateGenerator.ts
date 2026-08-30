@@ -8,6 +8,7 @@ import html2canvas from 'html2canvas'
 import jsPDF from 'jspdf'
 import CertificateCanvas from '@/components/certificates/CertificateCanvas'
 import {
+  isLandscapeCertificateLayout,
   normalizeCertificateLayoutKey,
   type CertificateRenderData,
 } from '@/lib/certificateTemplates'
@@ -558,11 +559,14 @@ export async function generateCertificatePDF(certificateData: Record<string, any
   const data = await prepareDataForPdfCapture(hydrated)
   const isUpload = data.layoutKey === 'custom_upload'
   const isBuilder = data.layoutKey === 'logo_builder' && !!data.logoBuilderDesign?.canvas
+  const isLandscape = isLandscapeCertificateLayout(data.layoutKey)
 
   const aspect =
     isUpload && data.customAspectRatio && data.customAspectRatio > 0
       ? data.customAspectRatio
-      : 297 / 210
+      : isLandscape
+        ? 297 / 210
+        : 210 / 297
 
   const pageWpx = isBuilder
     ? Math.max(400, Math.round(data.logoBuilderDesign!.canvas.width))
@@ -570,13 +574,17 @@ export async function generateCertificatePDF(certificateData: Record<string, any
       ? aspect >= 1
         ? 1123
         : 794
-      : 794
+      : isLandscape
+        ? 1123
+        : 794
 
   const pageHpx = isBuilder
     ? Math.max(400, Math.round(data.logoBuilderDesign!.canvas.height))
     : isUpload
       ? Math.max(400, Math.round(pageWpx / Math.max(0.4, aspect)))
-      : Math.round(pageWpx * (297 / 210))
+      : isLandscape
+        ? Math.round(pageWpx * (210 / 297))
+        : Math.round(pageWpx * (297 / 210))
 
   // PDF page mm matches builder paper (A4/Letter/custom) so export equals canvas
   let pageWmm: number

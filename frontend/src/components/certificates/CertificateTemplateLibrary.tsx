@@ -7,6 +7,7 @@ import { getDocumentTemplate, setActiveCertificateTemplate } from '@/lib/api'
 import {
   CERTIFICATE_TEMPLATE_LIBRARY,
   isBuiltInCertificateLayoutKey,
+  isLandscapeCertificateLayout,
   normalizeCertificateLayoutKey,
   type CertificateLayoutKey,
   type CertificateRenderData,
@@ -80,7 +81,11 @@ const CertificateTemplateLibrary = () => {
       rightName: getSignatoryRightName(institution) || undefined,
       footerText: getCertificateFooterText(institution) || undefined,
       studentName: 'Amina Hassan',
+      studentId: 'STU-1042',
+      startMonth: 'Jan 2026',
+      completionMonth: 'Aug 2026',
       programName: 'Professional Training Certificate',
+      className: 'Cohort A',
       certificateNumber: 'CERT-PREVIEW-001',
       verifyCode: 'previewcode12345678',
       verificationUrl: 'https://example.com/verify-certificate/previewcode12345678',
@@ -141,18 +146,23 @@ const CertificateTemplateLibrary = () => {
                 >
                   <div className="flex items-center justify-between gap-2 mb-2">
                     <p className="text-sm font-medium text-white truncate">{tpl.name}</p>
-                    {isActive ? (
-                      <Badge className="bg-emerald-600/20 text-emerald-300 border-emerald-700/40 text-[10px]">
-                        Active
-                      </Badge>
-                    ) : (
-                      <span
-                        className="h-2 w-2 rounded-full shrink-0"
-                        style={{ backgroundColor: tpl.accentHint }}
-                      />
-                    )}
+                    <div className="flex items-center gap-1.5 shrink-0">
+                      {isLandscapeCertificateLayout(tpl.key) ? (
+                        <span className="text-[9px] uppercase tracking-wide text-amber-200/90">Landscape</span>
+                      ) : null}
+                      {isActive ? (
+                        <Badge className="bg-emerald-600/20 text-emerald-300 border-emerald-700/40 text-[10px]">
+                          Active
+                        </Badge>
+                      ) : (
+                        <span
+                          className="h-2 w-2 rounded-full shrink-0"
+                          style={{ backgroundColor: tpl.accentHint }}
+                        />
+                      )}
+                    </div>
                   </div>
-                  <div className="pointer-events-none max-h-28 overflow-hidden rounded border border-slate-800 bg-white">
+                  <div className="pointer-events-none overflow-hidden rounded border border-slate-800 bg-white">
                     <CertificateCanvas compact data={{ ...sampleData, layoutKey: tpl.key }} />
                   </div>
                 </button>
@@ -185,7 +195,11 @@ const CertificateTemplateLibrary = () => {
                 )}
               </Button>
             </div>
-            <div className="max-w-md mx-auto bg-white rounded overflow-hidden">
+            <div
+              className={`mx-auto bg-white rounded overflow-hidden ${
+                isLandscapeCertificateLayout(previewKey) ? 'max-w-2xl' : 'max-w-md'
+              }`}
+            >
               <CertificateCanvas data={sampleData} />
             </div>
           </div>
