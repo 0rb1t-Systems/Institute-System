@@ -97,6 +97,12 @@ const TranscriptCanvas = ({ data, compact = false }: Props) => {
           </div>
         </div>
 
+        {data.narrativeText ? (
+          <p className={`text-justify text-black leading-snug ${compact ? 'text-[3px]' : 'text-[6px]'}`}>
+            {data.narrativeText}
+          </p>
+        ) : null}
+
         <table className={`w-full border-collapse ${chrome.tableBorder}`} style={styles.tableBorderColor ? { borderColor: styles.tableBorderColor } : undefined}>
           <thead>
             <tr className="border-b border-inherit">

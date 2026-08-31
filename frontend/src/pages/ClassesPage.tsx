@@ -447,7 +447,7 @@ const ClassForm = ({ classInfo, onSave, closeDialog }: any) => {
                           One-time instructor pay for this class. Accrues when the class is saved — not per student payment.
                         </p>
                       </div>
-                  </div>
+                    </div>
                 )}
 
                  {duration_months > 0 && fee > 0 && (

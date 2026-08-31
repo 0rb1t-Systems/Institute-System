@@ -16,6 +16,7 @@ import {
   getInstitutionContactLine,
   getVerificationUrl,
   getTranscriptFooterText,
+  getTranscriptNarrativeText,
   resolveDocumentBranding,
   getInstitutionPrimary,
   getSignatoryLeftName,
@@ -373,6 +374,7 @@ const TranscriptView = ({ studentId, onClose }: any) => {
     const institutionName = getInstitutionDisplayName(brand);
     const contactLine = getInstitutionContactLine(brand);
     const transcriptFooter = getTranscriptFooterText(brand);
+    const transcriptNarrative = getTranscriptNarrativeText(brand, currentDiploma, currentClass);
     const primary = getInstitutionPrimary(brand);
 
     // Live institution template (Page Builder / Upload Own activate immediately, like certificates)
@@ -406,6 +408,7 @@ const TranscriptView = ({ studentId, onClose }: any) => {
     const layoutKey = libraryTranscriptLayoutKey(liveLayoutKey);
     const chrome = getTranscriptLayoutChrome(layoutKey, primary);
     const layoutStyles = getTranscriptLayoutStyles(layoutKey, primary);
+    const showNarrative = !!transcriptNarrative;
 
     const gradesSummary = useMemo(
       () =>
@@ -732,9 +735,6 @@ const TranscriptView = ({ studentId, onClose }: any) => {
 
                                     <span className="text-black font-bold uppercase">Start Month:</span>
                                     <span className="font-bold text-black uppercase">{programMonths.startMonth}</span>
-
-                                    <span className="text-black font-bold uppercase">Completion Month:</span>
-                                    <span className="font-bold text-black uppercase">{programMonths.completionMonth}</span>
                                 </div>
                             </div>
                             <div>
@@ -745,6 +745,9 @@ const TranscriptView = ({ studentId, onClose }: any) => {
 
                                     <span className="text-black font-bold uppercase">Credential No:</span>
                                     <span className="text-black font-bold font-mono">{credentialNumber}</span>
+
+                                    <span className="text-black font-bold uppercase">Completion Month:</span>
+                                    <span className="font-bold text-black uppercase">{programMonths.completionMonth}</span>
                                 </div>
                             </div>
                         </div>
@@ -769,8 +772,8 @@ const TranscriptView = ({ studentId, onClose }: any) => {
                         </div>
                     </div>
 
-                    {/* Performance Summary - Compact */}
-                    <div className="mb-4 flex gap-4 print:hidden">
+                    {/* Performance Summary */}
+                    <div className="mb-4 flex gap-4 print:mb-3">
                         <div className="bg-white p-2 px-4 rounded border-2 border-black flex-1">
                             <div className="text-[10px] text-black font-bold uppercase">Cumulative GPA</div>
                             <div className="text-2xl font-black text-black">{stats.gpa}</div>
@@ -786,6 +789,12 @@ const TranscriptView = ({ studentId, onClose }: any) => {
                             </div>
                         </div>
                     </div>
+
+                    {showNarrative ? (
+                      <p className="mb-4 text-[11px] leading-relaxed text-black text-justify print:mb-3 print:text-[10px]">
+                        {transcriptNarrative}
+                      </p>
+                    ) : null}
 
                     {/* Grades Table */}
                     <div className={`flex-1 print:mb-2 ${layoutKey === 'compact' ? 'mb-2' : 'mb-4'}`}>

@@ -30,6 +30,23 @@ export type TranscriptTemplateMeta = {
   category: string
   description: string
   accentHint: string
+  /** Official layouts include the completion narrative under GPA. */
+  showsNarrative?: boolean
+}
+
+/** Default paragraph for official transcript layouts (Classic / Academic / Formal / Bordered). */
+export const DEFAULT_TRANSCRIPT_NARRATIVE =
+  'The student successfully completed all prescribed coursework, final examinations, and program assessments in accordance with the academic requirements of the program. In fulfillment of the research and publication component, the student published two peer-reviewed scientific articles in Scopus-indexed journals, demonstrating competence in research design, scientific writing, data analysis, and scholarly publication. The student served as the first author on at least one of the published articles, evidencing substantial intellectual leadership and primary responsibility for the research.'
+
+const TRANSCRIPT_NARRATIVE_LAYOUTS = new Set<string>([
+  'classic',
+  'academic',
+  'formal',
+  'bordered',
+])
+
+export function transcriptLayoutShowsNarrative(raw?: string | null): boolean {
+  return TRANSCRIPT_NARRATIVE_LAYOUTS.has(libraryTranscriptLayoutKey(raw))
 }
 
 export function isCustomTranscriptLayout(raw?: string | null): boolean {
@@ -69,8 +86,9 @@ export const TRANSCRIPT_TEMPLATE_LIBRARY: TranscriptTemplateMeta[] = [
     key: 'classic',
     name: 'Classic',
     category: 'Classic',
-    description: 'Traditional black rules and official transcript title block.',
+    description: 'Traditional black rules, official title block, and completion narrative.',
     accentHint: '#111827',
+    showsNarrative: true,
   },
   {
     key: 'modern',
@@ -83,15 +101,17 @@ export const TRANSCRIPT_TEMPLATE_LIBRARY: TranscriptTemplateMeta[] = [
     key: 'academic',
     name: 'Academic',
     category: 'Academic',
-    description: 'Formal academic record with navy emphasis.',
+    description: 'Formal academic record with navy emphasis and completion narrative.',
     accentHint: '#1E3A5F',
+    showsNarrative: true,
   },
   {
     key: 'formal',
     name: 'Formal',
     category: 'Formal',
-    description: 'Double-frame margins for official institutional use.',
+    description: 'Double-frame margins with completion narrative for official use.',
     accentHint: '#0F172A',
+    showsNarrative: true,
   },
   {
     key: 'minimal',
@@ -118,8 +138,9 @@ export const TRANSCRIPT_TEMPLATE_LIBRARY: TranscriptTemplateMeta[] = [
     key: 'bordered',
     name: 'Bordered',
     category: 'Formal',
-    description: 'Full outer border with accent corner marks.',
+    description: 'Full outer border, accent marks, and completion narrative.',
     accentHint: '#9F1239',
+    showsNarrative: true,
   },
 ]
 
@@ -137,6 +158,7 @@ export type TranscriptRenderData = {
   programName: string
   credentialNumber: string
   footerText?: string
+  narrativeText?: string
   gpa?: string
   courses?: Array<{ code: string; name: string; marks: string; grade: string }>
 }

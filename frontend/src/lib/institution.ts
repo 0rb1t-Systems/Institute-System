@@ -39,6 +39,7 @@ export type InstitutionBrand = {
   student_id_pad?: number | null
   student_id_last?: number | null
   transcript_footer_text?: string | null
+  transcript_narrative_text?: string | null
   invoice_footer_text?: string | null
   settings_completed_at?: string | null
   landing_template_id?: string | null
@@ -782,6 +783,17 @@ export function getCertificateFooterText(institution?: InstitutionBrand): string
 
 export function getTranscriptFooterText(institution?: InstitutionBrand): string {
   return String(institution?.transcript_footer_text || '').trim()
+}
+
+type ClassNarrativeSource = { transcript_narrative_text?: string | null } | null | undefined
+
+/** Live transcripts show this paragraph only when the selected class has text. */
+export function getTranscriptNarrativeText(
+  _institution?: InstitutionBrand,
+  _diploma?: ClassNarrativeSource,
+  classRow?: ClassNarrativeSource,
+): string {
+  return String(classRow?.transcript_narrative_text || '').trim()
 }
 
 export function getInvoiceFooterText(institution?: InstitutionBrand): string {

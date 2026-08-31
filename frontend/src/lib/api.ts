@@ -11,7 +11,7 @@ import { landingContentForSave } from '@/lib/landingContent'
 const notReady = (_feature) => new Error('FEATURE_UNAVAILABLE')
 
 const INST_SELECT =
-  'id, name, subdomain, logo_url, description, email, phone, address, website, motto, theme_primary, theme_accent, theme_tertiary, social_whatsapp, social_facebook, social_tiktok, status, created_at, affiliate_commission_rate, registration_fee_amount, default_instructor_commission_rate, currency, currency_symbol, signatory_left_title, signatory_right_title, signatory_left_name, signatory_right_name, seal_url, signature_url, certificate_footer_text, transcript_footer_text, invoice_footer_text, certificate_number_start, certificate_number_pad, certificate_number_last, student_id_prefix, student_id_start, student_id_pad, student_id_last, settings_completed_at, landing_template_id, hero_image_url, hero_headline, footer_text, landing_content, grading_scale'
+  'id, name, subdomain, logo_url, description, email, phone, address, website, motto, theme_primary, theme_accent, theme_tertiary, social_whatsapp, social_facebook, social_tiktok, status, created_at, affiliate_commission_rate, registration_fee_amount, default_instructor_commission_rate, currency, currency_symbol, signatory_left_title, signatory_right_title, signatory_left_name, signatory_right_name, seal_url, signature_url, certificate_footer_text, transcript_footer_text, transcript_narrative_text, invoice_footer_text, certificate_number_start, certificate_number_pad, certificate_number_last, student_id_prefix, student_id_start, student_id_pad, student_id_last, settings_completed_at, landing_template_id, hero_image_url, hero_headline, footer_text, landing_content, grading_scale'
 
 async function requireUser() {
   const { data, error } = await supabase.auth.getUser()
@@ -121,6 +121,13 @@ function classPayloadFromUi(data) {
       settlementModel === 'fixed_fee'
         ? Math.max(0, Number(data.instructor_fixed_fee ?? 0))
         : 0,
+    transcript_narrative_text:
+      data.transcript_narrative_text === undefined
+        ? undefined
+        : String(data.transcript_narrative_text || '').trim() || null,
+  }
+  if (payload.transcript_narrative_text === undefined) {
+    delete payload.transcript_narrative_text
   }
   if (payload.program_type === 'course') payload.diploma_id = null
   if (payload.program_type === 'diploma') payload.course_id = null
@@ -1224,6 +1231,9 @@ export const updateInstitution = async (updates) => {
   if (updates.transcript_footer_text !== undefined) {
     allowed.transcript_footer_text = String(updates.transcript_footer_text || '').trim() || null
   }
+  if (updates.transcript_narrative_text !== undefined) {
+    allowed.transcript_narrative_text = String(updates.transcript_narrative_text || '').trim() || null
+  }
   if (updates.invoice_footer_text !== undefined) {
     allowed.invoice_footer_text = String(updates.invoice_footer_text || '').trim() || null
   }
@@ -2015,6 +2025,10 @@ export const createDiploma = async (data) => {
       institution_id: me.institution_id,
       name: data.name,
       description: data.description || null,
+      transcript_narrative_text:
+        data.transcript_narrative_text === undefined
+          ? null
+          : String(data.transcript_narrative_text || '').trim() || null,
     })
     .select()
     .single()
@@ -2026,6 +2040,9 @@ export const updateDiploma = async (id, data) => {
   const updates: any = {}
   if (data.name !== undefined) updates.name = data.name
   if (data.description !== undefined) updates.description = data.description
+  if (data.transcript_narrative_text !== undefined) {
+    updates.transcript_narrative_text = String(data.transcript_narrative_text || '').trim() || null
+  }
   const { data: row, error } = await supabase
     .from('diplomas')
     .update(updates)
@@ -2106,6 +2123,9 @@ export const updateClass = async (id, data) => {
   }
   if (data.diploma_id !== undefined) {
     updates.diploma_id = data.diploma_id && data.diploma_id !== 'none' ? data.diploma_id : null
+  }
+  if (data.transcript_narrative_text !== undefined) {
+    updates.transcript_narrative_text = String(data.transcript_narrative_text || '').trim() || null
   }
   // Keep fee at 0 when switching back to commission
   if (updates.settlement_model === 'commission' && data.instructor_fixed_fee === undefined) {
