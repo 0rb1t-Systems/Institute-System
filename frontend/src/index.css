@@ -319,6 +319,9 @@
   #transcript-page-2 {
     box-shadow: none !important;
     page-break-after: always;
+    height: 297mm !important;
+    max-height: 297mm !important;
+    overflow: hidden !important;
   }
   
   .print-only { 

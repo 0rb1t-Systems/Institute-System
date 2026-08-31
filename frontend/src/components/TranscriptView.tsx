@@ -666,40 +666,33 @@ const TranscriptView = ({ studentId, onClose }: any) => {
             ) : (
             <div
               id="transcript-page-1"
-              className={`bg-white text-black shadow-2xl w-[210mm] min-w-[210mm] mx-auto h-[297mm] overflow-hidden relative flex flex-col print:shadow-none print:m-0 print:w-full print:min-w-0 print:h-screen print:break-after-page ${chrome.outerFrame} ${chrome.pageExtra}`}
+              className={`bg-white text-black shadow-2xl w-[210mm] min-w-[210mm] mx-auto h-[297mm] max-h-[297mm] overflow-hidden relative flex flex-col print:shadow-none print:m-0 print:w-full print:min-w-0 print:h-[297mm] print:max-h-[297mm] print:break-after-page ${chrome.outerFrame} ${chrome.pageExtra}`}
             >
                 
                 {/* Header */}
                 <div
-                  className={`px-8 pt-6 pb-2 print:px-6 print:pt-4 print:pb-2 print:mb-2 ${chrome.headerBorder}`}
+                  className={`shrink-0 px-6 pt-5 pb-2 print:px-6 print:pt-4 print:pb-2 ${showNarrative ? 'pt-4' : ''} ${chrome.headerBorder}`}
                   style={layoutStyles.headerBorderColor ? { borderBottomColor: layoutStyles.headerBorderColor } : undefined}
                 >
-                    <div className="flex flex-col md:flex-row justify-between items-start gap-4">
-                        <div className="flex items-center gap-4 shrink-0">
+                    <div className="flex justify-between items-start gap-3">
+                        <div className="flex items-center gap-3 min-w-0 flex-1">
                             <div className="shrink-0">
-                                <Logo className="h-20 w-auto print:h-20 text-black" />
+                                <Logo className={`${showNarrative ? 'h-16 print:h-16' : 'h-20 print:h-20'} w-auto text-black`} />
                             </div>
-                            {!brand?.logo_url ? (
                             <div className="space-y-0 min-w-0">
-                                <h1 className="text-xl font-black tracking-tight uppercase text-black leading-tight max-w-lg">{institutionName}</h1>
-                                <p className="text-xs font-bold text-black mt-1">{contactLine}</p>
-                            </div>
-                            ) : (
-                              <div className="space-y-0 min-w-0">
-                                <h1 className="text-xl font-black tracking-tight uppercase text-black leading-tight max-w-lg">{institutionName}</h1>
+                                <h1 className={`${showNarrative ? 'text-base' : 'text-xl'} font-black tracking-tight uppercase text-black leading-tight`}>{institutionName}</h1>
                                 {contactLine ? (
-                                  <p className="text-xs font-bold text-black mt-1">{contactLine}</p>
+                                  <p className="text-[10px] font-bold text-black mt-0.5 leading-snug">{contactLine}</p>
                                 ) : null}
-                              </div>
-                            )}
+                            </div>
                         </div>
-                        <div className="text-right hidden md:block print:block shrink-0 mt-2 mr-2">
+                        <div className="text-right shrink-0">
                             <div
                               className={`inline-block p-1 ${chrome.badgeBorder}`}
                               style={layoutStyles.badgeBorderColor ? { borderColor: layoutStyles.badgeBorderColor } : undefined}
                             >
-                                <div className="bg-white px-3 py-1 print:bg-white">
-                                    <div className="text-xs font-black uppercase tracking-widest text-black">Official Transcript</div>
+                                <div className="bg-white px-2.5 py-1 print:bg-white">
+                                    <div className="text-[10px] font-black uppercase tracking-widest text-black whitespace-nowrap">Official Transcript</div>
                                 </div>
                             </div>
                         </div>
@@ -707,7 +700,7 @@ const TranscriptView = ({ studentId, onClose }: any) => {
                     
                     {/* Program Title Bar */}
                     <div
-                      className={`mt-4 py-2 px-3 text-center print:mt-2 ${chrome.titleBar} ${chrome.titleBarText}`}
+                      className={`mt-3 py-1.5 px-3 text-center print:mt-2 ${chrome.titleBar} ${chrome.titleBarText}`}
                       style={{
                         backgroundColor: layoutStyles.titleBarBg,
                         color: layoutStyles.titleBarColor,
@@ -715,20 +708,20 @@ const TranscriptView = ({ studentId, onClose }: any) => {
                         printColorAdjust: 'exact',
                       }}
                     >
-                        <h3 className="text-base font-bold uppercase tracking-wider">{programName}</h3>
+                        <h3 className={`${showNarrative ? 'text-sm' : 'text-base'} font-bold uppercase tracking-wider leading-tight`}>{programName}</h3>
                     </div>
                 </div>
 
-                <div className={`px-8 py-4 flex-1 flex flex-col print:px-6 print:py-2 ${layoutKey === 'compact' ? 'py-2' : ''}`}>
+                <div className={`px-6 ${showNarrative ? 'py-2' : 'py-4'} min-h-0 flex-1 flex flex-col print:px-6 print:py-2 ${layoutKey === 'compact' ? 'py-2' : ''}`}>
                     {/* Student Info & Photo Grid */}
-                    <div className={`flex justify-between items-start gap-4 relative z-10 ${layoutKey === 'compact' ? 'mb-2' : 'mb-4'} print:mb-4`}>
+                    <div className={`flex justify-between items-start gap-3 relative z-10 shrink-0 ${showNarrative || layoutKey === 'compact' ? 'mb-2' : 'mb-4'}`}>
                         
-                        <div className="flex-1 grid grid-cols-2 gap-8">
+                        <div className="flex-1 min-w-0 grid grid-cols-2 gap-6">
                             <div>
-                                <h3 className={`text-[10px] font-bold text-black uppercase tracking-wider pb-1 mb-2 print:text-black ${chrome.sectionRule}`}>Student Details</h3>
-                                <div className="grid grid-cols-[128px_1fr] gap-y-1 text-xs print:text-xs">
+                                <h3 className={`text-[10px] font-bold text-black uppercase tracking-wider pb-1 mb-1 print:text-black ${chrome.sectionRule}`}>Student Details</h3>
+                                <div className="grid grid-cols-[120px_1fr] gap-y-0.5 text-[11px] print:text-[11px]">
                                     <span className="text-black font-bold uppercase">Full Name:</span>
-                                    <span className="font-bold text-black text-sm uppercase">{studentData.name}</span>
+                                    <span className="font-bold text-black text-xs uppercase leading-tight">{studentData.name}</span>
                                     
                                     <span className="text-black font-bold uppercase">Student ID:</span>
                                     <span className="font-bold text-black font-mono">{studentData.student_code}</span>
@@ -738,10 +731,10 @@ const TranscriptView = ({ studentId, onClose }: any) => {
                                 </div>
                             </div>
                             <div>
-                                <h3 className={`text-[10px] font-bold text-black uppercase tracking-wider pb-1 mb-2 print:text-black ${chrome.sectionRule}`}>Credential Details</h3>
-                                <div className="grid grid-cols-[100px_1fr] gap-y-1 text-xs print:text-xs">
+                                <h3 className={`text-[10px] font-bold text-black uppercase tracking-wider pb-1 mb-1 print:text-black ${chrome.sectionRule}`}>Credential Details</h3>
+                                <div className="grid grid-cols-[108px_1fr] gap-y-0.5 text-[11px] print:text-[11px]">
                                     <span className="text-black font-bold uppercase">Institution:</span>
-                                    <span className="text-black font-bold uppercase">{institutionName}</span>
+                                    <span className="text-black font-bold uppercase leading-tight">{institutionName}</span>
 
                                     <span className="text-black font-bold uppercase">Credential No:</span>
                                     <span className="text-black font-bold font-mono">{credentialNumber}</span>
@@ -753,7 +746,7 @@ const TranscriptView = ({ studentId, onClose }: any) => {
                         </div>
 
                         {/* Student Photo */}
-                        <div className="w-[120px] h-[140px] border border-black bg-slate-50 flex items-center justify-center overflow-hidden shrink-0">
+                        <div className={`${showNarrative ? 'w-[96px] h-[112px]' : 'w-[120px] h-[140px]'} border border-black bg-slate-50 flex items-center justify-center overflow-hidden shrink-0`}>
                              {studentData.avatar_url ? (
                                 <img 
                                     src={studentData.avatar_url} 
@@ -766,23 +759,22 @@ const TranscriptView = ({ studentId, onClose }: any) => {
                                     }}
                                 />
                              ) : (
-                                <User className="h-16 w-16 text-slate-300" />
+                                <User className="h-14 w-14 text-slate-300" />
                              )}
-                             {!studentData.avatar_url && <User className="h-16 w-16 text-slate-300 absolute" />}
                         </div>
                     </div>
 
                     {/* Performance Summary */}
-                    <div className="mb-4 flex gap-4 print:mb-3">
-                        <div className="bg-white p-2 px-4 rounded border-2 border-black flex-1">
-                            <div className="text-[10px] text-black font-bold uppercase">Cumulative GPA</div>
-                            <div className="text-2xl font-black text-black">{stats.gpa}</div>
+                    <div className={`flex gap-3 shrink-0 ${showNarrative ? 'mb-2' : 'mb-4 print:mb-3'}`}>
+                        <div className={`bg-white px-3 rounded border-2 border-black flex-1 ${showNarrative ? 'py-1' : 'p-2'}`}>
+                            <div className="text-[9px] text-black font-bold uppercase">Cumulative GPA</div>
+                            <div className={`${showNarrative ? 'text-lg' : 'text-2xl'} font-black text-black leading-tight`}>{stats.gpa}</div>
                         </div>
-                        <div className="bg-white p-2 px-4 rounded border-2 border-black flex-1">
-                            <div className="text-[10px] text-black font-bold uppercase">Academic Standing</div>
-                            <div className="text-sm font-bold mt-1">
+                        <div className={`bg-white px-3 rounded border-2 border-black flex-1 ${showNarrative ? 'py-1' : 'p-2'}`}>
+                            <div className="text-[9px] text-black font-bold uppercase">Academic Standing</div>
+                            <div className={`${showNarrative ? 'text-xs' : 'text-sm'} font-bold mt-0.5`}>
                                 {stats.failed === 0 && stats.passed > 0 ? (
-                                    <span className="text-black flex items-center gap-1"><CheckCircle2 className="h-4 w-4"/> Good Standing</span>
+                                    <span className="text-black flex items-center gap-1"><CheckCircle2 className="h-3.5 w-3.5"/> Good Standing</span>
                                 ) : (
                                     <span className="text-black">Active</span>
                                 )}
@@ -791,23 +783,23 @@ const TranscriptView = ({ studentId, onClose }: any) => {
                     </div>
 
                     {showNarrative ? (
-                      <p className="mb-4 text-[11px] leading-relaxed text-black text-justify print:mb-3 print:text-[10px]">
+                      <p className="shrink-0 mb-2 text-[9px] leading-snug text-black text-justify print:text-[9px]">
                         {transcriptNarrative}
                       </p>
                     ) : null}
 
                     {/* Grades Table */}
-                    <div className={`flex-1 print:mb-2 ${layoutKey === 'compact' ? 'mb-2' : 'mb-4'}`}>
+                    <div className={`min-h-0 flex-1 ${showNarrative || layoutKey === 'compact' ? 'mb-1' : 'mb-4 print:mb-2'}`}>
                         <Table
                           className={`w-full border-collapse ${chrome.tableBorder}`}
                           style={layoutStyles.tableBorderColor ? { borderColor: layoutStyles.tableBorderColor } : undefined}
                         >
                             <TableHeader>
-                                <TableRow className="border-b-2 border-black bg-white hover:bg-white h-8">
-                                    <TableHead className="font-bold text-black uppercase text-[10px] w-[100px] border-r border-black h-8 py-1 pl-2">Code</TableHead>
-                                    <TableHead className="font-bold text-black uppercase text-[10px] border-r border-black h-8 py-1 px-2 text-left">Course Title</TableHead>
-                                    <TableHead className="font-bold text-black uppercase text-[10px] text-center w-[80px] border-r border-black h-8 py-1">Score</TableHead>
-                                    <TableHead className="font-bold text-black uppercase text-[10px] text-center w-[80px] h-8 py-1 pr-2">Grade</TableHead>
+                                <TableRow className="border-b-2 border-black bg-white hover:bg-white h-7">
+                                    <TableHead className="font-bold text-black uppercase text-[10px] w-[100px] border-r border-black h-7 py-1 pl-2">Code</TableHead>
+                                    <TableHead className="font-bold text-black uppercase text-[10px] border-r border-black h-7 py-1 px-2 text-left">Course Title</TableHead>
+                                    <TableHead className="font-bold text-black uppercase text-[10px] text-center w-[80px] border-r border-black h-7 py-1">Score</TableHead>
+                                    <TableHead className="font-bold text-black uppercase text-[10px] text-center w-[80px] h-7 py-1 pr-2">Grade</TableHead>
                                 </TableRow>
                             </TableHeader>
                             <TableBody>
@@ -815,19 +807,19 @@ const TranscriptView = ({ studentId, onClose }: any) => {
                                     <React.Fragment key={group.key}>
                                         {group.name ? (
                                             <TableRow className="bg-slate-100 hover:bg-slate-100 border-b border-black">
-                                                <TableCell colSpan={4} className="py-1.5 px-2 font-black uppercase text-[10px] tracking-wide text-black">
+                                                <TableCell colSpan={4} className={`${showNarrative ? 'py-1' : 'py-1.5'} px-2 font-black uppercase text-[10px] tracking-wide text-black`}>
                                                     {group.name}
                                                 </TableCell>
                                             </TableRow>
                                         ) : null}
                                         {group.rows.map((row) => (
                                             <TableRow key={row.id} className="bg-white hover:bg-slate-50 h-auto border-b border-black">
-                                                <TableCell className="font-mono font-bold text-black text-xs py-2 pl-2 border-r border-black">{row.code}</TableCell>
-                                                <TableCell className="py-2 px-2 border-r border-black">
-                                                    <div className="font-bold text-black text-xs uppercase">{row.name}</div>
+                                                <TableCell className={`font-mono font-bold text-black text-xs ${showNarrative ? 'py-1' : 'py-2'} pl-2 border-r border-black`}>{row.code}</TableCell>
+                                                <TableCell className={`${showNarrative ? 'py-1' : 'py-2'} px-2 border-r border-black`}>
+                                                    <div className="font-bold text-black text-xs uppercase leading-tight">{row.name}</div>
                                                 </TableCell>
-                                                <TableCell className="text-center font-bold text-black text-xs py-2 border-r border-black">{row.marks !== null ? row.marks : '-'}</TableCell>
-                                                <TableCell className="text-center font-bold text-black text-xs py-2 pr-2">{row.grade}</TableCell>
+                                                <TableCell className={`text-center font-bold text-black text-xs ${showNarrative ? 'py-1' : 'py-2'} border-r border-black`}>{row.marks !== null ? row.marks : '-'}</TableCell>
+                                                <TableCell className={`text-center font-bold text-black text-xs ${showNarrative ? 'py-1' : 'py-2'} pr-2`}>{row.grade}</TableCell>
                                             </TableRow>
                                         ))}
                                     </React.Fragment>
@@ -838,34 +830,34 @@ const TranscriptView = ({ studentId, onClose }: any) => {
                         </Table>
                     </div>
                     
-                    <div className="flex justify-end mb-6 print:mb-4">
-                        <div className="w-56 border-2 border-black p-3 bg-white">
-                            <div className="flex justify-between text-xs font-bold mb-1 text-black">
+                    <div className={`flex justify-end shrink-0 ${showNarrative ? 'mb-2' : 'mb-6 print:mb-4'}`}>
+                        <div className={`w-56 border-2 border-black bg-white ${showNarrative ? 'px-2 py-1.5' : 'p-3'}`}>
+                            <div className="flex justify-between text-[11px] font-bold mb-0.5 text-black">
                                 <span className="uppercase">Total Credits:</span>
                                 <span>{transcriptData.reduce((sum: any, t: any) => sum + (t.credits || 3), 0)}</span>
                             </div>
-                            <div className="flex justify-between text-xs font-bold text-black">
+                            <div className="flex justify-between text-[11px] font-bold text-black">
                                 <span className="uppercase">CGPA:</span>
                                 <span>{stats.gpa}</span>
                             </div>
                         </div>
                     </div>
 
-                    {/* Footer & Signatures - Compact */}
-                    <div className="mt-auto">
-                        <div className="grid grid-cols-2 gap-12 pt-4 mt-4 border-t border-black print:mt-2 print:pt-2">
+                    {/* Footer stays on page 1 (preview + PDF) */}
+                    <div className="mt-auto shrink-0">
+                        <div className={`grid grid-cols-2 gap-12 border-t border-black ${showNarrative ? 'pt-2 mt-1' : 'pt-4 mt-4 print:mt-2 print:pt-2'}`}>
                             <div className="text-center">
-                                <div className="h-12 border-b border-black mb-1"></div>
+                                <div className={`${showNarrative ? 'h-8' : 'h-12'} border-b border-black mb-1`}></div>
                                 <p className="text-[10px] uppercase font-bold text-black">Registrar Signature</p>
                             </div>
                             <div className="text-center">
-                                <div className="h-12 border-b border-black mb-1"></div>
+                                <div className={`${showNarrative ? 'h-8' : 'h-12'} border-b border-black mb-1`}></div>
                                 <p className="text-[10px] uppercase font-bold text-black">Date Issued</p>
                             </div>
                         </div>
 
-                        <div className="mt-4 text-center">
-                            <p className="text-[8px] text-black font-bold uppercase tracking-wider">
+                        <div className={`${showNarrative ? 'mt-2' : 'mt-4'} text-center px-2`}>
+                            <p className="text-[8px] text-black font-bold uppercase tracking-wider leading-snug">
                                 {transcriptFooter || (
                                   <>
                                     This document is an official transcript of the student&apos;s academic record.
@@ -875,11 +867,10 @@ const TranscriptView = ({ studentId, onClose }: any) => {
                             </p>
                         </div>
                         
-                        {/* QR Code for Verification - Visible in Print */}
-                        <div className="mt-3 flex justify-center pb-4 print:mt-2 print:pb-2">
+                        <div className={`flex justify-center ${showNarrative ? 'mt-1.5 pb-2' : 'mt-3 pb-4 print:mt-2 print:pb-2'}`}>
                             {verifyUrl ? (
-                              <div className="flex flex-col items-center gap-1">
-                                  <QRCode value={verifyUrl} size={48} fgColor="#000000" />
+                              <div className="flex flex-col items-center gap-0.5">
+                                  <QRCode value={verifyUrl} size={showNarrative ? 40 : 48} fgColor="#000000" />
                                   <span className="text-[6px] font-mono font-bold text-black">{verifyCode}</span>
                               </div>
                             ) : (
