@@ -51,7 +51,7 @@ import {
   getLetterGradeFromScale,
   isCoursePassedFromScale,
 } from '@/lib/gradingScale';
-import { coursesForDiploma, groupTranscriptRowsBySemester, semestersForDiploma } from '@/lib/diplomaCourses';
+import { coursesForClass, coursesForDiploma, groupTranscriptRowsBySemester, semestersForDiploma } from '@/lib/diplomaCourses';
 import { formatMonthYear } from '@/lib/utils';
 
 const TranscriptView = ({ studentId, onClose }: any) => {
@@ -121,7 +121,16 @@ const TranscriptView = ({ studentId, onClose }: any) => {
     // Fetch Diploma/Program Info
     const currentClass = useMemo(() => classes.find(c => c.id === selectedClassId), [classes, selectedClassId]);
     const currentDiploma = useMemo(() => currentClass?.diploma_id ? diplomas.find(d => d.id === currentClass.diploma_id) : null, [currentClass, diplomas]);
-    const programName = currentDiploma?.name || currentClass?.name || 'Academic Record';
+    const programName = useMemo(() => {
+      if (currentDiploma?.name) return currentDiploma.name;
+      const linked = coursesForClass(currentClass, courses, classCourses, diplomaCourses);
+      if (linked.length === 1 && linked[0]?.name) return linked[0].name;
+      const primaryCourse = currentClass?.course_id
+        ? courses.find((c) => c.id === currentClass.course_id)
+        : null;
+      if (primaryCourse?.name) return primaryCourse.name;
+      return 'Academic Record';
+    }, [currentDiploma, currentClass, courses, classCourses, diplomaCourses]);
 
     const programMonths = useMemo(() => {
       const enrollment = enrollments.find(
@@ -648,6 +657,7 @@ const TranscriptView = ({ studentId, onClose }: any) => {
                   design={customRenderData.logoBuilderDesign}
                   backgroundUrl={customRenderData.customBackgroundUrl}
                   composeUpload={liveLayoutKey === 'custom_upload'}
+                  hideInstitutionNameWhenLogo={false}
                 />
               </div>
             ) : (
@@ -667,15 +677,18 @@ const TranscriptView = ({ studentId, onClose }: any) => {
                                 <Logo className="h-20 w-auto print:h-20 text-black" />
                             </div>
                             {!brand?.logo_url ? (
-                            <div className="space-y-0">
+                            <div className="space-y-0 min-w-0">
                                 <h1 className="text-xl font-black tracking-tight uppercase text-black leading-tight max-w-lg">{institutionName}</h1>
                                 <p className="text-xs font-bold text-black mt-1">{contactLine}</p>
                             </div>
-                            ) : contactLine ? (
-                              <div className="space-y-0">
-                                <p className="text-xs font-bold text-black mt-1">{contactLine}</p>
+                            ) : (
+                              <div className="space-y-0 min-w-0">
+                                <h1 className="text-xl font-black tracking-tight uppercase text-black leading-tight max-w-lg">{institutionName}</h1>
+                                {contactLine ? (
+                                  <p className="text-xs font-bold text-black mt-1">{contactLine}</p>
+                                ) : null}
                               </div>
-                            ) : null}
+                            )}
                         </div>
                         <div className="text-right hidden md:block print:block shrink-0 mt-2 mr-2">
                             <div

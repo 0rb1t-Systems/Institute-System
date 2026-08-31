@@ -280,7 +280,7 @@ Deno.serve(async (req) => {
           .eq('id', inquiryId)
         return json({ error: 'STUDENT_ID_REQUIRED' }, 400)
       }
-      if (studentCode.length < 6) {
+      if (studentCode.length < 3) {
         await admin.auth.admin.deleteUser(studentId)
         await admin
           .from('registration_inquiries')
@@ -288,8 +288,9 @@ Deno.serve(async (req) => {
           .eq('id', inquiryId)
         return json({ error: 'STUDENT_ID_TOO_SHORT' }, 400)
       }
-      const { error: pwErr } = await admin.auth.admin.updateUserById(studentId, {
-        password: studentCode,
+      const { error: pwErr } = await admin.rpc('set_auth_password_exact', {
+        p_user_id: studentId,
+        p_password: studentCode,
       })
       if (pwErr) {
         await admin.auth.admin.deleteUser(studentId)

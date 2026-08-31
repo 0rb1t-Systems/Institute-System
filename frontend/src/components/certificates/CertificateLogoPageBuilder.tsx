@@ -688,8 +688,9 @@ const CertificateLogoPageBuilder = ({
         bind: 'none',
         text: 'logo-image',
       })
-      // Logo XOR name — drop institution name layers when logo is present
-      starter.elements = starter.elements.filter((el) => el.bind !== 'institutionName')
+      if (docType !== 'transcript') {
+        starter.elements = starter.elements.filter((el) => el.bind !== 'institutionName')
+      }
     }
     if (institution?.seal_url) {
       starter.elements.push({

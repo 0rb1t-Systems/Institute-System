@@ -8,7 +8,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Alert, AlertDescription } from '@/components/ui/alert'
-import { MESSAGES } from '@/lib/messages'
+import { MIN_CHOSEN_PASSWORD_LENGTH } from '@/lib/institution'
 
 const ResetPasswordPage = () => {
   const navigate = useNavigate()
@@ -55,8 +55,8 @@ const ResetPasswordPage = () => {
   const handleSubmit = async (e) => {
     e.preventDefault()
     setError('')
-    if (password.length < 8) {
-      setError('Use at least 8 characters.')
+    if (password.length < MIN_CHOSEN_PASSWORD_LENGTH) {
+      setError(`Use at least ${MIN_CHOSEN_PASSWORD_LENGTH} characters.`)
       return
     }
     if (password !== confirm) {
@@ -85,7 +85,7 @@ const ResetPasswordPage = () => {
         <CardHeader className="space-y-2 text-center">
           <CardTitle className="text-2xl font-bold text-[var(--pf-text)]">Set a new password</CardTitle>
           <CardDescription className="text-[var(--pf-muted)]">
-            Choose a password you have not used on this portal before.
+            Choose a password of at least 8 characters that you have not used on this portal before.
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -120,7 +120,7 @@ const ResetPasswordPage = () => {
                     autoComplete="new-password"
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
-                    minLength={8}
+                    minLength={MIN_CHOSEN_PASSWORD_LENGTH}
                     className="pr-11"
                     required
                   />
@@ -143,7 +143,7 @@ const ResetPasswordPage = () => {
                     autoComplete="new-password"
                     value={confirm}
                     onChange={(e) => setConfirm(e.target.value)}
-                    minLength={8}
+                    minLength={MIN_CHOSEN_PASSWORD_LENGTH}
                     className="pr-11"
                     required
                   />

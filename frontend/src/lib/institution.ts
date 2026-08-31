@@ -690,19 +690,20 @@ export function institutionNameInitials(name?: string | null): string {
   return (out || 'ST').slice(0, 4)
 }
 
-/** Auth requires passwords >= 6 characters; first password is the student ID. */
-export const MIN_STUDENT_ID_LENGTH = 6
+/** First student login password is the Student ID (3+ characters). Chosen / forgot passwords stay longer. */
+export const MIN_STUDENT_ID_LENGTH = 3
+export const MIN_CHOSEN_PASSWORD_LENGTH = 8
 
-export function formatStudentIdSample(prefix: string, n: number, pad = 3): string {
-  const serial = String(Math.max(1, Math.floor(Number(n) || 1)))
-  const requested = Math.min(9, Math.max(1, Math.floor(Number(pad) || 3)))
-  const minForAuth = Math.max(1, MIN_STUDENT_ID_LENGTH - String(prefix || '').length)
-  const width = Math.max(requested, serial.length, minForAuth)
+export function formatStudentIdSample(prefix: string, n: number, pad = 1): string {
+  const serialNum = Math.max(0, Math.floor(Number(n) || 0))
+  const serial = String(serialNum)
+  const requested = Math.min(9, Math.max(1, Math.floor(Number(pad) || 1)))
+  const width = Math.max(requested, serial.length)
   return `${prefix || ''}${serial.padStart(width, '0')}`
 }
 
 export function defaultStudentIdSample(institutionName?: string | null): string {
-  return formatStudentIdSample(institutionNameInitials(institutionName), 123, 3)
+  return formatStudentIdSample(institutionNameInitials(institutionName), 0, 1)
 }
 
 export function parseStudentIdSample(raw: string): { prefix: string; start: number; pad: number } {
@@ -711,15 +712,21 @@ export function parseStudentIdSample(raw: string): { prefix: string; start: numb
   if (!m) throw new Error('INVALID_STUDENT_ID_SAMPLE')
   const prefix = m[1]
   const start = Math.floor(Number(m[2]))
-  if (!Number.isFinite(start) || start < 1) throw new Error('INVALID_STUDENT_ID_SAMPLE')
-  const minPad = Math.max(m[2].length, MIN_STUDENT_ID_LENGTH - prefix.length, 1)
-  return { prefix, start, pad: Math.min(9, minPad) }
+  if (!Number.isFinite(start) || start < 0) throw new Error('INVALID_STUDENT_ID_SAMPLE')
+  if (sample.length < MIN_STUDENT_ID_LENGTH) throw new Error('INVALID_STUDENT_ID_SAMPLE')
+  const pad = Math.min(9, Math.max(m[2].length, 1))
+  return { prefix, start, pad }
+}
+
+/** First login password is exactly the student ID. */
+export function studentIdAuthPassword(studentCode: string) {
+  return String(studentCode || '').trim()
 }
 
 export function nextStudentIdPreview(institution?: InstitutionBrand, sample?: string): string {
   let prefix = institution?.student_id_prefix
-  let start = Math.max(1, Math.floor(Number(institution?.student_id_start) || 123))
-  let pad = Math.min(9, Math.max(1, Math.floor(Number(institution?.student_id_pad) || 3)))
+  let start = Math.max(0, Math.floor(Number(institution?.student_id_start ?? 123)))
+  let pad = Math.min(9, Math.max(1, Math.floor(Number(institution?.student_id_pad) || 1)))
   if (sample != null && String(sample).trim()) {
     try {
       const parsed = parseStudentIdSample(sample)
@@ -731,11 +738,13 @@ export function nextStudentIdPreview(institution?: InstitutionBrand, sample?: st
     }
   } else if (prefix == null) {
     prefix = institutionNameInitials(institution?.name)
-    start = 123
-    pad = 3
+    start = 0
+    pad = 1
   }
-  const last = Math.max(0, Math.floor(Number(institution?.student_id_last) || 0))
-  return formatStudentIdSample(prefix || '', Math.max(last, start - 1) + 1, pad)
+  const lastRaw = institution?.student_id_last
+  const last = lastRaw == null ? -1 : Math.floor(Number(lastRaw))
+  const lastSafe = Number.isFinite(last) ? last : -1
+  return formatStudentIdSample(prefix || '', Math.max(lastSafe, start - 1) + 1, pad)
 }
 
 /** Required branding fields before official documents may be issued. */

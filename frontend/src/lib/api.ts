@@ -1248,16 +1248,15 @@ export const updateInstitution = async (updates) => {
     if (!/^[A-Za-z]{0,12}$/.test(prefix)) throw new Error('INVALID_STUDENT_ID_SAMPLE')
     const start = Math.floor(Number(updates.student_id_start))
     const pad = Math.floor(Number(updates.student_id_pad ?? 3))
-    if (!Number.isFinite(start) || start < 1 || start > 999999999) {
+    if (!Number.isFinite(start) || start < 0 || start > 999999999) {
       throw new Error('INVALID_STUDENT_ID_SAMPLE')
     }
     if (!Number.isFinite(pad) || pad < 1 || pad > 9) {
       throw new Error('INVALID_STUDENT_ID_SAMPLE')
     }
-    const minPad = Math.max(1, 6 - prefix.length)
     allowed.student_id_prefix = prefix
     allowed.student_id_start = start
-    allowed.student_id_pad = Math.min(9, Math.max(pad, minPad))
+    allowed.student_id_pad = Math.min(9, Math.max(pad, 1))
   }
   if (updates.grading_scale !== undefined) {
     // null clears custom scale (fallback to platform default)

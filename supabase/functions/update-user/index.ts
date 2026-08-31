@@ -104,8 +104,8 @@ Deno.serve(async (req) => {
     if (emailRaw && !EMAIL_RE.test(emailRaw)) {
       return json({ error: 'Invalid email address' }, 400)
     }
-    if (passwordRaw && passwordRaw.length < 6) {
-      return json({ error: 'Password must be at least 6 characters' }, 400)
+    if (passwordRaw && passwordRaw.length < 3) {
+      return json({ error: 'Password must be at least 3 characters' }, 400)
     }
 
     const { data: target } = await admin
@@ -137,7 +137,7 @@ Deno.serve(async (req) => {
       authPatch.email = emailRaw
       authPatch.email_confirm = true
     }
-    if (passwordRaw) authPatch.password = passwordRaw
+    if (passwordRaw && passwordRaw.length >= 6) authPatch.password = passwordRaw
     if (fullNameRaw) {
       authPatch.user_metadata = {
         full_name: fullNameRaw,
@@ -155,6 +155,17 @@ Deno.serve(async (req) => {
           return json({ error: 'Email is already in use' }, 400)
         }
         return json({ error: authErr.message }, 400)
+      }
+    }
+
+    if (passwordRaw && passwordRaw.length < 6) {
+      const { error: pwErr } = await admin.rpc('set_auth_password_exact', {
+        p_user_id: targetId,
+        p_password: passwordRaw,
+      })
+      if (pwErr) {
+        console.error('[update-user] short password failed', pwErr.message)
+        return json({ error: pwErr.message }, 400)
       }
     }
 

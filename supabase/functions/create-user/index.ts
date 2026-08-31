@@ -46,6 +46,12 @@ function normalizeSecret(raw: string | undefined | null): string {
   return key
 }
 
+const MIN_STUDENT_ID_LENGTH = 3
+
+function studentIdAuthPassword(studentCode: string) {
+  return String(studentCode || '').trim()
+}
+
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: cors })
 
@@ -136,15 +142,13 @@ Deno.serve(async (req) => {
       return json({ error: 'email, full_name, role are required' }, 400)
     }
     if (role === 'student' && requestedStudentCode) {
-      if (requestedStudentCode.length < 6) {
+      if (requestedStudentCode.length < MIN_STUDENT_ID_LENGTH) {
         return json({ error: 'STUDENT_ID_TOO_SHORT' }, 400)
       }
-      const { data: codeTaken } = await admin
-        .from('profiles')
-        .select('id')
-        .eq('institution_id', caller.institution_id)
-        .ilike('student_code', requestedStudentCode)
-        .maybeSingle()
+      const { data: codeTaken } = await admin.rpc('student_code_is_taken', {
+        p_institution_id: caller.institution_id,
+        p_code: requestedStudentCode,
+      })
       if (codeTaken) {
         return json({ error: 'STUDENT_ID_EXISTS' }, 409)
       }
@@ -284,7 +288,10 @@ Deno.serve(async (req) => {
     if (pErr) {
       await admin.auth.admin.deleteUser(newUserId)
       console.error('[create-user] profile insert failed', pErr.message)
-      return json({ error: pErr.message }, 400)
+      const dup =
+        pErr.code === '23505' &&
+        /student_code|student_serial/i.test(`${pErr.message} ${pErr.details || ''}`)
+      return json({ error: dup ? 'STUDENT_ID_EXISTS' : pErr.message }, dup ? 409 : 400)
     }
 
     const { data: createdProfile } = await admin
@@ -300,20 +307,22 @@ Deno.serve(async (req) => {
         await admin.auth.admin.deleteUser(newUserId)
         return json({ error: 'STUDENT_ID_REQUIRED' }, 400)
       }
-      if (studentCode.length < 6) {
+      const loginPassword = studentIdAuthPassword(studentCode)
+      if (loginPassword.length < MIN_STUDENT_ID_LENGTH) {
         await admin.auth.admin.deleteUser(newUserId)
         return json({ error: 'STUDENT_ID_TOO_SHORT' }, 400)
       }
-      const { error: pwErr } = await admin.auth.admin.updateUserById(newUserId, {
-        password: studentCode,
+      const { error: pwErr } = await admin.rpc('set_auth_password_exact', {
+        p_user_id: newUserId,
+        p_password: loginPassword,
       })
       if (pwErr) {
         await admin.auth.admin.deleteUser(newUserId)
         console.error('[create-user] student ID password failed', pwErr.message)
-        const short = /at least \d+ characters/i.test(pwErr.message || '')
+        const short = /student_id_too_short|at least \d+ characters/i.test(pwErr.message || '')
         return json({ error: short ? 'STUDENT_ID_TOO_SHORT' : 'STUDENT_PASSWORD_FAILED' }, 400)
       }
-      returnedPassword = studentCode
+      returnedPassword = loginPassword
     }
 
     const { data: inst } = await admin

@@ -59,7 +59,7 @@ export const ALUMNI_TEMPLATES: {
       { key: 'full_name', required: true, mapsTo: 'student name' },
       { key: 'email', required: true, mapsTo: 'account email' },
       { key: 'phone', required: false, mapsTo: 'phone' },
-      { key: 'student_code', required: false, mapsTo: 'previous ID (6+ chars)' },
+      { key: 'student_code', required: false, mapsTo: 'previous ID (optional)' },
       { key: 'course_name', required: true, mapsTo: 'course name' },
       { key: 'year', required: false, mapsTo: 'completion year' },
       { key: 'mark', required: true, mapsTo: '0–100' },
@@ -76,7 +76,7 @@ export const ALUMNI_TEMPLATES: {
       { key: 'full_name', required: true, mapsTo: 'student name' },
       { key: 'email', required: true, mapsTo: 'account email' },
       { key: 'phone', required: false, mapsTo: 'phone' },
-      { key: 'student_code', required: false, mapsTo: 'previous ID (6+ chars)' },
+      { key: 'student_code', required: false, mapsTo: 'previous ID (optional)' },
       { key: 'diploma_name', required: true, mapsTo: 'diploma name in Academic Programs' },
       { key: 'year', required: false, mapsTo: 'completion year' },
       { key: 'course_1 / mark_1 … course_8 / mark_8', required: true, mapsTo: 'each subject and mark' },
@@ -93,7 +93,7 @@ export const ALUMNI_TEMPLATES: {
       { key: 'full_name', required: true, mapsTo: 'student name' },
       { key: 'email', required: true, mapsTo: 'account email' },
       { key: 'phone', required: false, mapsTo: 'phone' },
-      { key: 'student_code', required: false, mapsTo: 'previous ID (6+ chars)' },
+      { key: 'student_code', required: false, mapsTo: 'previous ID (optional)' },
       { key: 'diploma_name', required: true, mapsTo: 'diploma name in Academic Programs' },
       { key: 'year', required: false, mapsTo: 'completion year' },
       { key: 'course_n / mark_n / semester_n', required: true, mapsTo: 'subject, mark, and semester name' },
@@ -493,8 +493,8 @@ export function mapAndValidateRows(
     if (!email || !isEmail(email)) errors.push(`Row ${rowNumber}: valid email is required`)
     if (!program_type) errors.push(`Row ${rowNumber}: could not tell course vs diploma — add program_type or extra courses`)
     if (!program_name) errors.push(`Row ${rowNumber}: course_name or diploma_name is required`)
-    if (student_code && student_code.length < 6) {
-      errors.push(`Row ${rowNumber}: student_code must be at least 6 characters`)
+    if (student_code && student_code.length < 3) {
+      errors.push(`Row ${rowNumber}: student_code is too short`)
     }
     if (!slots.length) errors.push(`Row ${rowNumber}: add at least course_1 and mark_1`)
     for (const slot of slots) {

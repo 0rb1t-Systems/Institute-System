@@ -586,6 +586,17 @@ html[data-platform-theme='light'] ::-webkit-scrollbar-thumb {
   border-color: #e8eef5;
 }
 
+/* Light mode: selected text must stay dark. Body uses selection:text-blue-200 (dark-theme). */
+html[data-platform-theme='light'] ::selection {
+  background-color: color-mix(in srgb, var(--brand-primary, #002147) 28%, #93c5fd);
+  color: #0f172a;
+}
+
+html[data-platform-theme='light'] ::-moz-selection {
+  background-color: color-mix(in srgb, var(--brand-primary, #002147) 28%, #93c5fd);
+  color: #0f172a;
+}
+
 .tenant-shell {
   background: var(--tenant-bg);
   color: var(--tenant-text);

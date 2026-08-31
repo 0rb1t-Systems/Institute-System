@@ -147,7 +147,7 @@ export const MESSAGES = {
     },
     STUDENT_ID: {
       title: 'Student ID already exists',
-      description: 'A student with this ID already exists. Please use a different ID.',
+      description: 'That student number is already issued and cannot be used again.',
     },
     GENERIC: {
       title: 'Already exists',

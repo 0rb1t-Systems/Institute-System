@@ -134,6 +134,7 @@ const CertificateCanvas = ({ data: rawData, compact = false, forPdf = false }: P
         design={layout === 'logo_builder' ? data.logoBuilderDesign : null}
         backgroundUrl={layout === 'custom_upload' ? data.customBackgroundUrl : null}
         composeUpload={layout === 'custom_upload'}
+        hideInstitutionNameWhenLogo={!data.gradesSummary}
       />
     )
   }

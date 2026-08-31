@@ -134,7 +134,8 @@ const StudentRegistrationModal = ({ isOpen, onClose, onSuccess, classes, users }
 
     const copyCredentials = () => {
         if (!successData) return;
-        const text = `Welcome to ${successData.institution_name || 'your institution'}!\n\nLogin URL: ${window.location.origin}/login\nStudent ID: ${successData.student_code}\nEmail: ${successData.email}\nFirst password (same as Student ID): ${successData.password}\n\nYou can change this password after you sign in.`;
+        const same = successData.password === successData.student_code
+        const text = `Welcome to ${successData.institution_name || 'your institution'}!\n\nLogin URL: ${window.location.origin}/login\nStudent ID: ${successData.student_code}\nEmail: ${successData.email}\nFirst password: ${successData.password}${same ? ' (same as Student ID)' : ''}\n\nYou can change this password after you sign in.`;
         navigator.clipboard.writeText(text);
         toast({ title: "Copied!", description: "Credentials copied to clipboard." });
     };
@@ -154,7 +155,7 @@ const StudentRegistrationModal = ({ isOpen, onClose, onSuccess, classes, users }
                         </div>
                         <DialogTitle className="text-center text-xl font-bold text-white">Student Registered Successfully!</DialogTitle>
                         <DialogDescription className="text-center text-slate-400 mt-2">
-                            Share these credentials with the student. The first password is the Student ID; they can change it after they sign in.
+                            Share these credentials with the student. The first password is the Student ID. They can change it after they sign in (new passwords need at least 8 characters).
                             {successData.emailed
                               ? ' A welcome email with these details was also sent.'
                               : ' Email delivery failed — please share these details manually.'}
@@ -181,7 +182,7 @@ const StudentRegistrationModal = ({ isOpen, onClose, onSuccess, classes, users }
                             </div>
                         </div>
                         <div>
-                            <p className="text-xs text-slate-500 uppercase tracking-wider font-semibold mb-1">First password (same as Student ID)</p>
+                            <p className="text-xs text-slate-500 uppercase tracking-wider font-semibold mb-1">First password</p>
                             <div className="flex items-center justify-between bg-slate-900 p-2.5 rounded-lg border border-slate-800">
                                 <span className="font-mono font-bold text-yellow-400 text-lg">{successData.password}</span>
                                 <Button variant="ghost" size="sm" className="h-8 w-8 p-0 text-slate-400 hover:text-white" onClick={() => { navigator.clipboard.writeText(successData.password); toast({title:"Copied Password"}); }}>
@@ -213,7 +214,7 @@ const StudentRegistrationModal = ({ isOpen, onClose, onSuccess, classes, users }
                             <UserPlus className="w-5 h-5 text-indigo-400" /> Register New Student
                         </DialogTitle>
                         <DialogDescription className="text-slate-400">
-                            Fill in the details below. A user account will be automatically generated. The Student Code will be used as their temporary password.
+                            Fill in the details below. A user account will be created. The first password is the Student ID.
                         </DialogDescription>
                     </DialogHeader>
 

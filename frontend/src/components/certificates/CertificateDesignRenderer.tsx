@@ -23,6 +23,8 @@ type Props = {
   composeUpload?: boolean
   /** PDF capture — fill host box exactly */
   forPdf?: boolean
+  /** When true (certificates), hide bound institution name if a logo is present. Transcripts show both. */
+  hideInstitutionNameWhenLogo?: boolean
 }
 
 function sortedElements(elements: BuilderElement[]) {
@@ -229,6 +231,7 @@ const CertificateDesignRenderer = ({
   compact = false,
   composeUpload = false,
   forPdf = false,
+  hideInstitutionNameWhenLogo = true,
 }: Props) => {
   if (composeUpload) {
     if (backgroundUrl && data.customFieldLayout) {
@@ -411,8 +414,7 @@ const CertificateDesignRenderer = ({
             )
           }
 
-          // Logo XOR institution name — never both
-          if (el.bind === 'institutionName' && String(data.logoUrl || '').trim()) {
+          if (el.bind === 'institutionName' && hideInstitutionNameWhenLogo && String(data.logoUrl || '').trim()) {
             return null
           }
 

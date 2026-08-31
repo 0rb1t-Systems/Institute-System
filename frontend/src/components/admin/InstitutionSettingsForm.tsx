@@ -352,7 +352,7 @@ const InstitutionSettingsForm = ({ onUpdated, section: controlledSection }) => {
       goSection('ids')
       toast({
         title: 'Validation',
-        description: 'Student ID must look like brce002, DI0123, or 134855.',
+        description: 'Student ID must look like HC0, DI0123, or 134855 (at least 3 characters).',
         variant: 'destructive',
       })
       return
@@ -637,14 +637,14 @@ const InstitutionSettingsForm = ({ onUpdated, section: controlledSection }) => {
                 label="Student ID start"
                 htmlFor="student_id_sample"
                 hint={`Next: ${studentNext}${
-                  institution?.student_id_last
+                  institution?.student_id_last != null && Number(institution.student_id_last) >= 0
                     ? ` · last issued ${formatStudentIdSample(
                         institution.student_id_prefix || '',
                         institution.student_id_last,
                         institution.student_id_pad,
                       )}`
                     : ''
-                }. First password = this ID (min 6 characters).`}
+                }. Example HC0 → HC0, HC1, HC2 (3, 4, 5, or 6+ characters). Numbers are issued in order and never reused. First password is the Student ID. Forgot password requires at least 8 characters.`}
               >
                 <Input
                   id="student_id_sample"

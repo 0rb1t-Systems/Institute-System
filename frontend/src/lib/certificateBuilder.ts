@@ -1987,7 +1987,7 @@ export function createStarterTranscriptDesign(
     elements.push({
       id: createElementId(),
       type: 'image',
-      x: w * 0.12,
+      x: w * 0.08,
       y: h * 0.045,
       width: 56,
       height: 56,
@@ -1999,6 +1999,20 @@ export function createStarterTranscriptDesign(
       text: 'logo',
       locked: false,
     })
+    elements.push(
+      createBoundTextElement('institutionName', { width: w, height: h }, {
+        x: w * 0.08 + 68,
+        y: h * 0.05,
+        width: w * 0.55,
+        height: 36,
+        fontSize: 18,
+        fontWeight: 'bold',
+        textAlign: 'left',
+        color: primary,
+        text: instName,
+        zIndex: nextZ(),
+      }),
+    )
   } else {
     elements.push(
       createBoundTextElement('institutionName', { width: w, height: h }, {
@@ -3647,8 +3661,6 @@ export function resolveBuilderText(
     case 'dateIssued':
       return data.dateIssued ? String(data.dateIssued).slice(0, 10) : el.text || 'YYYY-MM-DD'
     case 'institutionName':
-      // Logo XOR name — never both on issued documents
-      if (String(data.logoUrl || '').trim()) return ''
       return data.institutionName || el.text || 'Institution'
     case 'motto':
       return data.motto || el.text || 'Motto'
