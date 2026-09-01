@@ -1,6 +1,6 @@
 import React from 'react'
 import { Link } from 'react-router-dom'
-import { Building2, GraduationCap, FileText, LayoutTemplate } from 'lucide-react'
+import { Building2, GraduationCap, FileText, LayoutTemplate, Wallet } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import {
   settingsPrimaryListClass,
@@ -14,7 +14,7 @@ export const SETTINGS_GROUPS = [
     to: '/admin/settings?group=institution',
     icon: Building2,
     title: 'Institution',
-    hint: 'Profile, branding, IDs, finance',
+    hint: 'Profile, branding, IDs',
   },
   {
     id: 'academic',
@@ -24,11 +24,18 @@ export const SETTINGS_GROUPS = [
     hint: 'Grading & Transcripts',
   },
   {
+    id: 'finance',
+    to: '/admin/settings?group=finance',
+    icon: Wallet,
+    title: 'Finance',
+    hint: 'Fees, commissions & invoices',
+  },
+  {
     id: 'documents',
     to: '/admin/settings?group=documents',
     icon: FileText,
     title: 'Documents',
-    hint: 'Certificates & Invoices',
+    hint: 'Certificates',
   },
   {
     id: 'landing',
@@ -43,7 +50,12 @@ export type SettingsGroupId = (typeof SETTINGS_GROUPS)[number]['id']
 
 export function resolveSettingsGroup(pathname: string, groupParam: string | null): SettingsGroupId {
   if (pathname.startsWith('/admin/landing')) return 'landing'
-  if (groupParam === 'academic' || groupParam === 'documents' || groupParam === 'institution') {
+  if (
+    groupParam === 'academic' ||
+    groupParam === 'finance' ||
+    groupParam === 'documents' ||
+    groupParam === 'institution'
+  ) {
     return groupParam
   }
   return 'institution'
@@ -51,7 +63,7 @@ export function resolveSettingsGroup(pathname: string, groupParam: string | null
 
 export function AdminSettingsGroupNav({ active }: { active: SettingsGroupId }) {
   return (
-    <nav className={cn(settingsPrimaryListClass, 'sm:grid-cols-2 lg:grid-cols-4')} aria-label="Institution settings">
+    <nav className={cn(settingsPrimaryListClass, 'sm:grid-cols-2 lg:grid-cols-5')} aria-label="Institution settings">
       {SETTINGS_GROUPS.map(({ id, to, icon: Icon, title, hint }) => {
         const isActive = id === active
         return (

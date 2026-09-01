@@ -12,29 +12,31 @@ import { settingsSubListClass, settingsSubTriggerClass } from '@/components/admi
 import { useAuth } from '@/contexts/AuthContext'
 import { getInstitutionDisplayName } from '@/lib/institution'
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { Award, GraduationCap, Receipt, ScrollText } from 'lucide-react'
+import { GraduationCap, Receipt, ScrollText, Wallet } from 'lucide-react'
 
 const GROUP_TABS = {
   academic: [
     { value: 'grading', label: 'Grading', icon: GraduationCap },
     { value: 'transcripts', label: 'Transcripts', icon: ScrollText },
   ],
-  documents: [
-    { value: 'certificates', label: 'Certificates', icon: Award },
+  finance: [
+    { value: 'fees', label: 'Finance', icon: Wallet },
     { value: 'invoices', label: 'Invoices', icon: Receipt },
   ],
 } as const
 
 const SUBTITLES = {
-  institution: 'Institution profile, branding, IDs, finance, and document signatories.',
+  institution: 'Institution profile, branding, IDs, and document signatories.',
   academic: 'Grading scale and transcript templates.',
-  documents: 'Certificate and invoice templates.',
+  finance: 'Fees, commissions, and invoice templates.',
+  documents: 'Certificate templates.',
 }
 
 const InstitutionSettingsPage = () => {
   const { institution, refreshUser } = useAuth()
   const [searchParams, setSearchParams] = useSearchParams()
-  const group = resolveSettingsGroup('/admin/settings', searchParams.get('group'))
+  const rawGroup = searchParams.get('group')
+  const group = resolveSettingsGroup('/admin/settings', rawGroup === 'transcripts' ? 'academic' : rawGroup)
   const institutionName = getInstitutionDisplayName(institution)
   const tabParam = searchParams.get('tab')
 
@@ -42,11 +44,23 @@ const InstitutionSettingsPage = () => {
     return <Navigate to="/admin/landing" replace />
   }
 
-  if (group === 'documents' && (tabParam === 'finance' || tabParam === 'documents')) {
+  if (rawGroup === 'transcripts') {
+    return <Navigate to="/admin/settings?group=academic&tab=transcripts" replace />
+  }
+
+  if (group === 'documents' && tabParam === 'transcripts') {
+    return <Navigate to="/admin/settings?group=academic&tab=transcripts" replace />
+  }
+
+  if (group === 'documents' && (tabParam === 'invoices' || tabParam === 'finance' || tabParam === 'fees')) {
+    return <Navigate to="/admin/settings?group=finance&tab=invoices" replace />
+  }
+
+  if (group === 'documents' && tabParam === 'documents') {
     return <Navigate to="/admin/settings?group=institution" replace />
   }
 
-  const tabs = group === 'institution' ? null : GROUP_TABS[group]
+  const tabs = GROUP_TABS[group] || null
   const tab = tabs?.some((item) => item.value === tabParam) ? tabParam : tabs?.[0].value
 
   const setTab = (next: string) => {
@@ -88,9 +102,13 @@ const InstitutionSettingsPage = () => {
 
           {group === 'academic' && tab === 'transcripts' ? <TranscriptManagementPanel /> : null}
 
-          {group === 'documents' && tab === 'certificates' ? <CertificateManagementPanel /> : null}
+          {group === 'finance' && tab === 'fees' ? (
+            <InstitutionSettingsForm section="finance" onUpdated={() => refreshUser?.()} />
+          ) : null}
 
-          {group === 'documents' && tab === 'invoices' ? <InvoiceManagementPanel /> : null}
+          {group === 'finance' && tab === 'invoices' ? <InvoiceManagementPanel /> : null}
+
+          {group === 'documents' ? <CertificateManagementPanel /> : null}
         </AdminSettingsShell>
       </div>
     </AnimatedPage>

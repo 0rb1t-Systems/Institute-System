@@ -166,6 +166,7 @@ const InstitutionSettingsForm = ({ onUpdated, section: controlledSection }) => {
   const [logoSwatches, setLogoSwatches] = useState([])
   const [detectingColors, setDetectingColors] = useState(false)
   const isGrading = controlledSection === 'grading'
+  const isFinance = controlledSection === 'finance'
   const goSection = (next) => {
     const el = document.getElementById(SECTION_FOCUS[next] || next)
     el?.scrollIntoView({ behavior: 'smooth', block: 'center' })
@@ -297,6 +298,47 @@ const InstitutionSettingsForm = ({ onUpdated, section: controlledSection }) => {
 
   const handleSave = async (e) => {
     e.preventDefault()
+
+    const currency = String(form.currency || '').trim().toUpperCase()
+    const symbol = String(form.currency_symbol || '').trim()
+
+    if (isFinance) {
+      if (!/^[A-Z]{3}$/.test(currency)) {
+        toast({ title: 'Validation', description: 'Currency must be a 3-letter code (e.g. USD).', variant: 'destructive' })
+        return
+      }
+      if (!symbol || symbol.length > 8) {
+        toast({ title: 'Validation', description: 'Currency symbol is required (max 8 characters).', variant: 'destructive' })
+        return
+      }
+      setSaving(true)
+      try {
+        const updated = await updateInstitution({
+          currency,
+          currency_symbol: symbol,
+          affiliate_commission_rate: Math.min(1, Math.max(0, Number(form.affiliate_commission_rate || 0) / 100)),
+          registration_fee_amount: Number(form.registration_fee_amount || 0),
+          default_instructor_commission_rate: Math.min(
+            1,
+            Math.max(0, Number(form.default_instructor_commission_rate || 0) / 100),
+          ),
+        })
+        setAppCurrency(currency, symbol)
+        await refreshUser?.()
+        onUpdated?.(updated)
+        toast({ title: 'Saved', description: 'Finance settings updated.' })
+      } catch (err) {
+        toast({
+          title: 'Error',
+          description: getUserMessage(err, { fallback: MESSAGES.SAVE_FAILED }),
+          variant: 'destructive',
+        })
+      } finally {
+        setSaving(false)
+      }
+      return
+    }
+
     if (!form.name.trim()) {
       goSection('profile')
       toast({ title: 'Validation', description: 'Institution name is required.', variant: 'destructive' })
@@ -315,18 +357,6 @@ const InstitutionSettingsForm = ({ onUpdated, section: controlledSection }) => {
     if (!form.address.trim()) {
       goSection('profile')
       toast({ title: 'Validation', description: 'Institution address is required.', variant: 'destructive' })
-      return
-    }
-    const currency = String(form.currency || '').trim().toUpperCase()
-    if (!/^[A-Z]{3}$/.test(currency)) {
-      goSection('finance')
-      toast({ title: 'Validation', description: 'Currency must be a 3-letter code (e.g. USD).', variant: 'destructive' })
-      return
-    }
-    const symbol = String(form.currency_symbol || '').trim()
-    if (!symbol || symbol.length > 8) {
-      goSection('finance')
-      toast({ title: 'Validation', description: 'Currency symbol is required (max 8 characters).', variant: 'destructive' })
       return
     }
 
@@ -376,14 +406,6 @@ const InstitutionSettingsForm = ({ onUpdated, section: controlledSection }) => {
         theme_tertiary: String(form.theme_tertiary || '').trim()
           ? normalizeHexColor(form.theme_tertiary, '#0EA5E9')
           : null,
-        currency,
-        currency_symbol: symbol,
-        affiliate_commission_rate: Math.min(1, Math.max(0, Number(form.affiliate_commission_rate || 0) / 100)),
-        registration_fee_amount: Number(form.registration_fee_amount || 0),
-        default_instructor_commission_rate: Math.min(
-          1,
-          Math.max(0, Number(form.default_instructor_commission_rate || 0) / 100),
-        ),
         signatory_left_title: form.signatory_left_title,
         signatory_right_title: form.signatory_right_title,
         signatory_left_name: form.signatory_left_name,
@@ -397,7 +419,6 @@ const InstitutionSettingsForm = ({ onUpdated, section: controlledSection }) => {
         student_id_start: studentId.start,
         student_id_pad: studentId.pad,
       })
-      setAppCurrency(currency, symbol)
       await refreshUser?.()
       onUpdated?.(updated)
       publishInstitutionBrand({
@@ -441,6 +462,95 @@ const InstitutionSettingsForm = ({ onUpdated, section: controlledSection }) => {
     return (
       <div className="p-4 sm:p-5">
         <GradingSystemSettings onUpdated={onUpdated} />
+      </div>
+    )
+  }
+
+  const financeFields = (
+    <div className="grid gap-3 sm:grid-cols-2">
+      <Field label="Currency" htmlFor="currency">
+        <Select value={form.currency} onValueChange={handleCurrencyChange}>
+          <SelectTrigger id="currency" className={inputCls}>
+            <SelectValue placeholder="Select currency" />
+          </SelectTrigger>
+          <SelectContent>
+            {CURRENCY_OPTIONS.map((opt) => (
+              <SelectItem key={opt.code} value={opt.code}>
+                {opt.label}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </Field>
+      <Field label="Symbol" htmlFor="currency_symbol">
+        <Input
+          id="currency_symbol"
+          value={form.currency_symbol}
+          onChange={(e) => setField('currency_symbol', e.target.value)}
+          maxLength={8}
+          className={inputCls}
+        />
+      </Field>
+      <Field label="Registration fee" htmlFor="reg_fee" hint="0 = free. Applies to new registrations only.">
+        <Input
+          id="reg_fee"
+          type="number"
+          min="0"
+          step="0.01"
+          value={form.registration_fee_amount}
+          onChange={(e) => setField('registration_fee_amount', e.target.value)}
+          className={inputCls}
+        />
+      </Field>
+      <Field label="Affiliate commission %" htmlFor="aff_rate" hint="On completed tuition from referred students.">
+        <Input
+          id="aff_rate"
+          type="number"
+          min="0"
+          max="100"
+          step="0.1"
+          value={form.affiliate_commission_rate}
+          onChange={(e) => setField('affiliate_commission_rate', e.target.value)}
+          className={inputCls}
+        />
+      </Field>
+      <Field
+        label="Instructor commission %"
+        htmlFor="inst_rate"
+        className="sm:col-span-2"
+        hint="Default for commission classes. Unique instructor rates and class fixed fees are not overwritten."
+      >
+        <Input
+          id="inst_rate"
+          type="number"
+          min="0"
+          max="100"
+          step="0.1"
+          value={form.default_instructor_commission_rate}
+          onChange={(e) => setField('default_instructor_commission_rate', e.target.value)}
+          className={inputCls}
+        />
+      </Field>
+    </div>
+  )
+
+  if (isFinance) {
+    return (
+      <div>
+        <form id="institution-settings-form" onSubmit={handleSave} className="space-y-0">
+          <SectionBlock id="settings-finance" icon={Wallet} title="Finance">
+            {financeFields}
+          </SectionBlock>
+        </form>
+        <div className="flex items-center justify-between gap-3 border-t border-[var(--tenant-line)] px-4 py-3">
+          <p className="text-xs text-[var(--tenant-muted)] hidden sm:block">
+            Saves currency, fees, and commission rates.
+          </p>
+          <Button type="submit" form="institution-settings-form" disabled={saving} className="ml-auto">
+            {saving ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
+            Save settings
+          </Button>
+        </div>
       </div>
     )
   }
@@ -659,74 +769,6 @@ const InstitutionSettingsForm = ({ onUpdated, section: controlledSection }) => {
             </div>
         </SectionBlock>
 
-        <SectionBlock id="settings-finance" icon={Wallet} title="Finance">
-            <div className="grid gap-3 sm:grid-cols-2">
-              <Field label="Currency" htmlFor="currency">
-                <Select value={form.currency} onValueChange={handleCurrencyChange}>
-                  <SelectTrigger id="currency" className={inputCls}>
-                    <SelectValue placeholder="Select currency" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {CURRENCY_OPTIONS.map((opt) => (
-                      <SelectItem key={opt.code} value={opt.code}>
-                        {opt.label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </Field>
-              <Field label="Symbol" htmlFor="currency_symbol">
-                <Input
-                  id="currency_symbol"
-                  value={form.currency_symbol}
-                  onChange={(e) => setField('currency_symbol', e.target.value)}
-                  maxLength={8}
-                  className={inputCls}
-                />
-              </Field>
-              <Field label="Registration fee" htmlFor="reg_fee" hint="0 = free. Applies to new registrations only.">
-                <Input
-                  id="reg_fee"
-                  type="number"
-                  min="0"
-                  step="0.01"
-                  value={form.registration_fee_amount}
-                  onChange={(e) => setField('registration_fee_amount', e.target.value)}
-                  className={inputCls}
-                />
-              </Field>
-              <Field label="Affiliate commission %" htmlFor="aff_rate" hint="On completed tuition from referred students.">
-                <Input
-                  id="aff_rate"
-                  type="number"
-                  min="0"
-                  max="100"
-                  step="0.1"
-                  value={form.affiliate_commission_rate}
-                  onChange={(e) => setField('affiliate_commission_rate', e.target.value)}
-                  className={inputCls}
-                />
-              </Field>
-              <Field
-                label="Instructor commission %"
-                htmlFor="inst_rate"
-                className="sm:col-span-2"
-                hint="Default for commission classes. Unique instructor rates and class fixed fees are not overwritten."
-              >
-                <Input
-                  id="inst_rate"
-                  type="number"
-                  min="0"
-                  max="100"
-                  step="0.1"
-                  value={form.default_instructor_commission_rate}
-                  onChange={(e) => setField('default_instructor_commission_rate', e.target.value)}
-                  className={inputCls}
-                />
-              </Field>
-            </div>
-        </SectionBlock>
-
         <SectionBlock id="settings-documents" icon={FileText} title="Signatories & footers">
           <div className="space-y-5">
             <div>
@@ -801,7 +843,7 @@ const InstitutionSettingsForm = ({ onUpdated, section: controlledSection }) => {
 
       <div className="flex items-center justify-between gap-3 border-t border-[var(--tenant-line)] px-4 py-3">
         <p className="text-xs text-[var(--tenant-muted)] hidden sm:block">
-          Saves institution profile, branding, IDs, finance, and document text.
+          Saves institution profile, branding, IDs, and document text.
         </p>
         <Button type="submit" form="institution-settings-form" disabled={saving} className="ml-auto">
           {saving ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}

@@ -6,13 +6,17 @@ import PageHeader from '@/components/PageHeader'
 import UserProfileSettings from '@/components/UserProfileSettings'
 import { useAuth } from '@/contexts/AuthContext'
 
-const SETTINGS_GROUPS = new Set(['institution', 'academic', 'documents', 'landing'])
+const SETTINGS_GROUPS = new Set(['institution', 'academic', 'finance', 'documents', 'landing'])
 
 const AdminProfilePage = () => {
   const { user, refreshUser } = useAuth()
   const [searchParams] = useSearchParams()
   const group = searchParams.get('group')
   const tab = searchParams.get('tab')
+
+  if (group === 'transcripts') {
+    return <Navigate to="/admin/settings?group=academic&tab=transcripts" replace />
+  }
 
   if (group === 'landing') {
     return <Navigate to="/admin/landing" replace />

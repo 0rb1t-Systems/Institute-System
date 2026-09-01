@@ -6,7 +6,7 @@ import { settingsSubListClass, settingsSubTriggerClass } from '@/components/admi
 type Props = {
   hint?: string
   templates: React.ReactNode
-  builder: React.ReactNode
+  builder?: React.ReactNode
   upload: React.ReactNode
 }
 
@@ -20,10 +20,12 @@ const DocumentDesignPanel = ({ templates, builder, upload }: Props) => {
             <Award className="h-3.5 w-3.5" />
             Templates
           </TabsTrigger>
-          <TabsTrigger value="builder" className={settingsSubTriggerClass}>
-            <LayoutTemplate className="h-3.5 w-3.5" />
-            Builder
-          </TabsTrigger>
+          {builder ? (
+            <TabsTrigger value="builder" className={settingsSubTriggerClass}>
+              <LayoutTemplate className="h-3.5 w-3.5" />
+              Builder
+            </TabsTrigger>
+          ) : null}
           <TabsTrigger value="upload" className={settingsSubTriggerClass}>
             <Upload className="h-3.5 w-3.5" />
             Upload
@@ -33,9 +35,11 @@ const DocumentDesignPanel = ({ templates, builder, upload }: Props) => {
       <TabsContent value="templates" className="mt-0 p-4 sm:p-5">
         {templates}
       </TabsContent>
-      <TabsContent value="builder" className="mt-0 p-0">
-        {builder}
-      </TabsContent>
+      {builder ? (
+        <TabsContent value="builder" className="mt-0 p-0">
+          {builder}
+        </TabsContent>
+      ) : null}
       <TabsContent value="upload" className="mt-0 p-4 sm:p-5">
         {upload}
       </TabsContent>
