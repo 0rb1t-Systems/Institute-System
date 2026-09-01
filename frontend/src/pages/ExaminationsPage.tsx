@@ -16,9 +16,15 @@ import { notify, MESSAGES } from '@/lib/notify';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import ResultsErrorBoundary from '@/components/ui/ResultsErrorBoundary';
 import { coursesForDiploma } from '@/lib/diplomaCourses';
+import {
+  canManageCourseProjects,
+  COURSE_PROJECT_MAX_LEN,
+  sanitizeCourseProject,
+} from '@/lib/institution';
 
 const ExaminationsPageContent = () => {
-  const { user } = useAuth();
+  const { user, institution } = useAuth();
+  const showCourseProject = canManageCourseProjects(institution, user?.role);
   const { 
     classes, 
     courses, 
@@ -131,10 +137,15 @@ const ExaminationsPageContent = () => {
 
               initialBuffer[sid] = {
                   score: res.score !== null ? res.score : '',
-                  comments: comments
+                  comments: comments,
+                  course_project: res.course_project || course.course_project || '',
               };
           } else {
-              initialBuffer[sid] = { score: '', comments: '' };
+              initialBuffer[sid] = {
+                  score: '',
+                  comments: '',
+                  course_project: course.course_project || '',
+              };
           }
       });
 
@@ -171,7 +182,7 @@ const ExaminationsPageContent = () => {
                   throw new Error(`Invalid score for student ID ${studentId}. Must be 0-${markingContext.totalMarks}`);
               }
 
-              return {
+              const row: Record<string, unknown> = {
                   exam_id: markingContext.examId,
                   student_id: studentId,
                   score: scoreNum,
@@ -179,6 +190,10 @@ const ExaminationsPageContent = () => {
                   submission_date: new Date().toISOString(),
                   answers: [{ question_id: 'manual_comment', answer: data.comments || '' }] 
               };
+              if (showCourseProject) {
+                  row.course_project = sanitizeCourseProject(data.course_project);
+              }
+              return row;
           }).filter(Boolean);
 
           if (updates.length === 0) {
@@ -300,7 +315,7 @@ const ExaminationsPageContent = () => {
       </div>
 
       <Dialog open={!!markingContext} onOpenChange={(open) => !open && setMarkingContext(null)}>
-          <DialogContent className="max-w-4xl h-[85vh] flex flex-col bg-slate-950 border-slate-800 p-0 gap-0">
+          <DialogContent className={`${showCourseProject ? 'max-w-5xl' : 'max-w-4xl'} h-[85vh] flex flex-col bg-slate-950 border-slate-800 p-0 gap-0`}>
               <DialogHeader className="p-6 border-b border-slate-800 bg-slate-900/50">
                   <div className="flex items-center justify-between">
                       <div>
@@ -319,8 +334,11 @@ const ExaminationsPageContent = () => {
                   <Table>
                       <TableHeader>
                           <TableRow className="border-slate-800 hover:bg-transparent">
-                              <TableHead className="w-[250px]">Student</TableHead>
-                              <TableHead className="w-[150px]">Score (0-{markingContext?.totalMarks})</TableHead>
+                              <TableHead className="w-[220px]">Student</TableHead>
+                              <TableHead className="w-[130px]">Score (0-{markingContext?.totalMarks})</TableHead>
+                              {showCourseProject ? (
+                                <TableHead className="min-w-[180px]">Course project</TableHead>
+                              ) : null}
                               <TableHead>Comments (Optional)</TableHead>
                               <TableHead className="w-[100px] text-right">Status</TableHead>
                           </TableRow>
@@ -328,7 +346,7 @@ const ExaminationsPageContent = () => {
                       <TableBody>
                           {contextStudents.length > 0 ? (
                               contextStudents.map(student => {
-                                  const buffer = marksBuffer[student.id] || { score: '', comments: '' };
+                                  const buffer = marksBuffer[student.id] || { score: '', comments: '', course_project: '' };
                                   const scoreVal = buffer.score === '' ? NaN : parseFloat(buffer.score);
                                   const isValid = buffer.score === '' || (!isNaN(scoreVal) && scoreVal >= 0 && scoreVal <= (markingContext?.totalMarks || 100));
                                   
@@ -349,6 +367,17 @@ const ExaminationsPageContent = () => {
                                                 max={markingContext?.totalMarks}
                                               />
                                           </TableCell>
+                                          {showCourseProject ? (
+                                            <TableCell>
+                                              <Input
+                                                value={buffer.course_project || ''}
+                                                maxLength={COURSE_PROJECT_MAX_LEN}
+                                                onChange={(e) => handleMarkChange(student.id, 'course_project', e.target.value)}
+                                                className="bg-slate-900 border-slate-700"
+                                                placeholder="e.g. Research Proposal Development"
+                                              />
+                                            </TableCell>
+                                          ) : null}
                                           <TableCell>
                                               <Input 
                                                 value={buffer.comments}
@@ -369,7 +398,7 @@ const ExaminationsPageContent = () => {
                               })
                           ) : (
                               <TableRow>
-                                  <TableCell colSpan={4} className="text-center py-8 text-slate-500">
+                                  <TableCell colSpan={showCourseProject ? 5 : 4} className="text-center py-8 text-slate-500">
                                       No students enrolled in this class.
                                   </TableCell>
                               </TableRow>

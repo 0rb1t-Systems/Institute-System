@@ -1951,6 +1951,9 @@ export const createCourse = async (data) => {
       type: data.type || 'regular',
       diploma_id: primaryDiplomaId,
       sort_order: 0,
+      ...(data.course_project !== undefined
+        ? { course_project: data.course_project || null }
+        : {}),
     })
     .select()
     .single()
@@ -1971,6 +1974,7 @@ export const updateCourse = async (id, data) => {
   if (data.code !== undefined) updates.code = data.code
   if (data.type !== undefined) updates.type = data.type
   if (data.sort_order !== undefined) updates.sort_order = Number(data.sort_order) || 0
+  if (data.course_project !== undefined) updates.course_project = data.course_project || null
 
   // diploma_ids replaces membership; diploma_id on edit is ignored so the
   // original course form cannot pull a shared course off other diplomas.
@@ -3086,7 +3090,7 @@ export const createOrUpdateExamResult = async (data) => {
   const me = await getMyProfile()
   const raw = Number(data.raw_score ?? data.score ?? data.final_score ?? 0)
   const final = Number(data.final_score ?? data.score ?? raw)
-  const payload = {
+  const payload: Record<string, unknown> = {
     institution_id: data.institution_id || me.institution_id,
     exam_id: data.exam_id,
     student_id: data.student_id,
@@ -3097,6 +3101,9 @@ export const createOrUpdateExamResult = async (data) => {
     comments: data.comments || null,
     graded_by: me.id,
     graded_at: new Date().toISOString(),
+  }
+  if (data.course_project !== undefined) {
+    payload.course_project = data.course_project || null
   }
   const { data: row, error } = await supabase
     .from('exam_results')
@@ -3120,6 +3127,7 @@ export const updateResult = async (id, data) => {
   }
   if (data.answers !== undefined) updates.answers = data.answers
   if (data.comments !== undefined) updates.comments = data.comments
+  if (data.course_project !== undefined) updates.course_project = data.course_project || null
   updates.graded_at = new Date().toISOString()
   const { data: row, error } = await supabase.from('exam_results').update(updates).eq('id', id).select().single()
   if (error) throw error

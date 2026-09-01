@@ -160,7 +160,7 @@ export type TranscriptRenderData = {
   footerText?: string
   narrativeText?: string
   gpa?: string
-  courses?: Array<{ code: string; name: string; marks: string; grade: string }>
+  courses?: Array<{ code: string; name: string; marks: string; grade: string; courseProject?: string }>
 }
 
 /** Shared layout chrome for live transcript + library preview. */

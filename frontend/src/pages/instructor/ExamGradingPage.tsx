@@ -17,17 +17,23 @@ import { formatDate } from '@/lib/utils';
 import { getExamScorePercent, getLetterGrade, isExamPassed } from '@/lib/examPass';
 import { useAuth } from '@/contexts/AuthContext';
 import { getInstitutionGradeScale } from '@/lib/gradingScale';
+import {
+  canManageCourseProjects,
+  COURSE_PROJECT_MAX_LEN,
+  sanitizeCourseProject,
+} from '@/lib/institution';
 
 const ExamGradingPage = () => {
     const { examId } = useParams();
     const navigate = useNavigate();
-    const { institution } = useAuth();
+    const { user, institution } = useAuth();
     const gradeScale = useMemo(() => getInstitutionGradeScale(institution), [institution]);
-    const { exams, results, enrollments, students, saveManualGrades } = useData();
+    const { exams, results, enrollments, students, courses, saveManualGrades } = useData();
+    const showCourseProject = canManageCourseProjects(institution, user?.role);
     const { toast } = useToast();
     
     const [selectedStudent, setSelectedStudent] = useState(null);
-    const [gradeData, setGradeData] = useState({ score: '' });
+    const [gradeData, setGradeData] = useState({ score: '', course_project: '' });
     const [isGradeDialogOpen, setIsGradeDialogOpen] = useState(false);
     const [loading, setLoading] = useState(false);
 
@@ -49,10 +55,16 @@ const ExamGradingPage = () => {
             .filter((item) => item.student);
     }, [exam, enrollments, results, students, examId]);
 
+    const examCourse = useMemo(
+        () => courses.find((c) => c.id === exam?.course_id),
+        [courses, exam?.course_id],
+    );
+
     const handleOpenGradeDialog = (item) => {
         setSelectedStudent(item);
         setGradeData({
-            score: item.result?.final_score !== undefined ? item.result.final_score : ''
+            score: item.result?.final_score !== undefined ? item.result.final_score : '',
+            course_project: item.result?.course_project || examCourse?.course_project || '',
         });
         setIsGradeDialogOpen(true);
     };
@@ -65,7 +77,7 @@ const ExamGradingPage = () => {
                 throw new Error(`Score must be between 0 and ${exam.total_marks}`);
             }
 
-            const payload = {
+            const payload: Record<string, unknown> = {
                 ...(selectedStudent.result || {}),
                 exam_id: examId,
                 student_id: selectedStudent.student.id,
@@ -74,6 +86,11 @@ const ExamGradingPage = () => {
                 total_marks: exam.total_marks,
                 submission_date: selectedStudent.result?.submission_date || new Date().toISOString()
             };
+            if (showCourseProject) {
+                payload.course_project = sanitizeCourseProject(gradeData.course_project);
+            } else {
+                delete payload.course_project;
+            }
 
             await saveManualGrades([payload]);
             
@@ -194,6 +211,18 @@ const ExamGradingPage = () => {
                                 <Input type="number" value={gradeData.score} onChange={(e) => setGradeData({...gradeData, score: e.target.value})} />
                             </div>
                         </div>
+                        {showCourseProject ? (
+                            <div className="space-y-2">
+                                <Label>Course project</Label>
+                                <Input
+                                    maxLength={COURSE_PROJECT_MAX_LEN}
+                                    placeholder="e.g. Research Proposal Development"
+                                    value={gradeData.course_project}
+                                    onChange={(e) => setGradeData({ ...gradeData, course_project: e.target.value })}
+                                />
+                                <p className="text-[11px] text-slate-500">Shown under the course title on the student transcript.</p>
+                            </div>
+                        ) : null}
                     </div>
                     <DialogFooter>
                         <Button variant="outline" onClick={() => setIsGradeDialogOpen(false)}>Cancel</Button>

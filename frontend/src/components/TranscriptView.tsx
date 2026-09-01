@@ -23,6 +23,7 @@ import {
   getSignatoryLeftTitle,
   getSignatoryRightName,
   getSignatoryRightTitle,
+  sanitizeCourseProject,
 } from '@/lib/institution';
 import { getDocumentTemplate } from '@/lib/api';
 import {
@@ -55,7 +56,26 @@ import {
 import { coursesForClass, coursesForDiploma, groupTranscriptRowsBySemester, semestersForDiploma } from '@/lib/diplomaCourses';
 import { formatMonthYear } from '@/lib/utils';
 
-const TranscriptView = ({ studentId, onClose }: any) => {
+function sameId(a, b) {
+  if (a == null || b == null || a === '' || b === '') return false;
+  return String(a) === String(b);
+}
+
+function transcriptForClass(transcripts, studentId, classId, enrollmentId) {
+  const rows = (transcripts || []).filter((t) => {
+    if (!t || t.status === 'revoked') return false;
+    if (!sameId(t.student_id, studentId)) return false;
+    if (t.class_id && !sameId(t.class_id, classId)) return false;
+    if (sameId(t.class_id, classId)) return true;
+    if (!t.class_id && enrollmentId && sameId(t.enrollment_id, enrollmentId)) return true;
+    return false;
+  });
+  return rows.sort(
+    (a, b) => Number(new Date(b.issued_at || 0)) - Number(new Date(a.issued_at || 0)),
+  )[0] || null;
+}
+
+const TranscriptView = ({ studentId, onClose, initialClassId }: any) => {
     const { user, institution } = useAuth();
     const gradeScale = useMemo(() => getInstitutionGradeScale(institution), [institution]);
     const {
@@ -72,7 +92,7 @@ const TranscriptView = ({ studentId, onClose }: any) => {
       gradebookEntries = [],
       transcripts = [],
     } = useData();
-    const [selectedClassId, setSelectedClassId] = useState(null);
+    const [selectedClassId, setSelectedClassId] = useState(initialClassId || null);
     const [showScanner, setShowScanner] = useState(false);
     const [liveLayoutKey, setLiveLayoutKey] = useState<TranscriptLayoutKey>('classic');
     const [customDesign, setCustomDesign] = useState<HydratedDocumentDesign | null>(null);
@@ -106,18 +126,30 @@ const TranscriptView = ({ studentId, onClose }: any) => {
     const studentClasses = useMemo(() => {
         if (!studentData) return [];
         return enrollments
-            .filter(e => e.student_id === studentData.id)
-            .map(e => classes.find(c => c.id === e.class_id))
+            .filter((e) => sameId(e.student_id, studentData.id))
+            .map((e) => classes.find((c) => sameId(c.id, e.class_id)))
             .filter(Boolean)
-            .sort((a, b) => Number(new Date(b.start_date)) - Number(new Date(a.start_date)));
+            .filter((c, i, arr) => arr.findIndex((x) => sameId(x.id, c.id)) === i)
+            .sort((a, b) => String(a.name || '').localeCompare(String(b.name || '')));
     }, [studentData, enrollments, classes]);
 
-    // Set default selected class
     useEffect(() => {
-        if (studentClasses.length > 0 && !selectedClassId) {
-            setSelectedClassId(studentClasses[0].id);
+        setSelectedClassId(initialClassId || null);
+    }, [studentId, initialClassId]);
+
+    useEffect(() => {
+        if (!studentData?.id) {
+            setSelectedClassId(null);
+            return;
         }
-    }, [studentClasses]);
+        const ids = new Set(studentClasses.map((c) => String(c.id)));
+        if (selectedClassId && ids.has(String(selectedClassId))) return;
+        if (initialClassId && ids.has(String(initialClassId))) {
+            setSelectedClassId(initialClassId);
+            return;
+        }
+        setSelectedClassId(studentClasses[0]?.id || null);
+    }, [studentData?.id, studentClasses, selectedClassId, initialClassId]);
 
     // Fetch Diploma/Program Info
     const currentClass = useMemo(() => classes.find(c => c.id === selectedClassId), [classes, selectedClassId]);
@@ -246,29 +278,33 @@ const TranscriptView = ({ studentId, onClose }: any) => {
 
         // 3. Map Courses to Grades — prefer finalized gradebook / transcript entries
         const gradebook = Array.isArray(gradebookEntries) ? gradebookEntries : [];
-        const studentTranscript = (transcripts || []).find(
-          (t) =>
-            t.student_id === studentData.id &&
-            (!selectedClassId || t.class_id === selectedClassId) &&
-            t.status !== 'revoked'
+        const classEnrollment = enrollments.find(
+          (e) => sameId(e.student_id, studentData.id) && sameId(e.class_id, selectedClassId),
+        );
+        const studentTranscript = transcriptForClass(
+          transcripts,
+          studentData.id,
+          selectedClassId,
+          classEnrollment?.id,
         );
         const transcriptRows = studentTranscript?.entries || studentTranscript?.transcript_entries || [];
 
         return relevantCourses.map(course => {
             const gb = gradebook.find(
               (g) =>
-                g.student_id === studentData.id &&
-                g.course_id === course.id &&
-                (!selectedClassId || g.class_id === selectedClassId)
+                sameId(g.student_id, studentData.id) &&
+                sameId(g.course_id, course.id) &&
+                sameId(g.class_id, selectedClassId)
             );
-            const te = transcriptRows.find((t) => t.course_id === course.id);
+            const te = transcriptRows.find((t) => sameId(t.course_id, course.id));
 
-            const courseExams = exams.filter(e => e.course_id === course.id && e.class_id === selectedClassId);
-            const relevantExams = courseExams.length > 0 ? courseExams : exams.filter(e => e.course_id === course.id);
+            const relevantExams = exams.filter(
+              (e) => sameId(e.class_id, selectedClassId) && sameId(e.course_id, course.id),
+            );
             
             const studentResults = results.filter(r => 
-                r.student_id === studentData.id && 
-                relevantExams.some(e => e.id === r.exam_id)
+                sameId(r.student_id, studentData.id) && 
+                relevantExams.some(e => sameId(e.id, r.exam_id))
             );
             const bestResult = studentResults.sort((a, b) => (b.score || 0) - (a.score || 0))[0];
             const examDetails = bestResult ? exams.find(e => e.id === bestResult.exam_id) : (relevantExams[0] || null);
@@ -313,10 +349,15 @@ const TranscriptView = ({ studentId, onClose }: any) => {
                   ? Number(liveSem.sort_order ?? 0)
                   : 9999;
 
+            const courseProject = sanitizeCourseProject(
+              te?.course_project || bestResult?.course_project || '',
+            );
+
             return {
                 id: course.id,
                 code: course.code || `CRS-${course.id.substring(0,4).toUpperCase()}`,
                 name: course.name,
+                courseProject,
                 examName: examDetails?.title || 'Course Exam',
                 marks: marks,
                 totalMarks: examDetails?.total_marks || 100,
@@ -330,7 +371,7 @@ const TranscriptView = ({ studentId, onClose }: any) => {
                 semester_sort: semesterSort,
             };
         });
-    }, [studentData, selectedClassId, classes, courses, results, classCourses, diplomaCourses, diplomaSemesters, exams, currentClass, gradebookEntries, transcripts, gradeScale]);
+    }, [studentData, selectedClassId, classes, courses, results, classCourses, diplomaCourses, diplomaSemesters, exams, currentClass, gradebookEntries, transcripts, gradeScale, enrollments]);
 
     const stats = useMemo(() => {
         const graded = transcriptData.filter(t => t.marks !== null);
@@ -354,16 +395,9 @@ const TranscriptView = ({ studentId, onClose }: any) => {
     const issuedTranscript = useMemo(() => {
       if (!studentData?.id || !selectedClassId) return null;
       const enrollment = enrollments.find(
-        (e) => e.student_id === studentData.id && e.class_id === selectedClassId,
+        (e) => sameId(e.student_id, studentData.id) && sameId(e.class_id, selectedClassId),
       );
-      const forEnrollment = (transcripts || []).filter((t) => {
-        if (t.status && t.status !== 'issued') return false;
-        if (enrollment?.id && t.enrollment_id === enrollment.id) return true;
-        return t.student_id === studentData.id && t.class_id === selectedClassId;
-      });
-      return forEnrollment.sort(
-        (a, b) => Number(new Date(b.issued_at || 0)) - Number(new Date(a.issued_at || 0)),
-      )[0] || null;
+      return transcriptForClass(transcripts, studentData.id, selectedClassId, enrollment?.id);
     }, [studentData, selectedClassId, enrollments, transcripts]);
 
     const brand = resolveDocumentBranding(institution, issuedTranscript?.template_snapshot);
@@ -415,7 +449,12 @@ const TranscriptView = ({ studentId, onClose }: any) => {
         transcriptGroups
           .map((g) => {
             const head = g.name ? `${g.name}\n` : '';
-            const lines = g.rows.map((t) => `${t.code}  ${t.name}  ${t.percentage ?? '-'}  ${t.grade}`).join('\n');
+            const lines = g.rows
+              .map((t) => {
+                const project = t.courseProject ? `  Course Project: ${t.courseProject}` : '';
+                return `${t.code}  ${t.name}${project}  ${t.percentage ?? '-'}  ${t.grade}`;
+              })
+              .join('\n');
             return `${head}${lines}`;
           })
           .join('\n\n'),
@@ -527,13 +566,16 @@ const TranscriptView = ({ studentId, onClose }: any) => {
             <div className="bg-slate-50 p-3 sm:p-4 border-b rounded-lg shadow w-full max-w-[210mm] flex flex-col md:flex-row gap-4 justify-between items-stretch md:items-center print:hidden">
                 <div className="flex flex-col sm:flex-row sm:items-center gap-2 w-full md:w-auto min-w-0">
                     <span className="text-sm font-bold text-black shrink-0">Program / Class:</span>
-                    <Select value={selectedClassId} onValueChange={setSelectedClassId}>
+                    <Select value={selectedClassId || undefined} onValueChange={setSelectedClassId}>
                         <SelectTrigger className="w-full md:w-[300px] bg-white border-black text-black font-bold">
                             <SelectValue placeholder="Select Class" />
                         </SelectTrigger>
                         <SelectContent>
                             {studentClasses.map(cls => (
-                                <SelectItem key={cls.id} value={cls.id}>{cls.name}</SelectItem>
+                                <SelectItem key={cls.id} value={cls.id}>
+                                  {cls.name}
+                                  {cls.diploma_id ? ' (Diploma)' : cls.course_id ? ' (Course)' : ''}
+                                </SelectItem>
                             ))}
                         </SelectContent>
                     </Select>
@@ -666,6 +708,7 @@ const TranscriptView = ({ studentId, onClose }: any) => {
             ) : (
             <div
               id="transcript-page-1"
+              key={selectedClassId || 'transcript'}
               className={`bg-white text-black shadow-2xl w-[210mm] min-w-[210mm] mx-auto h-[297mm] max-h-[297mm] overflow-hidden relative flex flex-col print:shadow-none print:m-0 print:w-full print:min-w-0 print:h-[297mm] print:max-h-[297mm] print:break-after-page ${chrome.outerFrame} ${chrome.pageExtra}`}
             >
                 
@@ -738,6 +781,9 @@ const TranscriptView = ({ studentId, onClose }: any) => {
 
                                     <span className="text-black font-bold uppercase">Credential No:</span>
                                     <span className="text-black font-bold font-mono">{credentialNumber}</span>
+
+                                    <span className="text-black font-bold uppercase">Class:</span>
+                                    <span className="text-black font-bold uppercase leading-tight">{currentClass?.name || '—'}</span>
 
                                     <span className="text-black font-bold uppercase">Completion Month:</span>
                                     <span className="font-bold text-black uppercase">{programMonths.completionMonth}</span>
@@ -817,6 +863,11 @@ const TranscriptView = ({ studentId, onClose }: any) => {
                                                 <TableCell className={`font-mono font-bold text-black text-xs ${showNarrative ? 'py-1' : 'py-2'} pl-2 border-r border-black`}>{row.code}</TableCell>
                                                 <TableCell className={`${showNarrative ? 'py-1' : 'py-2'} px-2 border-r border-black`}>
                                                     <div className="font-bold text-black text-xs uppercase leading-tight">{row.name}</div>
+                                                    {row.courseProject ? (
+                                                        <div className="text-[9px] italic text-black/80 leading-tight mt-0.5">
+                                                            Course Project: {row.courseProject}
+                                                        </div>
+                                                    ) : null}
                                                 </TableCell>
                                                 <TableCell className={`text-center font-bold text-black text-xs ${showNarrative ? 'py-1' : 'py-2'} border-r border-black`}>{row.marks !== null ? row.marks : '-'}</TableCell>
                                                 <TableCell className={`text-center font-bold text-black text-xs ${showNarrative ? 'py-1' : 'py-2'} pr-2`}>{row.grade}</TableCell>

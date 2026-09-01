@@ -74,6 +74,48 @@ export function getAppRootDomain(): string {
   return 'localhost:3000'
 }
 
+/**
+ * Course-project field is server-enforced for these tenant IDs only.
+ * Matching by name/subdomain is not used (those can be edited by the tenant).
+ */
+const COURSE_PROJECT_INSTITUTION_IDS = new Set([
+  '08c465d2-4f40-4e63-941a-2cfdd4b61a82',
+  '9273fbc4-fc18-439c-b016-71edd844c485',
+])
+
+export const COURSE_PROJECT_MAX_LEN = 200
+
+export function institutionAllowsCourseProjects(
+  institution?: { id?: string | null } | null,
+): boolean {
+  return COURSE_PROJECT_INSTITUTION_IDS.has(String(institution?.id || '').trim().toLowerCase())
+}
+
+/** Admin of allowed tenants may edit the optional class transcript paragraph. */
+export function canManageTranscriptClassParagraph(
+  institution?: { id?: string | null } | null,
+  role?: string | null,
+): boolean {
+  return String(role || '').toLowerCase() === 'admin' && institutionAllowsCourseProjects(institution)
+}
+
+/** Admin, staff, and instructors of allowed tenants may enter a course project when grading. */
+export function canManageCourseProjects(
+  institution?: { id?: string | null } | null,
+  role?: string | null,
+): boolean {
+  const r = String(role || '').toLowerCase()
+  return (r === 'admin' || r === 'staff' || r === 'instructor') && institutionAllowsCourseProjects(institution)
+}
+
+export function sanitizeCourseProject(raw?: string | null): string {
+  return String(raw || '')
+    .replace(/[\u0000-\u001F\u007F]/g, '')
+    .replace(/\s+/g, ' ')
+    .trim()
+    .slice(0, COURSE_PROJECT_MAX_LEN)
+}
+
 export function getInstitutionDisplayName(institution?: InstitutionBrand, fallback = 'Training Center'): string {
   const name = String(institution?.name || '').trim()
   return name || fallback

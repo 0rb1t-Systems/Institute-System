@@ -40,6 +40,11 @@ import {
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
 import { coursesForDiploma, diplomasForCourse, groupCoursesBySemester, semestersForDiploma } from '@/lib/diplomaCourses';
+import {
+  canManageCourseProjects,
+  COURSE_PROJECT_MAX_LEN,
+  sanitizeCourseProject,
+} from '@/lib/institution';
 
 const DiplomaForm = ({ diploma, closeDialog }: any) => {
     const [name, setName] = useState(diploma?.name || '');
@@ -298,6 +303,9 @@ const CourseForm = ({ course, closeDialog }: any) => {
         assignCourseToDiploma,
         setDiplomaCourseSemester,
     } = useData();
+    const { user, institution } = useAuth();
+    const showCourseProject = canManageCourseProjects(institution, user?.role);
+    const [courseProject, setCourseProject] = useState(course?.course_project || '');
 
     const diplomaSemestersForPick = useMemo(
         () => (diplomaId === 'none' ? [] : semestersForDiploma(diplomaSemesters, diplomaId)),
@@ -350,6 +358,9 @@ const CourseForm = ({ course, closeDialog }: any) => {
                 diploma_ids: diplomaId === 'none' ? [] : [diplomaId],
                 semester_id: semester,
             };
+            if (showCourseProject) {
+                payload.course_project = sanitizeCourseProject(courseProject);
+            }
 
             if (course) {
                 await updateCourseData(course.id, {
@@ -357,6 +368,7 @@ const CourseForm = ({ course, closeDialog }: any) => {
                     code: payload.code,
                     description: payload.description,
                     type: payload.type,
+                    ...(showCourseProject ? { course_project: payload.course_project } : {}),
                 });
                 if (diplomaId !== 'none') {
                     const linked = (diplomaCourses || []).some(
@@ -391,6 +403,20 @@ const CourseForm = ({ course, closeDialog }: any) => {
                     <Label htmlFor="course-code">Course code</Label>
                     <Input id="course-code" value={code} onChange={e => setCode(e.target.value)} className="w-full min-w-0" placeholder="e.g. CS101" />
                 </div>
+                {showCourseProject ? (
+                    <div className="space-y-1.5 min-w-0">
+                        <Label htmlFor="course-project">Course project</Label>
+                        <Input
+                            id="course-project"
+                            value={courseProject}
+                            maxLength={COURSE_PROJECT_MAX_LEN}
+                            onChange={(e) => setCourseProject(e.target.value)}
+                            className="w-full min-w-0"
+                            placeholder="e.g. Research Proposal Development"
+                        />
+                        <p className="text-[11px] text-slate-500">Default title shown under this course on transcripts. Can be overridden when grading a student.</p>
+                    </div>
+                ) : null}
                 <div className="space-y-1.5 min-w-0">
                     <Label>Type</Label>
                     <Select value={type} onValueChange={setType}>

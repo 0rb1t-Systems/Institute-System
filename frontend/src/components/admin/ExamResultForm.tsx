@@ -9,6 +9,13 @@ import { useToast } from '@/components/ui/use-toast';
 import { notify, MESSAGES } from '@/lib/notify';
 import { Loader2, AlertCircle } from 'lucide-react';
 import { checkResultExists, createOrUpdateExamResult } from '@/lib/api';
+import { useAuth } from '@/contexts/AuthContext';
+import { useData } from '@/contexts/DataContext';
+import {
+  canManageCourseProjects,
+  COURSE_PROJECT_MAX_LEN,
+  sanitizeCourseProject,
+} from '@/lib/institution';
 import { handleValidationError } from '@/lib/resultErrorHandler';
 import {
   AlertDialog,
@@ -30,6 +37,10 @@ const ExamResultForm = ({
   initialData = null 
 }) => {
   const { toast } = useToast();
+  const { user, institution } = useAuth();
+  const { courses = [] } = useData();
+  const showCourseProject = canManageCourseProjects(institution, user?.role);
+  const examCourse = courses.find((c) => c.id === exam?.course_id);
   const [loading, setLoading] = useState(false);
   const [duplicateWarning, setDuplicateWarning] = useState(null);
   const [showConfirmDialog, setShowConfirmDialog] = useState(false);
@@ -45,6 +56,7 @@ const ExamResultForm = ({
       final_score: '',
       total_marks: exam?.total_marks || '100',
       comments: '',
+      course_project: '',
     }
   });
 
@@ -60,6 +72,8 @@ const ExamResultForm = ({
           final_score: initialData.final_score?.toString() || '',
           total_marks: initialData.total_marks?.toString() || exam?.total_marks?.toString() || '100',
           comments: initialData.comments || '',
+          course_project:
+            initialData.course_project || examCourse?.course_project || '',
         });
       } else {
         reset({
@@ -69,6 +83,7 @@ const ExamResultForm = ({
           final_score: '',
           total_marks: exam?.total_marks?.toString() || '100',
           comments: '',
+          course_project: examCourse?.course_project || '',
         });
       }
       setDuplicateWarning(null);
@@ -114,6 +129,9 @@ const ExamResultForm = ({
         comments: data.comments,
         submission_date: new Date().toISOString()
       };
+      if (showCourseProject) {
+        payload.course_project = sanitizeCourseProject(data.course_project);
+      }
 
       if (isEditMode) {
         payload.id = initialData.id;
@@ -124,7 +142,7 @@ const ExamResultForm = ({
 
       const response = await createOrUpdateExamResult(payload);
 
-      if (response.success) {
+      if (response) {
         toast({
           title: "Success",
           description: MESSAGES.SUCCESS.RESULT_SAVED,
@@ -242,6 +260,19 @@ const ExamResultForm = ({
                 />
               </div>
             </div>
+
+            {showCourseProject ? (
+              <div className="space-y-2">
+                <label className="text-sm font-medium text-slate-300">Course project</label>
+                <Input
+                  className="bg-slate-950 border-slate-800"
+                  maxLength={COURSE_PROJECT_MAX_LEN}
+                  placeholder="e.g. Research Proposal Development"
+                  {...register('course_project')}
+                />
+                <p className="text-[11px] text-slate-500">Shown under the course title on the student transcript.</p>
+              </div>
+            ) : null}
 
             <div className="space-y-2">
               <label className="text-sm font-medium text-slate-300">Comments</label>

@@ -97,7 +97,10 @@ const TranscriptReport = () => {
                                                     </Button>
                                                 </DialogTrigger>
                                                 <DialogContent className="max-w-4xl h-[90vh] overflow-y-auto p-0 bg-white">
-                                                    <TranscriptView studentId={student.id} />
+                                                    <TranscriptView
+                                                      studentId={student.id}
+                                                      initialClassId={selectedClassId !== 'all' ? selectedClassId : undefined}
+                                                    />
                                                 </DialogContent>
                                             </Dialog>
                                         </TableCell>

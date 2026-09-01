@@ -309,7 +309,7 @@ const App = () => {
             <Route path="/admin/settings" element={<ProtectedRoute roles={['admin']}><Lazy><InstitutionSettingsPage /></Lazy></ProtectedRoute>} />
             <Route path="/admin/landing" element={<ProtectedRoute roles={['admin']}><Lazy><LandingCustomizePage /></Lazy></ProtectedRoute>} />
             <Route path="/admin/certificates" element={<ProtectedRoute roles={['admin', 'staff']}><Navigate to="/reports?tab=certificates" replace /></ProtectedRoute>} />
-            <Route path="/admin/grading" element={<ProtectedRoute roles={['admin']}><Lazy><AdminExamMarkingPage /></Lazy></ProtectedRoute>} />
+            <Route path="/admin/grading" element={<ProtectedRoute roles={['admin', 'staff']}><Lazy><AdminExamMarkingPage /></Lazy></ProtectedRoute>} />
 
             <Route path="/instructor/dashboard" element={<ProtectedRoute roles={['instructor']}><InstructorDashboard /></ProtectedRoute>} />
             <Route path="/instructor/profile" element={<ProtectedRoute roles={['instructor']}><InstructorProfilePage /></ProtectedRoute>} />
