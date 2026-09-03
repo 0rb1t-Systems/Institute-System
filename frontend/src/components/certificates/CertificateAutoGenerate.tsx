@@ -5,16 +5,126 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Input } from '@/components/ui/input';
-import { Wand2, Loader2, CheckCircle, AlertCircle, Info, Search } from 'lucide-react';
+import { Label } from '@/components/ui/label';
+import { Wand2, Loader2, CheckCircle, AlertCircle, Info, Search, Layout, ChevronDown, Check } from 'lucide-react';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+import { cn } from '@/lib/utils';
 import {
   autoGenerateCertificatesBatch,
-  generateCertificatesForEnrollments,
   getClasses,
+  getCertificateTemplateSignedUrl,
+  getDocumentTemplate,
   getStudents,
   listCertificateEligibleEnrollments,
 } from '@/lib/api';
+import {
+  CERTIFICATE_TEMPLATE_LIBRARY,
+  getCertificateTemplateMeta,
+  isLandscapeCertificateLayout,
+  normalizeCertificateLayoutKey,
+  type CertificateLayoutKey,
+  type CertificateRenderData,
+} from '@/lib/certificateTemplates';
+import CertificateCanvas from '@/components/certificates/CertificateCanvas';
+import { useAuth } from '@/contexts/AuthContext';
+import {
+  getCertificateFooterText,
+  getInstitutionAccent,
+  getInstitutionDisplayName,
+  getInstitutionPrimary,
+  getSignatoryLeftTitle,
+  getSignatoryRightTitle,
+} from '@/lib/institution';
 import { useToast } from '@/hooks/use-toast';
 import { notify, MESSAGES } from '@/lib/notify';
+
+const TEMPLATE_OPTION_LABELS: Record<string, string> = {
+  institution_default: 'Institution default (from Settings)',
+  logo_builder: 'Certificate builder',
+  custom_upload: 'Uploaded template',
+};
+
+function previewLayoutLabel(key: string) {
+  if (key === 'institution_default') return TEMPLATE_OPTION_LABELS.institution_default;
+  if (key === 'logo_builder') return TEMPLATE_OPTION_LABELS.logo_builder;
+  if (key === 'custom_upload') return TEMPLATE_OPTION_LABELS.custom_upload;
+  return getCertificateTemplateMeta(key).name;
+}
+
+function layoutKeyForTemplate(templateValue: string, institutionTemplate: any): CertificateLayoutKey {
+  if (templateValue === 'institution_default') {
+    return normalizeCertificateLayoutKey(institutionTemplate?.layout_key);
+  }
+  return normalizeCertificateLayoutKey(templateValue);
+}
+
+function buildPreviewData(
+  layoutKey: CertificateLayoutKey,
+  institution: any,
+  institutionTemplate: any,
+  customPreviewUrl: string | null,
+): CertificateRenderData {
+  const tplConfig = institutionTemplate?.config || {};
+  const upload = tplConfig.custom_upload || {};
+  return {
+    layoutKey,
+    institutionName: getInstitutionDisplayName(institution),
+    primary: getInstitutionPrimary(institution),
+    accent: getInstitutionAccent(institution),
+    motto: String(institution?.motto || '').trim() || undefined,
+    logoUrl: institution?.logo_url,
+    sealUrl: institution?.seal_url,
+    signatureUrl: institution?.signature_url,
+    leftTitle: getSignatoryLeftTitle(institution),
+    rightTitle: getSignatoryRightTitle(institution),
+    footerText: getCertificateFooterText(institution) || undefined,
+    studentName: 'Sample Student',
+    studentId: 'STU-0001',
+    programName: 'Sample Program',
+    className: 'Sample Class',
+    certificateNumber: 'CERT-PREVIEW',
+    verifyCode: 'preview00000000',
+    verificationUrl: 'https://example.com/verify-certificate/preview00000000',
+    dateIssued: new Date().toISOString(),
+    logoBuilderDesign: tplConfig.logo_builder || null,
+    customBackgroundUrl: customPreviewUrl,
+    customAspectRatio: upload.width && upload.height ? upload.width / upload.height : null,
+    customFieldLayout: upload.field_layout || null,
+    customPaperLayers: upload.paper_layers || null,
+  };
+}
+
+const TEMPLATE_OPTIONS = [
+  { value: 'institution_default', label: TEMPLATE_OPTION_LABELS.institution_default },
+  { value: 'logo_builder', label: TEMPLATE_OPTION_LABELS.logo_builder },
+  { value: 'custom_upload', label: TEMPLATE_OPTION_LABELS.custom_upload },
+  ...CERTIFICATE_TEMPLATE_LIBRARY.map((tpl) => ({ value: tpl.key, label: tpl.name })),
+];
+
+function CertificateThumb({ data }: { data: CertificateRenderData }) {
+  const landscape = isLandscapeCertificateLayout(data.layoutKey);
+  const srcW = landscape ? 1123 : 794;
+  const srcH = landscape ? 794 : 1123;
+  const destW = landscape ? 320 : 188;
+  const scale = destW / srcW;
+  return (
+    <div
+      className="relative overflow-hidden rounded border border-slate-700 bg-white shadow-sm"
+      style={{ width: destW, height: srcH * scale }}
+    >
+      <div
+        className="origin-top-left pointer-events-none"
+        style={{ width: srcW, height: srcH, transform: `scale(${scale})` }}
+      >
+        <CertificateCanvas data={data} />
+      </div>
+    </div>
+  );
+}
 
 function eligibilityReasons(row) {
   const reasons = [];
@@ -28,6 +138,7 @@ function eligibilityReasons(row) {
  * Eligible when grades/exams are complete (no class end-date or payment wait).
  */
 const CertificateAutoGenerate = ({ onGenerationComplete }) => {
+  const { institution } = useAuth();
   const { toast } = useToast();
   const [showConfirmDialog, setShowConfirmDialog] = useState(false);
   const [generating, setGenerating] = useState(false);
@@ -40,7 +151,82 @@ const CertificateAutoGenerate = ({ onGenerationComplete }) => {
   const [selectedClass, setSelectedClass] = useState('all');
   const [selectedEnrollmentIds, setSelectedEnrollmentIds] = useState([]);
   const [search, setSearch] = useState('');
+  const [selectedTemplate, setSelectedTemplate] = useState('institution_default');
+  const [templateMenuOpen, setTemplateMenuOpen] = useState(false);
+  const [hoveredTemplate, setHoveredTemplate] = useState('institution_default');
+  const [institutionTemplate, setInstitutionTemplate] = useState(null);
+  const [customPreviewUrl, setCustomPreviewUrl] = useState(null);
   const [loadingMeta, setLoadingMeta] = useState(true);
+
+  const hoveredLayoutKey: CertificateLayoutKey = useMemo(
+    () => layoutKeyForTemplate(hoveredTemplate, institutionTemplate),
+    [hoveredTemplate, institutionTemplate],
+  );
+
+  const hoverPreviewData = useMemo(
+    () => buildPreviewData(hoveredLayoutKey, institution, institutionTemplate, customPreviewUrl),
+    [hoveredLayoutKey, institution, institutionTemplate, customPreviewUrl],
+  );
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const tpl = await getDocumentTemplate('certificate');
+        if (cancelled) return;
+        setInstitutionTemplate(tpl || null);
+      } catch {
+        if (!cancelled) setInstitutionTemplate(null);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [institution?.id]);
+
+  useEffect(() => {
+    if (!templateMenuOpen) {
+      setCustomPreviewUrl(null);
+      return;
+    }
+
+    let cancelled = false;
+    (async () => {
+      const upload = institutionTemplate?.config?.custom_upload;
+      const layoutKey = hoveredLayoutKey;
+      const needsUploadPreview =
+        layoutKey === 'custom_upload' &&
+        (hoveredTemplate === 'custom_upload' ||
+          (hoveredTemplate === 'institution_default' && institutionTemplate?.layout_key === 'custom_upload'));
+
+      if (!needsUploadPreview || !upload?.storage_path) {
+        setCustomPreviewUrl(null);
+        return;
+      }
+
+      try {
+        const path = upload.preview_path || upload.storage_path;
+        const url = await getCertificateTemplateSignedUrl(path);
+        if (!cancelled) setCustomPreviewUrl(url);
+      } catch {
+        if (!cancelled) setCustomPreviewUrl(null);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [templateMenuOpen, hoveredTemplate, hoveredLayoutKey, institutionTemplate]);
+
+  const handleTemplateMenuOpenChange = (open: boolean) => {
+    setTemplateMenuOpen(open);
+    if (open) setHoveredTemplate(selectedTemplate);
+  };
+
+  const handleSelectTemplate = (value: string) => {
+    setSelectedTemplate(value);
+    setHoveredTemplate(value);
+    setTemplateMenuOpen(false);
+  };
 
   const reloadEligibility = async () => {
     const rows = await listCertificateEligibleEnrollments({
@@ -122,16 +308,21 @@ const CertificateAutoGenerate = ({ onGenerationComplete }) => {
     setShowConfirmDialog(false);
 
     try {
+      const layoutOverride = selectedTemplate !== 'institution_default' ? selectedTemplate : null;
       let data;
       if (mode === 'selected') {
         if (!selectedEnrollmentIds.length) {
           throw new Error('Select at least one eligible enrollment');
         }
-        data = await generateCertificatesForEnrollments(selectedEnrollmentIds);
+        data = await autoGenerateCertificatesBatch({
+          enrollmentIds: selectedEnrollmentIds,
+          layoutKeyOverride: layoutOverride,
+        });
       } else {
         data = await autoGenerateCertificatesBatch({
           ...(selectedClass !== 'all' ? { classId: selectedClass } : {}),
           ...(selectedStudent ? { studentId: selectedStudent } : {}),
+          layoutKeyOverride: layoutOverride,
         });
       }
 
@@ -246,6 +437,70 @@ const CertificateAutoGenerate = ({ onGenerationComplete }) => {
                 ))}
               </SelectContent>
             </Select>
+          </div>
+
+          <div className="space-y-1.5">
+            <Label className="text-sm text-slate-300 flex items-center gap-1.5">
+              <Layout className="h-3.5 w-3.5 text-purple-400" />
+              Certificate template
+            </Label>
+            <DropdownMenu open={templateMenuOpen} onOpenChange={handleTemplateMenuOpenChange}>
+              <DropdownMenuTrigger asChild>
+                <button
+                  type="button"
+                  className="flex h-10 w-full items-center justify-between rounded-md border border-slate-700 bg-slate-900 px-3 py-2 text-sm text-white ring-offset-background focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
+                >
+                  <span className="truncate">{previewLayoutLabel(selectedTemplate)}</span>
+                  <ChevronDown className="h-4 w-4 shrink-0 opacity-50" />
+                </button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent
+                align="start"
+                side="bottom"
+                sideOffset={6}
+                collisionPadding={12}
+                className="w-[min(36rem,calc(100vw-2rem))] p-0 bg-slate-950 border-slate-700 text-white"
+              >
+                <div className="grid sm:grid-cols-[13rem_1fr]">
+                  <div className="max-h-72 overflow-y-auto p-1 border-b sm:border-b-0 sm:border-r border-slate-800">
+                    {TEMPLATE_OPTIONS.map((opt) => {
+                      const selected = selectedTemplate === opt.value;
+                      const hovered = hoveredTemplate === opt.value;
+                      return (
+                        <button
+                          key={opt.value}
+                          type="button"
+                          onMouseEnter={() => setHoveredTemplate(opt.value)}
+                          onClick={() => handleSelectTemplate(opt.value)}
+                          className={cn(
+                            'flex w-full items-center gap-2 rounded-sm px-2 py-1.5 text-left text-sm outline-none transition',
+                            hovered ? 'bg-slate-800 text-white' : 'text-slate-200',
+                          )}
+                        >
+                          <span className="flex h-4 w-4 shrink-0 items-center justify-center">
+                            {selected ? <Check className="h-4 w-4 text-emerald-400" /> : null}
+                          </span>
+                          <span className="truncate">{opt.label}</span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                  <div className="p-3 bg-slate-900/80">
+                    <p className="text-xs text-slate-400 mb-2 truncate">
+                      {previewLayoutLabel(hoveredTemplate)}
+                    </p>
+                    <div className="flex justify-center">
+                      <CertificateThumb data={hoverPreviewData} />
+                    </div>
+                  </div>
+                </div>
+              </DropdownMenuContent>
+            </DropdownMenu>
+            {selectedTemplate !== 'institution_default' && (
+              <p className="text-xs text-purple-300/80">
+                This template applies to this generation batch only.
+              </p>
+            )}
           </div>
 
           {mode === 'selected' && (

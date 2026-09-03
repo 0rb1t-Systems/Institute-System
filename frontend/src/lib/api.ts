@@ -2700,6 +2700,7 @@ type CertificateEligibilityOptions = {
 type CertificateBatchOptions = CertificateEligibilityOptions & {
   enrollmentIds?: string[] | null
   studentIds?: string[] | null
+  layoutKeyOverride?: string | null
 }
 
 /** Certificate eligibility rows from DB (class finished + grades + paid + not issued). */
@@ -2730,6 +2731,7 @@ export const autoGenerateCertificatesBatch = async (options: CertificateBatchOpt
   const studentIds = Array.isArray(options.studentIds) ? options.studentIds.filter(Boolean) : null
   const classId = options.classId || null
   const studentId = options.studentId || (studentIds?.length === 1 ? studentIds[0] : null)
+  const layoutKeyOverride = options.layoutKeyOverride || null
 
   const me = await getMyProfile()
   if (!me?.institution_id) throw new Error('FORBIDDEN')
@@ -2800,6 +2802,17 @@ export const autoGenerateCertificatesBatch = async (options: CertificateBatchOpt
   const courseById = Object.fromEntries((courses || []).map((c) => [c.id, c]))
   const diplomaById = Object.fromEntries((diplomas || []).map((d) => [d.id, d]))
 
+  const effectiveSnapshot =
+    layoutKeyOverride && snapshot && typeof snapshot === 'object'
+      ? {
+          ...snapshot,
+          template: {
+            ...(snapshot.template || {}),
+            layout_key: layoutKeyOverride,
+          },
+        }
+      : snapshot
+
   const items = toCreate.map((enr) => {
     const cls = classById[enr.class_id]
     const course = cls?.course_id ? courseById[cls.course_id] : null
@@ -2810,7 +2823,7 @@ export const autoGenerateCertificatesBatch = async (options: CertificateBatchOpt
       class_id: enr.class_id,
       enrollment_id: enr.id,
       template_snapshot: {
-        ...(snapshot && typeof snapshot === 'object' ? snapshot : {}),
+        ...(effectiveSnapshot && typeof effectiveSnapshot === 'object' ? effectiveSnapshot : {}),
         class_id: enr.class_id,
         enrollment_id: enr.id,
         course_id: cls?.course_id || null,

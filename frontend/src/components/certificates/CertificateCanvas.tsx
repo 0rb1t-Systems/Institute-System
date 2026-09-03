@@ -62,11 +62,6 @@ const Signatures = ({
         <img src={data.signatureUrl} alt="" className="h-9 w-auto object-contain mx-auto mb-1" />
       ) : null}
       <div className={`${lineClass} mx-auto mb-1`} />
-      {data.leftName ? (
-        <p className={`text-[11px] font-semibold ${tone === 'dark' ? 'text-slate-100' : 'text-slate-800'}`}>
-          {data.leftName}
-        </p>
-      ) : null}
       <p className={`text-[10px] uppercase tracking-wide ${tone === 'dark' ? 'text-slate-400' : 'text-slate-600'}`}>
         {data.leftTitle}
       </p>
@@ -76,11 +71,6 @@ const Signatures = ({
     ) : null}
     <div className="text-center flex-1 max-w-[40%]">
       <div className={`${lineClass} mx-auto mb-1`} />
-      {data.rightName ? (
-        <p className={`text-[11px] font-semibold ${tone === 'dark' ? 'text-slate-100' : 'text-slate-800'}`}>
-          {data.rightName}
-        </p>
-      ) : null}
       <p className={`text-[10px] uppercase tracking-wide ${tone === 'dark' ? 'text-slate-400' : 'text-slate-600'}`}>
         {data.rightTitle}
       </p>
@@ -355,13 +345,11 @@ const CertificateCanvas = ({ data: rawData, compact = false, forPdf = false }: P
           <div className="text-center w-[38%]">
             {data.signatureUrl ? <img src={data.signatureUrl} alt="" className="h-8 mx-auto object-contain" /> : null}
             <div className="border-t border-slate-800 mt-1" />
-            {data.leftName ? <p className="text-[11px] font-semibold mt-1">{data.leftName}</p> : null}
             <p className="text-[10px] mt-0.5 uppercase tracking-wide text-slate-600">{data.leftTitle}</p>
           </div>
           <QrBlock url={data.verificationUrl} primary={data.primary} sizeMm={compact ? 16 : 22} />
           <div className="text-center w-[38%]">
             <div className="border-t border-slate-800 mt-8" />
-            {data.rightName ? <p className="text-[11px] font-semibold mt-1">{data.rightName}</p> : null}
             <p className="text-[10px] mt-0.5 uppercase tracking-wide text-slate-600">{data.rightTitle}</p>
           </div>
         </div>
@@ -524,13 +512,11 @@ const CertificateCanvas = ({ data: rawData, compact = false, forPdf = false }: P
             <img src={data.signatureUrl} alt="" className="h-8 w-auto object-contain mx-auto mb-1" />
           ) : null}
           <div className="border-t border-slate-900 mx-auto mb-1" />
-          <p className="text-[11px] font-bold text-slate-900">{data.leftName || 'Authorized Signatory'}</p>
           <p className="text-[9px] uppercase tracking-wide text-slate-500">{data.leftTitle}</p>
         </div>
         <div className="flex-1 text-center">
           <div className="h-12" />
           <div className="border-t border-slate-900 mx-auto mb-1 mt-8" />
-          <p className="text-[11px] font-bold text-slate-900">{data.rightName || 'Authorized Signatory'}</p>
           <p className="text-[9px] uppercase tracking-wide text-slate-500">{data.rightTitle}</p>
         </div>
       </div>

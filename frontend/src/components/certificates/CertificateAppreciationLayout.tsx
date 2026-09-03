@@ -214,16 +214,7 @@ const CertificateAppreciationLayout = ({ data, compact = false, forPdf = false }
             ) : (
               <div style={{ height: fs(20) }} />
             )}
-            <p
-              className="truncate"
-              style={{
-                fontFamily: '"Great Vibes", cursive',
-                fontSize: fs(18),
-                color: '#111827',
-              }}
-            >
-              {data.leftName || 'Authorized Signatory'}
-            </p>
+            <div className="mx-auto mb-0.5" style={{ borderTop: '1.5px solid #334155', width: '80%' }} />
             <p
               className="uppercase text-slate-500"
               style={{ fontSize: fs(9), letterSpacing: '0.06em' }}
@@ -263,16 +254,7 @@ const CertificateAppreciationLayout = ({ data, compact = false, forPdf = false }
               Regard
             </p>
             <div style={{ height: data.signatureUrl ? fs(32) : fs(20) }} />
-            <p
-              className="truncate"
-              style={{
-                fontFamily: '"Great Vibes", cursive',
-                fontSize: fs(18),
-                color: '#111827',
-              }}
-            >
-              {data.rightName || 'Authorized Signatory'}
-            </p>
+            <div className="mx-auto mb-0.5" style={{ borderTop: '1.5px solid #334155', width: '80%' }} />
             <p
               className="uppercase text-slate-500"
               style={{ fontSize: fs(9), letterSpacing: '0.06em' }}

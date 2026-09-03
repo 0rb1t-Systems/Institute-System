@@ -6,7 +6,8 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { useToast } from '@/components/ui/use-toast';
 import { notify, MESSAGES } from '@/lib/notify';
-import { Download, GraduationCap, Loader2, Upload } from 'lucide-react';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { CERTIFICATE_TEMPLATE_LIBRARY } from '@/lib/certificateTemplates';
 import {
   ALUMNI_TEMPLATES,
   MAX_ALUMNI_IMPORT_ROWS,
@@ -24,6 +25,7 @@ export default function AlumniImportModal({ open, onClose, onSuccess }) {
   const [mapping, setMapping] = useState({});
   const [importing, setImporting] = useState(false);
   const [issueDocuments, setIssueDocuments] = useState(true);
+  const [certificateTemplate, setCertificateTemplate] = useState('institution_default');
   const [sendWelcomeEmail, setSendWelcomeEmail] = useState(false);
   const [parseErrors, setParseErrors] = useState([]);
   const [result, setResult] = useState(null);
@@ -34,6 +36,7 @@ export default function AlumniImportModal({ open, onClose, onSuccess }) {
     setMapping({});
     setImporting(false);
     setIssueDocuments(true);
+    setCertificateTemplate('institution_default');
     setSendWelcomeEmail(false);
     setParseErrors([]);
     setResult(null);
@@ -112,7 +115,11 @@ export default function AlumniImportModal({ open, onClose, onSuccess }) {
     }
     setImporting(true);
     try {
-      const out = await runAlumniImport(validated.rows, { sendWelcomeEmail, issueDocuments });
+      const out = await runAlumniImport(validated.rows, {
+        sendWelcomeEmail,
+        issueDocuments,
+        layoutKeyOverride: certificateTemplate !== 'institution_default' ? certificateTemplate : null,
+      });
       setResult(out);
       setStep('done');
       if (out.studentsCreated + out.studentsReused > 0 && onSuccess) onSuccess();
@@ -232,6 +239,31 @@ export default function AlumniImportModal({ open, onClose, onSuccess }) {
               <Checkbox checked={issueDocuments} onCheckedChange={(v) => setIssueDocuments(v === true)} />
               <span>Issue transcripts and certificates after grades are saved (requires complete institution document settings).</span>
             </label>
+            {issueDocuments && (
+              <div className="space-y-1.5 pl-6">
+                <Label className="text-sm text-slate-300">Certificate template</Label>
+                <Select value={certificateTemplate} onValueChange={setCertificateTemplate}>
+                  <SelectTrigger className="bg-slate-950 border-slate-700 text-white">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="institution_default">
+                      Active template (from Certificate Management)
+                    </SelectItem>
+                    <SelectItem value="logo_builder">Certificate builder</SelectItem>
+                    <SelectItem value="custom_upload">Uploaded template</SelectItem>
+                    {CERTIFICATE_TEMPLATE_LIBRARY.map((tpl) => (
+                      <SelectItem key={tpl.key} value={tpl.key}>
+                        {tpl.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <p className="text-xs text-slate-500">
+                  Default is the design you activated in Institution Settings → Certificate Management.
+                </p>
+              </div>
+            )}
             <label className="flex items-start gap-2 text-sm text-slate-300">
               <Checkbox checked={sendWelcomeEmail} onCheckedChange={(v) => setSendWelcomeEmail(v === true)} />
               <span>Send login emails to newly created students (off by default for alumni).</span>

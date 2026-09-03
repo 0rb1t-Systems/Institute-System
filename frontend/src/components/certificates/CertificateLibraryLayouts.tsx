@@ -66,11 +66,6 @@ function SignBlock({
           <div style={{ height: fs(compact, 16) }} />
         )}
         <div className="mx-auto mb-0.5" style={{ borderTop: `1.5px solid ${lineColor}`, width: '88%' }} />
-        {data.leftName ? (
-          <p className="truncate font-semibold text-slate-800" style={{ fontSize: fs(compact, 10) }}>
-            {data.leftName}
-          </p>
-        ) : null}
         <p className="uppercase tracking-wide text-slate-500" style={{ fontSize: fs(compact, 8) }}>
           {data.leftTitle}
         </p>
@@ -81,11 +76,6 @@ function SignBlock({
       <div className="text-center flex-1 min-w-0">
         <div style={{ height: data.signatureUrl ? fs(compact, 28) : fs(compact, 16) }} />
         <div className="mx-auto mb-0.5" style={{ borderTop: `1.5px solid ${lineColor}`, width: '88%' }} />
-        {data.rightName ? (
-          <p className="truncate font-semibold text-slate-800" style={{ fontSize: fs(compact, 10) }}>
-            {data.rightName}
-          </p>
-        ) : null}
         <p className="uppercase tracking-wide text-slate-500" style={{ fontSize: fs(compact, 8) }}>
           {data.rightTitle}
         </p>

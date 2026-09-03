@@ -625,10 +625,11 @@ async function uniqueCourseCode(existing: any[], preferred: string, name: string
 
 export async function runAlumniImport(
   mappedRows: AlumniMappedRow[],
-  options: { sendWelcomeEmail?: boolean; issueDocuments?: boolean } = {},
+  options: { sendWelcomeEmail?: boolean; issueDocuments?: boolean; layoutKeyOverride?: string | null } = {},
 ) {
   const sendWelcomeEmail = options.sendWelcomeEmail === true
   const issueDocuments = options.issueDocuments !== false
+  const layoutKeyOverride = options.layoutKeyOverride || null
 
   const [diplomas, courses, classes, classCourses, diplomaCourses, diplomaSemesters, exams, enrollments] = await Promise.all([
     getDiplomas(),
@@ -967,7 +968,10 @@ export async function runAlumniImport(
         transcriptNotes.push(err?.message || String(err))
       }
       try {
-        const cert = await autoGenerateCertificatesBatch({ classId })
+        const cert = await autoGenerateCertificatesBatch({
+          classId,
+          layoutKeyOverride,
+        })
         certNotes.push(`${cert?.generated || 0} issued`)
       } catch (err: any) {
         certNotes.push(err?.message || String(err))
