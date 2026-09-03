@@ -94,7 +94,7 @@ export default function AlumniImportModal({ open, onClose, onSuccess }) {
         map.set(r.email, {
           full_name: r.full_name,
           email: r.email,
-          program: `${r.program_type}: ${r.program_name} (${r.year})`,
+          program: `${r.program_type}: ${r.program_name} · ${r.class_name} (${r.start_month} → ${r.completed_month})`,
           courses: [`${r.course_name} ${r.mark}`],
         });
       } else {

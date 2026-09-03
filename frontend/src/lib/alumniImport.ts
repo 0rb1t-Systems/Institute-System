@@ -30,7 +30,7 @@ export const ALUMNI_COURSE_SLOTS = 8
 
 export type AlumniTemplateKind = 'course' | 'diploma' | 'diploma_semester' | 'full'
 
-const IDENTITY_HEADERS = ['full_name', 'email', 'phone', 'student_code', 'year'] as const
+const IDENTITY_HEADERS = ['full_name', 'email', 'phone', 'student_code', 'class_name', 'start_month', 'completed_month'] as const
 
 function slotHeaders(withSemester: boolean, count = ALUMNI_COURSE_SLOTS) {
   return Array.from({ length: count }, (_, i) => {
@@ -54,14 +54,16 @@ export const ALUMNI_TEMPLATES: {
     subtitle: 'Single course only',
     hint: 'One student, one course, one mark. No diploma or semester columns.',
     filename: 'alumni-template-courses.xlsx',
-    headers: [...IDENTITY_HEADERS.slice(0, 4), 'course_name', 'year', 'mark'],
+    headers: [...IDENTITY_HEADERS, 'course_name', 'mark'],
     columns: [
       { key: 'full_name', required: true, mapsTo: 'student name' },
       { key: 'email', required: true, mapsTo: 'account email' },
       { key: 'phone', required: false, mapsTo: 'phone' },
       { key: 'student_code', required: false, mapsTo: 'previous ID (optional)' },
       { key: 'course_name', required: true, mapsTo: 'course name' },
-      { key: 'year', required: false, mapsTo: 'completion year' },
+      { key: 'class_name', required: true, mapsTo: 'alumni class name' },
+      { key: 'start_month', required: false, mapsTo: 'class start month (e.g. 2022-01)' },
+      { key: 'completed_month', required: false, mapsTo: 'class completed month (e.g. 2022-12)' },
       { key: 'mark', required: true, mapsTo: '0–100' },
     ],
   },
@@ -71,14 +73,16 @@ export const ALUMNI_TEMPLATES: {
     subtitle: 'Diploma courses, no semester',
     hint: 'One row = one student. diploma_name plus course_1/mark_1 … course_8. No semester columns.',
     filename: 'alumni-template-diplomas.xlsx',
-    headers: [...IDENTITY_HEADERS.slice(0, 4), 'diploma_name', 'year', ...slotHeaders(false)],
+    headers: [...IDENTITY_HEADERS, 'diploma_name', ...slotHeaders(false)],
     columns: [
       { key: 'full_name', required: true, mapsTo: 'student name' },
       { key: 'email', required: true, mapsTo: 'account email' },
       { key: 'phone', required: false, mapsTo: 'phone' },
       { key: 'student_code', required: false, mapsTo: 'previous ID (optional)' },
       { key: 'diploma_name', required: true, mapsTo: 'diploma name in Academic Programs' },
-      { key: 'year', required: false, mapsTo: 'completion year' },
+      { key: 'class_name', required: true, mapsTo: 'alumni class name' },
+      { key: 'start_month', required: false, mapsTo: 'class start month (e.g. 2022-01)' },
+      { key: 'completed_month', required: false, mapsTo: 'class completed month (e.g. 2022-12)' },
       { key: 'course_1 / mark_1 … course_8 / mark_8', required: true, mapsTo: 'each subject and mark' },
     ],
   },
@@ -88,14 +92,16 @@ export const ALUMNI_TEMPLATES: {
     subtitle: 'Diploma with semesters',
     hint: 'Same as diploma, plus semester_1 … semester_8 for each course (e.g. Semester one).',
     filename: 'alumni-template-diploma-semesters.xlsx',
-    headers: [...IDENTITY_HEADERS.slice(0, 4), 'diploma_name', 'year', ...slotHeaders(true)],
+    headers: [...IDENTITY_HEADERS, 'diploma_name', ...slotHeaders(true)],
     columns: [
       { key: 'full_name', required: true, mapsTo: 'student name' },
       { key: 'email', required: true, mapsTo: 'account email' },
       { key: 'phone', required: false, mapsTo: 'phone' },
       { key: 'student_code', required: false, mapsTo: 'previous ID (optional)' },
       { key: 'diploma_name', required: true, mapsTo: 'diploma name in Academic Programs' },
-      { key: 'year', required: false, mapsTo: 'completion year' },
+      { key: 'class_name', required: true, mapsTo: 'alumni class name' },
+      { key: 'start_month', required: false, mapsTo: 'class start month (e.g. 2022-01)' },
+      { key: 'completed_month', required: false, mapsTo: 'class completed month (e.g. 2022-12)' },
       { key: 'course_n / mark_n / semester_n', required: true, mapsTo: 'subject, mark, and semester name' },
     ],
   },
@@ -105,7 +111,7 @@ export const ALUMNI_TEMPLATES: {
     subtitle: 'All columns (course + diploma + semester)',
     hint: 'Use when one file mixes course and diploma rows. Set program_type to course or diploma.',
     filename: 'alumni-template-full.xlsx',
-    headers: ['full_name', 'email', 'phone', 'student_code', 'program_type', 'program_name', 'year', ...slotHeaders(true)],
+    headers: ['full_name', 'email', 'phone', 'student_code', 'class_name', 'start_month', 'completed_month', 'program_type', 'program_name', ...slotHeaders(true)],
     columns: [
       { key: 'program_type', required: true, mapsTo: 'course or diploma' },
       { key: 'program_name', required: true, mapsTo: 'course or diploma name' },
@@ -140,9 +146,16 @@ const HEADER_ALIASES: Record<string, string> = {
   program: 'program_name',
   diploma: 'program_name',
   diploma_name: 'program_name',
-  year: 'year',
-  completion_year: 'year',
-  batch: 'year',
+  class_name: 'class_name',
+  classname: 'class_name',
+  class: 'class_name',
+  batch: 'class_name',
+  start_month: 'start_month',
+  started_month: 'start_month',
+  completed_month: 'completed_month',
+  completion_month: 'completed_month',
+  year: 'completed_month',
+  completion_year: 'completed_month',
 }
 
 export const MAX_ALUMNI_IMPORT_ROWS = 500
@@ -160,10 +173,63 @@ function cell(row: Record<string, unknown>, key: string) {
   return String(v).trim()
 }
 
-function parseYear(raw: string) {
-  const n = Number(String(raw).replace(/[^\d]/g, '').slice(0, 4))
-  if (Number.isFinite(n) && n >= 1990 && n <= 2100) return n
-  return new Date().getFullYear()
+function parseMonth(raw: string, fallbackMonth: number, fallbackYear: number) {
+  const value = String(raw || '').trim()
+  const fallback = `${fallbackYear}-${String(fallbackMonth).padStart(2, '0')}`
+  if (!value) return fallback
+
+  const normalized = value.toLowerCase().replace(/[.]/g, ' ').replace(/\s+/g, ' ').trim()
+  const monthMap: Record<string, number> = {
+    jan: 1, january: 1,
+    feb: 2, february: 2,
+    mar: 3, march: 3,
+    apr: 4, april: 4,
+    may: 5,
+    jun: 6, june: 6,
+    jul: 7, july: 7,
+    aug: 8, august: 8,
+    sep: 9, sept: 9, september: 9,
+    oct: 10, october: 10,
+    nov: 11, november: 11,
+    dec: 12, december: 12,
+  }
+
+  const named = normalized.match(/^([a-z]+)\s+(\d{4})$/)
+  if (named) {
+    const month = monthMap[named[1]]
+    const year = Number(named[2])
+    if (month && year >= 1990 && year <= 2100) {
+      return `${year}-${String(month).padStart(2, '0')}`
+    }
+  }
+
+  const iso = normalized.match(/^(\d{4})[-/](\d{1,2})$/)
+  if (iso) {
+    const year = Number(iso[1])
+    const month = Number(iso[2])
+    if (year >= 1990 && year <= 2100 && month >= 1 && month <= 12) {
+      return `${year}-${String(month).padStart(2, '0')}`
+    }
+  }
+
+  const slashed = normalized.match(/^(\d{1,2})[-/](\d{4})$/)
+  if (slashed) {
+    const month = Number(slashed[1])
+    const year = Number(slashed[2])
+    if (year >= 1990 && year <= 2100 && month >= 1 && month <= 12) {
+      return `${year}-${String(month).padStart(2, '0')}`
+    }
+  }
+
+  const yearOnly = normalized.match(/^(\d{4})$/)
+  if (yearOnly) {
+    const year = Number(yearOnly[1])
+    if (year >= 1990 && year <= 2100) {
+      return `${year}-${String(fallbackMonth).padStart(2, '0')}`
+    }
+  }
+
+  return fallback
 }
 
 function parseMark(raw: string) {
@@ -262,8 +328,10 @@ export function downloadAlumniTemplate(kind: AlumniTemplateKind = 'full') {
           email: 'ahmed.ali@example.com',
           phone: '0612345678',
           student_code: '',
+          class_name: 'Computer Basics Alumni - 2022',
+          start_month: '2022-01',
+          completed_month: '2022-12',
           course_name: 'Computer Basics',
-          year: 2022,
           mark: 78,
         },
       ],
@@ -291,8 +359,10 @@ export function downloadAlumniTemplate(kind: AlumniTemplateKind = 'full') {
           email: 'amina.yusuf@example.com',
           phone: '',
           student_code: 'ACC2022001',
+          class_name: 'Accounting Diploma Alumni - 2022',
+          start_month: '2022-01',
+          completed_month: '2022-12',
           diploma_name: 'Accounting Diploma',
-          year: 2022,
           ...empty,
           course_1: 'Bookkeeping',
           mark_1: 80,
@@ -327,8 +397,10 @@ export function downloadAlumniTemplate(kind: AlumniTemplateKind = 'full') {
           email: 'amina.yusuf@example.com',
           phone: '',
           student_code: 'ACC2022001',
+          class_name: 'Diploma Test Alumni - 2022',
+          start_month: '2022-01',
+          completed_month: '2022-12',
           diploma_name: 'deploma test',
-          year: 2022,
           ...empty,
           course_1: 'Taxation',
           mark_1: 80,
@@ -363,9 +435,11 @@ export function downloadAlumniTemplate(kind: AlumniTemplateKind = 'full') {
         email: 'ahmed.ali@example.com',
         phone: '0612345678',
         student_code: '',
+        class_name: 'Computer Basics Alumni - 2022',
+        start_month: '2022-01',
+        completed_month: '2022-12',
         program_type: 'course',
         program_name: 'Computer Basics',
-        year: 2022,
         ...empty,
         course_1: 'Computer Basics',
         mark_1: 78,
@@ -375,9 +449,11 @@ export function downloadAlumniTemplate(kind: AlumniTemplateKind = 'full') {
         email: 'amina.yusuf@example.com',
         phone: '0611111111',
         student_code: 'ACC2022001',
+        class_name: 'Accounting Diploma Alumni - 2022',
+        start_month: '2022-01',
+        completed_month: '2022-12',
         program_type: 'diploma',
         program_name: 'Accounting Diploma',
-        year: 2022,
         ...empty,
         course_1: 'Bookkeeping',
         mark_1: 80,
@@ -391,9 +467,11 @@ export function downloadAlumniTemplate(kind: AlumniTemplateKind = 'full') {
         email: 'hassan.mohamed@example.com',
         phone: '0612222222',
         student_code: 'DIP2023001',
+        class_name: 'Diploma Test Alumni - 2023',
+        start_month: '2023-01',
+        completed_month: '2023-12',
         program_type: 'diploma',
         program_name: 'deploma test',
-        year: 2023,
         ...empty,
         course_1: 'Taxation',
         mark_1: 80,
@@ -430,7 +508,9 @@ export type AlumniMappedRow = {
   student_code: string
   program_type: 'course' | 'diploma'
   program_name: string
-  year: number
+  class_name: string
+  start_month: string
+  completed_month: string
   course_name: string
   course_code: string
   mark: number
@@ -484,6 +564,10 @@ export function mapAndValidateRows(
     let program_name = String(out.program_name || '').trim()
     if (!program_name && slots[0]?.name) program_name = slots[0].name
     const student_code = String(out.student_code || '').trim().toUpperCase()
+    const class_name = String(out.class_name || '').trim()
+    const now = new Date()
+    const completedMonth = parseMonth(out.completed_month || '', 12, now.getFullYear())
+    const startMonth = parseMonth(out.start_month || '', 1, Number(completedMonth.slice(0, 4)))
     if (!slots.length && program_type === 'course' && program_name) {
       const mark = parseMark(out.mark_1 || '')
       if (mark != null) slots = [{ n: 1, name: program_name, mark, code: '', semester: '' }]
@@ -493,6 +577,7 @@ export function mapAndValidateRows(
     if (!email || !isEmail(email)) errors.push(`Row ${rowNumber}: valid email is required`)
     if (!program_type) errors.push(`Row ${rowNumber}: could not tell course vs diploma — add program_type or extra courses`)
     if (!program_name) errors.push(`Row ${rowNumber}: course_name or diploma_name is required`)
+    if (!class_name) errors.push(`Row ${rowNumber}: class_name is required`)
     if (student_code && student_code.length < 3) {
       errors.push(`Row ${rowNumber}: student_code is too short`)
     }
@@ -501,7 +586,7 @@ export function mapAndValidateRows(
       if (!slot.name) errors.push(`Row ${rowNumber}: course_${slot.n} name is missing`)
       if (slot.mark == null) errors.push(`Row ${rowNumber}: mark_${slot.n} must be a number 0–100`)
     }
-    if (!full_name || !email || !isEmail(email) || !program_type || !program_name) return
+    if (!full_name || !email || !isEmail(email) || !program_type || !program_name || !class_name) return
     for (const slot of slots) {
       if (!slot.name || slot.mark == null) continue
       rows.push({
@@ -512,7 +597,9 @@ export function mapAndValidateRows(
         student_code,
         program_type,
         program_name,
-        year: parseYear(out.year || ''),
+        class_name,
+        start_month: startMonth,
+        completed_month: completedMonth,
         course_name: slot.name,
         course_code: slot.code,
         mark: slot.mark,
@@ -523,12 +610,8 @@ export function mapAndValidateRows(
   return { rows, errors }
 }
 
-function classNameFor(program_name: string, year: number) {
-  return `${program_name} — Alumni ${year}`
-}
-
 function classKey(row: AlumniMappedRow) {
-  return `${row.program_type}|${row.program_name.toLowerCase()}|${row.year}`
+  return `${row.program_type}|${row.program_name.toLowerCase()}|${row.class_name.toLowerCase()}`
 }
 
 async function uniqueCourseCode(existing: any[], preferred: string, name: string) {
@@ -581,14 +664,41 @@ export async function runAlumniImport(
     return String(a || '').trim().toLowerCase() === String(b || '').trim().toLowerCase()
   }
 
-  async function ensureDiploma(programName: string, year: number) {
+  async function ensureDiploma(programName: string) {
     const exact = findDiploma(programName)
     if (exact) return exact
-    const legacy = findDiploma(`${programName} — Alumni ${year}`)
-    if (legacy) return legacy
     const row = await createDiploma({ name: programName })
     diplomaList.push(row)
     return row
+  }
+
+  function parseYearMonth(month: string) {
+    const [y, m] = String(month).split('-')
+    const year = Number(y)
+    const monthNum = Number(m)
+    if (!Number.isFinite(year) || !Number.isFinite(monthNum) || monthNum < 1 || monthNum > 12) {
+      const now = new Date()
+      return { year: now.getFullYear(), month: now.getMonth() + 1 }
+    }
+    return { year, month: monthNum }
+  }
+
+  function firstDayOfMonth(month: string) {
+    const { year, month: mm } = parseYearMonth(month)
+    return `${year}-${String(mm).padStart(2, '0')}-01`
+  }
+
+  function lastDayOfMonth(month: string) {
+    const { year, month: mm } = parseYearMonth(month)
+    const last = new Date(Date.UTC(year, mm, 0)).getUTCDate()
+    return `${year}-${String(mm).padStart(2, '0')}-${String(last).padStart(2, '0')}`
+  }
+
+  function monthDuration(startMonth: string, completedMonth: string) {
+    const a = parseYearMonth(startMonth)
+    const b = parseYearMonth(completedMonth)
+    const diff = (b.year - a.year) * 12 + (b.month - a.month) + 1
+    return String(Math.max(1, diff))
   }
 
   async function ensureSemester(diplomaId: string, name: string) {
@@ -646,8 +756,15 @@ export async function runAlumniImport(
     return row
   }
 
-  async function ensureClass(programType: 'course' | 'diploma', programName: string, year: number, courseId: string | null, diplomaId: string | null) {
-    const name = classNameFor(programName, year)
+  async function ensureClass(
+    programType: 'course' | 'diploma',
+    className: string,
+    startMonth: string,
+    completedMonth: string,
+    courseId: string | null,
+    diplomaId: string | null,
+  ) {
+    const name = className
     const hit = findClassByName(name)
     if (hit) {
       if (programType === 'diploma' && diplomaId && hit.diploma_id !== diplomaId) {
@@ -658,8 +775,8 @@ export async function runAlumniImport(
       }
       return hit
     }
-    const start = `${year}-01-01`
-    const end = `${year}-12-31`
+    const start = firstDayOfMonth(startMonth)
+    const end = lastDayOfMonth(completedMonth)
     const row = await createClass({
       name,
       program_type: programType,
@@ -667,7 +784,7 @@ export async function runAlumniImport(
       diploma_id: programType === 'diploma' ? diplomaId : null,
       start_date: start,
       end_date: end,
-      duration: '1',
+      duration: monthDuration(startMonth, completedMonth),
       fee: 0,
       total_fee: 0,
       status: 'inactive',
@@ -786,7 +903,7 @@ export async function runAlumniImport(
         let diplomaId: string | null = null
         let primaryCourseId: string | null = null
         if (sample.program_type === 'diploma') {
-          diplomaId = (await ensureDiploma(sample.program_name, sample.year)).id
+          diplomaId = (await ensureDiploma(sample.program_name)).id
         }
         const courseIds: string[] = []
         for (const r of classRows) {
@@ -808,8 +925,9 @@ export async function runAlumniImport(
         }
         const cls = await ensureClass(
           sample.program_type,
-          sample.program_name,
-          sample.year,
+          sample.class_name,
+          sample.start_month,
+          sample.completed_month,
           primaryCourseId,
           diplomaId,
         )
