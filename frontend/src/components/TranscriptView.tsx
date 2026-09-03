@@ -75,6 +75,126 @@ function transcriptForClass(transcripts, studentId, classId, enrollmentId) {
   )[0] || null;
 }
 
+type TranscriptGroupPage = {
+  key: string;
+  name: string | null;
+  rows: any[];
+};
+
+type TranscriptFlatItem =
+  | { kind: 'header'; key: string; name: string }
+  | { kind: 'row'; key: string; name: string | null; row: any };
+
+/** Estimated vertical weight so long grade tables can spill onto extra A4 pages. */
+function transcriptItemUnits(item: TranscriptFlatItem): number {
+  if (item.kind === 'header') return 0.7;
+  return item.row?.courseProject ? 1.35 : 1;
+}
+
+function flattenTranscriptGroups(groups: TranscriptGroupPage[]): TranscriptFlatItem[] {
+  const items: TranscriptFlatItem[] = [];
+  for (const group of groups || []) {
+    if (group.name) items.push({ kind: 'header', key: group.key, name: group.name });
+    for (const row of group.rows || []) {
+      items.push({ kind: 'row', key: group.key, name: group.name, row });
+    }
+  }
+  return items;
+}
+
+function flatItemsToGroups(items: TranscriptFlatItem[]): TranscriptGroupPage[] {
+  const groups: TranscriptGroupPage[] = [];
+  const map = new Map<string, TranscriptGroupPage>();
+  for (const item of items) {
+    let group = map.get(item.key);
+    if (!group) {
+      group = { key: item.key, name: item.kind === 'header' ? item.name : item.name, rows: [] };
+      map.set(item.key, group);
+      groups.push(group);
+    } else if (item.kind === 'header' && item.name) {
+      group.name = item.name;
+    }
+    if (item.kind === 'row') group.rows.push(item.row);
+  }
+  return groups;
+}
+
+function takeTranscriptItems(items: TranscriptFlatItem[], maxUnits: number) {
+  const page: TranscriptFlatItem[] = [];
+  let units = 0;
+  let index = 0;
+  while (index < items.length) {
+    const next = items[index];
+    const weight = transcriptItemUnits(next);
+    if (page.length > 0 && units + weight > maxUnits) break;
+    page.push(next);
+    units += weight;
+    index += 1;
+  }
+  return { page, rest: items.slice(index) };
+}
+
+/**
+ * Split semester groups across A4 pages so signatures + QR stay visible on the last page.
+ * Capacities are conservative row-units that leave room for header / footer chrome.
+ */
+function paginateTranscriptGroups(
+  groups: TranscriptGroupPage[],
+  opts: {
+    firstWithFooter: number;
+    firstContinue: number;
+    continuePage: number;
+    lastWithFooter: number;
+  },
+): TranscriptGroupPage[][] {
+  const items = flattenTranscriptGroups(groups);
+  if (!items.length) return [[]];
+
+  const totalUnits = items.reduce((sum, item) => sum + transcriptItemUnits(item), 0);
+  if (totalUnits <= opts.firstWithFooter) {
+    return [flatItemsToGroups(items)];
+  }
+
+  const pages: TranscriptFlatItem[][] = [];
+  let remaining = items;
+
+  const first = takeTranscriptItems(remaining, opts.firstContinue);
+  pages.push(first.page);
+  remaining = first.rest;
+
+  while (remaining.length) {
+    const restUnits = remaining.reduce((sum, item) => sum + transcriptItemUnits(item), 0);
+    if (restUnits <= opts.lastWithFooter) {
+      pages.push(remaining);
+      break;
+    }
+    const chunk = takeTranscriptItems(remaining, opts.continuePage);
+    if (!chunk.page.length) {
+      pages.push(remaining);
+      break;
+    }
+    // Ensure the final leftover still fits with footer room.
+    const afterUnits = chunk.rest.reduce((sum, item) => sum + transcriptItemUnits(item), 0);
+    if (chunk.rest.length && afterUnits <= opts.lastWithFooter) {
+      pages.push(chunk.page);
+      pages.push(chunk.rest);
+      break;
+    }
+    pages.push(chunk.page);
+    remaining = chunk.rest;
+  }
+
+  return pages.map(flatItemsToGroups);
+}
+
+function collectTranscriptPdfPages(): HTMLElement[] {
+  const academic = Array.from(
+    document.querySelectorAll<HTMLElement>('[data-transcript-academic-page]'),
+  );
+  const gradingKey = document.getElementById('transcript-grading-key');
+  return [...academic, gradingKey].filter(Boolean) as HTMLElement[];
+}
+
 const TranscriptView = ({ studentId, onClose, initialClassId }: any) => {
     const { user, institution } = useAuth();
     const gradeScale = useMemo(() => getInstitutionGradeScale(institution), [institution]);
@@ -444,6 +564,16 @@ const TranscriptView = ({ studentId, onClose, initialClassId }: any) => {
     const layoutStyles = getTranscriptLayoutStyles(layoutKey, primary);
     const showNarrative = !!transcriptNarrative;
 
+    const transcriptPages = useMemo(() => {
+      const capacities =
+        layoutKey === 'compact'
+          ? { firstWithFooter: 12, firstContinue: 18, continuePage: 28, lastWithFooter: 18 }
+          : showNarrative
+            ? { firstWithFooter: 8, firstContinue: 13, continuePage: 24, lastWithFooter: 14 }
+            : { firstWithFooter: 10, firstContinue: 15, continuePage: 26, lastWithFooter: 16 };
+      return paginateTranscriptGroups(transcriptGroups, capacities);
+    }, [transcriptGroups, layoutKey, showNarrative]);
+
     const gradesSummary = useMemo(
       () =>
         transcriptGroups
@@ -522,9 +652,7 @@ const TranscriptView = ({ studentId, onClose, initialClassId }: any) => {
           await downloadDesignPDF(customRenderData, `Transcript_${safeName}.pdf`, brand);
           return;
         }
-        const page1 = document.getElementById('transcript-page-1');
-        const page2 = document.getElementById('transcript-page-2');
-        const pages = [page1, page2].filter(Boolean) as HTMLElement[];
+        const pages = collectTranscriptPdfPages();
         if (!pages.length) return;
         await downloadDomPagesPdf(pages, `Transcript_${safeName}.pdf`);
       } catch (error) {
@@ -541,9 +669,7 @@ const TranscriptView = ({ studentId, onClose, initialClassId }: any) => {
           await printDesignPDF(customRenderData, brand);
           return;
         }
-        const page1 = document.getElementById('transcript-page-1');
-        const page2 = document.getElementById('transcript-page-2');
-        const pages = [page1, page2].filter(Boolean) as HTMLElement[];
+        const pages = collectTranscriptPdfPages();
         if (!pages.length) {
           window.print();
           return;
@@ -690,11 +816,12 @@ const TranscriptView = ({ studentId, onClose, initialClassId }: any) => {
                 </div>
             </div>
 
-            {/* PAGE 1: Transcript — custom Page Builder / Upload Own, or library chrome */}
-            <div className="w-full overflow-x-auto print:overflow-visible">
+            {/* Academic pages: custom Page Builder / Upload Own, or library chrome (multi-page when many courses) */}
+            <div className="w-full overflow-x-auto print:overflow-visible space-y-8">
             {useCustomLayout && customRenderData ? (
               <div
                 id="transcript-page-1"
+                data-transcript-academic-page
                 className="bg-white text-black shadow-2xl w-[210mm] min-w-[210mm] mx-auto overflow-hidden relative print:shadow-none print:m-0 print:w-full print:min-w-0 print:break-after-page"
               >
                 <CertificateDesignRenderer
@@ -706,26 +833,37 @@ const TranscriptView = ({ studentId, onClose, initialClassId }: any) => {
                 />
               </div>
             ) : (
+              transcriptPages.map((pageGroups, pageIndex) => {
+                const isFirstPage = pageIndex === 0;
+                const isLastPage = pageIndex === transcriptPages.length - 1;
+                const dense = showNarrative || !isFirstPage || layoutKey === 'compact';
+                return (
             <div
-              id="transcript-page-1"
-              key={selectedClassId || 'transcript'}
+              id={`transcript-page-${pageIndex + 1}`}
+              data-transcript-academic-page
+              key={`${selectedClassId || 'transcript'}-p${pageIndex}`}
               className={`bg-white text-black shadow-2xl w-[210mm] min-w-[210mm] mx-auto h-[297mm] max-h-[297mm] overflow-hidden relative flex flex-col print:shadow-none print:m-0 print:w-full print:min-w-0 print:h-[297mm] print:max-h-[297mm] print:break-after-page ${chrome.outerFrame} ${chrome.pageExtra}`}
             >
                 
                 {/* Header */}
                 <div
-                  className={`shrink-0 px-6 pt-5 pb-2 print:px-6 print:pt-4 print:pb-2 ${showNarrative ? 'pt-4' : ''} ${chrome.headerBorder}`}
+                  className={`shrink-0 px-6 ${isFirstPage ? 'pt-5' : 'pt-4'} pb-2 print:px-6 print:pt-4 print:pb-2 ${showNarrative && isFirstPage ? 'pt-4' : ''} ${chrome.headerBorder}`}
                   style={layoutStyles.headerBorderColor ? { borderBottomColor: layoutStyles.headerBorderColor } : undefined}
                 >
                     <div className="flex justify-between items-start gap-3">
                         <div className="flex items-center gap-3 min-w-0 flex-1">
                             <div className="shrink-0">
-                                <Logo className={`${showNarrative ? 'h-16 print:h-16' : 'h-20 print:h-20'} w-auto text-black`} />
+                                <Logo className={`${dense ? 'h-14 print:h-14' : 'h-20 print:h-20'} w-auto text-black`} />
                             </div>
                             <div className="space-y-0 min-w-0">
-                                <h1 className={`${showNarrative ? 'text-base' : 'text-xl'} font-black tracking-tight uppercase text-black leading-tight`}>{institutionName}</h1>
-                                {contactLine ? (
+                                <h1 className={`${dense ? 'text-base' : 'text-xl'} font-black tracking-tight uppercase text-black leading-tight`}>{institutionName}</h1>
+                                {contactLine && isFirstPage ? (
                                   <p className="text-[10px] font-bold text-black mt-0.5 leading-snug">{contactLine}</p>
+                                ) : null}
+                                {!isFirstPage ? (
+                                  <p className="text-[10px] font-bold text-black mt-0.5 uppercase tracking-wide">
+                                    {studentData.name} · {studentData.student_code} · Continued
+                                  </p>
                                 ) : null}
                             </div>
                         </div>
@@ -735,7 +873,9 @@ const TranscriptView = ({ studentId, onClose, initialClassId }: any) => {
                               style={layoutStyles.badgeBorderColor ? { borderColor: layoutStyles.badgeBorderColor } : undefined}
                             >
                                 <div className="bg-white px-2.5 py-1 print:bg-white">
-                                    <div className="text-[10px] font-black uppercase tracking-widest text-black whitespace-nowrap">Official Transcript</div>
+                                    <div className="text-[10px] font-black uppercase tracking-widest text-black whitespace-nowrap">
+                                      {isFirstPage ? 'Official Transcript' : `Transcript · Page ${pageIndex + 1}`}
+                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -751,12 +891,13 @@ const TranscriptView = ({ studentId, onClose, initialClassId }: any) => {
                         printColorAdjust: 'exact',
                       }}
                     >
-                        <h3 className={`${showNarrative ? 'text-sm' : 'text-base'} font-bold uppercase tracking-wider leading-tight`}>{programName}</h3>
+                        <h3 className={`${dense ? 'text-sm' : 'text-base'} font-bold uppercase tracking-wider leading-tight`}>{programName}</h3>
                     </div>
                 </div>
 
-                <div className={`px-6 ${showNarrative ? 'py-2' : 'py-4'} min-h-0 flex-1 flex flex-col print:px-6 print:py-2 ${layoutKey === 'compact' ? 'py-2' : ''}`}>
-                    {/* Student Info & Photo Grid */}
+                <div className={`px-6 ${dense ? 'py-2' : 'py-4'} min-h-0 flex-1 flex flex-col print:px-6 print:py-2`}>
+                    {/* Student Info & Photo Grid — first page only */}
+                    {isFirstPage ? (
                     <div className={`flex justify-between items-start gap-3 relative z-10 shrink-0 ${showNarrative || layoutKey === 'compact' ? 'mb-2' : 'mb-4'}`}>
                         
                         <div className="flex-1 min-w-0 grid grid-cols-2 gap-6">
@@ -809,8 +950,10 @@ const TranscriptView = ({ studentId, onClose, initialClassId }: any) => {
                              )}
                         </div>
                     </div>
+                    ) : null}
 
-                    {/* Performance Summary */}
+                    {/* Performance Summary — first page only */}
+                    {isFirstPage ? (
                     <div className={`flex gap-3 shrink-0 ${showNarrative ? 'mb-2' : 'mb-4 print:mb-3'}`}>
                         <div className={`bg-white px-3 rounded border-2 border-black flex-1 ${showNarrative ? 'py-1' : 'p-2'}`}>
                             <div className="text-[9px] text-black font-bold uppercase">Cumulative GPA</div>
@@ -827,15 +970,16 @@ const TranscriptView = ({ studentId, onClose, initialClassId }: any) => {
                             </div>
                         </div>
                     </div>
+                    ) : null}
 
-                    {showNarrative ? (
+                    {isFirstPage && showNarrative ? (
                       <p className="shrink-0 mb-2 text-[9px] leading-snug text-black text-justify print:text-[9px]">
                         {transcriptNarrative}
                       </p>
                     ) : null}
 
-                    {/* Grades Table */}
-                    <div className={`min-h-0 flex-1 ${showNarrative || layoutKey === 'compact' ? 'mb-1' : 'mb-4 print:mb-2'}`}>
+                    {/* Grades Table (paginated) */}
+                    <div className={`min-h-0 flex-1 ${dense ? 'mb-1' : 'mb-4 print:mb-2'}`}>
                         <Table
                           className={`w-full border-collapse ${chrome.tableBorder}`}
                           style={layoutStyles.tableBorderColor ? { borderColor: layoutStyles.tableBorderColor } : undefined}
@@ -849,19 +993,19 @@ const TranscriptView = ({ studentId, onClose, initialClassId }: any) => {
                                 </TableRow>
                             </TableHeader>
                             <TableBody>
-                                {transcriptGroups.length > 0 ? transcriptGroups.map((group) => (
-                                    <React.Fragment key={group.key}>
+                                {pageGroups.length > 0 ? pageGroups.map((group) => (
+                                    <React.Fragment key={`${pageIndex}-${group.key}`}>
                                         {group.name ? (
                                             <TableRow className="bg-slate-100 hover:bg-slate-100 border-b border-black">
-                                                <TableCell colSpan={4} className={`${showNarrative ? 'py-1' : 'py-1.5'} px-2 font-black uppercase text-[10px] tracking-wide text-black`}>
+                                                <TableCell colSpan={4} className={`${dense ? 'py-1' : 'py-1.5'} px-2 font-black uppercase text-[10px] tracking-wide text-black`}>
                                                     {group.name}
                                                 </TableCell>
                                             </TableRow>
                                         ) : null}
                                         {group.rows.map((row) => (
                                             <TableRow key={row.id} className="bg-white hover:bg-slate-50 h-auto border-b border-black">
-                                                <TableCell className={`font-mono font-bold text-black text-xs ${showNarrative ? 'py-1' : 'py-2'} pl-2 border-r border-black`}>{row.code}</TableCell>
-                                                <TableCell className={`${showNarrative ? 'py-1' : 'py-2'} px-2 border-r border-black`}>
+                                                <TableCell className={`font-mono font-bold text-black text-xs ${dense ? 'py-1' : 'py-2'} pl-2 border-r border-black`}>{row.code}</TableCell>
+                                                <TableCell className={`${dense ? 'py-1' : 'py-2'} px-2 border-r border-black`}>
                                                     <div className="font-bold text-black text-xs uppercase leading-tight">{row.name}</div>
                                                     {row.courseProject ? (
                                                         <div className="text-[9px] italic text-black/80 leading-tight mt-0.5">
@@ -869,18 +1013,23 @@ const TranscriptView = ({ studentId, onClose, initialClassId }: any) => {
                                                         </div>
                                                     ) : null}
                                                 </TableCell>
-                                                <TableCell className={`text-center font-bold text-black text-xs ${showNarrative ? 'py-1' : 'py-2'} border-r border-black`}>{row.marks !== null ? row.marks : '-'}</TableCell>
-                                                <TableCell className={`text-center font-bold text-black text-xs ${showNarrative ? 'py-1' : 'py-2'} pr-2`}>{row.grade}</TableCell>
+                                                <TableCell className={`text-center font-bold text-black text-xs ${dense ? 'py-1' : 'py-2'} border-r border-black`}>{row.marks !== null ? row.marks : '-'}</TableCell>
+                                                <TableCell className={`text-center font-bold text-black text-xs ${dense ? 'py-1' : 'py-2'} pr-2`}>{row.grade}</TableCell>
                                             </TableRow>
                                         ))}
                                     </React.Fragment>
                                 )) : (
-                                    <TableRow><TableCell colSpan={4} className="text-center py-8 text-black italic text-xs">No grades found in transcript.</TableCell></TableRow>
+                                    isFirstPage ? (
+                                      <TableRow><TableCell colSpan={4} className="text-center py-8 text-black italic text-xs">No grades found in transcript.</TableCell></TableRow>
+                                    ) : null
                                 )}
                             </TableBody>
                         </Table>
                     </div>
-                    
+
+                    {/* Totals + signatures + QR only on the last academic page so they are never clipped */}
+                    {isLastPage ? (
+                    <>
                     <div className={`flex justify-end shrink-0 ${showNarrative ? 'mb-2' : 'mb-6 print:mb-4'}`}>
                         <div className={`w-56 border-2 border-black bg-white ${showNarrative ? 'px-2 py-1.5' : 'p-3'}`}>
                             <div className="flex justify-between text-[11px] font-bold mb-0.5 text-black">
@@ -894,7 +1043,6 @@ const TranscriptView = ({ studentId, onClose, initialClassId }: any) => {
                         </div>
                     </div>
 
-                    {/* Footer stays on page 1 (preview + PDF) */}
                     <div className="mt-auto shrink-0">
                         <div className={`grid grid-cols-2 gap-12 border-t border-black ${showNarrative ? 'pt-2 mt-1' : 'pt-4 mt-4 print:mt-2 print:pt-2'}`}>
                             <div className="text-center">
@@ -929,15 +1077,23 @@ const TranscriptView = ({ studentId, onClose, initialClassId }: any) => {
                             )}
                         </div>
                     </div>
+                    </>
+                    ) : (
+                      <p className="mt-auto shrink-0 text-center text-[9px] font-bold uppercase tracking-wide text-black/70 pb-3">
+                        Continued on next page
+                      </p>
+                    )}
                 </div>
             </div>
+                );
+              })
             )}
             </div>
 
-             {/* PAGE 2: Grading Key (library layouts only — custom designs are self-contained) */}
+             {/* Grading Key (library layouts only — custom designs are self-contained) */}
              {!useCustomLayout ? (
              <div className="w-full overflow-x-auto print:overflow-visible">
-             <div id="transcript-page-2" className="bg-white text-black shadow-2xl w-[210mm] min-w-[210mm] mx-auto h-[297mm] relative flex flex-col justify-center items-center p-8 sm:p-16 print:shadow-none print:m-0 print:w-full print:min-w-0 print:h-screen print:break-before-page">
+             <div id="transcript-grading-key" className="bg-white text-black shadow-2xl w-[210mm] min-w-[210mm] mx-auto h-[297mm] relative flex flex-col justify-center items-center p-8 sm:p-16 print:shadow-none print:m-0 print:w-full print:min-w-0 print:h-[297mm] print:break-before-page">
                 <div className="w-full border-2 border-black p-10 h-[240mm] flex flex-col justify-between">
                     
                     <div className="space-y-12">
