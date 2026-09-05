@@ -58,6 +58,7 @@ import StaffProfilePage from '@/pages/staff/StaffProfilePage';
 import StudentDashboard from '@/pages/student/StudentDashboard';
 import StudentProfilePage from '@/pages/student/StudentProfilePage';
 import StudentFinancePage from '@/pages/student/StudentFinancePage';
+import SiteCmsPage from '@/pages/super-admin/SiteCmsPage';
 
 // Heavier / Phase 2–3 — lazy (loaded only when opened)
 // These pages transitively pull xlsx / jspdf / html2canvas / recharts / qr.
@@ -297,6 +298,7 @@ const App = () => {
             <Route path="/super-admin/support" element={<Lazy><SupportPage /></Lazy>} />
             <Route path="/super-admin/users" element={<Lazy><SystemUsersPage /></Lazy>} />
             <Route path="/super-admin/settings" element={<Lazy><SystemSettingsPage /></Lazy>} />
+            <Route path="/super-admin/site-cms" element={<SiteCmsPage />} />
             <Route path="/super-admin/audit-logs" element={<Lazy><AuditLogsPage /></Lazy>} />
             <Route path="/super-admin/profile" element={<Lazy><SuperAdminProfilePage /></Lazy>} />
           </Route>

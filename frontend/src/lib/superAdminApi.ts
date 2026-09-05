@@ -223,6 +223,55 @@ export async function savePlatformSettings(settings) {
   }
 }
 
+const MAX_PLATFORM_ASSET_BYTES = 5 * 1024 * 1024
+const PLATFORM_IMAGE_MIME = new Set(['image/png', 'image/jpeg', 'image/webp', 'image/svg+xml'])
+
+/** Upload a marketing asset for the public platform site (super_admin only). */
+export async function uploadPlatformAsset(file: File, kind = 'trusted') {
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+  if (!user) throw new Error('UNAUTHORIZED')
+
+  const { data: profile, error: profileError } = await supabase
+    .from('profiles')
+    .select('role')
+    .eq('id', user.id)
+    .maybeSingle()
+  if (profileError) throw profileError
+  if (profile?.role !== 'super_admin') throw new Error('FORBIDDEN')
+
+  if (!file) throw new Error('MISSING_FILE')
+  if (file.size > MAX_PLATFORM_ASSET_BYTES) throw new Error('FILE_TOO_LARGE')
+  const mime = String(file.type || '').toLowerCase()
+  if (mime && !PLATFORM_IMAGE_MIME.has(mime)) throw new Error('INVALID_FILE_TYPE')
+
+  const assetKind = String(kind || 'trusted')
+    .toLowerCase()
+    .replace(/[^a-z0-9_-]/g, '')
+    .slice(0, 40) || 'asset'
+  const ext = String(file.name || 'png').split('.').pop()?.toLowerCase() || 'png'
+  const safeExt = ['png', 'jpg', 'jpeg', 'webp', 'svg'].includes(ext) ? ext : 'png'
+  const path = `site/${assetKind}-${Date.now()}.${safeExt}`
+
+  const { error } = await supabase.storage.from('platform-assets').upload(path, file, {
+    upsert: true,
+    cacheControl: '3600',
+    contentType: mime || `image/${safeExt === 'jpg' ? 'jpeg' : safeExt}`,
+  })
+  if (error) throw error
+
+  const { data } = supabase.storage.from('platform-assets').getPublicUrl(path)
+  return data?.publicUrl || null
+}
+
+export async function saveSiteCms(trusted, photos) {
+  await savePlatformSettings({
+    site_trusted: trusted,
+    site_photos: photos,
+  })
+}
+
 export async function getPlatformAnalytics() {
   const { data, error } = await supabase.rpc('get_platform_analytics')
   if (error) throw error

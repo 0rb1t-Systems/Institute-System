@@ -2,7 +2,7 @@ import React from 'react'
 import { motion } from 'framer-motion'
 import { cn } from '@/lib/utils'
 
-/** Framed photo with a light teal wash so Unsplash shots sit on-brand. */
+/** Framed photo with a light solid wash so Unsplash shots sit on-brand. */
 const PlatformPhoto = ({
   src,
   alt,
@@ -31,7 +31,7 @@ const PlatformPhoto = ({
       }}
     />
     <div
-      className="pointer-events-none absolute inset-0 bg-gradient-to-tr from-[#061512]/32 via-transparent to-teal-600/12 transition-opacity duration-500 group-hover:opacity-80"
+      className="pointer-events-none absolute inset-0 bg-[var(--pf-bg)]/20 transition-opacity duration-500 group-hover:bg-[var(--pf-bg)]/10"
       aria-hidden
     />
     <div className="pointer-events-none absolute inset-0 ring-1 ring-inset ring-white/10" aria-hidden />

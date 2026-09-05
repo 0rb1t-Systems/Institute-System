@@ -246,10 +246,6 @@ const PublicCreateInstitutionPage = () => {
         <title>{title}</title>
       </Helmet>
 
-      <div className="pointer-events-none absolute inset-0" aria-hidden>
-        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_10%_0%,rgba(45,140,120,0.18),transparent_50%)]" />
-      </div>
-
       <div className={`relative z-10 mx-auto px-4 py-10 sm:py-14 ${step === 'template' ? 'max-w-5xl' : 'max-w-xl'}`}>
         <div className="mb-8 flex items-center justify-between gap-3">
           <Link to="/" className="font-display text-lg font-bold tracking-tight text-[var(--pf-text)]">

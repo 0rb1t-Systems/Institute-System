@@ -14,9 +14,11 @@ const PlatformThemeContext = createContext<PlatformThemeContextValue | null>(nul
 
 function readStoredMode(): PlatformThemeMode {
   try {
-    return localStorage.getItem(STORAGE_KEY) === 'light' ? 'light' : 'dark'
+    const stored = localStorage.getItem(STORAGE_KEY)
+    if (stored === 'dark' || stored === 'light') return stored
+    return 'light'
   } catch {
-    return 'dark'
+    return 'light'
   }
 }
 
@@ -26,7 +28,7 @@ function applyMode(mode: PlatformThemeMode) {
 
 export function PlatformThemeProvider({ children }: { children: React.ReactNode }) {
   const [mode, setModeState] = useState<PlatformThemeMode>(() => {
-    if (typeof window === 'undefined') return 'dark'
+    if (typeof window === 'undefined') return 'light'
     const initial = readStoredMode()
     applyMode(initial)
     return initial
@@ -58,7 +60,7 @@ export function usePlatformTheme() {
   const ctx = useContext(PlatformThemeContext)
   if (!ctx) {
     return {
-      mode: 'dark' as PlatformThemeMode,
+      mode: 'light' as PlatformThemeMode,
       setMode: () => {},
       toggle: () => {},
     }

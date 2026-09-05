@@ -14,6 +14,7 @@ import { getPublicInstitutionBySubdomain, requestPasswordReset } from '@/lib/api
 import ThemeToggle from '@/components/platform/ThemeToggle';
 import { usePlatformTheme } from '@/contexts/PlatformThemeContext';
 import { LandingLogo } from '@/components/landing/LandingShared';
+import { getPublicSiteCms } from '@/lib/platformMedia';
 import {
   getInstitutionPrimary,
   getTenantPortalUrl,
@@ -43,6 +44,7 @@ const LoginPage = ({ initialError = '' }) => {
   const [info, setInfo] = useState('');
   const [institution, setInstitution] = useState(null);
   const [loadingTenant, setLoadingTenant] = useState(false);
+  const [loginSideImage, setLoginSideImage] = useState(null);
   const { login } = useAuth();
   const { mode } = usePlatformTheme();
   const light = mode === 'light';
@@ -60,6 +62,25 @@ const LoginPage = ({ initialError = '' }) => {
   const tenant = String(tenantFromQuery || resolvePublicTenantSubdomain() || '')
     .trim()
     .toLowerCase();
+
+  useEffect(() => {
+    if (tenant) {
+      setLoginSideImage(null);
+      return undefined;
+    }
+    let cancelled = false;
+    ;(async () => {
+      try {
+        const cms = await getPublicSiteCms();
+        if (!cancelled && cms.photos?.login) setLoginSideImage(cms.photos.login);
+      } catch {
+        /* optional */
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [tenant]);
 
   useEffect(() => {
     if (location.state?.tenantSuspended) {
@@ -222,13 +243,29 @@ const LoginPage = ({ initialError = '' }) => {
         <div className="absolute bottom-[10%] right-[10%] h-[30%] w-[30%] rounded-full bg-teal-500/5 blur-[100px]" />
       </div>
 
+      <div
+        className={
+          !isTenantLogin && loginSideImage
+            ? 'relative z-10 grid w-full max-w-5xl overflow-hidden rounded-2xl border border-[var(--pf-line)] bg-[var(--pf-surface)] shadow-xl lg:grid-cols-2'
+            : 'relative z-10 w-full max-w-md'
+        }
+      >
+        {!isTenantLogin && loginSideImage ? (
+          <div className="relative hidden min-h-[28rem] lg:block">
+            <img src={loginSideImage} alt="" className="absolute inset-0 h-full w-full object-cover" />
+            <div className="absolute inset-0 bg-[var(--pf-bg)]/25" aria-hidden />
+          </div>
+        ) : null}
+
       <Card
         className={
           isTenantLogin
             ? light
               ? 'relative z-10 w-full max-w-md border-slate-200 bg-white shadow-xl'
               : 'relative z-10 w-full max-w-md border-slate-800 bg-slate-900/80 shadow-2xl backdrop-blur-sm'
-            : 'relative z-10 w-full max-w-md border-[var(--pf-line)] bg-[var(--pf-surface)] shadow-xl'
+            : loginSideImage
+              ? 'relative z-10 w-full border-0 bg-transparent shadow-none'
+              : 'relative z-10 w-full max-w-md border-[var(--pf-line)] bg-[var(--pf-surface)] shadow-xl'
         }
       >
         <CardHeader className="space-y-3 pb-6 text-center">
@@ -463,6 +500,7 @@ const LoginPage = ({ initialError = '' }) => {
           </p>
         </CardFooter>
       </Card>
+      </div>
     </div>
   );
 };

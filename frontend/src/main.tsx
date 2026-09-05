@@ -6,6 +6,7 @@ import { Toaster } from '@/components/ui/toaster';
 import { DataProvider } from '@/contexts/DataContext';
 import { AuthProvider } from '@/contexts/AuthContext';
 import { PlatformThemeProvider } from '@/contexts/PlatformThemeContext';
+import { PlatformLangProvider } from '@/contexts/PlatformLangContext';
 import InstitutionBrandTheme from '@/components/InstitutionBrandTheme';
 import '@/index.css';
 
@@ -57,11 +58,13 @@ ReactDOM.createRoot(document.getElementById('root')).render(
       <BrowserRouter>
         <AuthProvider>
           <PlatformThemeProvider>
-            <InstitutionBrandTheme />
-            <DataProvider>
-              <App />
-              <Toaster />
-            </DataProvider>
+            <PlatformLangProvider>
+              <InstitutionBrandTheme />
+              <DataProvider>
+                <App />
+                <Toaster />
+              </DataProvider>
+            </PlatformLangProvider>
           </PlatformThemeProvider>
         </AuthProvider>
       </BrowserRouter>

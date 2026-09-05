@@ -21,6 +21,8 @@ import {
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import ThemeToggle from '@/components/platform/ThemeToggle'
+import LanguageSwitcher from '@/components/platform/LanguageSwitcher'
+import { usePlatformLang } from '@/contexts/PlatformLangContext'
 
 export const PLATFORM_SOCIAL = [
   { name: 'Facebook', href: 'https://facebook.com', icon: Facebook },
@@ -31,12 +33,12 @@ export const PLATFORM_SOCIAL = [
 ]
 
 const LINKS = [
-  { to: '/', label: 'Home', icon: Home, end: true },
-  { to: '/features', label: 'Features', icon: LayoutGrid },
-  { to: '/plans', label: 'Plans & Subscriptions', icon: Package },
-  { to: '/support', label: 'Support', icon: LifeBuoy },
-  { to: '/about', label: 'About', icon: Info },
-  { to: '/contact', label: 'Contact', icon: Mail },
+  { to: '/', labelKey: 'home' as const, icon: Home, end: true },
+  { to: '/features', labelKey: 'features' as const, icon: LayoutGrid },
+  { to: '/plans', labelKey: 'plans' as const, icon: Package },
+  { to: '/support', labelKey: 'support' as const, icon: LifeBuoy },
+  { to: '/about', labelKey: 'about' as const, icon: Info },
+  { to: '/contact', labelKey: 'contact' as const, icon: Mail },
 ]
 
 const PlatformLayout = ({
@@ -47,6 +49,7 @@ const PlatformLayout = ({
   onVerify?: () => void
 }) => {
   const location = useLocation()
+  const { t } = usePlatformLang()
   const [menuOpen, setMenuOpen] = useState(false)
   const [scrolled, setScrolled] = useState(false)
 
@@ -67,44 +70,35 @@ const PlatformLayout = ({
       <header
         className={`sticky top-0 z-30 border-b transition-[background,box-shadow,border-color] duration-300 ${
           scrolled
-            ? 'border-[var(--pf-line)] bg-[var(--pf-bg)]/95 shadow-[0_8px_28px_rgba(6,21,18,0.14)] backdrop-blur-xl'
-            : 'border-[var(--pf-line)]/50 bg-[var(--pf-bg)]/82 backdrop-blur-md'
+            ? 'border-[var(--pf-line)] bg-[var(--pf-bg)] shadow-[0_8px_28px_rgba(6,21,18,0.14)]'
+            : 'border-[var(--pf-line)] bg-[var(--pf-bg)]'
         }`}
       >
         <div className="mx-auto flex h-[4.25rem] max-w-7xl items-center justify-between gap-2 px-3 sm:px-6 lg:px-8">
           <Link to="/" className="flex min-w-0 shrink-0 items-center gap-2">
-            <span className="inline-flex h-9 w-9 items-center justify-center rounded-lg bg-teal-500/15 text-teal-600 ring-1 ring-teal-500/25">
+            <span className="inline-flex h-9 w-9 items-center justify-center rounded-lg bg-[var(--pf-accent)] text-[var(--pf-accent-fg)]">
               <GraduationCap className="h-4 w-4" />
             </span>
             <span className="font-display text-base font-bold tracking-tight text-[var(--pf-text)] sm:text-lg">
-              Tvet<span className="text-teal-500">Flow</span>
+              Tvet<span className="text-[var(--pf-accent)]">Flow</span>
             </span>
           </Link>
 
-          <nav className="hidden items-center gap-0.5 lg:flex">
+          <nav className="hidden items-center gap-1 lg:flex">
             {LINKS.map((item) => {
-              const Icon = item.icon
               const active = isActive(item.to, item.end)
               return (
                 <Link
                   key={item.to}
                   to={item.to}
-                  className={`inline-flex items-center gap-1 rounded-lg px-1.5 py-2 text-[12px] transition-colors duration-200 xl:gap-1.5 xl:px-2.5 xl:text-[13px] ${
+                  className={`relative px-2.5 py-2 text-[13px] transition-colors duration-200 ${
                     active
-                      ? 'bg-teal-500/12 font-medium text-[var(--pf-text)]'
-                      : 'text-[var(--pf-muted)] hover:bg-[var(--pf-hover)] hover:text-[var(--pf-text)]'
+                      ? 'font-semibold text-[var(--pf-text)] after:absolute after:inset-x-2.5 after:bottom-0.5 after:h-0.5 after:rounded-full after:bg-[var(--pf-accent)]'
+                      : 'font-medium text-[var(--pf-muted)] hover:text-[var(--pf-text)]'
                   }`}
                 >
-                  <Icon className="hidden h-3.5 w-3.5 shrink-0 opacity-80 xl:inline" />
                   <span className="whitespace-nowrap">
-                    {item.to === '/plans' ? (
-                      <>
-                        <span className="lg:inline xl:hidden">Plans</span>
-                        <span className="hidden xl:inline">Plans & Subscriptions</span>
-                      </>
-                    ) : (
-                      item.label
-                    )}
+                    {item.to === '/plans' ? t('plans') : t(item.labelKey)}
                   </span>
                 </Link>
               )
@@ -113,26 +107,30 @@ const PlatformLayout = ({
               <button
                 type="button"
                 onClick={onVerify}
-                className="inline-flex items-center gap-1 rounded-lg px-1.5 py-2 text-[12px] text-[var(--pf-muted)] transition-colors hover:bg-[var(--pf-hover)] hover:text-[var(--pf-text)] xl:gap-1.5 xl:px-2.5 xl:text-[13px]"
+                className="px-2.5 py-2 text-[13px] font-medium text-[var(--pf-muted)] transition-colors hover:text-[var(--pf-text)]"
               >
-                <ShieldCheck className="hidden h-3.5 w-3.5 opacity-80 xl:inline" />
-                <span className="xl:hidden">Verify</span>
-                <span className="hidden xl:inline">Verify ID</span>
+                {t('verifyId')}
               </button>
             ) : null}
           </nav>
 
           <div className="flex items-center gap-2">
+            <LanguageSwitcher />
             <ThemeToggle className="hidden sm:inline-flex" />
             <Button
               asChild
               size="sm"
-              className="hidden h-9 rounded-lg bg-[var(--pf-accent)] px-3 font-semibold text-[var(--pf-accent-fg)] hover:opacity-90 sm:inline-flex"
+              variant="outline"
+              className="hidden h-9 rounded-lg border-[var(--pf-line)] bg-transparent px-3 font-semibold text-[var(--pf-text)] hover:bg-[var(--pf-hover)] sm:inline-flex"
             >
-              <Link to="/login" className="inline-flex items-center">
-                <LogIn className="mr-1.5 h-3.5 w-3.5" />
-                Sign in
-              </Link>
+              <Link to="/login">{t('logIn')}</Link>
+            </Button>
+            <Button
+              asChild
+              size="sm"
+              className="hidden h-9 rounded-lg bg-[var(--pf-accent)] px-3.5 font-semibold text-[var(--pf-accent-fg)] hover:opacity-90 sm:inline-flex"
+            >
+              <Link to="/create-institution">{t('getStarted')}</Link>
             </Button>
             <button
               type="button"
@@ -158,7 +156,7 @@ const PlatformLayout = ({
                     className="inline-flex items-center gap-2 rounded-lg px-3 py-2.5 text-sm text-[var(--pf-muted)]"
                   >
                     <Icon className="h-4 w-4" />
-                    {item.label}
+                    {item.to === '/plans' ? t('plansFull') : t(item.labelKey)}
                   </Link>
                 )
               })}
@@ -172,16 +170,24 @@ const PlatformLayout = ({
                   }}
                 >
                   <ShieldCheck className="h-4 w-4" />
-                  Verify ID
+                  {t('verifyId')}
                 </button>
               ) : null}
               <div className="mt-2 flex items-center gap-2 px-1 sm:hidden">
                 <ThemeToggle />
               </div>
-              <Button asChild className="mt-2 bg-[var(--pf-accent)] font-semibold text-[var(--pf-accent-fg)] hover:opacity-90">
+              <Button
+                asChild
+                variant="outline"
+                className="mt-2 border-[var(--pf-line)] bg-transparent font-semibold text-[var(--pf-text)] hover:bg-[var(--pf-hover)]"
+              >
                 <Link to="/login" onClick={() => setMenuOpen(false)}>
-                  <LogIn className="mr-2 h-4 w-4" />
-                  Sign in
+                  {t('logIn')}
+                </Link>
+              </Button>
+              <Button asChild className="bg-[var(--pf-accent)] font-semibold text-[var(--pf-accent-fg)] hover:opacity-90">
+                <Link to="/create-institution" onClick={() => setMenuOpen(false)}>
+                  {t('getStarted')}
                 </Link>
               </Button>
             </div>
@@ -195,10 +201,10 @@ const PlatformLayout = ({
         <div className="mx-auto grid max-w-7xl gap-10 px-5 py-12 sm:px-8 md:grid-cols-2 lg:grid-cols-4">
           <div className="lg:col-span-1">
             <p className="flex items-center gap-2 font-display text-base font-bold text-[var(--pf-text)]">
-              <span className="inline-flex h-8 w-8 items-center justify-center rounded-md bg-teal-500/15 text-teal-600">
+              <span className="inline-flex h-8 w-8 items-center justify-center rounded-md bg-[var(--pf-accent)] text-[var(--pf-accent-fg)]">
                 <GraduationCap className="h-4 w-4" />
               </span>
-              Tvet<span className="text-teal-500">Flow</span>
+              Tvet<span className="text-[var(--pf-accent)]">Flow</span>
             </p>
             <p className="mt-3 max-w-xs text-sm leading-relaxed text-[var(--pf-muted)]">
               Operations software for training centers — one portal per institution, one console for the platform.
@@ -222,62 +228,62 @@ const PlatformLayout = ({
             </div>
           </div>
           <div>
-            <p className="text-xs font-semibold uppercase tracking-wider text-[var(--pf-faint)]">Product</p>
+            <p className="text-xs font-semibold uppercase tracking-wider text-[var(--pf-faint)]">{t('product')}</p>
             <ul className="mt-3 space-y-2 text-sm text-[var(--pf-muted)]">
               <li>
                 <Link to="/features" className="inline-flex items-center gap-2 hover:text-[var(--pf-text)]">
-                  <LayoutGrid className="h-3.5 w-3.5" /> Features
+                  <LayoutGrid className="h-3.5 w-3.5" /> {t('features')}
                 </Link>
               </li>
               <li>
                 <Link to="/plans" className="inline-flex items-center gap-2 hover:text-[var(--pf-text)]">
-                  <Package className="h-3.5 w-3.5" /> Plans & Subscriptions
+                  <Package className="h-3.5 w-3.5" /> {t('plansFull')}
                 </Link>
               </li>
               <li>
                 <Link to="/about" className="inline-flex items-center gap-2 hover:text-[var(--pf-text)]">
-                  <Info className="h-3.5 w-3.5" /> About
+                  <Info className="h-3.5 w-3.5" /> {t('about')}
                 </Link>
               </li>
             </ul>
           </div>
           <div>
-            <p className="text-xs font-semibold uppercase tracking-wider text-[var(--pf-faint)]">Help</p>
+            <p className="text-xs font-semibold uppercase tracking-wider text-[var(--pf-faint)]">{t('help')}</p>
             <ul className="mt-3 space-y-2 text-sm text-[var(--pf-muted)]">
               <li>
                 <Link to="/support" className="inline-flex items-center gap-2 hover:text-[var(--pf-text)]">
-                  <LifeBuoy className="h-3.5 w-3.5" /> Support
+                  <LifeBuoy className="h-3.5 w-3.5" /> {t('support')}
                 </Link>
               </li>
               <li>
                 <Link to="/contact" className="inline-flex items-center gap-2 hover:text-[var(--pf-text)]">
-                  <Mail className="h-3.5 w-3.5" /> Contact
+                  <Mail className="h-3.5 w-3.5" /> {t('contact')}
                 </Link>
               </li>
               <li>
                 <Link to="/login" className="inline-flex items-center gap-2 hover:text-[var(--pf-text)]">
-                  <LogIn className="h-3.5 w-3.5" /> Sign in
+                  <LogIn className="h-3.5 w-3.5" /> {t('logIn')}
                 </Link>
               </li>
             </ul>
           </div>
           <div>
-            <p className="text-xs font-semibold uppercase tracking-wider text-[var(--pf-faint)]">Get started</p>
+            <p className="text-xs font-semibold uppercase tracking-wider text-[var(--pf-faint)]">{t('getStarted')}</p>
             <p className="mt-3 text-sm leading-relaxed text-[var(--pf-muted)]">
               Open an admin account, then your institution portal.
             </p>
             <Button asChild size="sm" className="mt-4 bg-[var(--pf-accent)] font-semibold text-[var(--pf-accent-fg)] hover:opacity-90">
               <Link to="/create-institution">
-                Create institution
+                {t('createInstitution')}
                 <ArrowRight className="ml-1.5 h-3.5 w-3.5" />
               </Link>
             </Button>
             <div className="mt-5 flex gap-4 text-xs text-[var(--pf-faint)]">
               <Link to="/privacy" className="hover:text-[var(--pf-text)]">
-                Privacy
+                {t('privacy')}
               </Link>
               <Link to="/terms" className="hover:text-[var(--pf-text)]">
-                Terms
+                {t('terms')}
               </Link>
             </div>
           </div>

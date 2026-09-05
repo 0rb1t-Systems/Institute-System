@@ -25,6 +25,7 @@ import {
   FileText,
   PenTool,
   ClipboardList,
+  LayoutTemplate,
 } from 'lucide-react';
 
 export type NavItem = {
@@ -47,6 +48,7 @@ export function getNavItemsForRole(role?: string | null): NavItem[] {
         { href: '/super-admin/analytics', icon: BarChart3, label: 'Analytics' },
         { href: '/super-admin/support', icon: LifeBuoy, label: 'Support' },
         { href: '/super-admin/audit-logs', icon: ScrollText, label: 'Audit Logs' },
+        { href: '/super-admin/site-cms', icon: LayoutTemplate, label: 'Site CMS' },
         { href: '/super-admin/settings', icon: Settings, label: 'Settings' },
         { href: '/super-admin/profile', icon: User, label: 'Profile' },
       ];
