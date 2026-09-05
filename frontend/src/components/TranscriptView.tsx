@@ -81,62 +81,72 @@ type TranscriptGroupPage = {
   rows: any[];
 };
 
-type TranscriptFlatItem =
-  | { kind: 'header'; key: string; name: string }
-  | { kind: 'row'; key: string; name: string | null; row: any };
-
 /** Estimated vertical weight so long grade tables can spill onto extra A4 pages. */
-function transcriptItemUnits(item: TranscriptFlatItem): number {
-  if (item.kind === 'header') return 0.7;
-  return item.row?.courseProject ? 1.35 : 1;
+function transcriptRowUnits(row: any): number {
+  return row?.courseProject ? 1.35 : 1;
 }
 
-function flattenTranscriptGroups(groups: TranscriptGroupPage[]): TranscriptFlatItem[] {
-  const items: TranscriptFlatItem[] = [];
-  for (const group of groups || []) {
-    if (group.name) items.push({ kind: 'header', key: group.key, name: group.name });
-    for (const row of group.rows || []) {
-      items.push({ kind: 'row', key: group.key, name: group.name, row });
-    }
-  }
-  return items;
+function transcriptGroupUnits(group: TranscriptGroupPage): number {
+  let units = group.name ? 0.7 : 0;
+  for (const row of group.rows || []) units += transcriptRowUnits(row);
+  return units;
 }
 
-function flatItemsToGroups(items: TranscriptFlatItem[]): TranscriptGroupPage[] {
-  const groups: TranscriptGroupPage[] = [];
-  const map = new Map<string, TranscriptGroupPage>();
-  for (const item of items) {
-    let group = map.get(item.key);
-    if (!group) {
-      group = { key: item.key, name: item.kind === 'header' ? item.name : item.name, rows: [] };
-      map.set(item.key, group);
-      groups.push(group);
-    } else if (item.kind === 'header' && item.name) {
-      group.name = item.name;
-    }
-    if (item.kind === 'row') group.rows.push(item.row);
-  }
-  return groups;
-}
-
-function takeTranscriptItems(items: TranscriptFlatItem[], maxUnits: number) {
-  const page: TranscriptFlatItem[] = [];
-  let units = 0;
-  let index = 0;
-  while (index < items.length) {
-    const next = items[index];
-    const weight = transcriptItemUnits(next);
-    if (page.length > 0 && units + weight > maxUnits) break;
-    page.push(next);
-    units += weight;
-    index += 1;
-  }
-  return { page, rest: items.slice(index) };
+function cloneGroupWithRows(group: TranscriptGroupPage, rows: any[]): TranscriptGroupPage {
+  return { key: group.key, name: group.name, rows };
 }
 
 /**
- * Split semester groups across A4 pages so signatures + QR stay visible on the last page.
- * Capacities are conservative row-units that leave room for header / footer chrome.
+ * Pack whole semester groups onto a page. Only splits a semester when that one
+ * group alone exceeds the page capacity (keeps Sem 1 / Sem 2 on separate pages when possible).
+ */
+function takeWholeSemesterGroups(groups: TranscriptGroupPage[], maxUnits: number) {
+  const page: TranscriptGroupPage[] = [];
+  let units = 0;
+  let index = 0;
+
+  while (index < groups.length) {
+    const group = groups[index];
+    const weight = transcriptGroupUnits(group);
+
+    if (page.length === 0 && weight > maxUnits) {
+      // Oversized semester: fill what fits, keep semester header on the continuation.
+      const rows: any[] = [];
+      let rowUnits = group.name ? 0.7 : 0;
+      let rowIndex = 0;
+      while (rowIndex < (group.rows || []).length) {
+        const nextWeight = transcriptRowUnits(group.rows[rowIndex]);
+        if (rows.length > 0 && rowUnits + nextWeight > maxUnits) break;
+        rows.push(group.rows[rowIndex]);
+        rowUnits += nextWeight;
+        rowIndex += 1;
+      }
+      if (!rows.length && group.rows?.length) {
+        rows.push(group.rows[0]);
+        rowIndex = 1;
+      }
+      page.push(cloneGroupWithRows(group, rows));
+      const leftoverRows = (group.rows || []).slice(rowIndex);
+      const rest: TranscriptGroupPage[] = [];
+      if (leftoverRows.length) rest.push(cloneGroupWithRows(group, leftoverRows));
+      rest.push(...groups.slice(index + 1));
+      return { page, rest };
+    }
+
+    if (page.length > 0 && units + weight > maxUnits) break;
+
+    page.push(group);
+    units += weight;
+    index += 1;
+  }
+
+  return { page, rest: groups.slice(index) };
+}
+
+/**
+ * Paginate by semester: keep each semester together when it fits.
+ * Example: Semester One on page 1, Semester Two on page 2.
+ * Capacities leave room for header / signature footer chrome.
  */
 function paginateTranscriptGroups(
   groups: TranscriptGroupPage[],
@@ -147,34 +157,33 @@ function paginateTranscriptGroups(
     lastWithFooter: number;
   },
 ): TranscriptGroupPage[][] {
-  const items = flattenTranscriptGroups(groups);
-  if (!items.length) return [[]];
+  const source = (groups || []).filter((g) => (g.rows || []).length > 0);
+  if (!source.length) return [[]];
 
-  const totalUnits = items.reduce((sum, item) => sum + transcriptItemUnits(item), 0);
+  const totalUnits = source.reduce((sum, g) => sum + transcriptGroupUnits(g), 0);
   if (totalUnits <= opts.firstWithFooter) {
-    return [flatItemsToGroups(items)];
+    return [source];
   }
 
-  const pages: TranscriptFlatItem[][] = [];
-  let remaining = items;
+  const pages: TranscriptGroupPage[][] = [];
+  let remaining = source;
 
-  const first = takeTranscriptItems(remaining, opts.firstContinue);
+  const first = takeWholeSemesterGroups(remaining, opts.firstContinue);
   pages.push(first.page);
   remaining = first.rest;
 
   while (remaining.length) {
-    const restUnits = remaining.reduce((sum, item) => sum + transcriptItemUnits(item), 0);
+    const restUnits = remaining.reduce((sum, g) => sum + transcriptGroupUnits(g), 0);
     if (restUnits <= opts.lastWithFooter) {
       pages.push(remaining);
       break;
     }
-    const chunk = takeTranscriptItems(remaining, opts.continuePage);
+    const chunk = takeWholeSemesterGroups(remaining, opts.continuePage);
     if (!chunk.page.length) {
       pages.push(remaining);
       break;
     }
-    // Ensure the final leftover still fits with footer room.
-    const afterUnits = chunk.rest.reduce((sum, item) => sum + transcriptItemUnits(item), 0);
+    const afterUnits = chunk.rest.reduce((sum, g) => sum + transcriptGroupUnits(g), 0);
     if (chunk.rest.length && afterUnits <= opts.lastWithFooter) {
       pages.push(chunk.page);
       pages.push(chunk.rest);
@@ -184,7 +193,7 @@ function paginateTranscriptGroups(
     remaining = chunk.rest;
   }
 
-  return pages.map(flatItemsToGroups);
+  return pages;
 }
 
 function collectTranscriptPdfPages(): HTMLElement[] {
@@ -565,12 +574,13 @@ const TranscriptView = ({ studentId, onClose, initialClassId }: any) => {
     const showNarrative = !!transcriptNarrative;
 
     const transcriptPages = useMemo(() => {
+      // Slightly tighter unit caps after roomier row padding so pages stay within A4.
       const capacities =
         layoutKey === 'compact'
-          ? { firstWithFooter: 12, firstContinue: 18, continuePage: 28, lastWithFooter: 18 }
+          ? { firstWithFooter: 10, firstContinue: 14, continuePage: 22, lastWithFooter: 14 }
           : showNarrative
-            ? { firstWithFooter: 8, firstContinue: 13, continuePage: 24, lastWithFooter: 14 }
-            : { firstWithFooter: 10, firstContinue: 15, continuePage: 26, lastWithFooter: 16 };
+            ? { firstWithFooter: 6, firstContinue: 10, continuePage: 18, lastWithFooter: 11 }
+            : { firstWithFooter: 8, firstContinue: 12, continuePage: 20, lastWithFooter: 13 };
       return paginateTranscriptGroups(transcriptGroups, capacities);
     }, [transcriptGroups, layoutKey, showNarrative]);
 
@@ -985,11 +995,11 @@ const TranscriptView = ({ studentId, onClose, initialClassId }: any) => {
                           style={layoutStyles.tableBorderColor ? { borderColor: layoutStyles.tableBorderColor } : undefined}
                         >
                             <TableHeader>
-                                <TableRow className="border-b-2 border-black bg-white hover:bg-white h-7">
-                                    <TableHead className="font-bold text-black uppercase text-[10px] w-[100px] border-r border-black h-7 py-1 pl-2">Code</TableHead>
-                                    <TableHead className="font-bold text-black uppercase text-[10px] border-r border-black h-7 py-1 px-2 text-left">Course Title</TableHead>
-                                    <TableHead className="font-bold text-black uppercase text-[10px] text-center w-[80px] border-r border-black h-7 py-1">Score</TableHead>
-                                    <TableHead className="font-bold text-black uppercase text-[10px] text-center w-[80px] h-7 py-1 pr-2">Grade</TableHead>
+                                <TableRow className="border-b-2 border-black bg-white hover:bg-white">
+                                    <TableHead className="font-bold text-black uppercase text-[10px] w-[100px] border-r border-black h-9 py-2 pl-2 align-middle">Code</TableHead>
+                                    <TableHead className="font-bold text-black uppercase text-[10px] border-r border-black h-9 py-2 px-2 text-left align-middle">Course Title</TableHead>
+                                    <TableHead className="font-bold text-black uppercase text-[10px] text-center w-[80px] border-r border-black h-9 py-2 align-middle">Score</TableHead>
+                                    <TableHead className="font-bold text-black uppercase text-[10px] text-center w-[80px] h-9 py-2 pr-2 align-middle">Grade</TableHead>
                                 </TableRow>
                             </TableHeader>
                             <TableBody>
@@ -997,24 +1007,24 @@ const TranscriptView = ({ studentId, onClose, initialClassId }: any) => {
                                     <React.Fragment key={`${pageIndex}-${group.key}`}>
                                         {group.name ? (
                                             <TableRow className="bg-slate-100 hover:bg-slate-100 border-b border-black">
-                                                <TableCell colSpan={4} className={`${dense ? 'py-1' : 'py-1.5'} px-2 font-black uppercase text-[10px] tracking-wide text-black`}>
+                                                <TableCell colSpan={4} className="py-2 px-2 font-black uppercase text-[10px] tracking-wide text-black align-middle">
                                                     {group.name}
                                                 </TableCell>
                                             </TableRow>
                                         ) : null}
                                         {group.rows.map((row) => (
-                                            <TableRow key={row.id} className="bg-white hover:bg-slate-50 h-auto border-b border-black">
-                                                <TableCell className={`font-mono font-bold text-black text-xs ${dense ? 'py-1' : 'py-2'} pl-2 border-r border-black`}>{row.code}</TableCell>
-                                                <TableCell className={`${dense ? 'py-1' : 'py-2'} px-2 border-r border-black`}>
-                                                    <div className="font-bold text-black text-xs uppercase leading-tight">{row.name}</div>
+                                            <TableRow key={row.id} className="bg-white hover:bg-slate-50 border-b border-black">
+                                                <TableCell className="font-mono font-bold text-black text-xs py-2.5 pl-2 border-r border-black align-middle">{row.code}</TableCell>
+                                                <TableCell className="py-2.5 px-2.5 border-r border-black align-middle">
+                                                    <div className="font-bold text-black text-xs uppercase leading-snug">{row.name}</div>
                                                     {row.courseProject ? (
-                                                        <div className="text-[9px] italic text-black/80 leading-tight mt-0.5">
+                                                        <div className="text-[9px] italic text-black/80 leading-snug mt-1">
                                                             Course Project: {row.courseProject}
                                                         </div>
                                                     ) : null}
                                                 </TableCell>
-                                                <TableCell className={`text-center font-bold text-black text-xs ${dense ? 'py-1' : 'py-2'} border-r border-black`}>{row.marks !== null ? row.marks : '-'}</TableCell>
-                                                <TableCell className={`text-center font-bold text-black text-xs ${dense ? 'py-1' : 'py-2'} pr-2`}>{row.grade}</TableCell>
+                                                <TableCell className="text-center font-bold text-black text-xs py-2.5 border-r border-black align-middle">{row.marks !== null ? row.marks : '-'}</TableCell>
+                                                <TableCell className="text-center font-bold text-black text-xs py-2.5 pr-2 align-middle">{row.grade}</TableCell>
                                             </TableRow>
                                         ))}
                                     </React.Fragment>

@@ -135,10 +135,10 @@ const TranscriptCanvas = ({ data, compact = false }: Props) => {
                   ) : null}
                   {g.courses.map((c) => (
                     <tr key={c.code} className="border-b border-inherit">
-                      <td className={`font-mono py-0.5 px-1 border-r border-inherit ${compact ? 'text-[4px]' : 'text-[7px]'}`}>{c.code}</td>
-                      <td className={`py-0.5 px-1 border-r border-inherit uppercase ${compact ? 'text-[4px]' : 'text-[7px]'}`}>{c.name}</td>
-                      <td className={`text-center py-0.5 px-1 border-r border-inherit ${compact ? 'text-[4px]' : 'text-[7px]'}`}>{c.marks}</td>
-                      <td className={`text-center font-bold py-0.5 px-1 ${compact ? 'text-[4px]' : 'text-[7px]'}`}>{c.grade}</td>
+                      <td className={`font-mono py-1 px-1 border-r border-inherit align-middle ${compact ? 'text-[4px]' : 'text-[7px]'}`}>{c.code}</td>
+                      <td className={`py-1 px-1 border-r border-inherit uppercase align-middle leading-snug ${compact ? 'text-[4px]' : 'text-[7px]'}`}>{c.name}</td>
+                      <td className={`text-center py-1 px-1 border-r border-inherit align-middle ${compact ? 'text-[4px]' : 'text-[7px]'}`}>{c.marks}</td>
+                      <td className={`text-center font-bold py-1 px-1 align-middle ${compact ? 'text-[4px]' : 'text-[7px]'}`}>{c.grade}</td>
                     </tr>
                   ))}
                 </React.Fragment>

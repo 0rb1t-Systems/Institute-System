@@ -10,7 +10,6 @@ import { notify, MESSAGES } from '@/lib/notify';
 import { Loader2, AlertCircle } from 'lucide-react';
 import { checkResultExists, createOrUpdateExamResult } from '@/lib/api';
 import { useAuth } from '@/contexts/AuthContext';
-import { useData } from '@/contexts/DataContext';
 import {
   canManageCourseProjects,
   COURSE_PROJECT_MAX_LEN,
@@ -38,9 +37,7 @@ const ExamResultForm = ({
 }) => {
   const { toast } = useToast();
   const { user, institution } = useAuth();
-  const { courses = [] } = useData();
   const showCourseProject = canManageCourseProjects(institution, user?.role);
-  const examCourse = courses.find((c) => c.id === exam?.course_id);
   const [loading, setLoading] = useState(false);
   const [duplicateWarning, setDuplicateWarning] = useState(null);
   const [showConfirmDialog, setShowConfirmDialog] = useState(false);
@@ -72,8 +69,7 @@ const ExamResultForm = ({
           final_score: initialData.final_score?.toString() || '',
           total_marks: initialData.total_marks?.toString() || exam?.total_marks?.toString() || '100',
           comments: initialData.comments || '',
-          course_project:
-            initialData.course_project || examCourse?.course_project || '',
+          course_project: initialData.course_project || '',
         });
       } else {
         reset({
@@ -83,7 +79,7 @@ const ExamResultForm = ({
           final_score: '',
           total_marks: exam?.total_marks?.toString() || '100',
           comments: '',
-          course_project: examCourse?.course_project || '',
+          course_project: '',
         });
       }
       setDuplicateWarning(null);

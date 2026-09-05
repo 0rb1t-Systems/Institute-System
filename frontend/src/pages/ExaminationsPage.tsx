@@ -138,13 +138,13 @@ const ExaminationsPageContent = () => {
               initialBuffer[sid] = {
                   score: res.score !== null ? res.score : '',
                   comments: comments,
-                  course_project: res.course_project || course.course_project || '',
+                  course_project: res.course_project || '',
               };
           } else {
               initialBuffer[sid] = {
                   score: '',
                   comments: '',
-                  course_project: course.course_project || '',
+                  course_project: '',
               };
           }
       });

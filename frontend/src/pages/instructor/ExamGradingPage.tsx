@@ -28,7 +28,7 @@ const ExamGradingPage = () => {
     const navigate = useNavigate();
     const { user, institution } = useAuth();
     const gradeScale = useMemo(() => getInstitutionGradeScale(institution), [institution]);
-    const { exams, results, enrollments, students, courses, saveManualGrades } = useData();
+    const { exams, results, enrollments, students, saveManualGrades } = useData();
     const showCourseProject = canManageCourseProjects(institution, user?.role);
     const { toast } = useToast();
     
@@ -55,16 +55,11 @@ const ExamGradingPage = () => {
             .filter((item) => item.student);
     }, [exam, enrollments, results, students, examId]);
 
-    const examCourse = useMemo(
-        () => courses.find((c) => c.id === exam?.course_id),
-        [courses, exam?.course_id],
-    );
-
     const handleOpenGradeDialog = (item) => {
         setSelectedStudent(item);
         setGradeData({
             score: item.result?.final_score !== undefined ? item.result.final_score : '',
-            course_project: item.result?.course_project || examCourse?.course_project || '',
+            course_project: item.result?.course_project || '',
         });
         setIsGradeDialogOpen(true);
     };
