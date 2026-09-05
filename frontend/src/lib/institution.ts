@@ -749,6 +749,24 @@ export function defaultStudentIdSample(institutionName?: string | null): string 
   return formatStudentIdSample(institutionNameInitials(institutionName), 0, 1)
 }
 
+/** Placeholder example for Verify Identity (same shape as that institution's student IDs). */
+export function studentIdVerifyPlaceholder(institution?: InstitutionBrand | null): string {
+  if (!institution) return 'e.g. BRCE01106'
+  const configured = institution.student_id_prefix != null
+  const prefix = configured
+    ? String(institution.student_id_prefix || '')
+    : institutionNameInitials(institution.name)
+  const start = configured
+    ? Math.max(0, Math.floor(Number(institution.student_id_start ?? 0)))
+    : 1106
+  const pad = configured
+    ? Math.min(9, Math.max(1, Math.floor(Number(institution.student_id_pad) || 1)))
+    : Math.max(5, String(start).length)
+  // Prefer a BRCE-style sample (prefix + digits). Avoid "HC0" when start is 0.
+  const exampleN = start > 0 ? start : 1106
+  return `e.g. ${formatStudentIdSample(prefix, exampleN, pad)}`
+}
+
 export function parseStudentIdSample(raw: string): { prefix: string; start: number; pad: number } {
   const sample = String(raw || '').trim()
   const m = sample.match(/^([A-Za-z]{0,12})(\d{1,9})$/)

@@ -1500,22 +1500,35 @@ export function createConstructedCertificateMatchingUpload(opts?: {
 }
 
 /**
- * Build a full constructed editable template from upload metadata (no image overlay).
+ * Build an editable template that clones the uploaded certificate design.
+ * Prefers OCR/PDF decomposition when imageUrl + file + uploadImageBlob are provided;
+ * otherwise falls back to a constructed layout from institution branding.
  */
 export async function buildTemplateFromUploadedCertificate(opts: {
+  file?: File
   imageUrl?: string
   aspectRatio?: number | null
   kind?: DocumentBuilderKind
-  uploadImageBlob?: (blob: Blob, fileName: string) => Promise<{ path: string }>
+  uploadImageBlob?: (blob: Blob, fileName: string) => Promise<{ path: string; signedUrl?: string | null }>
   institutionName?: string
   primary?: string
   accent?: string
   logoUrl?: string | null
   sealUrl?: string | null
   signatureUrl?: string | null
+  onProgress?: (message: string, pct?: number) => void
 }): Promise<LogoBuilderDesign> {
-  void opts.imageUrl
-  void opts.uploadImageBlob
+  if (opts.file && opts.imageUrl && opts.uploadImageBlob) {
+    const { extractCertificateDesign } = await import('@/lib/extractCertificateDesign')
+    return extractCertificateDesign({
+      file: opts.file,
+      imageUrl: opts.imageUrl,
+      aspectRatio: opts.aspectRatio,
+      kind: opts.kind,
+      uploadImageBlob: opts.uploadImageBlob,
+      onProgress: opts.onProgress,
+    })
+  }
   return createConstructedCertificateMatchingUpload({
     aspectRatio: opts.aspectRatio,
     kind: opts.kind,

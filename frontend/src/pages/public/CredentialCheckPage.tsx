@@ -162,6 +162,7 @@ const CredentialCheckPage = () => {
                 <StudentIdentityVerify
                     tenantSlug={tenantSlug}
                     tenantName={tenant?.name || ''}
+                    institution={tenant}
                     accent={isPlatform ? '#14b8a6' : accent}
                     prefillId={prefillId}
                     variant={isPlatform ? 'platform' : 'portal'}

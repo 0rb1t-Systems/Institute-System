@@ -20,6 +20,7 @@ import { Dialog, DialogContent } from '@/components/ui/dialog'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { verifyStudentProfile } from '@/lib/api'
 import { MESSAGES } from '@/lib/messages'
+import { studentIdVerifyPlaceholder } from '@/lib/institution'
 import { cn } from '@/lib/utils'
 import { usePlatformTheme } from '@/contexts/PlatformThemeContext'
 
@@ -52,6 +53,13 @@ type Props = {
   /** When set, lookup is limited to that tenant. When omitted, any institution on the platform. */
   tenantSlug?: string | null
   tenantName?: string | null
+  /** Institution branding used to build the Student ID placeholder example. */
+  institution?: {
+    name?: string | null
+    student_id_prefix?: string | null
+    student_id_start?: number | null
+    student_id_pad?: number | null
+  } | null
   accent?: string
   prefillId?: string
   variant?: 'platform' | 'portal'
@@ -60,6 +68,7 @@ type Props = {
 export default function StudentIdentityVerify({
   tenantSlug = '',
   tenantName = '',
+  institution = null,
   accent,
   prefillId = '',
   variant = 'portal',
@@ -129,6 +138,11 @@ export default function StudentIdentityVerify({
   const recordAccent = isPlatform ? brand : student?.theme_primary || brand
   const programLabel = student?.program_name || student?.class_name || '—'
   const academicStatus = student?.academic_status || 'Verified'
+  const idPlaceholder = studentIdVerifyPlaceholder(
+    isPlatform
+      ? null
+      : institution || (tenantName ? { name: tenantName } : null),
+  )
   const initials =
     String(student?.name || '')
       .split(/\s+/)
@@ -196,7 +210,7 @@ export default function StudentIdentityVerify({
                 />
                 <Input
                   id="studentId"
-                  placeholder="e.g. BRCE01106"
+                  placeholder={idPlaceholder}
                   className={cn(
                     'h-11 pl-9',
                     isPlatform

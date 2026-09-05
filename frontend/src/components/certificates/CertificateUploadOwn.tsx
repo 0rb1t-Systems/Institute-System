@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react'
+import React, { useEffect, useRef, useState } from 'react'
 import { FileUp, Loader2, Sparkles } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -8,80 +8,19 @@ import {
   getCertificateTemplateSignedUrl,
   getDocumentTemplate,
   saveDocumentLogoBuilder,
+  uploadCertificateBuilderImage,
   uploadOwnDocumentTemplate,
   type DocumentTemplateType,
 } from '@/lib/api'
 import CertificateUploadTemplateEditor from '@/components/certificates/CertificateUploadTemplateEditor'
 import {
-  createConstructedCertificateMatchingUpload,
   normalizeLogoBuilderDesign,
   type CustomUploadMeta,
+  type DocumentBuilderKind,
 } from '@/lib/certificateBuilder'
-import {
-  getInstitutionAccent,
-  getInstitutionDisplayName,
-  getInstitutionPrimary,
-  getSignatoryLeftName,
-  getSignatoryLeftTitle,
-  getSignatoryRightName,
-  getSignatoryRightTitle,
-} from '@/lib/institution'
+import { extractCertificateDesign } from '@/lib/extractCertificateDesign'
 import { getUserMessage } from '@/lib/mapError'
 import { MESSAGES } from '@/lib/messages'
-
-/** Sample header/body colors from the uploaded preview so the built template matches its look. */
-async function sampleUploadPalette(imageUrl: string): Promise<{ primary?: string; accent?: string }> {
-  try {
-    const img = await new Promise<HTMLImageElement>((resolve, reject) => {
-      const el = new Image()
-      el.crossOrigin = 'anonymous'
-      el.onload = () => resolve(el)
-      el.onerror = () => reject(new Error('IMAGE_LOAD'))
-      el.src = imageUrl
-    })
-    const w = Math.max(1, Math.min(80, img.naturalWidth || 80))
-    const h = Math.max(1, Math.min(100, img.naturalHeight || 100))
-    const canvas = document.createElement('canvas')
-    canvas.width = w
-    canvas.height = h
-    const ctx = canvas.getContext('2d')
-    if (!ctx) return {}
-    ctx.drawImage(img, 0, 0, w, h)
-
-    const avgAt = (x0: number, y0: number, x1: number, y1: number) => {
-      const sw = Math.max(1, Math.floor(x1 - x0))
-      const sh = Math.max(1, Math.floor(y1 - y0))
-      const data = ctx.getImageData(Math.floor(x0), Math.floor(y0), sw, sh).data
-      let r = 0
-      let g = 0
-      let b = 0
-      let n = 0
-      for (let i = 0; i < data.length; i += 16) {
-        const a = data[i + 3]
-        if (a < 200) continue
-        const rr = data[i]
-        const gg = data[i + 1]
-        const bb = data[i + 2]
-        // Skip near-white / near-black paper pixels
-        const lum = (rr + gg + bb) / 3
-        if (lum > 235 || lum < 25) continue
-        r += rr
-        g += gg
-        b += bb
-        n += 1
-      }
-      if (!n) return null
-      const toHex = (v: number) => Math.round(v / n).toString(16).padStart(2, '0')
-      return `#${toHex(r)}${toHex(g)}${toHex(b)}`
-    }
-
-    const primary = avgAt(w * 0.05, h * 0.02, w * 0.55, h * 0.14) || undefined
-    const accent = avgAt(w * 0.05, h * 0.1, w * 0.55, h * 0.22) || undefined
-    return { primary, accent }
-  } catch {
-    return {}
-  }
-}
 
 function previewPathForMeta(upload: CustomUploadMeta | null | undefined): string | null {
   if (!upload) return null
@@ -94,11 +33,49 @@ function previewPathForMeta(upload: CustomUploadMeta | null | undefined): string
   return path
 }
 
+async function fetchStorageFile(
+  path: string,
+  fileName: string,
+  mimeType: string,
+): Promise<File> {
+  const url = await getCertificateTemplateSignedUrl(path)
+  if (!url) throw new Error('CERT_TEMPLATE_NOT_FOUND')
+  const res = await fetch(url)
+  if (!res.ok) throw new Error('CERT_TEMPLATE_NOT_FOUND')
+  const blob = await res.blob()
+  return new File([blob], fileName || 'certificate-template', {
+    type: mimeType || blob.type || 'application/octet-stream',
+  })
+}
+
+async function rasterizePdfToObjectUrl(file: File): Promise<{ url: string; revoke: () => void }> {
+  const pdfjs = await import('pdfjs-dist')
+  pdfjs.GlobalWorkerOptions.workerSrc = new URL(
+    'pdfjs-dist/build/pdf.worker.min.mjs',
+    import.meta.url,
+  ).toString()
+  const data = new Uint8Array(await file.arrayBuffer())
+  const pdf = await pdfjs.getDocument({ data }).promise
+  const page = await pdf.getPage(1)
+  const viewport = page.getViewport({ scale: 2 })
+  const canvas = document.createElement('canvas')
+  canvas.width = viewport.width
+  canvas.height = viewport.height
+  const ctx = canvas.getContext('2d')
+  if (!ctx) throw new Error('UPLOAD_FAILED')
+  await page.render({ canvasContext: ctx, viewport }).promise
+  const blob = await new Promise<Blob>((resolve, reject) => {
+    canvas.toBlob((b) => (b ? resolve(b) : reject(new Error('UPLOAD_FAILED'))), 'image/png')
+  })
+  const url = URL.createObjectURL(blob)
+  return { url, revoke: () => URL.revokeObjectURL(url) }
+}
+
 /**
  * Upload Own Certificate:
- * Upload sets page size (+ palette hint) from your PDF → Generate builds a FULL
- * certificate from scratch (text, lines, logo, seal, QR) — 100% editable layers.
- * No image stacked under fields.
+ * Upload a sample PDF/PNG → Generate scans that design and builds a full editable
+ * clone (text as layers, decorative art as residual paper) that matches colors,
+ * layout, and fields of what you uploaded.
  */
 const CertificateUploadOwn = ({
   documentType = 'certificate',
@@ -112,10 +89,12 @@ const CertificateUploadOwn = ({
   const { toast } = useToast()
   const [loading, setLoading] = useState(true)
   const [busy, setBusy] = useState(false)
+  const [progress, setProgress] = useState<string | null>(null)
   const [meta, setMeta] = useState<CustomUploadMeta | null>(null)
   const [hasTemplate, setHasTemplate] = useState(false)
   const [active, setActive] = useState(false)
   const [editorKey, setEditorKey] = useState(0)
+  const sourceFileRef = useRef<File | null>(null)
 
   const load = async () => {
     setLoading(true)
@@ -148,53 +127,75 @@ const CertificateUploadOwn = ({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [institution?.id, docType])
 
+  const resolveSourceFile = async (upload: CustomUploadMeta): Promise<File> => {
+    if (sourceFileRef.current) return sourceFileRef.current
+    const file = await fetchStorageFile(
+      upload.storage_path,
+      upload.file_name || `${docType}-template`,
+      upload.mime_type || 'application/octet-stream',
+    )
+    sourceFileRef.current = file
+    return file
+  }
+
+  const resolveScanImageUrl = async (
+    upload: CustomUploadMeta,
+    file: File,
+  ): Promise<{ url: string; revoke?: () => void }> => {
+    const previewPath = previewPathForMeta(upload)
+    if (previewPath) {
+      const url = await getCertificateTemplateSignedUrl(previewPath)
+      if (url) return { url }
+    }
+    const mime = String(file.type || upload.mime_type || '').toLowerCase()
+    if (mime.includes('pdf') || /\.pdf$/i.test(file.name)) {
+      return rasterizePdfToObjectUrl(file)
+    }
+    const url = URL.createObjectURL(file)
+    return { url, revoke: () => URL.revokeObjectURL(url) }
+  }
+
   const generateTemplate = async (upload: CustomUploadMeta) => {
     const aspect =
       upload.aspect_ratio != null && Number(upload.aspect_ratio) > 0
         ? Number(upload.aspect_ratio)
         : null
 
-    let primary = getInstitutionPrimary(institution)
-    let accent = getInstitutionAccent(institution)
-    const previewPath = previewPathForMeta(upload)
-    if (previewPath) {
-      try {
-        const url = await getCertificateTemplateSignedUrl(previewPath)
-        if (url) {
-          const sampled = await sampleUploadPalette(url)
-          if (sampled.primary) primary = sampled.primary
-          if (sampled.accent) accent = sampled.accent
-        }
-      } catch {
-        /* keep institution colors */
-      }
-    }
+    setProgress('Loading your upload…')
+    const file = await resolveSourceFile(upload)
+    const scanned = await resolveScanImageUrl(upload, file)
 
-    const design = createConstructedCertificateMatchingUpload({
-      aspectRatio: aspect,
-      kind:
+    try {
+      const kind: DocumentBuilderKind =
         docType === 'transcript'
           ? 'transcript'
           : docType === 'invoice'
             ? 'invoice'
-            : 'certificate',
-      institutionName: getInstitutionDisplayName(institution),
-      subtitle: String(institution?.motto || '').trim() || undefined,
-      primary,
-      accent,
-      logoUrl: institution?.logo_url || null,
-      sealUrl: institution?.seal_url || null,
-      signatureUrl: institution?.signature_url || null,
-      leftTitle: getSignatoryLeftTitle(institution),
-      rightTitle: getSignatoryRightTitle(institution),
-      leftName: getSignatoryLeftName(institution) || undefined,
-      rightName: getSignatoryRightName(institution) || undefined,
-    })
+            : 'certificate'
 
-    await saveDocumentLogoBuilder(docType, normalizeLogoBuilderDesign(design), true)
-    setHasTemplate(true)
-    setActive(true)
-    setEditorKey((k) => k + 1)
+      const design = await extractCertificateDesign({
+        file,
+        imageUrl: scanned.url,
+        aspectRatio: aspect,
+        kind,
+        uploadImageBlob: async (blob, fileName) => {
+          const asFile = new File([blob], fileName || 'certificate-paper.png', {
+            type: blob.type || 'image/png',
+          })
+          const up = await uploadCertificateBuilderImage(asFile)
+          return { path: up.path, signedUrl: up.signedUrl }
+        },
+        onProgress: (message) => setProgress(message),
+      })
+
+      setProgress('Saving template…')
+      await saveDocumentLogoBuilder(docType, normalizeLogoBuilderDesign(design), true)
+      setHasTemplate(true)
+      setActive(true)
+      setEditorKey((k) => k + 1)
+    } finally {
+      scanned.revoke?.()
+    }
   }
 
   const handleUpload = async (file: File | null) => {
@@ -210,17 +211,19 @@ const CertificateUploadOwn = ({
     }
 
     setBusy(true)
+    setProgress(null)
     try {
       const row = await uploadOwnDocumentTemplate(docType, file, false)
       const next = row?.config?.custom_upload as CustomUploadMeta | undefined
       if (!next?.storage_path) throw new Error('UPLOAD_FAILED')
+      sourceFileRef.current = file
       setMeta(next)
       setHasTemplate(false)
       setActive(false)
       toast({
         title: 'Uploaded',
         description:
-          'Click Generate template — we build a full editable certificate matching your page size and colors.',
+          'Click Generate — we scan your design and build a matching editable template (colors, layout, fields).',
       })
     } catch (err) {
       toast({
@@ -238,12 +241,13 @@ const CertificateUploadOwn = ({
   const handleGenerate = async () => {
     if (!meta?.storage_path) return
     setBusy(true)
+    setProgress('Starting…')
     try {
       await generateTemplate(meta)
       toast({
         title: `${docLabel} template ready`,
         description:
-          'Fully built editable layers (text, lines, logo, seal, QR). Adjust anything, then Save & use.',
+          'Editable clone of your upload (text layers + artwork). Adjust anything, then Save & use.',
       })
     } catch (err) {
       toast({
@@ -253,6 +257,7 @@ const CertificateUploadOwn = ({
       })
     } finally {
       setBusy(false)
+      setProgress(null)
     }
   }
 
@@ -270,7 +275,9 @@ const CertificateUploadOwn = ({
         <div className="flex items-center justify-between gap-2 mb-3">
           <div>
             <p className="text-sm font-medium text-white">Upload a sample</p>
-            <p className="text-xs text-slate-500 mt-0.5">PDF or PNG for page size and colors, then generate editable layers.</p>
+            <p className="text-xs text-slate-500 mt-0.5">
+              PDF or PNG of your certificate. Generate builds an editable clone that matches it.
+            </p>
           </div>
           {active && hasTemplate ? (
             <Badge className="bg-emerald-600/20 text-emerald-300 border-emerald-700/40">Active</Badge>
@@ -281,6 +288,9 @@ const CertificateUploadOwn = ({
             <p className="text-sm text-slate-300 truncate">
               {meta?.file_name || 'No file yet'}
             </p>
+            {busy && progress ? (
+              <p className="mt-1 text-xs text-indigo-300">{progress}</p>
+            ) : null}
           </div>
           <div className="flex flex-wrap gap-2">
             <label className="inline-flex">
@@ -296,7 +306,11 @@ const CertificateUploadOwn = ({
               />
               <Button type="button" disabled={busy} variant="outline" className="border-slate-700" asChild>
                 <span>
-                  {busy ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <FileUp className="h-4 w-4 mr-2" />}
+                  {busy && !progress ? (
+                    <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                  ) : (
+                    <FileUp className="h-4 w-4 mr-2" />
+                  )}
                   {meta?.storage_path ? 'Replace' : 'Upload'}
                 </span>
               </Button>
