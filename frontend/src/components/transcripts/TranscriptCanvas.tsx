@@ -98,7 +98,7 @@ const TranscriptCanvas = ({ data, compact = false }: Props) => {
         </div>
 
         {data.narrativeText ? (
-          <p className={`text-justify text-black leading-snug ${compact ? 'text-[3px]' : 'text-[6px]'}`}>
+          <p className={`text-justify text-black leading-relaxed mb-2 ${compact ? 'text-[3px]' : 'text-[6px]'}`}>
             {data.narrativeText}
           </p>
         ) : null}

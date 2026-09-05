@@ -964,7 +964,7 @@ const TranscriptView = ({ studentId, onClose, initialClassId }: any) => {
 
                     {/* Performance Summary — first page only */}
                     {isFirstPage ? (
-                    <div className={`flex gap-3 shrink-0 ${showNarrative ? 'mb-2' : 'mb-4 print:mb-3'}`}>
+                    <div className={`flex gap-3 shrink-0 ${showNarrative ? 'mb-3' : 'mb-4 print:mb-3'}`}>
                         <div className={`bg-white px-3 rounded border-2 border-black flex-1 ${showNarrative ? 'py-1' : 'p-2'}`}>
                             <div className="text-[9px] text-black font-bold uppercase">Cumulative GPA</div>
                             <div className={`${showNarrative ? 'text-lg' : 'text-2xl'} font-black text-black leading-tight`}>{stats.gpa}</div>
@@ -983,7 +983,7 @@ const TranscriptView = ({ studentId, onClose, initialClassId }: any) => {
                     ) : null}
 
                     {isFirstPage && showNarrative ? (
-                      <p className="shrink-0 mb-2 text-[9px] leading-snug text-black text-justify print:text-[9px]">
+                      <p className="shrink-0 mb-5 text-[9px] leading-relaxed text-black text-justify print:text-[9px] print:mb-5">
                         {transcriptNarrative}
                       </p>
                     ) : null}
