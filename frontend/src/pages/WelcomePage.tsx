@@ -91,8 +91,8 @@ const WelcomePage = () => {
         <title>TvetFlow — Training center platform</title>
       </Helmet>
 
-      <section className="relative overflow-hidden border-b border-[var(--pf-line)] bg-[var(--pf-bg)]">
-        <div className="mx-auto grid max-w-6xl items-start gap-12 px-5 py-12 sm:px-8 sm:py-16 lg:grid-cols-[1.05fr_0.95fr] lg:gap-10 lg:py-16">
+      <section className="relative overflow-x-clip border-b border-[var(--pf-line)] bg-[var(--pf-bg)]">
+        <div className="mx-auto grid max-w-6xl items-start gap-12 px-5 py-12 sm:px-8 sm:py-16 lg:grid-cols-[1.05fr_0.95fr] lg:gap-10 lg:overflow-visible lg:py-16">
           <motion.div
             initial={{ opacity: 0, y: 18 }}
             animate={{ opacity: 1, y: 0 }}
@@ -152,37 +152,53 @@ const WelcomePage = () => {
                 )
               })}
             </div>
-
-            <ul className="mt-10 grid max-w-lg grid-cols-2 gap-x-4 gap-y-5 sm:grid-cols-4">
-              {HERO_PILLS.map((item) => {
-                const Icon = item.icon
-                return (
-                  <li key={item.labelKey} className="flex flex-col items-start gap-2">
-                    <span
-                      className={`inline-flex h-10 w-10 items-center justify-center rounded-xl ${item.bg} ${item.fg} [html[data-platform-theme='dark']_&]:bg-white/10 [html[data-platform-theme='dark']_&]:text-teal-300`}
-                    >
-                      <Icon className="h-5 w-5" />
-                    </span>
-                    <span className="text-[12px] font-semibold leading-snug text-[var(--pf-text)]">{t(item.labelKey)}</span>
-                  </li>
-                )
-              })}
-            </ul>
           </motion.div>
 
           <motion.div
             initial={{ opacity: 0, y: 24 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.65, delay: 0.1, ease: [0.22, 1, 0.36, 1] }}
-            className="platform-preview-bob relative min-w-0 pb-2 lg:pt-2"
+            className="platform-preview-bob relative mx-auto min-w-0 max-w-xl pb-10 pt-8 sm:pb-12 sm:pt-10 lg:max-w-none lg:pb-14 lg:pt-12"
           >
-            <div className="overflow-hidden rounded-[1.75rem] border border-[var(--pf-line)] bg-[var(--pf-surface)] shadow-[0_20px_50px_rgba(15,23,42,0.12)] sm:rounded-[2rem]">
+            <div className="overflow-hidden rounded-[2.25rem] border border-[var(--pf-line)] bg-[var(--pf-surface)] shadow-[0_20px_50px_rgba(15,23,42,0.12)] sm:rounded-[2.75rem]">
               <img
                 src={photos.hero || PLATFORM_PHOTO_DEFAULTS.hero}
                 alt="TvetFlow dashboard on desktop and mobile"
-                className="block h-auto w-full object-cover object-center"
+                className="block h-auto w-full rounded-[2.25rem] object-cover object-center sm:rounded-[2.75rem]"
               />
             </div>
+
+            {/* Feature icons orbiting the hero image */}
+            <ul className="pointer-events-none absolute inset-0" aria-label="Platform highlights">
+              {HERO_PILLS.map((item, i) => {
+                const Icon = item.icon
+                const spot = [
+                  'left-0 top-0 -translate-x-1 sm:-translate-x-3',
+                  'right-0 top-1 translate-x-0 sm:translate-x-3',
+                  'bottom-2 left-0 -translate-x-0 sm:-translate-x-2 sm:bottom-4',
+                  'bottom-0 right-1 translate-x-0 sm:bottom-2 sm:translate-x-2',
+                ][i]
+                return (
+                  <li key={item.labelKey} className={`absolute ${spot}`}>
+                    <motion.div
+                      initial={{ opacity: 0, scale: 0.85 }}
+                      animate={{ opacity: 1, scale: 1 }}
+                      transition={{ duration: 0.45, delay: 0.35 + i * 0.08 }}
+                      className="pointer-events-auto flex items-center gap-2 rounded-2xl border border-[var(--pf-line)] bg-[var(--pf-surface)]/95 px-2.5 py-2 shadow-[0_10px_28px_rgba(15,23,42,0.14)] backdrop-blur-sm"
+                    >
+                      <span
+                        className={`inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-2xl ${item.bg} ${item.fg} [html[data-platform-theme='dark']_&]:bg-white/10 [html[data-platform-theme='dark']_&]:text-teal-300`}
+                      >
+                        <Icon className="h-4 w-4" />
+                      </span>
+                      <span className="hidden max-w-[5.5rem] text-[11px] font-semibold leading-snug text-[var(--pf-text)] sm:block">
+                        {t(item.labelKey)}
+                      </span>
+                    </motion.div>
+                  </li>
+                )
+              })}
+            </ul>
           </motion.div>
         </div>
 
