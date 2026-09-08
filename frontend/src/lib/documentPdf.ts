@@ -111,6 +111,78 @@ async function inlineDomImages(root: HTMLElement): Promise<() => void> {
 }
 
 /**
+ * Bake title bars to canvas so PDF matches on-screen preview.
+ * html2canvas misplaces CSS text baselines inside fixed-height colored bars.
+ */
+function rasterizeTranscriptTitleBars(root: HTMLElement): () => void {
+  const backups: Array<{ node: HTMLElement; html: string; cssText: string }> = []
+  const bars = Array.from(root.querySelectorAll<HTMLElement>('[data-transcript-title-bar]'))
+
+  for (const node of bars) {
+    const label = node.querySelector<HTMLElement>('[data-transcript-title-label]')
+    const text = String(label?.textContent || node.textContent || '')
+      .replace(/\s+/g, ' ')
+      .trim()
+    if (!text) continue
+
+    const w = Math.max(1, Math.round(node.offsetWidth || node.clientWidth || 0))
+    const h = Math.max(1, Math.round(node.offsetHeight || node.clientHeight || 36))
+    if (w < 2 || h < 2) continue
+
+    const barCs = window.getComputedStyle(node)
+    const labelCs = label ? window.getComputedStyle(label) : barCs
+    const bg = barCs.backgroundColor || '#000000'
+    const color = labelCs.color || barCs.color || '#ffffff'
+    const fontWeight = labelCs.fontWeight || '800'
+    const fontSize = labelCs.fontSize || '16px'
+    const fontFamily = labelCs.fontFamily || 'Arial, sans-serif'
+    const letterSpacing = labelCs.letterSpacing || '0px'
+
+    const scale = 3
+    const canvas = document.createElement('canvas')
+    canvas.width = w * scale
+    canvas.height = h * scale
+    canvas.setAttribute('aria-hidden', 'true')
+    canvas.style.display = 'block'
+    canvas.style.width = `${w}px`
+    canvas.style.height = `${h}px`
+    canvas.style.margin = '0'
+    canvas.style.padding = '0'
+
+    const ctx = canvas.getContext('2d')
+    if (!ctx) continue
+
+    ctx.scale(scale, scale)
+    ctx.fillStyle = bg
+    ctx.fillRect(0, 0, w, h)
+    ctx.fillStyle = color
+    ctx.font = `${fontWeight} ${fontSize} ${fontFamily}`
+    ctx.textAlign = 'center'
+    ctx.textBaseline = 'middle'
+    const spacingPx = Number.parseFloat(letterSpacing)
+    if (Number.isFinite(spacingPx) && spacingPx !== 0 && 'letterSpacing' in ctx) {
+      ;(ctx as CanvasRenderingContext2D & { letterSpacing?: string }).letterSpacing = letterSpacing
+    }
+    // Optical middle for uppercase bold caps (true geometric middle sits slightly high)
+    ctx.fillText(text.toUpperCase(), w / 2, h / 2 + 0.5)
+
+    backups.push({ node, html: node.innerHTML, cssText: node.style.cssText })
+    node.style.height = `${h}px`
+    node.style.lineHeight = '0'
+    node.style.padding = '0'
+    node.style.overflow = 'hidden'
+    node.replaceChildren(canvas)
+  }
+
+  return () => {
+    backups.forEach(({ node, html, cssText }) => {
+      node.style.cssText = cssText
+      node.innerHTML = html
+    })
+  }
+}
+
+/**
  * Capture one or more on-screen A4 pages to a multi-page PDF (library layouts).
  */
 async function buildDomPagesPdf(pages: HTMLElement[]): Promise<InstanceType<typeof jsPDF>> {
@@ -121,6 +193,7 @@ async function buildDomPagesPdf(pages: HTMLElement[]): Promise<InstanceType<type
   try {
     for (const page of usable) {
       restores.push(await inlineDomImages(page))
+      restores.push(rasterizeTranscriptTitleBars(page))
     }
 
     const pdf = new jsPDF('p', 'mm', 'a4')
@@ -128,13 +201,33 @@ async function buildDomPagesPdf(pages: HTMLElement[]): Promise<InstanceType<type
     const pdfHeight = pdf.internal.pageSize.getHeight()
 
     for (let i = 0; i < usable.length; i++) {
-      const canvas = await html2canvas(usable[i], {
+      const page = usable[i]
+      const canvas = await html2canvas(page, {
         scale: 2,
         useCORS: true,
         allowTaint: false,
         logging: false,
         backgroundColor: '#ffffff',
         imageTimeout: 20000,
+        scrollX: 0,
+        scrollY: 0,
+        onclone: (_doc, cloned) => {
+          cloned.querySelectorAll('[data-transcript-stat-box]').forEach((el) => {
+            const box = el as HTMLElement
+            box.style.overflow = 'visible'
+            box.style.paddingTop = '10px'
+            box.style.paddingBottom = '10px'
+            box.style.transform = 'none'
+          })
+          cloned.querySelectorAll('[data-transcript-stat-value]').forEach((el) => {
+            const val = el as HTMLElement
+            val.style.lineHeight = '1'
+            val.style.margin = '0'
+            val.style.padding = '0'
+            val.style.transform = 'none'
+            val.style.position = 'static'
+          })
+        },
       })
       const imgData = canvas.toDataURL('image/png')
       if (i > 0) pdf.addPage()

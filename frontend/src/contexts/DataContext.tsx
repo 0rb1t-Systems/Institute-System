@@ -449,6 +449,8 @@ export const DataProvider = ({ children }) => {
         runMutation('exam', () => Promise.all(gradesArray.map((g) => api.upsertResult(g)))),
       finalizeGradebookForClass: (classId) =>
         runMutation('transcript', () => api.finalizeGradebook(classId)),
+      ensureStudentTranscript: (classId, studentId = null) =>
+        runMutation('transcript', () => api.ensureStudentTranscript(classId, studentId)),
       issueCertificates: (items) =>
         runMutation('certificate', () => api.generateCertificatesBatch(items)),
 

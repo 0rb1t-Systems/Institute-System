@@ -3165,6 +3165,16 @@ export const finalizeGradebook = async (classId) => {
   return data
 }
 
+/** Issue/refresh one student transcript so QR appears without class-wide Sync. */
+export const ensureStudentTranscript = async (classId, studentId = null) => {
+  const { data, error } = await supabase.rpc('ensure_student_transcript', {
+    p_class_id: classId,
+    p_student_id: studentId || null,
+  })
+  if (error) throw error
+  return data
+}
+
 export const getTranscripts = async () => {
   const { data, error } = await supabase
     .from('transcripts')

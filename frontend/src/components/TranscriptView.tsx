@@ -220,6 +220,7 @@ const TranscriptView = ({ studentId, onClose, initialClassId }: any) => {
       diplomas,
       gradebookEntries = [],
       transcripts = [],
+      ensureStudentTranscript,
     } = useData();
     const [selectedClassId, setSelectedClassId] = useState(initialClassId || null);
     const [showScanner, setShowScanner] = useState(false);
@@ -529,6 +530,28 @@ const TranscriptView = ({ studentId, onClose, initialClassId }: any) => {
       return transcriptForClass(transcripts, studentData.id, selectedClassId, enrollment?.id);
     }, [studentData, selectedClassId, enrollments, transcripts]);
 
+    // Auto-issue transcript (QR) when viewing — no "Sync to Transcripts" required
+    const ensuredTranscriptKeyRef = useRef(null);
+    useEffect(() => {
+      if (!studentData?.id || !selectedClassId || typeof ensureStudentTranscript !== 'function') return;
+      const key = `${studentData.id}:${selectedClassId}`;
+      if (ensuredTranscriptKeyRef.current === key) return;
+
+      let cancelled = false;
+      ;(async () => {
+        try {
+          await ensureStudentTranscript(selectedClassId, studentData.id);
+          if (!cancelled) ensuredTranscriptKeyRef.current = key;
+        } catch (err) {
+          console.error('Auto-issue transcript failed', err);
+        }
+      })();
+
+      return () => {
+        cancelled = true;
+      };
+    }, [studentData?.id, selectedClassId, ensureStudentTranscript]);
+
     const brand = resolveDocumentBranding(institution, issuedTranscript?.template_snapshot);
     const verifyCode = String(issuedTranscript?.verification_code || '').trim();
     const verifyUrl = verifyCode
@@ -579,7 +602,7 @@ const TranscriptView = ({ studentId, onClose, initialClassId }: any) => {
         layoutKey === 'compact'
           ? { firstWithFooter: 10, firstContinue: 14, continuePage: 22, lastWithFooter: 14 }
           : showNarrative
-            ? { firstWithFooter: 6, firstContinue: 10, continuePage: 18, lastWithFooter: 11 }
+            ? { firstWithFooter: 4, firstContinue: 8, continuePage: 18, lastWithFooter: 11 }
             : { firstWithFooter: 8, firstContinue: 12, continuePage: 20, lastWithFooter: 13 };
       return paginateTranscriptGroups(transcriptGroups, capacities);
     }, [transcriptGroups, layoutKey, showNarrative]);
@@ -891,17 +914,34 @@ const TranscriptView = ({ studentId, onClose, initialClassId }: any) => {
                         </div>
                     </div>
                     
-                    {/* Program Title Bar */}
+                    {/* Program Title Bar — line-height === height (no transform; html2canvas-safe) */}
                     <div
-                      className={`mt-3 py-1.5 px-3 text-center print:mt-2 ${chrome.titleBar} ${chrome.titleBarText}`}
+                      data-transcript-title-bar
+                      className={`mt-3 text-center print:mt-2 ${chrome.titleBar} ${chrome.titleBarText}`}
                       style={{
+                        height: dense ? '36px' : '40px',
+                        lineHeight: dense ? '36px' : '40px',
                         backgroundColor: layoutStyles.titleBarBg,
                         color: layoutStyles.titleBarColor,
                         WebkitPrintColorAdjust: 'exact',
                         printColorAdjust: 'exact',
+                        overflow: 'hidden',
+                        boxSizing: 'border-box',
                       }}
                     >
-                        <h3 className={`${dense ? 'text-sm' : 'text-base'} font-bold uppercase tracking-wider leading-tight`}>{programName}</h3>
+                        <span
+                          data-transcript-title-label
+                          className={`${dense ? 'text-base' : 'text-lg'} font-black uppercase tracking-wide`}
+                          style={{
+                            display: 'inline',
+                            lineHeight: 'inherit',
+                            margin: 0,
+                            padding: 0,
+                            verticalAlign: 'baseline',
+                          }}
+                        >
+                          {programName}
+                        </span>
                     </div>
                 </div>
 
@@ -913,7 +953,7 @@ const TranscriptView = ({ studentId, onClose, initialClassId }: any) => {
                         <div className="flex-1 min-w-0 grid grid-cols-2 gap-6">
                             <div>
                                 <h3 className={`text-[10px] font-bold text-black uppercase tracking-wider pb-1 mb-1 print:text-black ${chrome.sectionRule}`}>Student Details</h3>
-                                <div className="grid grid-cols-[120px_1fr] gap-y-0.5 text-[11px] print:text-[11px]">
+                                <div className="grid grid-cols-[140px_1fr] gap-y-0.5 text-[11px] print:text-[11px]">
                                     <span className="text-black font-bold uppercase">Full Name:</span>
                                     <span className="font-bold text-black text-xs uppercase leading-tight">{studentData.name}</span>
                                     
@@ -922,6 +962,9 @@ const TranscriptView = ({ studentId, onClose, initialClassId }: any) => {
 
                                     <span className="text-black font-bold uppercase">Start Month:</span>
                                     <span className="font-bold text-black uppercase">{programMonths.startMonth}</span>
+
+                                    <span className="text-black font-bold uppercase">Completion Month:</span>
+                                    <span className="font-bold text-black uppercase">{programMonths.completionMonth}</span>
                                 </div>
                             </div>
                             <div>
@@ -935,9 +978,6 @@ const TranscriptView = ({ studentId, onClose, initialClassId }: any) => {
 
                                     <span className="text-black font-bold uppercase">Class:</span>
                                     <span className="text-black font-bold uppercase leading-tight">{currentClass?.name || '—'}</span>
-
-                                    <span className="text-black font-bold uppercase">Completion Month:</span>
-                                    <span className="font-bold text-black uppercase">{programMonths.completionMonth}</span>
                                 </div>
                             </div>
                         </div>
@@ -965,17 +1005,34 @@ const TranscriptView = ({ studentId, onClose, initialClassId }: any) => {
                     {/* Performance Summary — first page only */}
                     {isFirstPage ? (
                     <div className={`flex gap-3 shrink-0 ${showNarrative ? 'mb-3' : 'mb-4 print:mb-3'}`}>
-                        <div className={`bg-white px-3 rounded border-2 border-black flex-1 ${showNarrative ? 'py-1' : 'p-2'}`}>
-                            <div className="text-[9px] text-black font-bold uppercase">Cumulative GPA</div>
-                            <div className={`${showNarrative ? 'text-lg' : 'text-2xl'} font-black text-black leading-tight`}>{stats.gpa}</div>
+                        <div
+                          data-transcript-stat-box
+                          className="bg-white px-3 py-2.5 rounded border-2 border-black flex-1 overflow-visible"
+                        >
+                            <div className="text-[9px] text-black font-bold uppercase leading-none mb-2">Cumulative GPA</div>
+                            <div
+                              data-transcript-stat-value
+                              className={`${showNarrative ? 'text-xl' : 'text-2xl'} font-black text-black leading-none`}
+                            >
+                              {stats.gpa}
+                            </div>
                         </div>
-                        <div className={`bg-white px-3 rounded border-2 border-black flex-1 ${showNarrative ? 'py-1' : 'p-2'}`}>
-                            <div className="text-[9px] text-black font-bold uppercase">Academic Standing</div>
-                            <div className={`${showNarrative ? 'text-xs' : 'text-sm'} font-bold mt-0.5`}>
+                        <div
+                          data-transcript-stat-box
+                          className="bg-white px-3 py-2.5 rounded border-2 border-black flex-1 overflow-visible"
+                        >
+                            <div className="text-[9px] text-black font-bold uppercase leading-none mb-2">Academic Standing</div>
+                            <div
+                              data-transcript-stat-value
+                              className={`${showNarrative ? 'text-sm' : 'text-sm'} font-bold leading-none`}
+                            >
                                 {stats.failed === 0 && stats.passed > 0 ? (
-                                    <span className="text-black flex items-center gap-1"><CheckCircle2 className="h-3.5 w-3.5"/> Good Standing</span>
+                                    <span className="text-black inline-flex items-center gap-1 leading-none">
+                                      <span aria-hidden className="text-base leading-none">✓</span>
+                                      Good Standing
+                                    </span>
                                 ) : (
-                                    <span className="text-black">Active</span>
+                                    <span className="text-black leading-none">Active</span>
                                 )}
                             </div>
                         </div>
@@ -983,7 +1040,10 @@ const TranscriptView = ({ studentId, onClose, initialClassId }: any) => {
                     ) : null}
 
                     {isFirstPage && showNarrative ? (
-                      <p className="shrink-0 mb-5 text-[9px] leading-relaxed text-black text-justify print:text-[9px] print:mb-5">
+                      <p
+                        className="shrink-0 mb-5 text-black text-justify font-medium print:mb-5"
+                        style={{ fontSize: '13.5px', lineHeight: 1.85 }}
+                      >
                         {transcriptNarrative}
                       </p>
                     ) : null}
@@ -1083,7 +1143,7 @@ const TranscriptView = ({ studentId, onClose, initialClassId }: any) => {
                                   <span className="text-[6px] font-mono font-bold text-black">{verifyCode}</span>
                               </div>
                             ) : (
-                              <p className="text-[8px] text-slate-500">Issue transcript to enable QR verification</p>
+                              <p className="text-[8px] text-slate-500">Preparing verification QR…</p>
                             )}
                         </div>
                     </div>
