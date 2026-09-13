@@ -145,7 +145,8 @@ function takeWholeSemesterGroups(groups: TranscriptGroupPage[], maxUnits: number
 
 /**
  * Paginate by semester: keep each semester together when it fits.
- * Example: Semester One on page 1, Semester Two on page 2.
+ * With a narrative + multiple semesters: page 1 ends with Semester One;
+ * Semester Two starts on page 2 (never pack Sem 2 onto page 1).
  * Capacities leave room for header / signature footer chrome.
  */
 function paginateTranscriptGroups(
@@ -167,10 +168,18 @@ function paginateTranscriptGroups(
 
   const pages: TranscriptGroupPage[][] = [];
   let remaining = source;
+  const multiSemester = source.filter((g) => !!g.name).length >= 2;
 
-  const first = takeWholeSemesterGroups(remaining, opts.firstContinue);
-  pages.push(first.page);
-  remaining = first.rest;
+  if (multiSemester) {
+    // First page = first semester only (split only if that semester alone overflows).
+    const first = takeWholeSemesterGroups([remaining[0]], opts.firstContinue);
+    pages.push(first.page);
+    remaining = [...first.rest, ...remaining.slice(1)];
+  } else {
+    const first = takeWholeSemesterGroups(remaining, opts.firstContinue);
+    pages.push(first.page);
+    remaining = first.rest;
+  }
 
   while (remaining.length) {
     const restUnits = remaining.reduce((sum, g) => sum + transcriptGroupUnits(g), 0);
@@ -597,12 +606,12 @@ const TranscriptView = ({ studentId, onClose, initialClassId }: any) => {
     const showNarrative = !!transcriptNarrative;
 
     const transcriptPages = useMemo(() => {
-      // Slightly tighter unit caps after roomier row padding so pages stay within A4.
+      // firstContinue leaves room for header + narrative + ~9–10 Sem-1 course rows on A4.
       const capacities =
         layoutKey === 'compact'
           ? { firstWithFooter: 10, firstContinue: 14, continuePage: 22, lastWithFooter: 14 }
           : showNarrative
-            ? { firstWithFooter: 4, firstContinue: 8, continuePage: 18, lastWithFooter: 11 }
+            ? { firstWithFooter: 5, firstContinue: 11, continuePage: 18, lastWithFooter: 12 }
             : { firstWithFooter: 8, firstContinue: 12, continuePage: 20, lastWithFooter: 13 };
       return paginateTranscriptGroups(transcriptGroups, capacities);
     }, [transcriptGroups, layoutKey, showNarrative]);
@@ -1149,7 +1158,7 @@ const TranscriptView = ({ studentId, onClose, initialClassId }: any) => {
                     </div>
                     </>
                     ) : (
-                      <p className="mt-auto shrink-0 text-center text-[9px] font-bold uppercase tracking-wide text-black/70 pb-3">
+                      <p className="mt-auto shrink-0 text-center text-[9px] font-bold uppercase tracking-wide text-black/70 pt-6 pb-4">
                         Continued on next page
                       </p>
                     )}
