@@ -62,7 +62,7 @@ const PublicRegistrationPage = () => {
 
                 // Public RPCs only — do not call authenticated getClasses()
                 const [classes, inst] = await Promise.all([
-                  getPublicClassesBySubdomain(subdomain),
+                  getPublicClassesBySubdomain(subdomain, affiliateFromLink || null),
                   getPublicInstitutionBySubdomain(subdomain),
                 ]);
                 const cls = (classes || []).find((c) => c.id === classId);

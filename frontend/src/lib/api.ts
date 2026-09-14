@@ -3403,12 +3403,52 @@ export const getGeneralRegistrations = async () => {
   }))
 }
 
-export const getPublicClassesBySubdomain = async (subdomain) => {
+export const getPublicClassesBySubdomain = async (subdomain, affiliateId = null) => {
   const slug = String(subdomain || resolvePublicTenantSubdomain() || '').trim()
   if (!slug) return []
-  const { data, error } = await supabase.rpc('get_public_classes', { p_subdomain: slug })
+  const payload: Record<string, unknown> = { p_subdomain: slug }
+  if (affiliateId) payload.p_affiliate_id = affiliateId
+  const { data, error } = await supabase.rpc('get_public_classes', payload)
   if (error) throw error
   return Array.isArray(data) ? data : []
+}
+
+/** Admin/Staff: load which programs appear on Online Registration or an affiliate referral form. */
+export const getRegistrationFormPrograms = async (affiliateId = null) => {
+  const { data, error } = await supabase.rpc('get_registration_form_programs', {
+    p_affiliate_id: affiliateId || null,
+  })
+  if (error) throw error
+  const raw = data && typeof data === 'object' ? data : {}
+  return {
+    is_restricted: Boolean(raw.is_restricted),
+    programs: Array.isArray(raw.programs) ? raw.programs : [],
+  }
+}
+
+/** Admin/Staff: save program allow-list for Online Registration or an affiliate referral form. */
+export const setRegistrationFormPrograms = async ({
+  isRestricted,
+  programs = [],
+  affiliateId = null,
+} = {}) => {
+  const list = (Array.isArray(programs) ? programs : [])
+    .map((p) => ({
+      program_type: p.program_type === 'diploma' ? 'diploma' : 'course',
+      program_id: p.program_id,
+    }))
+    .filter((p) => p.program_id)
+  const { data, error } = await supabase.rpc('set_registration_form_programs', {
+    p_is_restricted: Boolean(isRestricted),
+    p_programs: list,
+    p_affiliate_id: affiliateId || null,
+  })
+  if (error) throw error
+  const raw = data && typeof data === 'object' ? data : {}
+  return {
+    is_restricted: Boolean(raw.is_restricted),
+    programs: Array.isArray(raw.programs) ? raw.programs : [],
+  }
 }
 
 export const getPublicInstitutionBySubdomain = async (subdomain) => {

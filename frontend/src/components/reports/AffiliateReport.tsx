@@ -1,16 +1,17 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useState } from 'react';
 import { useData } from '@/contexts/DataContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { formatCurrency, formatDate } from '@/lib/utils';
-import { FileDown, Share2, Users, DollarSign, Wallet, Copy } from 'lucide-react';
+import { FileDown, Share2, Users, DollarSign, Wallet, Copy, ListChecks } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import jsPDF from 'jspdf';
 import 'jspdf-autotable';
 import { getAffiliateCommissionRate, getTenantBaseUrl, rateToPercent } from '@/lib/institution';
 import { useToast } from '@/components/ui/use-toast';
 import { Link } from 'react-router-dom';
+import ManageRegistrationProgramsDialog from '@/components/admin/ManageRegistrationProgramsDialog';
 
 /**
  * Affiliate attribution + earnings (tenant-scoped via RLS).
@@ -30,6 +31,8 @@ const AffiliateReport = () => {
   const { user, institution } = useAuth();
   const { toast } = useToast();
   const isAdmin = user?.role === 'admin';
+  const canManagePrograms = user?.role === 'admin' || user?.role === 'staff';
+  const [manageAffiliateId, setManageAffiliateId] = useState(null);
   const ratePct = rateToPercent(getAffiliateCommissionRate(institution), 1);
   const referralLink = `${getTenantBaseUrl(institution)}/register${user?.id ? `?ref=${user.id}` : ''}`;
 
@@ -371,7 +374,7 @@ const AffiliateReport = () => {
         </Card>
       ) : null}
 
-      {isAdmin ? (
+      {canManagePrograms ? (
         <Card className="bg-slate-900/50 border-slate-800">
           <CardHeader>
             <div>
@@ -379,6 +382,7 @@ const AffiliateReport = () => {
               <CardDescription>
                 Create affiliates with the button above. They do not appear in System Users.
                 Share each referral link so students register under that affiliate.
+                Use Manage to choose which programs appear on that affiliate’s registration form.
               </CardDescription>
             </div>
           </CardHeader>
@@ -392,6 +396,7 @@ const AffiliateReport = () => {
                   <TableHead className="text-right">Pending</TableHead>
                   <TableHead className="text-right">Commission</TableHead>
                   <TableHead>Referral Link</TableHead>
+                  {canManagePrograms ? <TableHead className="text-right">Programs</TableHead> : null}
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -417,11 +422,25 @@ const AffiliateReport = () => {
                           </Button>
                         </div>
                       </TableCell>
+                      {canManagePrograms ? (
+                        <TableCell className="text-right">
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            className="border-slate-700"
+                            onClick={() => setManageAffiliateId(a.id)}
+                          >
+                            <ListChecks className="h-3.5 w-3.5 mr-1.5" />
+                            Manage
+                          </Button>
+                        </TableCell>
+                      ) : null}
                     </TableRow>
                   ))
                 ) : (
                   <TableRow>
-                    <TableCell colSpan={6} className="text-center py-8 text-slate-500">
+                    <TableCell colSpan={canManagePrograms ? 7 : 6} className="text-center py-8 text-slate-500">
                       No affiliates yet. Create them from Users → Staff & Affiliates.
                     </TableCell>
                   </TableRow>
@@ -461,6 +480,16 @@ const AffiliateReport = () => {
           </CardContent>
         </Card>
       ) : null}
+
+      <ManageRegistrationProgramsDialog
+        open={Boolean(manageAffiliateId)}
+        onOpenChange={(open) => {
+          if (!open) setManageAffiliateId(null);
+        }}
+        affiliateId={manageAffiliateId}
+        title="Manage Affiliate Programs"
+        description="Choose which courses and diplomas students can pick on this affiliate’s referral registration form."
+      />
     </div>
   );
 };

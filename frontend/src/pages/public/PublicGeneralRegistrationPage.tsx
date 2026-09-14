@@ -60,7 +60,7 @@ const PublicGeneralRegistrationPage = () => {
 
     useEffect(() => {
         fetchPublicData();
-    }, [subdomain]);
+    }, [subdomain, affiliateFromLink]);
 
     useEffect(() => {
         if (affiliateFromLink) {
@@ -77,7 +77,7 @@ const PublicGeneralRegistrationPage = () => {
                 return;
             }
             const [classes, inst] = await Promise.all([
-                getPublicClassesBySubdomain(subdomain),
+                getPublicClassesBySubdomain(subdomain, affiliateFromLink || null),
                 getPublicInstitutionBySubdomain(subdomain),
             ]);
             setActiveClasses(classes || []);
@@ -267,7 +267,7 @@ const PublicGeneralRegistrationPage = () => {
                                 </SelectContent>
                             </Select>
                             <p className="text-xs text-slate-500">
-                              Active classes for this institution are listed (with their date range). You can skip and be enrolled later by staff.
+                              Programs opened for this registration link are listed (with their date range). You can skip and be enrolled later by staff.
                             </p>
                         </div>
                     </CardContent>
