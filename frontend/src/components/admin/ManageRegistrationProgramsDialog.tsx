@@ -9,11 +9,12 @@ import {
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
+import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Switch } from '@/components/ui/switch';
 import { Badge } from '@/components/ui/badge';
-import { Loader2, BookOpen, GraduationCap } from 'lucide-react';
+import { Loader2, BookOpen, GraduationCap, Search } from 'lucide-react';
 import {
   getCourses,
   getDiplomas,
@@ -27,7 +28,7 @@ const programKey = (type, id) => `${type}:${id}`;
 
 /**
  * Admin/Staff: pick which courses & diplomas appear in the student
- * Preferred Class dropdown for Online Registration or an Affiliate referral link.
+ * Preferred Program dropdown for Online Registration or an Affiliate referral link.
  */
 const ManageRegistrationProgramsDialog = ({
   open,
@@ -43,6 +44,7 @@ const ManageRegistrationProgramsDialog = ({
   const [diplomas, setDiplomas] = useState([]);
   const [isRestricted, setIsRestricted] = useState(false);
   const [selected, setSelected] = useState(() => new Set());
+  const [search, setSearch] = useState('');
 
   const dialogTitle = title || (affiliateId ? 'Manage Affiliate Programs' : 'Manage Programs');
   const dialogDescription =
@@ -57,6 +59,7 @@ const ManageRegistrationProgramsDialog = ({
 
     const load = async () => {
       setLoading(true);
+      setSearch('');
       try {
         const [courseRows, diplomaRows, config] = await Promise.all([
           getCourses(),
@@ -90,6 +93,28 @@ const ManageRegistrationProgramsDialog = ({
     };
   }, [open, affiliateId]);
 
+  const query = search.trim().toLowerCase();
+
+  const diplomaList = useMemo(() => {
+    const rows = [...diplomas].sort((a, b) =>
+      String(a.name || '').localeCompare(String(b.name || '')),
+    );
+    if (!query) return rows;
+    return rows.filter((d) => String(d.name || '').toLowerCase().includes(query));
+  }, [diplomas, query]);
+
+  const courseList = useMemo(() => {
+    const rows = [...courses].sort((a, b) =>
+      String(a.name || '').localeCompare(String(b.name || '')),
+    );
+    if (!query) return rows;
+    return rows.filter((c) => {
+      const name = String(c.name || '').toLowerCase();
+      const code = String(c.code || '').toLowerCase();
+      return name.includes(query) || code.includes(query);
+    });
+  }, [courses, query]);
+
   const selectedCount = selected.size;
 
   const toggle = (type, id) => {
@@ -102,11 +127,13 @@ const ManageRegistrationProgramsDialog = ({
     });
   };
 
-  const selectAll = () => {
-    const next = new Set();
-    for (const d of diplomas) next.add(programKey('diploma', d.id));
-    for (const c of courses) next.add(programKey('course', c.id));
-    setSelected(next);
+  const selectAllVisible = () => {
+    setSelected((prev) => {
+      const next = new Set(prev);
+      for (const d of diplomaList) next.add(programKey('diploma', d.id));
+      for (const c of courseList) next.add(programKey('course', c.id));
+      return next;
+    });
   };
 
   const clearAll = () => setSelected(new Set());
@@ -143,15 +170,6 @@ const ManageRegistrationProgramsDialog = ({
     }
   };
 
-  const diplomaList = useMemo(
-    () => [...diplomas].sort((a, b) => String(a.name || '').localeCompare(String(b.name || ''))),
-    [diplomas],
-  );
-  const courseList = useMemo(
-    () => [...courses].sort((a, b) => String(a.name || '').localeCompare(String(b.name || ''))),
-    [courses],
-  );
-
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-lg bg-slate-950 border-slate-800 text-slate-100">
@@ -172,7 +190,7 @@ const ManageRegistrationProgramsDialog = ({
                   Limit Preferred Class options
                 </Label>
                 <p className="text-xs text-slate-500">
-                  When on, only checked programs’ active classes appear in the student dropdown.
+                  When on, only checked programs appear in the student dropdown.
                 </p>
               </div>
               <Switch
@@ -184,12 +202,20 @@ const ManageRegistrationProgramsDialog = ({
 
             {isRestricted ? (
               <>
+                <div className="relative">
+                  <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500" />
+                  <Input
+                    value={search}
+                    onChange={(e) => setSearch(e.target.value)}
+                    placeholder="Search programs…"
+                    className="pl-9 bg-slate-950 border-slate-700 text-slate-100"
+                  />
+                </div>
+
                 <div className="flex items-center justify-between gap-2">
-                  <p className="text-xs text-slate-500">
-                    {selectedCount} selected
-                  </p>
+                  <p className="text-xs text-slate-500">{selectedCount} selected</p>
                   <div className="flex gap-2">
-                    <Button type="button" variant="ghost" size="sm" onClick={selectAll}>
+                    <Button type="button" variant="ghost" size="sm" onClick={selectAllVisible}>
                       Select all
                     </Button>
                     <Button type="button" variant="ghost" size="sm" onClick={clearAll}>
@@ -209,7 +235,9 @@ const ManageRegistrationProgramsDialog = ({
                         </Badge>
                       </div>
                       {diplomaList.length === 0 ? (
-                        <p className="text-xs text-slate-500 pl-6">No diplomas in this institution.</p>
+                        <p className="text-xs text-slate-500 pl-6">
+                          {query ? 'No diplomas match your search.' : 'No diplomas in this institution.'}
+                        </p>
                       ) : (
                         <ul className="space-y-2 pl-1">
                           {diplomaList.map((d) => {
@@ -245,7 +273,9 @@ const ManageRegistrationProgramsDialog = ({
                         </Badge>
                       </div>
                       {courseList.length === 0 ? (
-                        <p className="text-xs text-slate-500 pl-6">No courses in this institution.</p>
+                        <p className="text-xs text-slate-500 pl-6">
+                          {query ? 'No courses match your search.' : 'No courses in this institution.'}
+                        </p>
                       ) : (
                         <ul className="space-y-2 pl-1">
                           {courseList.map((c) => {

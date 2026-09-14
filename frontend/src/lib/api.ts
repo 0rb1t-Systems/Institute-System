@@ -3406,9 +3406,26 @@ export const getGeneralRegistrations = async () => {
 export const getPublicClassesBySubdomain = async (subdomain, affiliateId = null) => {
   const slug = String(subdomain || resolvePublicTenantSubdomain() || '').trim()
   if (!slug) return []
-  const payload: Record<string, unknown> = { p_subdomain: slug }
-  if (affiliateId) payload.p_affiliate_id = affiliateId
-  const { data, error } = await supabase.rpc('get_public_classes', payload)
+  const { data, error } = await supabase.rpc('get_public_classes', {
+    p_subdomain: slug,
+    p_affiliate_id: affiliateId || null,
+  })
+  if (error) throw error
+  return Array.isArray(data) ? data : []
+}
+
+/**
+ * Public registration Preferred Program/Class options.
+ * When Manage Programs restriction is on: returns checked courses/diplomas.
+ * Otherwise: returns active classes.
+ */
+export const getPublicRegistrationOptionsBySubdomain = async (subdomain, affiliateId = null) => {
+  const slug = String(subdomain || resolvePublicTenantSubdomain() || '').trim()
+  if (!slug) return []
+  const { data, error } = await supabase.rpc('get_public_registration_options', {
+    p_subdomain: slug,
+    p_affiliate_id: affiliateId || null,
+  })
   if (error) throw error
   return Array.isArray(data) ? data : []
 }
@@ -3481,11 +3498,26 @@ export const submitGeneralRegistration = async (formData) => {
   const affiliateId =
     affiliateRaw && affiliateRaw !== 'none' ? affiliateRaw : null
 
-  // Class is optional: skip enrollment until staff assigns one later.
-  // Server still validates class belongs to this tenant + is active + in duration.
-  const classRaw = formData.class_id
-  const classId =
-    classRaw && classRaw !== 'none' && classRaw !== '' ? classRaw : null
+  // Preferred program/class is optional. Values may be:
+  // - "none" → skip
+  // - "course:<uuid>" / "diploma:<uuid>" → managed program selection
+  // - plain uuid → active class id (unrestricted form)
+  const optionRaw = String(formData.class_id || formData.option_id || '').trim()
+  let classId = null
+  let preferredCourseId = formData.preferred_course_id || null
+  let preferredDiplomaId = formData.preferred_diploma_id || null
+
+  if (optionRaw && optionRaw !== 'none') {
+    if (optionRaw.startsWith('course:')) {
+      preferredCourseId = optionRaw.slice('course:'.length) || null
+      classId = formData.resolved_class_id || null
+    } else if (optionRaw.startsWith('diploma:')) {
+      preferredDiplomaId = optionRaw.slice('diploma:'.length) || null
+      classId = formData.resolved_class_id || null
+    } else {
+      classId = optionRaw
+    }
+  }
 
   const { data, error } = await supabase.rpc('submit_registration_inquiry', {
     p_subdomain: subdomain,
@@ -3498,6 +3530,8 @@ export const submitGeneralRegistration = async (formData) => {
     p_class_id: classId,
     p_affiliate_id: affiliateId,
     p_notes: formData.notes || null,
+    p_preferred_course_id: preferredCourseId,
+    p_preferred_diploma_id: preferredDiplomaId,
   })
 
   if (error) {

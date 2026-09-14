@@ -9,7 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { useToast } from '@/components/ui/use-toast';
 import { notify, getUserMessage, MESSAGES } from '@/lib/notify';
 import {
-  getPublicClassesBySubdomain,
+  getPublicRegistrationOptionsBySubdomain,
   getPublicInstitutionBySubdomain,
   submitGeneralRegistration,
 } from '@/lib/api';
@@ -17,7 +17,7 @@ import { resolvePublicTenantSubdomain } from '@/lib/institution';
 import { Loader2, CheckCircle2, GraduationCap, User, AlertCircle } from 'lucide-react';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 
-/** Format class duration window for public dropdown (e.g. "Jan 2026 – Jun 2026"). */
+/** Format duration window for public dropdown (e.g. "Jan 2026 – Jun 2026"). */
 const formatClassDuration = (startMonth, endMonth) => {
   if (!startMonth || !endMonth) return '';
   try {
@@ -34,7 +34,7 @@ const formatClassDuration = (startMonth, endMonth) => {
 const PublicGeneralRegistrationPage = () => {
     const { toast } = useToast();
     const [searchParams] = useSearchParams();
-    const [activeClasses, setActiveClasses] = useState([]);
+    const [programOptions, setProgramOptions] = useState([]);
     const [institutionName, setInstitutionName] = useState('');
     const [loading, setLoading] = useState(true);
     const [submitting, setSubmitting] = useState(false);
@@ -73,21 +73,21 @@ const PublicGeneralRegistrationPage = () => {
         try {
             if (!subdomain) {
                 setError('Institution not found. Open this page from your institution link (?tenant=subdomain).');
-                setActiveClasses([]);
+                setProgramOptions([]);
                 return;
             }
-            const [classes, inst] = await Promise.all([
-                getPublicClassesBySubdomain(subdomain, affiliateFromLink || null),
+            const [options, inst] = await Promise.all([
+                getPublicRegistrationOptionsBySubdomain(subdomain, affiliateFromLink || null),
                 getPublicInstitutionBySubdomain(subdomain),
             ]);
-            setActiveClasses(classes || []);
+            setProgramOptions(options || []);
             setInstitutionName(inst?.name || '');
             setInstitutionLogo(inst?.logo_url || '');
             setFormData((prev) => ({ ...prev, subdomain }));
             setError(inst ? null : 'Institution not found or inactive.');
         } catch (err) {
             console.error('Failed to fetch public registration data:', err);
-            setError('Unable to load available classes. Please try again later.');
+            setError('Unable to load available programs. Please try again later.');
         } finally {
             setLoading(false);
         }
@@ -113,10 +113,11 @@ const PublicGeneralRegistrationPage = () => {
 
         setSubmitting(true);
         try {
-            // class_id "none" = skip enrollment; server validates real class ids per tenant
+            const selected = programOptions.find((o) => String(o.id) === String(formData.class_id));
             const result = await submitGeneralRegistration({
                 ...formData,
-                class_id: formData.class_id === 'none' ? null : formData.class_id,
+                class_id: formData.class_id === 'none' ? 'none' : formData.class_id,
+                resolved_class_id: selected?.class_id || null,
                 subdomain,
                 affiliate_id: formData.affiliate_id || affiliateFromLink || null,
             });
@@ -243,23 +244,26 @@ const PublicGeneralRegistrationPage = () => {
                             </div>
                         </div>
                         <div className="space-y-2">
-                            <Label className="text-slate-300">Preferred Class (optional)</Label>
+                            <Label className="text-slate-300">Preferred Program (optional)</Label>
                             <Select value={formData.class_id || 'none'} onValueChange={handleClassChange}>
                                 <SelectTrigger className="bg-slate-950 border-slate-800 text-white">
-                                    <SelectValue placeholder="Choose a class, or skip..." />
+                                    <SelectValue placeholder="Choose a program, or skip..." />
                                 </SelectTrigger>
                                 <SelectContent className="bg-slate-900 border-slate-800 text-white">
-                                    <SelectItem value="none">Skip for now — register without a class</SelectItem>
-                                    {activeClasses.length === 0 ? (
+                                    <SelectItem value="none">Skip for now — register without a program</SelectItem>
+                                    {programOptions.length === 0 ? (
                                       <div className="px-2 py-1.5 text-xs text-slate-500">
-                                        No active classes open for registration right now.
+                                        No programs are open for this registration link right now.
                                       </div>
                                     ) : (
-                                      activeClasses.map((c) => {
+                                      programOptions.map((c) => {
                                         const duration = formatClassDuration(c.start_month, c.end_month);
+                                        const typeLabel = c.program_type === 'diploma' ? 'Diploma' : 'Course';
                                         return (
-                                          <SelectItem key={c.id} value={c.id}>
-                                            {duration ? `${c.name} (${duration})` : c.name}
+                                          <SelectItem key={c.id} value={String(c.id)}>
+                                            {duration
+                                              ? `${c.name} · ${typeLabel} (${duration})`
+                                              : `${c.name} · ${typeLabel}`}
                                           </SelectItem>
                                         );
                                       })
@@ -267,7 +271,7 @@ const PublicGeneralRegistrationPage = () => {
                                 </SelectContent>
                             </Select>
                             <p className="text-xs text-slate-500">
-                              Programs opened for this registration link are listed (with their date range). You can skip and be enrolled later by staff.
+                              Programs chosen by the institution for this link are listed. You can skip and be enrolled later by staff.
                             </p>
                         </div>
                     </CardContent>
