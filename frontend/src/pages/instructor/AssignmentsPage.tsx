@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useRef } from 'react';
 import { Helmet } from 'react-helmet';
 import { useNavigate } from 'react-router-dom';
 import AnimatedPage from '@/components/AnimatedPage';
@@ -14,7 +14,7 @@ import { useData } from '@/contexts/DataContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/components/ui/use-toast';
 import { notify, MESSAGES } from '@/lib/notify';
-import { Plus, Calendar, BookOpen, Clock, Trash2, Edit, CheckCircle, Users, File } from 'lucide-react';
+import { Plus, Calendar, BookOpen, Clock, Trash2, Edit, CheckCircle, Users, File, Star } from 'lucide-react';
 import { formatDateTime } from '@/lib/utils';
 import { uploadAssignmentFile } from '@/lib/api';
 import { coursesForClass } from '@/lib/diplomaCourses';
@@ -23,6 +23,7 @@ import {
   splitDateTimeLocal,
   combineDateAndTime,
 } from '@/components/ui/DateTimeFields';
+import RatingEvaluationsSection from '@/components/ratings/RatingEvaluationsSection';
 
 import {
   AlertDialog,
@@ -41,6 +42,8 @@ const AssignmentsPage = () => {
   const { assignments, classes, courses, classCourses, diplomaCourses = [], saveAssignment, deleteAssignmentData, assignmentSubmissions } = useData();
   const { toast } = useToast();
   const navigate = useNavigate();
+  const canManageRatings = user?.role === 'admin' || user?.role === 'staff';
+  const openCreateRatingRef = useRef<(() => void) | null>(null);
   
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingAssignment, setEditingAssignment] = useState(null);
@@ -207,9 +210,19 @@ const AssignmentsPage = () => {
             title="Assignments" 
             subtitle="Create and manage course assignments."
         >
-            <Button onClick={() => handleOpenDialog()}>
-                <Plus className="mr-2 h-4 w-4" /> New Assignment
-            </Button>
+            <div className="flex flex-wrap items-center gap-2">
+              <Button onClick={() => handleOpenDialog()}>
+                  <Plus className="mr-2 h-4 w-4" /> New Assignment
+              </Button>
+              {canManageRatings && (
+                <Button
+                  variant="outline"
+                  onClick={() => openCreateRatingRef.current?.()}
+                >
+                  <Star className="mr-2 h-4 w-4" /> Create Rating
+                </Button>
+              )}
+            </div>
         </PageHeader>
 
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
@@ -454,6 +467,10 @@ const AssignmentsPage = () => {
                 </DialogFooter>
             </DialogContent>
         </Dialog>
+
+        {canManageRatings && (
+          <RatingEvaluationsSection createOpenerRef={openCreateRatingRef} />
+        )}
     </AnimatedPage>
   );
 };

@@ -35,6 +35,9 @@ const SECONDARY_KEYS = [
   'results',
   'assignments',
   'assignmentSubmissions',
+  'ratingEvaluations',
+  'ratingQuestions',
+  'ratingResponses',
   'gradebookEntries',
   'certificates',
   'transcripts',
@@ -58,6 +61,9 @@ const FETCHERS = {
   results: api.getResults,
   assignments: api.getAssignments,
   assignmentSubmissions: api.getAssignmentSubmissions,
+  ratingEvaluations: api.getRatingEvaluations,
+  ratingQuestions: api.getRatingQuestions,
+  ratingResponses: api.getRatingResponses,
   gradebookEntries: api.getGradebookEntries,
   certificates: api.getAllCertificates,
   transcripts: api.getTranscripts,
@@ -80,6 +86,7 @@ const MUTATION_SCOPES = {
   withdrawal: ['withdrawalRequests', 'instructorEarnings'],
   exam: ['exams', 'results', 'gradebookEntries'],
   assignment: ['assignments', 'assignmentSubmissions', 'gradebookEntries'],
+  rating: ['ratingEvaluations', 'ratingQuestions', 'ratingResponses'],
   certificate: ['certificates'],
   transcript: ['transcripts', 'gradebookEntries'],
   none: [],
@@ -131,6 +138,9 @@ export const DataProvider = ({ children }) => {
   const [results, setResults] = useState([]);
   const [assignments, setAssignments] = useState([]);
   const [assignmentSubmissions, setAssignmentSubmissions] = useState([]);
+  const [ratingEvaluations, setRatingEvaluations] = useState([]);
+  const [ratingQuestions, setRatingQuestions] = useState([]);
+  const [ratingResponses, setRatingResponses] = useState([]);
   const [gradebookEntries, setGradebookEntries] = useState([]);
   const [certificates, setCertificates] = useState([]);
   const [transcripts, setTranscripts] = useState([]);
@@ -170,6 +180,9 @@ export const DataProvider = ({ children }) => {
     results: setResults,
     assignments: setAssignments,
     assignmentSubmissions: setAssignmentSubmissions,
+    ratingEvaluations: setRatingEvaluations,
+    ratingQuestions: setRatingQuestions,
+    ratingResponses: setRatingResponses,
     gradebookEntries: setGradebookEntries,
     certificates: setCertificates,
     transcripts: setTranscripts,
@@ -406,6 +419,17 @@ export const DataProvider = ({ children }) => {
       createManualSubmission: (submissionData) =>
         runMutation('assignment', () => api.createSubmission(submissionData)),
 
+      saveRatingEvaluation: (ratingData) =>
+        runMutation('rating', async () =>
+          ratingData.id
+            ? api.updateRatingEvaluation(ratingData.id, ratingData)
+            : api.createRatingEvaluation(ratingData)
+        ),
+      deleteRatingEvaluationData: (id) =>
+        runMutation('rating', () => api.deleteRatingEvaluation(id)),
+      submitRatingResponseData: (responseData) =>
+        runMutation('rating', () => api.submitRatingResponse(responseData)),
+
       createWithdrawal: (data) => runMutation('withdrawal', () => api.createWithdrawalRequest(data)),
       approveWithdrawal: (id, updates) =>
         runMutation('withdrawal', () => api.updateWithdrawalRequest(id, updates)),
@@ -474,6 +498,9 @@ export const DataProvider = ({ children }) => {
       results,
       assignments,
       assignmentSubmissions,
+      ratingEvaluations,
+      ratingQuestions,
+      ratingResponses,
       gradebookEntries,
       certificates,
       transcripts,
@@ -507,6 +534,9 @@ export const DataProvider = ({ children }) => {
       results,
       assignments,
       assignmentSubmissions,
+      ratingEvaluations,
+      ratingQuestions,
+      ratingResponses,
       gradebookEntries,
       certificates,
       transcripts,

@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useMemo, useState } from 'react';
 import { Helmet } from 'react-helmet';
 import AnimatedPage from '@/components/AnimatedPage';
 import PageHeader from '@/components/PageHeader';
@@ -9,17 +9,41 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Upload, Download, FileText, Clock, CheckCircle2 } from 'lucide-react';
+import { Textarea } from '@/components/ui/textarea';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
+import { Upload, Download, FileText, Clock, CheckCircle2, Star } from 'lucide-react';
 import { formatDateTime } from '@/lib/utils';
 import { useToast } from '@/components/ui/use-toast';
 import { notify, MESSAGES } from '@/lib/notify';
 import { uploadAssignmentFile, resolveAssignmentFileUrl } from '@/lib/api';
+import { likertToneClass } from '@/lib/ratingEvaluation';
 
 const StudentAssignmentsPage = () => {
     const { user } = useAuth();
-    const { assignments, assignmentSubmissions, enrollments, classes, courses, createManualSubmission } = useData();
+    const {
+      assignments,
+      assignmentSubmissions,
+      enrollments,
+      classes,
+      courses,
+      createManualSubmission,
+      ratingEvaluations,
+      ratingQuestions,
+      ratingResponses,
+      submitRatingResponseData,
+    } = useData();
     const { toast } = useToast();
     const [uploading, setUploading] = useState(null);
+    const [activeEval, setActiveEval] = useState(null);
+    const [answers, setAnswers] = useState({});
+    const [submitting, setSubmitting] = useState(false);
 
     const openAssignmentFile = async (pathOrUrl) => {
         if (!pathOrUrl) return;
@@ -76,6 +100,31 @@ const StudentAssignmentsPage = () => {
             .sort((a, b) => Number(new Date(a.due_date)) - Number(new Date(b.due_date)));
     }, [assignments, myClassIds, classes, courses, assignmentSubmissions, student]);
 
+    const myEvaluations = useMemo(() => {
+        if (!student?.id) return [];
+        return ratingEvaluations
+            .filter((e) => e.is_active !== false && myClassIds.includes(e.class_id))
+            .map((e) => {
+                const cls = classes.find((c) => c.id === e.class_id);
+                const courseName = courses.find((c) => c.id === e.course_id)?.name;
+                const response = ratingResponses.find(
+                    (r) => r.evaluation_id === e.id && r.student_id === student.id
+                );
+                const questions = ratingQuestions
+                    .filter((q) => q.evaluation_id === e.id)
+                    .sort((a, b) => (a.order_index ?? 0) - (b.order_index ?? 0));
+                return {
+                    ...e,
+                    className: cls?.name,
+                    courseName,
+                    response,
+                    questions,
+                    isSubmitted: Boolean(response),
+                };
+            })
+            .sort((a, b) => Number(new Date(b.created_at)) - Number(new Date(a.created_at)));
+    }, [ratingEvaluations, myClassIds, classes, courses, ratingResponses, ratingQuestions, student]);
+
     const handleFileUpload = async (event, assignmentId) => {
         const file = event.target.files[0];
         if (!file) return;
@@ -104,6 +153,42 @@ const StudentAssignmentsPage = () => {
         }
     };
 
+    const openTake = (ev) => {
+        setActiveEval(ev);
+        const initial = {};
+        if (ev.response?.answers) {
+            ev.response.answers.forEach((a) => {
+                if (a.question_id) initial[a.question_id] = a.value || '';
+            });
+        }
+        setAnswers(initial);
+    };
+
+    const handleRatingSubmit = async () => {
+        if (!activeEval || !student?.id) return;
+        const missing = activeEval.questions.filter((q) => !String(answers[q.id] || '').trim());
+        if (missing.length > 0) {
+            notify.validation('Please answer every question before submitting.');
+            return;
+        }
+        setSubmitting(true);
+        try {
+            await submitRatingResponseData({
+                evaluation_id: activeEval.id,
+                answers: activeEval.questions.map((q) => ({
+                    question_id: q.id,
+                    value: String(answers[q.id] || '').trim(),
+                })),
+            });
+            toast({ title: 'Success', description: MESSAGES.SUCCESS.RATING_SUBMITTED });
+            setActiveEval(null);
+        } catch (error) {
+            notify.error(error, { context: 'StudentAssignmentsPage - rating', fallback: MESSAGES.SAVE_FAILED });
+        } finally {
+            setSubmitting(false);
+        }
+    };
+
     return (
         <AnimatedPage>
             <Helmet><title>My Assignments - Portal</title></Helmet>
@@ -113,7 +198,6 @@ const StudentAssignmentsPage = () => {
                 {myAssignments.length > 0 ? (
                     myAssignments.map(assign => {
                         const fileUrl = assign.submission?.file_url || assign.submission?.attachment_url;
-                        // Upload stays open past due date until the instructor grades.
                         const canUpload = !assign.isGraded;
                         return (
                         <Card key={assign.id} className="bg-slate-900/50 border-slate-800">
@@ -245,6 +329,125 @@ const StudentAssignmentsPage = () => {
                     </div>
                 )}
             </div>
+
+            {myEvaluations.length > 0 && (
+              <div className="mt-10 space-y-4">
+                <h2 className="text-lg font-medium text-slate-200 flex items-center gap-2">
+                  <Star className="h-4 w-4 text-amber-400" />
+                  Rating Evaluations
+                </h2>
+                <div className="grid gap-6">
+                  {myEvaluations.map((ev) => (
+                    <Card key={ev.id} className="bg-slate-900/50 border-slate-800">
+                      <CardHeader>
+                        <div className="flex justify-between items-start gap-3">
+                          <div>
+                            <CardTitle className="flex items-center gap-2">
+                              <Star className="h-4 w-4 text-amber-400" />
+                              {ev.title}
+                            </CardTitle>
+                            <CardDescription className="mt-1">
+                              {ev.courseName ? (
+                                <>
+                                  <span className="font-medium text-indigo-300">{ev.courseName}</span>
+                                  {ev.className ? <span> · {ev.className}</span> : null}
+                                </>
+                              ) : (
+                                ev.className
+                              )}
+                            </CardDescription>
+                          </div>
+                          {ev.isSubmitted ? (
+                            <Badge className="bg-green-600/80">
+                              <CheckCircle2 className="mr-1 h-3 w-3" /> Submitted
+                            </Badge>
+                          ) : (
+                            <Badge variant="outline" className="text-amber-400 border-amber-500/50">
+                              Pending
+                            </Badge>
+                          )}
+                        </div>
+                      </CardHeader>
+                      <CardContent className="flex flex-wrap items-center justify-between gap-3">
+                        <div className="text-xs text-slate-400 space-y-1">
+                          <p>{ev.questions.length} question{ev.questions.length === 1 ? '' : 's'}</p>
+                          {ev.due_date && (
+                            <p className="flex items-center gap-1">
+                              <Clock className="h-3 w-3" /> Due: {formatDateTime(ev.due_date)}
+                            </p>
+                          )}
+                        </div>
+                        <Button onClick={() => openTake(ev)} variant={ev.isSubmitted ? 'outline' : 'default'}>
+                          {ev.isSubmitted ? 'View / Update' : 'Start Rating'}
+                        </Button>
+                      </CardContent>
+                    </Card>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            <Dialog open={Boolean(activeEval)} onOpenChange={(open) => !open && setActiveEval(null)}>
+              <DialogContent className="max-w-xl max-h-[90vh] overflow-y-auto">
+                <DialogHeader>
+                  <DialogTitle>{activeEval?.title}</DialogTitle>
+                  <DialogDescription>
+                    {activeEval?.description ||
+                      'Answer each question about the instructor and how well you understood the course.'}
+                  </DialogDescription>
+                </DialogHeader>
+                <div className="space-y-6 py-2">
+                  {activeEval?.questions?.map((q, idx) => {
+                    const options = Array.isArray(q.options) ? q.options : [];
+                    return (
+                      <div key={q.id} className="space-y-3">
+                        <Label className="text-slate-200 leading-snug">
+                          {idx + 1}. {q.text}
+                        </Label>
+                        {q.type === 'text' ? (
+                          <Textarea
+                            rows={3}
+                            value={answers[q.id] || ''}
+                            onChange={(e) => setAnswers((prev) => ({ ...prev, [q.id]: e.target.value }))}
+                            placeholder="Write your answer…"
+                          />
+                        ) : (
+                          <div className="space-y-2">
+                            {options.map((opt) => {
+                              const selected = answers[q.id] === opt.value;
+                              return (
+                                <button
+                                  key={opt.value}
+                                  type="button"
+                                  onClick={() =>
+                                    setAnswers((prev) => ({ ...prev, [q.id]: opt.value }))
+                                  }
+                                  className={`w-full text-left rounded-lg border px-3 py-2.5 text-sm transition-colors ${
+                                    selected
+                                      ? 'border-indigo-500 bg-indigo-950/40 text-slate-100'
+                                      : `border-slate-800 hover:border-slate-600 ${likertToneClass(opt.tone)}`
+                                  }`}
+                                >
+                                  {opt.label}
+                                </button>
+                              );
+                            })}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+                <DialogFooter>
+                  <Button variant="outline" onClick={() => setActiveEval(null)}>
+                    Cancel
+                  </Button>
+                  <Button onClick={handleRatingSubmit} disabled={submitting}>
+                    {submitting ? 'Submitting…' : 'Submit'}
+                  </Button>
+                </DialogFooter>
+              </DialogContent>
+            </Dialog>
         </AnimatedPage>
     );
 };

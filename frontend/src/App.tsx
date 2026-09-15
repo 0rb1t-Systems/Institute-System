@@ -85,6 +85,7 @@ const OnlineFormsPage = lazy(() => import('@/pages/admin/OnlineFormsPage'));
 const InstructorIdPage = lazy(() => import('@/pages/instructor/InstructorIdPage'));
 const AssignmentsPage = lazy(() => import('@/pages/instructor/AssignmentsPage'));
 const AssignmentGradingPage = lazy(() => import('@/pages/instructor/AssignmentGradingPage'));
+const RatingFeedbackPage = lazy(() => import('@/pages/admin/RatingFeedbackPage'));
 const GradebookPage = lazy(() => import('@/pages/instructor/GradebookPage'));
 const ExamGradingPage = lazy(() => import('@/pages/instructor/ExamGradingPage'));
 const ExaminationsPage = lazy(() => import('@/pages/ExaminationsPage'));
@@ -321,7 +322,10 @@ const App = () => {
             <Route path="/instructor/id-card" element={<ProtectedRoute roles={['instructor']}><Lazy><InstructorIdPage /></Lazy></ProtectedRoute>} />
 
             <Route path="/assignments" element={<ProtectedRoute roles={['admin', 'instructor', 'staff']}><Lazy><AssignmentsPage /></Lazy></ProtectedRoute>} />
+            <Route path="/assignments/ratings/:evaluationId/feedback" element={<ProtectedRoute roles={['admin', 'staff']}><Lazy><RatingFeedbackPage /></Lazy></ProtectedRoute>} />
             <Route path="/assignments/:assignmentId/grading" element={<ProtectedRoute roles={['admin', 'instructor', 'staff']}><Lazy><AssignmentGradingPage /></Lazy></ProtectedRoute>} />
+            <Route path="/ratings" element={<Navigate to="/assignments" replace />} />
+            <Route path="/ratings/:evaluationId/feedback" element={<ProtectedRoute roles={['admin', 'staff']}><Lazy><RatingFeedbackPage /></Lazy></ProtectedRoute>} />
             <Route path="/gradebook" element={<ProtectedRoute roles={['admin', 'instructor', 'staff']}><Lazy><GradebookPage /></Lazy></ProtectedRoute>} />
             <Route path="/examinations" element={<ProtectedRoute roles={['admin', 'instructor', 'staff']}><Lazy><ExaminationsPage /></Lazy></ProtectedRoute>} />
             <Route path="/examinations/:examId/grading" element={<ProtectedRoute roles={['admin', 'instructor', 'staff']}><Lazy><ExamGradingPage /></Lazy></ProtectedRoute>} />
@@ -351,6 +355,7 @@ const App = () => {
             <Route path="/portal/attendance" element={<ProtectedRoute roles={['student']}><Lazy><StudentAttendancePage /></Lazy></ProtectedRoute>} />
             <Route path="/portal/id-card" element={<ProtectedRoute roles={['student']}><Lazy><StudentPortalIdPage /></Lazy></ProtectedRoute>} />
             <Route path="/portal/assignments" element={<ProtectedRoute roles={['student']}><Lazy><StudentAssignmentsPage /></Lazy></ProtectedRoute>} />
+            <Route path="/portal/ratings" element={<Navigate to="/portal/assignments" replace />} />
             <Route path="/portal/gradebook" element={<ProtectedRoute roles={['student']}><Lazy><StudentGradebookPage /></Lazy></ProtectedRoute>} />
             <Route path="/portal/profile" element={<Navigate to="/student/profile" replace />} />
             {/* Transcript / certificates are admin-only documents — not shown to students */}

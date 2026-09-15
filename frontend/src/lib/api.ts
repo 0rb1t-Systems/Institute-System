@@ -2999,6 +2999,163 @@ export const gradeSubmission = async (submissionId, gradeData) => {
   return row
 }
 
+// ─── Rating Evaluations (course / instructor feedback; not graded) ───────────
+
+export const getRatingEvaluations = async () => {
+  const { data, error } = await supabase
+    .from('rating_evaluations')
+    .select('*')
+    .order('created_at', { ascending: false })
+  if (error) throw error
+  return data || []
+}
+
+export const getRatingQuestions = async (evaluationId?: string) => {
+  let q = supabase.from('rating_questions').select('*').order('order_index', { ascending: true })
+  if (evaluationId) q = q.eq('evaluation_id', evaluationId)
+  const { data, error } = await q
+  if (error) throw error
+  return data || []
+}
+
+export const getRatingResponses = async (evaluationId?: string) => {
+  let q = supabase
+    .from('rating_responses')
+    .select('*')
+    .order('submitted_at', { ascending: false })
+  if (evaluationId) q = q.eq('evaluation_id', evaluationId)
+  const { data, error } = await q
+  if (error) throw error
+  return data || []
+}
+
+export const createRatingEvaluation = async (data: {
+  title: string
+  description?: string | null
+  class_id: string
+  course_id?: string | null
+  due_date?: string | null
+  is_active?: boolean
+  questions?: Array<{
+    text: string
+    type?: 'likert' | 'mcq' | 'text'
+    options?: unknown[]
+    order_index?: number
+  }>
+}) => {
+  const me = await getMyProfile()
+  const { data: row, error } = await supabase
+    .from('rating_evaluations')
+    .insert({
+      institution_id: me.institution_id,
+      class_id: data.class_id,
+      course_id: data.course_id || null,
+      title: data.title,
+      description: data.description || null,
+      due_date: data.due_date || null,
+      is_active: data.is_active !== false,
+      created_by: me.id,
+    })
+    .select()
+    .single()
+  if (error) throw error
+
+  const questions = Array.isArray(data.questions) ? data.questions : []
+  if (questions.length > 0) {
+    const payload = questions.map((q, i) => ({
+      institution_id: me.institution_id,
+      evaluation_id: row.id,
+      text: q.text,
+      type: q.type || 'likert',
+      options: q.options || [],
+      order_index: q.order_index ?? i,
+    }))
+    const { error: qErr } = await supabase.from('rating_questions').insert(payload)
+    if (qErr) throw qErr
+  }
+  return row
+}
+
+export const updateRatingEvaluation = async (
+  id: string,
+  data: {
+    title?: string
+    description?: string | null
+    class_id?: string
+    course_id?: string | null
+    due_date?: string | null
+    is_active?: boolean
+    questions?: Array<{
+      text: string
+      type?: 'likert' | 'mcq' | 'text'
+      options?: unknown[]
+      order_index?: number
+    }>
+  }
+) => {
+  const me = await getMyProfile()
+  const updates: Record<string, unknown> = {}
+  if (data.title !== undefined) updates.title = data.title
+  if (data.description !== undefined) updates.description = data.description
+  if (data.class_id !== undefined) updates.class_id = data.class_id
+  if (data.course_id !== undefined) updates.course_id = data.course_id || null
+  if (data.due_date !== undefined) updates.due_date = data.due_date
+  if (data.is_active !== undefined) updates.is_active = data.is_active
+
+  const { data: row, error } = await supabase
+    .from('rating_evaluations')
+    .update(updates)
+    .eq('id', id)
+    .select()
+    .single()
+  if (error) throw error
+
+  if (Array.isArray(data.questions)) {
+    const { error: delErr } = await supabase.from('rating_questions').delete().eq('evaluation_id', id)
+    if (delErr) throw delErr
+    if (data.questions.length > 0) {
+      const payload = data.questions.map((q, i) => ({
+        institution_id: me.institution_id,
+        evaluation_id: id,
+        text: q.text,
+        type: q.type || 'likert',
+        options: q.options || [],
+        order_index: q.order_index ?? i,
+      }))
+      const { error: qErr } = await supabase.from('rating_questions').insert(payload)
+      if (qErr) throw qErr
+    }
+  }
+  return row
+}
+
+export const deleteRatingEvaluation = async (id: string) => {
+  const { error } = await supabase.from('rating_evaluations').delete().eq('id', id)
+  if (error) throw error
+  return true
+}
+
+export const submitRatingResponse = async (data: {
+  evaluation_id: string
+  answers: Array<{ question_id: string; value: string }>
+}) => {
+  const me = await getMyProfile()
+  const payload = {
+    institution_id: me.institution_id,
+    evaluation_id: data.evaluation_id,
+    student_id: me.id,
+    answers: data.answers || [],
+    submitted_at: new Date().toISOString(),
+  }
+  const { data: row, error } = await supabase
+    .from('rating_responses')
+    .upsert(payload, { onConflict: 'evaluation_id,student_id' })
+    .select()
+    .single()
+  if (error) throw error
+  return row
+}
+
 export const getExams = async () => {
   const { data, error } = await supabase.from('exams').select('*').order('created_at', { ascending: false })
   if (error) throw error
