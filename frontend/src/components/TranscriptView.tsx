@@ -65,12 +65,27 @@ function transcriptForClass(transcripts, studentId, classId, enrollmentId) {
   const rows = (transcripts || []).filter((t) => {
     if (!t || t.status === 'revoked') return false;
     if (!sameId(t.student_id, studentId)) return false;
-    if (t.class_id && !sameId(t.class_id, classId)) return false;
     if (sameId(t.class_id, classId)) return true;
     if (!t.class_id && enrollmentId && sameId(t.enrollment_id, enrollmentId)) return true;
+    // Legacy orphan transcripts (null class + null enrollment): allow as last resort
+    // only when this student has a single non-revoked transcript.
     return false;
   });
-  return rows.sort(
+  if (rows.length) {
+    return rows.sort(
+      (a, b) => Number(new Date(b.issued_at || 0)) - Number(new Date(a.issued_at || 0)),
+    )[0] || null;
+  }
+  const orphans = (transcripts || []).filter(
+    (t) =>
+      t &&
+      t.status !== 'revoked' &&
+      sameId(t.student_id, studentId) &&
+      !t.class_id &&
+      !t.enrollment_id,
+  );
+  if (orphans.length === 1) return orphans[0];
+  return orphans.sort(
     (a, b) => Number(new Date(b.issued_at || 0)) - Number(new Date(a.issued_at || 0)),
   )[0] || null;
 }
@@ -437,15 +452,23 @@ const TranscriptView = ({ studentId, onClose, initialClassId }: any) => {
             );
             const te = transcriptRows.find((t) => sameId(t.course_id, course.id));
 
-            const relevantExams = exams.filter(
+            const courseExams = exams.filter(
               (e) => sameId(e.class_id, selectedClassId) && sameId(e.course_id, course.id),
             );
+            const relevantExams =
+              courseExams.length > 0
+                ? courseExams
+                : exams.filter(
+                    (e) =>
+                      sameId(e.class_id, selectedClassId) &&
+                      (!e.course_id || sameId(e.course_id, course.id)),
+                  );
             
             const studentResults = results.filter(r => 
                 sameId(r.student_id, studentData.id) && 
                 relevantExams.some(e => sameId(e.id, r.exam_id))
             );
-            const bestResult = studentResults.sort((a, b) => (b.score || 0) - (a.score || 0))[0];
+            const bestResult = studentResults.sort((a, b) => (Number(b.score ?? b.final_score) || 0) - (Number(a.score ?? a.final_score) || 0))[0];
             const examDetails = bestResult ? exams.find(e => e.id === bestResult.exam_id) : (relevantExams[0] || null);
             
             let marks = null;
@@ -454,25 +477,26 @@ const TranscriptView = ({ studentId, onClose, initialClassId }: any) => {
             let grade = '-';
             let displayPercentage = '-';
 
-            // Prefer gradebook final (exam + assignment bonus), then live exam, then transcript entry
-            if (gb && gb.final_mark != null) {
+            // Prefer issued transcript snapshot when present, then live gradebook, then exam.
+            const bestScore = bestResult?.score ?? bestResult?.final_score ?? null;
+            if (te && te.mark != null) {
+                marks = Number(te.mark);
+                percentageValue = marks;
+                displayPercentage = `${Math.round(percentageValue)}%`;
+                grade = te.grade || getLetterGradeFromScale(percentageValue, gradeScale);
+                status = isCoursePassedFromScale(percentageValue, gradeScale) ? 'Pass' : 'Fail';
+            } else if (gb && gb.final_mark != null) {
                 marks = Number(gb.final_mark);
                 percentageValue = marks;
                 displayPercentage = `${Math.round(percentageValue)}%`;
                 grade = gb.letter_grade || getLetterGradeFromScale(percentageValue, gradeScale);
                 status = isCoursePassedFromScale(percentageValue, gradeScale) ? 'Pass' : 'Fail';
-            } else if (bestResult && bestResult.score !== null) {
-                marks = bestResult.score;
+            } else if (bestResult && bestScore !== null && bestScore !== undefined) {
+                marks = bestScore;
                 const total = examDetails?.total_marks || examDetails?.final_marks || bestResult.total_marks || 100;
                 percentageValue = (Number(marks) / Number(total)) * 100;
                 displayPercentage = `${Math.round(percentageValue)}%`;
                 grade = getLetterGradeFromScale(percentageValue, gradeScale);
-                status = isCoursePassedFromScale(percentageValue, gradeScale) ? 'Pass' : 'Fail';
-            } else if (te && te.mark != null) {
-                marks = Number(te.mark);
-                percentageValue = marks;
-                displayPercentage = `${Math.round(percentageValue)}%`;
-                grade = te.grade || getLetterGradeFromScale(percentageValue, gradeScale);
                 status = isCoursePassedFromScale(percentageValue, gradeScale) ? 'Pass' : 'Fail';
             }
 

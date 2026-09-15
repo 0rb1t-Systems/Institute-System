@@ -56,15 +56,19 @@ const ExaminationsPageContent = () => {
 
   const activeClasses = useMemo(() => {
     if (!classes) return [];
-    
-    let relevantClasses = classes.filter(c => c.is_active);
+
+    // Keep inactive classes that already have exams/grades so recorded marks stay reachable.
+    const classIdsWithExams = new Set((exams || []).map((e) => e.class_id).filter(Boolean));
+    let relevantClasses = classes.filter(
+      (c) => c.is_active || classIdsWithExams.has(c.id),
+    );
     if (user?.role === 'instructor') {
         relevantClasses = relevantClasses.filter(c => c.instructor_id === user.id);
     }
 
     if (searchTerm) {
         const lower = searchTerm.toLowerCase();
-        relevantClasses = relevantClasses.filter(c => c.name.toLowerCase().includes(lower));
+        relevantClasses = relevantClasses.filter(c => (c.name || '').toLowerCase().includes(lower));
     }
 
     return relevantClasses.map(cls => {
@@ -81,8 +85,14 @@ const ExaminationsPageContent = () => {
             .filter(cc => cc.class_id === cls.id)
             .map(cc => courses.find(c => c.id === cc.course_id))
             .filter(Boolean);
+
+        // Also surface courses that already have exams (covers orphan / null-link gaps).
+        const fromExams = (exams || [])
+          .filter((e) => e.class_id === cls.id && e.course_id)
+          .map((e) => courses.find((c) => c.id === e.course_id))
+          .filter(Boolean);
             
-        const allCourses = [...clsCourses, ...linked].filter((v, i, a) => a.findIndex(t => t.id === v.id) === i);
+        const allCourses = [...clsCourses, ...linked, ...fromExams].filter((v, i, a) => a.findIndex(t => t.id === v.id) === i);
 
         const instructor =
           users.find((u) => u.id === cls.instructor_id) ||
@@ -92,7 +102,7 @@ const ExaminationsPageContent = () => {
 
         return { ...cls, derivedCourses: allCourses, instructorName };
     });
-  }, [classes, courses, classCourses, diplomaCourses, user, searchTerm, users]);
+  }, [classes, courses, classCourses, diplomaCourses, user, searchTerm, users, exams]);
   
   const handleOpenGrading = async (cls, course) => {
       let exam = exams.find(e => 
@@ -124,10 +134,16 @@ const ExaminationsPageContent = () => {
       const currentResults = results.filter(r => r.exam_id === exam.id);
       const initialBuffer: any = {};
       
-      const classEnrollments = enrollments.filter(e => e.class_id === cls.id && e.status === 'active');
-      const enrolledStudentIds = classEnrollments.map(e => e.student_id);
+      const classEnrollments = enrollments.filter(
+        (e) => e.class_id === cls.id && (e.status === 'active' || !e.status),
+      );
+      const enrolledStudentIds = new Set(classEnrollments.map((e) => e.student_id));
+      // Include students who already have marks even if enrollment row was missing.
+      currentResults.forEach((r) => {
+        if (r?.student_id) enrolledStudentIds.add(r.student_id);
+      });
 
-      enrolledStudentIds.forEach(sid => {
+      enrolledStudentIds.forEach((sid) => {
           const res = currentResults.find(r => r.student_id === sid);
           if (res) {
               let comments = '';
@@ -136,7 +152,7 @@ const ExaminationsPageContent = () => {
               }
 
               initialBuffer[sid] = {
-                  score: res.score !== null ? res.score : '',
+                  score: res.score !== null && res.score !== undefined ? res.score : (res.final_score ?? ''),
                   comments: comments,
                   course_project: res.course_project || '',
               };
@@ -156,7 +172,7 @@ const ExaminationsPageContent = () => {
           examId: exam.id,
           className: cls.name,
           courseName: course.name,
-          totalMarks: exam.total_marks
+          totalMarks: Number(exam.total_marks ?? exam.final_marks ?? 100) || 100,
       });
   };
 
@@ -216,12 +232,24 @@ const ExaminationsPageContent = () => {
 
   const contextStudents = useMemo(() => {
       if (!markingContext) return [];
-      return enrollments
-        .filter(e => e.class_id === markingContext.classId && e.status === 'active')
-        .map(e => students.find(s => s.id === e.student_id))
-        .filter(Boolean)
-        .sort((a, b) => a.name.localeCompare(b.name));
-  }, [markingContext, enrollments, students]);
+      const byId = new Map();
+      enrollments
+        .filter((e) => e.class_id === markingContext.classId && (e.status === 'active' || !e.status))
+        .forEach((e) => {
+          const s = students.find((st) => st.id === e.student_id);
+          if (s) byId.set(s.id, s);
+        });
+      (results || [])
+        .filter((r) => r.exam_id === markingContext.examId)
+        .forEach((r) => {
+          if (byId.has(r.student_id)) return;
+          const s = students.find((st) => st.id === r.student_id);
+          if (s) byId.set(s.id, s);
+        });
+      return Array.from(byId.values()).sort((a, b) =>
+        String(a.name || a.full_name || '').localeCompare(String(b.name || b.full_name || '')),
+      );
+  }, [markingContext, enrollments, students, results]);
 
   return (
     <>

@@ -30,13 +30,32 @@ const GradebookPage = () => {
   const classData = useMemo(() => {
     if (!selectedClassId) return null;
 
-    const classStudents = enrollments
-      .filter((e) => e.class_id === selectedClassId && e.status === 'active')
-      .map((e) => students.find((s) => s.id === e.student_id))
-      .filter(Boolean)
-      .sort((a, b) => a.name.localeCompare(b.name));
+    const studentById = new Map();
+    enrollments
+      .filter((e) => e.class_id === selectedClassId && (e.status === 'active' || !e.status))
+      .forEach((e) => {
+        const s = students.find((st) => st.id === e.student_id);
+        if (s) studentById.set(s.id, s);
+      });
+    // Keep students who already have exam/gradebook marks even without enrollment row.
+    (results || []).forEach((r) => {
+      const exam = exams.find((e) => e.id === r.exam_id);
+      if (!exam || exam.class_id !== selectedClassId || studentById.has(r.student_id)) return;
+      const s = students.find((st) => st.id === r.student_id);
+      if (s) studentById.set(s.id, s);
+    });
+    (gradebookEntries || []).forEach((g) => {
+      if (g.class_id !== selectedClassId || studentById.has(g.student_id)) return;
+      const s = students.find((st) => st.id === g.student_id);
+      if (s) studentById.set(s.id, s);
+    });
+    const classStudents = Array.from(studentById.values()).sort((a, b) =>
+      String(a.name || a.full_name || '').localeCompare(String(b.name || b.full_name || '')),
+    );
 
-    const classExams = exams.filter((e) => e.class_id === selectedClassId && e.marking_type === 'manual');
+    const classExams = exams.filter(
+      (e) => e.class_id === selectedClassId && (e.marking_type === 'manual' || !e.marking_type),
+    );
     const enrichedExams = classExams.map((e) => {
       const course = courses.find((c) => c.id === e.course_id);
       return { ...e, courseName: course?.name || e.title };
@@ -55,11 +74,14 @@ const GradebookPage = () => {
         ...classAssignments
           .map((a) => a.course_id || classes.find((cl) => cl.id === selectedClassId)?.course_id)
           .filter(Boolean),
+        ...(gradebookEntries || [])
+          .filter((g) => g.class_id === selectedClassId && g.course_id)
+          .map((g) => g.course_id),
       ]),
     ];
 
     return { students: classStudents, exams: enrichedExams, assignments: classAssignments, courseIds };
-  }, [selectedClassId, enrollments, students, exams, courses, assignments, classes]);
+  }, [selectedClassId, enrollments, students, exams, courses, assignments, classes, results, gradebookEntries]);
 
   const getStudentScore = (studentId, examId) => {
     const res = results.find((r) => r.student_id === studentId && r.exam_id === examId);

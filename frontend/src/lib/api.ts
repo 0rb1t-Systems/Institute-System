@@ -3283,11 +3283,29 @@ export const createOrUpdateExamResult = async (data) => {
   const me = await getMyProfile()
   const raw = Number(data.raw_score ?? data.score ?? data.final_score ?? 0)
   const final = Number(data.final_score ?? data.score ?? raw)
+
+  let enrollmentId = data.enrollment_id || null
+  if (!enrollmentId && data.exam_id && data.student_id) {
+    const { data: examRow } = await supabase
+      .from('exams')
+      .select('class_id')
+      .eq('id', data.exam_id)
+      .maybeSingle()
+    if (examRow?.class_id) {
+      const { data: enr } = await supabase
+        .from('enrollments')
+        .select('id')
+        .eq('student_id', data.student_id)
+        .eq('class_id', examRow.class_id)
+        .maybeSingle()
+      enrollmentId = enr?.id || null
+    }
+  }
+
   const payload: Record<string, unknown> = {
     institution_id: data.institution_id || me.institution_id,
     exam_id: data.exam_id,
     student_id: data.student_id,
-    enrollment_id: data.enrollment_id || null,
     raw_score: raw,
     final_score: final,
     answers: data.answers || [],
@@ -3295,6 +3313,7 @@ export const createOrUpdateExamResult = async (data) => {
     graded_by: me.id,
     graded_at: new Date().toISOString(),
   }
+  if (enrollmentId) payload.enrollment_id = enrollmentId
   if (data.course_project !== undefined) {
     payload.course_project = data.course_project || null
   }
