@@ -1,9 +1,14 @@
 /**
  * Shared hydration for Page Builder + Upload Own designs across
  * certificate / transcript / invoice document templates.
+ *
+ * Page Builder → config.logo_builder + layout_key logo_builder
+ * Upload Own   → config.custom_upload (.design optional) + layout_key custom_upload
+ * The two slots never read each other.
  */
 import { getCertificateTemplateSignedUrl } from '@/lib/api'
 import {
+  customUploadHasGeneratedDesign,
   extractCertStoragePath,
   normalizeLogoBuilderDesign,
   normalizePaperLayers,
@@ -99,6 +104,26 @@ export async function hydrateDocumentDesignFromTemplate(
 
   if (layoutKey === 'custom_upload') {
     const upload = config.custom_upload || {}
+
+    // Generated editable clone — render like Page Builder, but from upload slot only
+    if (customUploadHasGeneratedDesign(upload)) {
+      const design = normalizeVerificationQr(normalizeLogoBuilderDesign(upload.design))
+      const withImages = await resolveBuilderImageSrcs(design)
+      return {
+        layoutKey,
+        logoBuilderDesign: withImages,
+        customBackgroundUrl: null,
+        customAspectRatio:
+          upload.aspect_ratio != null && Number(upload.aspect_ratio) > 0
+            ? Number(upload.aspect_ratio)
+            : null,
+        customFieldLayout: null,
+        customPaperLayers: null,
+        showLogo,
+        showContact,
+      }
+    }
+
     let url: string | null = null
     const path = upload.preview_path || upload.storage_path
     if (path) {

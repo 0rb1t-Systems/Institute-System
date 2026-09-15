@@ -1,5 +1,5 @@
-import React, { useEffect, useRef, useState } from 'react'
-import { FileUp, Loader2, Sparkles } from 'lucide-react'
+import React, { useEffect, useMemo, useRef, useState } from 'react'
+import { CheckCircle2, FileUp, Loader2, Sparkles } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { useToast } from '@/components/ui/use-toast'
@@ -7,18 +7,35 @@ import { useAuth } from '@/contexts/AuthContext'
 import {
   getCertificateTemplateSignedUrl,
   getDocumentTemplate,
-  saveDocumentLogoBuilder,
+  saveDocumentUploadBuilder,
   uploadCertificateBuilderImage,
   uploadOwnDocumentTemplate,
   type DocumentTemplateType,
 } from '@/lib/api'
-import CertificateUploadTemplateEditor from '@/components/certificates/CertificateUploadTemplateEditor'
+import CertificateCanvas from '@/components/certificates/CertificateCanvas'
 import {
+  customUploadHasGeneratedDesign,
+  isPrivateCertStoragePath,
   normalizeLogoBuilderDesign,
+  normalizeVerificationQr,
   type CustomUploadMeta,
   type DocumentBuilderKind,
+  type LogoBuilderDesign,
 } from '@/lib/certificateBuilder'
 import { extractCertificateDesign } from '@/lib/extractCertificateDesign'
+import type { CertificateRenderData } from '@/lib/certificateTemplates'
+import {
+  getCertificateFooterText,
+  getInstitutionAccent,
+  getInstitutionDisplayName,
+  getInstitutionPrimary,
+  getInvoiceFooterText,
+  getSignatoryLeftName,
+  getSignatoryLeftTitle,
+  getSignatoryRightName,
+  getSignatoryRightTitle,
+  getTranscriptFooterText,
+} from '@/lib/institution'
 import { getUserMessage } from '@/lib/mapError'
 import { MESSAGES } from '@/lib/messages'
 
@@ -72,10 +89,9 @@ async function rasterizePdfToObjectUrl(file: File): Promise<{ url: string; revok
 }
 
 /**
- * Upload Own Certificate:
- * Upload a sample PDF/PNG → Generate scans that design and builds a full editable
- * clone (text as layers, decorative art as residual paper) that matches colors,
- * layout, and fields of what you uploaded.
+ * Upload Own:
+ * Upload a sample PDF/PNG → Generate builds a ready-to-use template from that design.
+ * The upload is NOT handed back as an editable document — only a generated template.
  */
 const CertificateUploadOwn = ({
   documentType = 'certificate',
@@ -93,7 +109,8 @@ const CertificateUploadOwn = ({
   const [meta, setMeta] = useState<CustomUploadMeta | null>(null)
   const [hasTemplate, setHasTemplate] = useState(false)
   const [active, setActive] = useState(false)
-  const [editorKey, setEditorKey] = useState(0)
+  const [design, setDesign] = useState<LogoBuilderDesign | null>(null)
+  const [resolvedUrls, setResolvedUrls] = useState<Record<string, string>>({})
   const sourceFileRef = useRef<File | null>(null)
 
   const load = async () => {
@@ -103,14 +120,11 @@ const CertificateUploadOwn = ({
       const upload = tpl?.config?.custom_upload as CustomUploadMeta | undefined
       setMeta(upload?.storage_path ? upload : null)
       const layout = String(tpl?.layout_key || '')
-      const lb = tpl?.config?.logo_builder
-      const elements =
-        lb && typeof lb === 'object' && Array.isArray((lb as { elements?: unknown }).elements)
-          ? (lb as { elements: unknown[] }).elements
-          : []
-      const ready = elements.length > 0 && layout === 'logo_builder'
+      const ready = customUploadHasGeneratedDesign(upload)
       setHasTemplate(ready)
-      setActive(ready)
+      setActive(ready && layout === 'custom_upload')
+      setDesign(ready ? normalizeLogoBuilderDesign(upload!.design) : null)
+      setResolvedUrls({})
     } catch (err) {
       toast({
         title: 'Error',
@@ -126,6 +140,97 @@ const CertificateUploadOwn = ({
     load()
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [institution?.id, docType])
+
+  useEffect(() => {
+    let cancelled = false
+    ;(async () => {
+      if (!design?.elements?.length) return
+      const images = design.elements.filter(
+        (e) => e.type === 'image' && e.src && isPrivateCertStoragePath(e.src),
+      )
+      const updates: Record<string, string> = {}
+      for (const el of images) {
+        if (resolvedUrls[el.id]) continue
+        try {
+          const url = await getCertificateTemplateSignedUrl(el.src!)
+          if (url) updates[el.id] = url
+        } catch {
+          /* skip */
+        }
+      }
+      if (!cancelled && Object.keys(updates).length) {
+        setResolvedUrls((prev) => ({ ...prev, ...updates }))
+      }
+    })()
+    return () => {
+      cancelled = true
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [design?.elements.map((e) => `${e.id}:${e.src}`).join('|')])
+
+  const previewDesign = useMemo(() => {
+    if (!design) return null
+    return normalizeVerificationQr({
+      ...design,
+      elements: design.elements.map((el) =>
+        el.type === 'image' && isPrivateCertStoragePath(el.src)
+          ? { ...el, src: resolvedUrls[el.id] || el.src }
+          : el,
+      ),
+    })
+  }, [design, resolvedUrls])
+
+  const sampleData: CertificateRenderData = useMemo(() => {
+    const base = {
+      layoutKey: 'custom_upload' as const,
+      institutionName: getInstitutionDisplayName(institution),
+      primary: getInstitutionPrimary(institution),
+      accent: getInstitutionAccent(institution),
+      logoUrl: institution?.logo_url,
+      sealUrl: institution?.seal_url,
+      signatureUrl: institution?.signature_url,
+      studentName: 'Amina Hassan',
+      studentId: 'STU-001',
+      className: 'Morning Cohort',
+      verifyCode: 'previewcode12345678',
+      dateIssued: new Date().toISOString(),
+      leftTitle: getSignatoryLeftTitle(institution) || 'Academic Registrar',
+      rightTitle: getSignatoryRightTitle(institution) || 'Principal',
+      leftName: getSignatoryLeftName(institution) || undefined,
+      rightName: getSignatoryRightName(institution) || undefined,
+      logoBuilderDesign: previewDesign || undefined,
+    }
+    if (docType === 'transcript') {
+      return {
+        ...base,
+        programName: 'Diploma in Professional Studies',
+        certificateNumber: 'TRN-0000042',
+        verificationUrl: 'https://example.com/verify/previewcode12345678',
+        footerText: getTranscriptFooterText(institution) || undefined,
+        gpa: '3.40',
+        gradesSummary: 'Intro to Practice                 3      A',
+      } as CertificateRenderData
+    }
+    if (docType === 'invoice') {
+      return {
+        ...base,
+        programName: 'Tuition & fees',
+        certificateNumber: 'INV-STU-001',
+        invoiceNumber: 'INV-STU-001',
+        totalDue: '175.00',
+        amountPaid: '150.00',
+        balance: '25.00',
+        footerText: getInvoiceFooterText(institution) || undefined,
+      } as CertificateRenderData
+    }
+    return {
+      ...base,
+      programName: 'Diploma in Professional Studies',
+      certificateNumber: 'CERT-0000042',
+      verificationUrl: 'https://example.com/verify/previewcode12345678',
+      footerText: getCertificateFooterText(institution) || undefined,
+    }
+  }, [institution, previewDesign, docType])
 
   const resolveSourceFile = async (upload: CustomUploadMeta): Promise<File> => {
     if (sourceFileRef.current) return sourceFileRef.current
@@ -173,7 +278,7 @@ const CertificateUploadOwn = ({
             ? 'invoice'
             : 'certificate'
 
-      const design = await extractCertificateDesign({
+      const nextDesign = await extractCertificateDesign({
         file,
         imageUrl: scanned.url,
         aspectRatio: aspect,
@@ -189,10 +294,12 @@ const CertificateUploadOwn = ({
       })
 
       setProgress('Saving template…')
-      await saveDocumentLogoBuilder(docType, normalizeLogoBuilderDesign(design), true)
+      const normalized = normalizeLogoBuilderDesign(nextDesign)
+      await saveDocumentUploadBuilder(docType, normalized, true)
+      setDesign(normalized)
+      setResolvedUrls({})
       setHasTemplate(true)
       setActive(true)
-      setEditorKey((k) => k + 1)
     } finally {
       scanned.revoke?.()
     }
@@ -220,10 +327,11 @@ const CertificateUploadOwn = ({
       setMeta(next)
       setHasTemplate(false)
       setActive(false)
+      setDesign(null)
+      setResolvedUrls({})
       toast({
         title: 'Uploaded',
-        description:
-          'Click Generate — we scan your design and build a matching editable template (colors, layout, fields).',
+        description: `Click Generate template — we build a ready ${docLabel.toLowerCase()} template from your file.`,
       })
     } catch (err) {
       toast({
@@ -245,9 +353,8 @@ const CertificateUploadOwn = ({
     try {
       await generateTemplate(meta)
       toast({
-        title: `${docLabel} template ready`,
-        description:
-          'Editable clone of your upload (text layers + artwork). Adjust anything, then Save & use.',
+        title: `${docLabel} template generated`,
+        description: `Ready to use. Issued ${docLabel.toLowerCase()}s follow this template — your upload is not an editable document.`,
       })
     } catch (err) {
       toast({
@@ -263,34 +370,47 @@ const CertificateUploadOwn = ({
 
   if (loading) {
     return (
-      <div className="rounded-xl border border-slate-800 bg-slate-900 flex justify-center py-12">
-        <Loader2 className="h-6 w-6 animate-spin text-slate-400" />
+      <div className="flex justify-center rounded-2xl border border-emerald-900/40 bg-gradient-to-b from-slate-950 to-slate-900 py-14">
+        <Loader2 className="h-6 w-6 animate-spin text-emerald-400/80" />
       </div>
     )
   }
 
   return (
     <div className="space-y-4">
-      <div className="rounded-xl border border-slate-800 bg-slate-900 p-4">
-        <div className="flex items-center justify-between gap-2 mb-3">
-          <div>
-            <p className="text-sm font-medium text-white">Upload a sample</p>
-            <p className="text-xs text-slate-500 mt-0.5">
-              PDF or PNG of your certificate. Generate builds an editable clone that matches it.
-            </p>
-          </div>
-          {active && hasTemplate ? (
-            <Badge className="bg-emerald-600/20 text-emerald-300 border-emerald-700/40">Active</Badge>
-          ) : null}
-        </div>
-        <div className="flex flex-col sm:flex-row sm:items-center gap-3">
-          <div className="flex-1 rounded-lg border border-dashed border-slate-700 bg-slate-950 px-4 py-4 text-center sm:text-left">
-            <p className="text-sm text-slate-300 truncate">
-              {meta?.file_name || 'No file yet'}
-            </p>
-            {busy && progress ? (
-              <p className="mt-1 text-xs text-indigo-300">{progress}</p>
+      <div className="overflow-hidden rounded-2xl border border-emerald-900/50 bg-gradient-to-br from-emerald-950/40 via-slate-950 to-slate-900">
+        <div className="border-b border-emerald-900/40 px-4 py-3 sm:px-5">
+          <div className="flex flex-wrap items-start justify-between gap-2">
+            <div className="min-w-0">
+              <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-emerald-400/90">
+                Upload own
+              </p>
+              <p className="mt-1 text-sm font-semibold text-white">
+                Generate a {docLabel.toLowerCase()} template from your file
+              </p>
+              <p className="mt-1 max-w-xl text-xs leading-relaxed text-slate-400">
+                Upload a sample PDF or PNG. Generate builds a ready template that matches that design.
+                Your file is not opened as an editable document — Page Builder stays separate.
+              </p>
+            </div>
+            {active && hasTemplate ? (
+              <Badge className="border-emerald-700/40 bg-emerald-600/20 text-emerald-300">
+                Live template
+              </Badge>
+            ) : hasTemplate ? (
+              <Badge className="border-amber-700/40 bg-amber-600/15 text-amber-200">Ready</Badge>
             ) : null}
+          </div>
+        </div>
+
+        <div className="flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:gap-4 sm:p-5">
+          <div className="min-w-0 flex-1 rounded-xl border border-dashed border-emerald-800/50 bg-slate-950/70 px-4 py-4 text-center sm:text-left">
+            <p className="truncate text-sm text-slate-200">{meta?.file_name || 'No file yet'}</p>
+            {busy && progress ? (
+              <p className="mt-1 text-xs text-emerald-300">{progress}</p>
+            ) : (
+              <p className="mt-1 text-xs text-slate-500">PDF · PNG · JPG · WebP</p>
+            )}
           </div>
           <div className="flex flex-wrap gap-2">
             <label className="inline-flex">
@@ -304,12 +424,18 @@ const CertificateUploadOwn = ({
                   e.target.value = ''
                 }}
               />
-              <Button type="button" disabled={busy} variant="outline" className="border-slate-700" asChild>
+              <Button
+                type="button"
+                disabled={busy}
+                variant="outline"
+                className="border-emerald-800/60 bg-slate-950/50 text-slate-100 hover:bg-emerald-950/40"
+                asChild
+              >
                 <span>
                   {busy && !progress ? (
-                    <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                   ) : (
-                    <FileUp className="h-4 w-4 mr-2" />
+                    <FileUp className="mr-2 h-4 w-4" />
                   )}
                   {meta?.storage_path ? 'Replace' : 'Upload'}
                 </span>
@@ -318,18 +444,44 @@ const CertificateUploadOwn = ({
             <Button
               type="button"
               disabled={busy || !meta?.storage_path}
-              className="bg-indigo-600 hover:bg-indigo-500"
+              className="bg-emerald-600 text-white hover:bg-emerald-500"
               onClick={() => void handleGenerate()}
             >
-              {busy ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Sparkles className="h-4 w-4 mr-2" />}
-              {hasTemplate ? 'Regenerate' : 'Generate'}
+              {busy ? (
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              ) : (
+                <Sparkles className="mr-2 h-4 w-4" />
+              )}
+              {hasTemplate ? 'Regenerate template' : 'Generate template'}
             </Button>
           </div>
         </div>
       </div>
 
-      {hasTemplate ? (
-        <CertificateUploadTemplateEditor documentType={docType} remountKey={editorKey} />
+      {hasTemplate && previewDesign ? (
+        <div className="overflow-hidden rounded-2xl border border-emerald-900/40 bg-slate-950">
+          <div className="flex flex-wrap items-center justify-between gap-2 border-b border-emerald-900/30 px-4 py-3">
+            <div className="flex items-center gap-2 min-w-0">
+              <CheckCircle2 className="h-4 w-4 shrink-0 text-emerald-400" />
+              <div className="min-w-0">
+                <p className="text-sm font-medium text-white">Generated template preview</p>
+                <p className="text-xs text-slate-500">
+                  Sample student data shown. Live {docLabel.toLowerCase()}s use real student data.
+                </p>
+              </div>
+            </div>
+            {active ? (
+              <Badge className="border-emerald-700/40 bg-emerald-600/20 text-emerald-300">
+                In use
+              </Badge>
+            ) : null}
+          </div>
+          <div className="bg-slate-900/50 p-3 sm:p-5">
+            <div className="mx-auto max-w-3xl overflow-hidden rounded-lg border border-slate-800 bg-white shadow-lg">
+              <CertificateCanvas data={sampleData} compact />
+            </div>
+          </div>
+        </div>
       ) : null}
     </div>
   )

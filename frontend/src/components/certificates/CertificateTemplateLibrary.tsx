@@ -126,7 +126,7 @@ const CertificateTemplateLibrary = () => {
         <>
           {!isBuiltInCertificateLayoutKey(activeKey) ? (
             <p className="text-xs text-emerald-200/90 rounded-lg border border-emerald-700/40 bg-emerald-950/30 px-3 py-2">
-              Using {activeKey === 'logo_builder' ? 'Builder' : 'Upload'} as the live certificate. Choose a library design only if you want to switch.
+              Using {activeKey === 'logo_builder' ? 'Page Builder' : 'Upload'} as the live certificate. Choose a library design only if you want to switch.
             </p>
           ) : null}
           <div className="grid gap-2.5 sm:grid-cols-2 lg:grid-cols-3">

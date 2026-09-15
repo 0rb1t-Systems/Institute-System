@@ -116,14 +116,16 @@ const CertificateCanvas = ({ data: rawData, compact = false, forPdf = false }: P
   const landscape = isLandscapeCertificateLayout(layout)
 
   if (layout === 'logo_builder' || layout === 'custom_upload') {
+    const uploadHasDesign =
+      layout === 'custom_upload' && Boolean(data.logoBuilderDesign?.elements?.length)
     return (
       <CertificateDesignRenderer
         data={data}
         compact={compact}
         forPdf={forPdf}
-        design={layout === 'logo_builder' ? data.logoBuilderDesign : null}
-        backgroundUrl={layout === 'custom_upload' ? data.customBackgroundUrl : null}
-        composeUpload={layout === 'custom_upload'}
+        design={layout === 'logo_builder' || uploadHasDesign ? data.logoBuilderDesign : null}
+        backgroundUrl={layout === 'custom_upload' && !uploadHasDesign ? data.customBackgroundUrl : null}
+        composeUpload={layout === 'custom_upload' && !uploadHasDesign}
         hideInstitutionNameWhenLogo={!data.gradesSummary}
       />
     )

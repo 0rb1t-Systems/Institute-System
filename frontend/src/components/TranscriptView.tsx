@@ -870,7 +870,7 @@ const TranscriptView = ({ studentId, onClose, initialClassId }: any) => {
                   data={customRenderData}
                   design={customRenderData.logoBuilderDesign}
                   backgroundUrl={customRenderData.customBackgroundUrl}
-                  composeUpload={liveLayoutKey === 'custom_upload'}
+                  composeUpload={liveLayoutKey === 'custom_upload' && !customRenderData.logoBuilderDesign}
                   hideInstitutionNameWhenLogo={false}
                 />
               </div>

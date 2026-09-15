@@ -1432,6 +1432,28 @@ export const saveCertificateLogoBuilder = async (design, activate = true) => {
   return saveDocumentLogoBuilder('certificate', design, activate)
 }
 
+/**
+ * Save Upload Own generated/editable design under custom_upload.design.
+ * Does not modify config.logo_builder (Page Builder stays independent).
+ */
+export const saveDocumentUploadBuilder = async (
+  documentType: DocumentTemplateType,
+  design,
+  activate = true,
+) => {
+  const type = String(documentType || '').trim().toLowerCase()
+  if (!['certificate', 'transcript', 'invoice'].includes(type)) {
+    throw new Error('INVALID_DOCUMENT_TYPE')
+  }
+  const { data, error } = await supabase.rpc('save_document_upload_builder', {
+    p_document_type: type,
+    p_design: design && typeof design === 'object' ? design : {},
+    p_activate: activate !== false,
+  })
+  if (error) throw error
+  return data
+}
+
 /** Upload an image asset used inside the logo page builder (private bucket). */
 export const uploadCertificateBuilderImage = async (file) => {
   const me = await getMyProfile()
@@ -1656,8 +1678,9 @@ export const uploadOwnDocumentTemplate = async (
           previousFieldLayout ||
           data.config.custom_upload.field_layout ||
           createDefaultUploadFieldLayout(aspectRatio, type),
-        // New artwork — paper text layers must be re-scanned
+        // New artwork — paper text layers and prior Generate design must be re-scanned
         paper_layers: [],
+        design: null,
       },
     }
     const { data: updated, error: cfgErr } = await supabase

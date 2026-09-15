@@ -1,7 +1,8 @@
 /**
- * Decompose an uploaded certificate into a real reusable LogoBuilderDesign.
- * Keeps the uploaded design visually exact, then adds fully editable dynamic fields
- * positioned from a scan of the PDF/OCR text (no messy re-drawn overlapping text).
+ * Decompose an uploaded certificate into a reusable LogoBuilderDesign.
+ * Keeps the uploaded page visually exact (full artwork), then overlays only
+ * editable dynamic fields at scanned positions so live student data replaces
+ * sample text without redrawing the whole design.
  */
 import {
   BUILDER_FONT_FAMILIES,
@@ -80,6 +81,169 @@ function blobFromCanvas(
       quality,
     )
   })
+}
+
+/** Upload the full certificate page unchanged — exact design / format match. */
+async function uploadExactPaper(
+  imageUrl: string,
+  canvasW: number,
+  canvasH: number,
+  uploadImageBlob: UploadImageBlobFn,
+): Promise<string | null> {
+  const img = await loadImage(imageUrl)
+  const c = document.createElement('canvas')
+  c.width = canvasW
+  c.height = canvasH
+  const ctx = c.getContext('2d')
+  if (!ctx) return null
+  ctx.fillStyle = '#ffffff'
+  ctx.fillRect(0, 0, canvasW, canvasH)
+  // Fill the template canvas — aspect already matched to the upload
+  ctx.drawImage(img, 0, 0, canvasW, canvasH)
+  const blob = await blobFromCanvas(c, 'image/png')
+  const up = await uploadImageBlob(blob, 'certificate-paper.png')
+  return up.path || null
+}
+
+/**
+ * Sample paper (light) + ink (dark) colors around a text box so overlay
+ * covers match the uploaded design instead of harsh white rectangles.
+ */
+async function samplePaperAndInk(
+  imageUrl: string,
+  canvasW: number,
+  canvasH: number,
+  box: BBox,
+): Promise<{ paper: string; ink: string }> {
+  const fallback = { paper: '#ffffff', ink: '#0f172a' }
+  try {
+    const img = await loadImage(imageUrl)
+    const iw = img.naturalWidth || img.width
+    const ih = img.naturalHeight || img.height
+    if (iw < 4 || ih < 4) return fallback
+
+    const c = document.createElement('canvas')
+    const mw = Math.min(640, iw)
+    const mh = Math.max(1, Math.round((mw / iw) * ih))
+    c.width = mw
+    c.height = mh
+    const ctx = c.getContext('2d', { willReadFrequently: true })
+    if (!ctx) return fallback
+    ctx.drawImage(img, 0, 0, mw, mh)
+    const data = ctx.getImageData(0, 0, mw, mh).data
+
+    const x0 = Math.max(0, Math.floor((box.x / canvasW) * mw) - 2)
+    const y0 = Math.max(0, Math.floor((box.y / canvasH) * mh) - 2)
+    const x1 = Math.min(mw, Math.ceil(((box.x + box.w) / canvasW) * mw) + 2)
+    const y1 = Math.min(mh, Math.ceil(((box.y + box.h) / canvasH) * mh) + 2)
+
+    const lights: Array<[number, number, number]> = []
+    const darks: Array<[number, number, number]> = []
+    for (let y = y0; y < y1; y++) {
+      for (let x = x0; x < x1; x++) {
+        const p = (y * mw + x) * 4
+        const r = data[p]
+        const g = data[p + 1]
+        const b = data[p + 2]
+        const a = data[p + 3]
+        if (a < 40) continue
+        const lum = 0.2126 * r + 0.7152 * g + 0.0722 * b
+        if (lum >= 175) lights.push([r, g, b])
+        else if (lum <= 120) darks.push([r, g, b])
+      }
+    }
+
+    const avg = (arr: Array<[number, number, number]>) => {
+      if (!arr.length) return null
+      let r = 0
+      let g = 0
+      let b = 0
+      for (const c3 of arr) {
+        r += c3[0]
+        g += c3[1]
+        b += c3[2]
+      }
+      return rgbToHex(r / arr.length, g / arr.length, b / arr.length)
+    }
+
+    return {
+      paper: avg(lights) || fallback.paper,
+      ink: avg(darks) || fallback.ink,
+    }
+  } catch {
+    return fallback
+  }
+}
+
+function fieldPlaceholder(bind: BuilderBinding): string {
+  switch (bind) {
+    case 'studentName':
+      return 'Student Name'
+    case 'programName':
+      return 'Program / Course'
+    case 'certificateNumber':
+      return 'Certificate No.'
+    case 'dateIssued':
+      return 'YYYY-MM-DD'
+    case 'studentId':
+      return 'Student ID'
+    case 'gpa':
+      return 'GPA'
+    case 'className':
+      return 'Class Name'
+    case 'invoiceNumber':
+      return 'Invoice No.'
+    case 'totalDue':
+      return 'Total Due'
+    default:
+      return 'Text'
+  }
+}
+
+/** Pick the best OCR/PDF line for each dynamic bind (one slot each). */
+function pickDynamicSlots(texts: RawText[]): Array<RawText & { bind: Exclude<BuilderBinding, 'qr' | 'none'> }> {
+  type Dyn = Exclude<BuilderBinding, 'qr' | 'none'>
+  const scored: Array<{ bind: Dyn; t: RawText; score: number }> = []
+
+  for (const t of texts) {
+    const flat = t.text.replace(/\n/g, ' ').trim()
+    if (flat.length < 2) continue
+    // Skip pure labels that are not values
+    if (/^(cert\s*no\.?:?|date:?|student\s*id:?|gpa:?)$/i.test(flat)) continue
+
+    let bind = guessBind(flat) as BuilderBinding
+    if (
+      bind === 'none' &&
+      /\n/.test(t.text) &&
+      /diploma|certificate|programme|program|course|award/i.test(t.text)
+    ) {
+      bind = 'programName'
+    }
+    if (!bind || bind === 'none' || bind === 'qr') continue
+
+    let score = t.w * t.h + t.fontSize * 20
+    if (bind === 'studentName') {
+      score += 8000
+      // Prefer mid-page name slots over header branding
+      if (t.y > 80) score += 2000
+    }
+    if (bind === 'programName') score += 6000 + t.fontSize * 25
+    if (bind === 'certificateNumber') score += 2500
+    if (bind === 'dateIssued') score += 2000
+    if (bind === 'studentId') score += 1800
+    if (bind === 'gpa') score += 1500
+    scored.push({ bind: bind as Dyn, t, score })
+  }
+
+  scored.sort((a, b) => b.score - a.score)
+  const used = new Set<Dyn>()
+  const out: Array<RawText & { bind: Dyn }> = []
+  for (const s of scored) {
+    if (used.has(s.bind)) continue
+    used.add(s.bind)
+    out.push({ ...s.t, bind: s.bind })
+  }
+  return out
 }
 
 function mergeLineItems(items: RawText[], yTol: number): RawText[] {
@@ -860,6 +1024,8 @@ function ensureRequiredDynamicFields(
   canvasW: number,
   canvasH: number,
   kind: DocumentBuilderKind,
+  paperFill = '#ffffff',
+  inkColor = '#0f172a',
 ): BuilderElement[] {
   const out = [...elements]
   let z = out.reduce((m, e) => Math.max(m, e.zIndex || 0), 0) + 1
@@ -879,27 +1045,14 @@ function ensureRequiredDynamicFields(
       height: 36,
       rotation: 0,
       zIndex: z++,
-      text:
-        bind === 'studentName'
-          ? 'Student Name'
-          : bind === 'programName'
-            ? 'Program / Course'
-            : bind === 'certificateNumber'
-              ? 'Certificate No.'
-              : bind === 'dateIssued'
-                ? 'YYYY-MM-DD'
-                : bind === 'studentId'
-                  ? 'Student ID'
-                  : bind === 'gpa'
-                    ? 'GPA'
-                    : 'Text',
+      text: fieldPlaceholder(bind),
       fontFamily: BUILDER_FONT_FAMILIES[0],
       fontSize: bind === 'studentName' ? 28 : 16,
       fontWeight: bind === 'studentName' || bind === 'programName' ? 'bold' : 'normal',
       fontStyle: bind === 'studentName' ? 'italic' : 'normal',
       textAlign: 'center',
-      color: '#0f172a',
-      fill: 'transparent',
+      color: inkColor,
+      fill: paperFill,
       opacity: 1,
       bind,
       locked: false,
@@ -907,7 +1060,7 @@ function ensureRequiredDynamicFields(
     })
   }
 
-  // Bind existing diploma/course title in place — do not duplicate
+  // Prefer binding an already-placed text layer in its original scanned position
   if (!hasBind('programName')) {
     const diplomaLike = out.find(
       (e) =>
@@ -919,21 +1072,16 @@ function ensureRequiredDynamicFields(
     if (diplomaLike) {
       diplomaLike.bind = 'programName'
     } else {
-      const certify = out.find(
-        (e) => e.type === 'text' && /this is to certify that/i.test(String(e.text || '')),
-      )
       pushField('programName', {
-        y: certify ? Math.max(canvasH * 0.22, certify.y - canvasH * 0.12) : canvasH * 0.28,
+        y: canvasH * 0.28,
         fontSize: 18,
+        fill: paperFill,
+        color: inkColor,
       })
     }
   }
 
   if (!hasBind('studentName')) {
-    const certify = out.find(
-      (e) => e.type === 'text' && /this is to certify that/i.test(String(e.text || '')),
-    )
-    // Prefer binding a mid-page Title-Case name already extracted
     const nameLike = out.find(
       (e) =>
         e.type === 'text' &&
@@ -947,41 +1095,24 @@ function ensureRequiredDynamicFields(
       nameLike.fontStyle = 'italic'
     } else {
       pushField('studentName', {
-        y: certify
-          ? Math.min(canvasH * 0.55, certify.y + certify.height + 10)
-          : canvasH * 0.4,
+        y: canvasH * 0.4,
+        fill: paperFill,
+        color: inkColor,
       })
     }
   }
 
   if (!hasBind('certificateNumber')) {
-    const certNo = out.find(
-      (e) => e.type === 'text' && /cert\s*no|certificate\s*no|credential/i.test(String(e.text || '')),
-    )
-    if (certNo) {
-      // Bind a sibling value line if this is only a label
-      if (/^cert\s*no\.?:?\s*$/i.test(String(certNo.text || '').trim())) {
-        pushField('certificateNumber', {
-          x: certNo.x + certNo.width + 6,
-          y: certNo.y,
-          width: canvasW * 0.35,
-          height: Math.max(18, certNo.height),
-          fontSize: certNo.fontSize || 12,
-          textAlign: 'left',
-        })
-      } else {
-        certNo.bind = 'certificateNumber'
-      }
-    } else {
-      pushField('certificateNumber', {
-        x: canvasW * 0.1,
-        y: canvasH * 0.72,
-        width: canvasW * 0.4,
-        height: 22,
-        fontSize: 12,
-        textAlign: 'left',
-      })
-    }
+    pushField('certificateNumber', {
+      x: canvasW * 0.1,
+      y: canvasH * 0.72,
+      width: canvasW * 0.4,
+      height: 22,
+      fontSize: 12,
+      textAlign: 'left',
+      fill: paperFill,
+      color: inkColor,
+    })
   }
 
   if (!hasBind('dateIssued')) {
@@ -992,11 +1123,13 @@ function ensureRequiredDynamicFields(
       height: 22,
       fontSize: 12,
       textAlign: 'right',
+      fill: paperFill,
+      color: inkColor,
     })
   }
 
   if (kind === 'transcript' && !hasBind('gpa')) {
-    pushField('gpa', { y: canvasH * 0.58, fontSize: 14 })
+    pushField('gpa', { y: canvasH * 0.58, fontSize: 14, fill: paperFill, color: inkColor })
   }
 
   if (!out.some((e) => e.bind === 'qr')) {
@@ -1010,9 +1143,13 @@ function ensureRequiredDynamicFields(
 }
 
 /**
- * Scan uploaded PDF/image → real reusable LogoBuilderDesign (editable layers).
- * Text becomes editable elements; decorative art (logo, seal, borders) stays on
- * residual background so the design is not flattened into one locked photo with overlays.
+ * Scan uploaded PDF/image → editable LogoBuilderDesign that MATCHES the upload.
+ *
+ * Strategy (visual fidelity first):
+ * 1. Keep the full uploaded page as locked background art (exact design/format).
+ * 2. Detect dynamic data slots from PDF text / OCR at their original positions.
+ * 3. Overlay only those slots with paper-matched covers + live bindings.
+ * Static labels, borders, seals, and typography stay in the artwork — not re-drawn.
  */
 export async function extractCertificateDesign(opts: {
   file: File
@@ -1024,23 +1161,46 @@ export async function extractCertificateDesign(opts: {
 }): Promise<LogoBuilderDesign> {
   const { file, imageUrl, aspectRatio, uploadImageBlob, onProgress } = opts
   const kind: DocumentBuilderKind = opts.kind || 'certificate'
-  const { width: canvasW, height: canvasH, paperKey } = pickCanvasSize(aspectRatio)
+
+  // Prefer the real image aspect so the template paper matches the upload format
+  let ar = aspectRatio && aspectRatio > 0 ? aspectRatio : null
+  try {
+    const img = await loadImage(imageUrl)
+    const iw = img.naturalWidth || img.width
+    const ih = img.naturalHeight || img.height
+    if (iw > 0 && ih > 0) ar = iw / ih
+  } catch {
+    /* keep provided aspect */
+  }
+  const { width: canvasW, height: canvasH, paperKey } = pickCanvasSize(ar)
   const mime = String(file.type || '').toLowerCase()
   const isPdf = mime === 'application/pdf' || /\.pdf$/i.test(file.name)
 
-  onProgress?.('Scanning certificate…', 5)
+  onProgress?.('Scanning certificate design…', 5)
+
+  // Exact visual clone of the uploaded page (design + formatting preserved)
+  onProgress?.('Locking uploaded artwork…', 15)
+  let paperPath: string | null = null
+  try {
+    paperPath = await uploadExactPaper(imageUrl, canvasW, canvasH, uploadImageBlob)
+  } catch {
+    paperPath = null
+  }
+  if (!paperPath) {
+    throw new Error('UPLOAD_FAILED')
+  }
 
   let texts: RawText[] = []
   if (isPdf) {
     try {
-      onProgress?.('Reading PDF text layers…', 20)
+      onProgress?.('Reading PDF text & positions…', 30)
       texts = await extractPdfText(file, canvasW, canvasH)
     } catch {
       texts = []
     }
   }
   if (texts.length < 3) {
-    onProgress?.('Scanning text…', 30)
+    onProgress?.('Reading design text (OCR)…', 40)
     try {
       texts = await extractOcrText(imageUrl, canvasW, canvasH, onProgress)
       texts = dedupeOverlappingTexts(texts)
@@ -1049,7 +1209,7 @@ export async function extractCertificateDesign(opts: {
     }
   }
 
-  // Keep line-level text (clean layout). Only lightly stack diploma title lines.
+  // Lightly stack diploma title + next line into one program slot
   let textBlocks = texts
   const diplomaIdx = texts.findIndex((t) =>
     /^(diploma|certificate|degree|award)\s+(in|of)\b/i.test(t.text.trim()),
@@ -1070,7 +1230,7 @@ export async function extractCertificateDesign(opts: {
           fontSize: Math.max(a.fontSize, b.fontSize),
           bold: a.bold || b.bold,
           italic: true,
-          align: 'center',
+          align: 'center' as const,
           color: a.color || '#0f172a',
         },
         ...texts.slice(diplomaIdx + 2),
@@ -1078,133 +1238,140 @@ export async function extractCertificateDesign(opts: {
     }
   }
 
-  onProgress?.('Preparing template layers…', 55)
-  const holes: BBox[] = textBlocks.map((t) => ({
-    x: t.x,
-    y: t.y,
-    w: Math.max(t.w, t.fontSize * Math.min(40, t.text.length) * 0.35),
-    h: Math.max(t.h, t.fontSize * (t.text.includes('\n') ? 2.2 : 1.15)),
-  }))
-
-  // Residual decorative background (logo, seal, borders, lines) — text punched out
-  let paperPath: string | null = null
-  try {
-    const residual = await buildResidualBackground(imageUrl, canvasW, canvasH, holes)
-    if (residual && residual.size > 500) {
-      const up = await uploadImageBlob(residual, 'certificate-paper.png')
-      paperPath = up.path
-    }
-  } catch {
-    paperPath = null
-  }
-  if (!paperPath) {
-    try {
-      const img = await loadImage(imageUrl)
-      const c = document.createElement('canvas')
-      c.width = canvasW
-      c.height = canvasH
-      const ctx = c.getContext('2d')
-      if (ctx) {
-        ctx.fillStyle = '#ffffff'
-        ctx.fillRect(0, 0, canvasW, canvasH)
-        ctx.drawImage(img, 0, 0, canvasW, canvasH)
-        ctx.fillStyle = '#ffffff'
-        for (const h of holes) {
-          ctx.fillRect(Math.max(0, h.x - 2), Math.max(0, h.y - 2), h.w + 4, h.h + 4)
-        }
-        const blob = await blobFromCanvas(c)
-        const up = await uploadImageBlob(blob, 'certificate-paper.png')
-        paperPath = up.path
-      }
-    } catch {
-      paperPath = null
-    }
-  }
+  onProgress?.('Matching fields to uploaded layout…', 65)
+  const slots = pickDynamicSlots(textBlocks)
 
   const elements: BuilderElement[] = []
   let z = 0
 
-  if (paperPath) {
-    elements.push({
-      id: createElementId(),
-      type: 'image',
-      x: 0,
-      y: 0,
-      width: canvasW,
-      height: canvasH,
-      rotation: 0,
-      zIndex: z++,
-      src: paperPath,
-      opacity: 1,
-      bind: 'none',
-      text: 'background-art',
-      locked: true,
-    })
-  }
+  elements.push({
+    id: createElementId(),
+    type: 'image',
+    x: 0,
+    y: 0,
+    width: canvasW,
+    height: canvasH,
+    rotation: 0,
+    zIndex: z++,
+    src: paperPath,
+    opacity: 1,
+    bind: 'none',
+    text: 'background-art',
+    locked: true,
+  })
 
-  for (const t of textBlocks) {
-    const flat = t.text.replace(/\n/g, ' ')
-    let bind = guessBind(flat)
-    if (
-      bind === 'none' &&
-      /\n/.test(t.text) &&
-      /diploma|certificate|programme|program|course|award/i.test(t.text)
-    ) {
-      bind = 'programName'
-    }
-    const isTitle =
-      t.fontSize >= 24 ||
-      (!!t.bold && t.fontSize >= 16) ||
-      (/\n/.test(t.text) && /diploma/i.test(t.text))
-    const isBrand =
-      /research,\s*consultancy|evaluation center|evaluation centre/i.test(flat) ||
-      (t.y < canvasH * 0.2 && t.x < canvasW * 0.55 && t.fontSize >= 13 && bind === 'none')
-    const isSerifBody =
-      /diploma|certify|having completed|applied research|academic|principal|cert no/i.test(t.text)
-    const isProgram = bind === 'programName'
-    const lineCount = (t.text.match(/\n/g) || []).length + 1
+  // Global paper/ink fallback from center of page
+  const pageSample = await samplePaperAndInk(imageUrl, canvasW, canvasH, {
+    x: canvasW * 0.35,
+    y: canvasH * 0.35,
+    w: canvasW * 0.3,
+    h: canvasH * 0.2,
+  })
+
+  for (const slot of slots) {
+    const colors = await samplePaperAndInk(imageUrl, canvasW, canvasH, {
+      x: slot.x,
+      y: slot.y,
+      w: slot.w,
+      h: slot.h,
+    })
+    const lineCount = (slot.text.match(/\n/g) || []).length + 1
+    const padX = Math.max(4, slot.fontSize * 0.2)
+    const padY = Math.max(2, slot.fontSize * 0.15)
+    const isName = slot.bind === 'studentName'
+    const isProgram = slot.bind === 'programName'
 
     elements.push({
       id: createElementId(),
       type: 'text',
-      x: t.x,
-      y: t.y,
-      width: Math.max(28, isProgram ? Math.max(t.w, canvasW * 0.5) : t.w + 4),
-      height: Math.max(t.fontSize * 1.15 * lineCount, t.h),
+      x: Math.max(0, slot.x - padX),
+      y: Math.max(0, slot.y - padY),
+      width: Math.min(canvasW, Math.max(slot.w + padX * 2, isProgram ? canvasW * 0.45 : slot.w + 8)),
+      height: Math.min(canvasH, Math.max(slot.h + padY * 2, slot.fontSize * 1.2 * lineCount)),
       rotation: 0,
       zIndex: z++,
-      text: t.text,
-      fontFamily:
-        isBrand && !isSerifBody ? BUILDER_FONT_FAMILIES[4] : BUILDER_FONT_FAMILIES[0],
-      fontSize: t.fontSize,
-      fontWeight: t.bold || isTitle || isProgram ? 'bold' : 'normal',
-      fontStyle: t.italic || isSerifBody || bind === 'studentName' ? 'italic' : 'normal',
+      text: slot.text,
+      fontFamily: BUILDER_FONT_FAMILIES[0],
+      fontSize: slot.fontSize,
+      fontWeight: slot.bold || isName || isProgram ? 'bold' : 'normal',
+      fontStyle: slot.italic || isName || isProgram ? 'italic' : 'normal',
       textAlign:
-        isSerifBody || isProgram || bind === 'studentName'
+        isName || isProgram
           ? 'center'
-          : isBrand
-            ? 'left'
-            : guessTextAlign(t, canvasW),
-      color: isBrand && /research|consultancy/i.test(flat) ? '#1a5c3a' : t.color || '#0f172a',
-      fill: 'transparent',
+          : slot.bind === 'dateIssued'
+            ? 'right'
+            : slot.bind === 'certificateNumber'
+              ? 'left'
+              : guessTextAlign(slot, canvasW),
+      color: colors.ink || pageSample.ink,
+      // Cover printed sample text so live student data replaces it cleanly
+      fill: colors.paper || pageSample.paper,
       stroke: 'transparent',
       strokeWidth: 0,
       opacity: 1,
-      bind: bind || 'none',
+      bind: slot.bind,
       locked: false,
     })
   }
 
-  const withFields = ensureRequiredDynamicFields(elements, canvasW, canvasH, kind)
+  // Cover printed sample QR if we can find it, then place a live verification QR
+  onProgress?.('Placing verification QR…', 80)
+  try {
+    const shapes = await detectGraphicElements(
+      imageUrl,
+      canvasW,
+      canvasH,
+      textBlocks.map((t) => ({ x: t.x, y: t.y, w: t.w, h: t.h })),
+    )
+    const qrShape = shapes.find((s) => s.shape === 'image' && s.kind === 'qr')
+    if (qrShape && qrShape.shape === 'image') {
+      const qrColors = await samplePaperAndInk(imageUrl, canvasW, canvasH, qrShape)
+      elements.push({
+        id: createElementId(),
+        type: 'rect',
+        x: qrShape.x - 4,
+        y: qrShape.y - 4,
+        width: qrShape.w + 8,
+        height: qrShape.h + 8,
+        rotation: 0,
+        zIndex: z++,
+        fill: qrColors.paper || pageSample.paper,
+        opacity: 1,
+        bind: 'none',
+        locked: true,
+        text: 'qr-cover',
+      })
+      elements.push({
+        ...createVerificationQrElement({ width: canvasW, height: canvasH }),
+        x: qrShape.x,
+        y: qrShape.y,
+        width: qrShape.w,
+        height: qrShape.h,
+        zIndex: z++,
+        locked: false,
+      })
+    }
+  } catch {
+    /* QR optional — ensureRequiredDynamicFields may add a default */
+  }
+
+  const withFields = ensureRequiredDynamicFields(
+    elements,
+    canvasW,
+    canvasH,
+    kind,
+    pageSample.paper,
+    pageSample.ink,
+  )
   const capped = withFields.slice(0, 180)
-  onProgress?.('Done', 100)
+  onProgress?.('Template matches your upload', 100)
 
   return normalizeVerificationQr({
     version: 1,
     canvas: {
       width: canvasW,
       height: canvasH,
-      background: '#ffffff',
+      background: pageSample.paper || '#ffffff',
       paperKey,
     },
     elements: capped,

@@ -6,7 +6,7 @@ import CertificateUploadOwn from '@/components/certificates/CertificateUploadOwn
 
 const CertificateManagementPanel = () => (
   <DocumentDesignPanel
-    hint="Pick a design, build your own, or upload a sample."
+    hint="Three independent paths: pick a library template, build on canvas, or upload a sample to generate a ready template. Builder and Upload never share designs."
     templates={<CertificateTemplateLibrary />}
     builder={<CertificateLogoPageBuilder variant="page-builder" />}
     upload={<CertificateUploadOwn />}

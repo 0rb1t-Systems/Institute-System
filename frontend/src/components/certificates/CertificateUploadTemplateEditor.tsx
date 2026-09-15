@@ -10,7 +10,7 @@ import { useAuth } from '@/contexts/AuthContext'
 import {
   getCertificateTemplateSignedUrl,
   getDocumentTemplate,
-  saveDocumentLogoBuilder,
+  saveDocumentUploadBuilder,
   type DocumentTemplateType,
 } from '@/lib/api'
 import {
@@ -19,6 +19,7 @@ import {
   createBoundPhotoElement,
   createBoundTextElement,
   createVerificationQrElement,
+  customUploadHasGeneratedDesign,
   getBuilderLayerLabel,
   getDocumentBuilderQuickFields,
   hasVerificationQr,
@@ -29,6 +30,7 @@ import {
   normalizeVerificationQr,
   resolveBuilderText,
   type BuilderBinding,
+  type CustomUploadMeta,
   type LogoBuilderDesign,
 } from '@/lib/certificateBuilder'
 import {
@@ -93,8 +95,9 @@ const CertificateUploadTemplateEditor = ({
       try {
         const tpl = await getDocumentTemplate(docType)
         if (cancelled) return
-        if (tpl?.config?.logo_builder) {
-          setDesign(normalizeLogoBuilderDesign(tpl.config.logo_builder))
+        const upload = tpl?.config?.custom_upload as CustomUploadMeta | undefined
+        if (customUploadHasGeneratedDesign(upload)) {
+          setDesign(normalizeLogoBuilderDesign(upload!.design))
         } else {
           setDesign(null)
         }
@@ -155,7 +158,7 @@ const CertificateUploadTemplateEditor = ({
 
   const sampleData: CertificateRenderData = useMemo(() => {
     const base = {
-      layoutKey: 'logo_builder' as const,
+      layoutKey: 'custom_upload' as const,
       institutionName: getInstitutionDisplayName(institution),
       primary: getInstitutionPrimary(institution),
       accent: getInstitutionAccent(institution),
@@ -328,10 +331,10 @@ const CertificateUploadTemplateEditor = ({
     if (!design) return
     setSaving(true)
     try {
-      await saveDocumentLogoBuilder(docType, normalizeLogoBuilderDesign(design), true)
+      await saveDocumentUploadBuilder(docType, normalizeLogoBuilderDesign(design), true)
       toast({
-        title: 'Template saved',
-        description: `Your ${docLabel.toLowerCase()} template is active. Issued documents use real student data.`,
+        title: 'Upload template saved',
+        description: `Your uploaded ${docLabel.toLowerCase()} is live. Page Builder designs stay unchanged.`,
       })
     } catch (err) {
       toast({
@@ -346,9 +349,9 @@ const CertificateUploadTemplateEditor = ({
 
   if (loading) {
     return (
-      <Card className="bg-slate-900 border-slate-800">
+      <Card className="border-emerald-900/40 bg-gradient-to-b from-slate-950 to-slate-900">
         <CardContent className="flex justify-center py-10">
-          <Loader2 className="h-6 w-6 animate-spin text-slate-400" />
+          <Loader2 className="h-6 w-6 animate-spin text-emerald-400/80" />
         </CardContent>
       </Card>
     )
@@ -359,18 +362,21 @@ const CertificateUploadTemplateEditor = ({
   const layers = design.elements.slice().sort((a, b) => (b.zIndex || 0) - (a.zIndex || 0))
 
   return (
-    <Card className="bg-slate-900 border-slate-800">
-      <CardHeader className="pb-2">
+    <Card className="overflow-hidden border-emerald-900/40 bg-gradient-to-b from-emerald-950/20 via-slate-950 to-slate-900">
+      <CardHeader className="border-b border-emerald-900/30 pb-3">
         <div className="flex flex-wrap items-start justify-between gap-2">
           <div>
-            <CardTitle className="text-white text-base">Editable certificate</CardTitle>
-            <CardDescription>
-              Fully built template — drag, edit fonts, lock, delete. Save & use. Issued certificates
-              use real student data.
+            <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-emerald-400/90">
+              Upload editor
+            </p>
+            <CardTitle className="mt-1 text-base text-white">Editable {docLabel.toLowerCase()} from upload</CardTitle>
+            <CardDescription className="mt-1">
+              Drag, resize, lock, or delete layers. Save & use activates this upload path only — not
+              Page Builder.
             </CardDescription>
           </div>
-          <Badge className="bg-emerald-600/20 text-emerald-300 border-emerald-700/40">
-            Fully editable
+          <Badge className="border-emerald-700/40 bg-emerald-600/20 text-emerald-300">
+            Upload design
           </Badge>
         </div>
       </CardHeader>
@@ -395,7 +401,7 @@ const CertificateUploadTemplateEditor = ({
           <Button
             type="button"
             size="sm"
-            className="bg-indigo-600 hover:bg-indigo-500"
+            className="bg-emerald-600 hover:bg-emerald-500"
             disabled={saving}
             onClick={handleSave}
           >

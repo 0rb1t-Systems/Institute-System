@@ -220,6 +220,21 @@ export type CustomUploadMeta = {
   field_layout?: UploadFieldLayout | null
   /** Editable text/cover layers extracted or drawn on the uploaded paper. */
   paper_layers?: PaperContentLayer[] | null
+  /**
+   * Editable clone produced by Upload → Generate.
+   * Stored separately from config.logo_builder so Page Builder stays independent.
+   */
+  design?: LogoBuilderDesign | null
+}
+
+/** True when Upload Own has a generated editable design (not the Page Builder slot). */
+export function customUploadHasGeneratedDesign(
+  upload: CustomUploadMeta | Record<string, unknown> | null | undefined,
+): boolean {
+  if (!upload || typeof upload !== 'object') return false
+  const design = (upload as CustomUploadMeta).design
+  if (!design || typeof design !== 'object') return false
+  return Array.isArray(design.elements) && design.elements.length > 0
 }
 
 /** Student data slots matched onto an uploaded document design. */

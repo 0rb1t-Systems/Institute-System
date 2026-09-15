@@ -561,7 +561,7 @@ const InvoiceView = ({ student, payments, enrollment, activeClass, onEditPayment
 
               backgroundUrl={customRenderData.customBackgroundUrl}
 
-              composeUpload={layoutKey === 'custom_upload'}
+              composeUpload={layoutKey === 'custom_upload' && !customRenderData.logoBuilderDesign}
 
             />
 

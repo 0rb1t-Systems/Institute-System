@@ -11,10 +11,11 @@ type Props = {
 }
 
 /** Shared layout for certificate / transcript / invoice design tools. */
-const DocumentDesignPanel = ({ templates, builder, upload }: Props) => {
+const DocumentDesignPanel = ({ hint, templates, builder, upload }: Props) => {
   return (
     <Tabs defaultValue="templates" className="w-full">
-      <div className="px-2 sm:px-3">
+      <div className="space-y-2 px-2 sm:px-3">
+        {hint ? <p className="text-xs text-slate-500">{hint}</p> : null}
         <TabsList className={settingsSubListClass}>
           <TabsTrigger value="templates" className={settingsSubTriggerClass}>
             <Award className="h-3.5 w-3.5" />
@@ -23,7 +24,7 @@ const DocumentDesignPanel = ({ templates, builder, upload }: Props) => {
           {builder ? (
             <TabsTrigger value="builder" className={settingsSubTriggerClass}>
               <LayoutTemplate className="h-3.5 w-3.5" />
-              Builder
+              Page Builder
             </TabsTrigger>
           ) : null}
           <TabsTrigger value="upload" className={settingsSubTriggerClass}>

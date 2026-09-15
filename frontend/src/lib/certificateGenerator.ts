@@ -29,6 +29,7 @@ import {
   extractCertStoragePath,
   getDesignPdfPageMm,
   isFullPageDecorElement,
+  customUploadHasGeneratedDesign,
   normalizeLogoBuilderDesign,
   normalizePaperLayers,
   normalizeVerificationQr,
@@ -74,10 +75,23 @@ export async function withLiveActiveCertificateTemplate(
 
     // Prefer an already-provided builder design (e.g. editor canvas export)
     if (
-      layoutKey === 'logo_builder' &&
+      (layoutKey === 'logo_builder' || layoutKey === 'custom_upload') &&
       certificateData.logoBuilderDesign &&
       typeof certificateData.logoBuilderDesign === 'object'
     ) {
+      const nextConfig =
+        layoutKey === 'custom_upload'
+          ? {
+              ...config,
+              custom_upload: {
+                ...(config.custom_upload || {}),
+                design: certificateData.logoBuilderDesign,
+              },
+            }
+          : {
+              ...config,
+              logo_builder: certificateData.logoBuilderDesign,
+            }
       return {
         ...certificateData,
         layoutKey,
@@ -87,15 +101,9 @@ export async function withLiveActiveCertificateTemplate(
           template: {
             ...(typeof prevTpl === 'object' ? prevTpl : {}),
             layout_key: layoutKey,
-            config: {
-              ...config,
-              logo_builder: certificateData.logoBuilderDesign,
-            },
+            config: nextConfig,
           },
-          config: {
-            ...config,
-            logo_builder: certificateData.logoBuilderDesign,
-          },
+          config: nextConfig,
         },
       }
     }
@@ -207,8 +215,11 @@ export function toCertificateRenderData(certificateData: Record<string, any>): C
 
   const logoBuilderDesign =
     certificateData.logoBuilderDesign ||
-    (tplConfig?.logo_builder
+    (layoutKey === 'logo_builder' && tplConfig?.logo_builder
       ? normalizeVerificationQr(normalizeLogoBuilderDesign(tplConfig.logo_builder))
+      : null) ||
+    (layoutKey === 'custom_upload' && customUploadHasGeneratedDesign(tplConfig?.custom_upload)
+      ? normalizeVerificationQr(normalizeLogoBuilderDesign(tplConfig.custom_upload.design))
       : null)
 
   return {
@@ -324,6 +335,22 @@ export async function hydrateCertificateRenderData(
     merged.config ||
     {}
   const upload = tplConfig?.custom_upload
+
+  // Generated Upload Own design — resolve images from custom_upload.design only
+  if (data.logoBuilderDesign || customUploadHasGeneratedDesign(upload)) {
+    const design =
+      data.logoBuilderDesign ||
+      normalizeVerificationQr(normalizeLogoBuilderDesign(upload.design))
+    const withImages = await resolveBuilderImageSrcs(design)
+    return {
+      ...data,
+      layoutKey: 'custom_upload',
+      logoBuilderDesign: withImages,
+      customBackgroundUrl: null,
+      customFieldLayout: null,
+      customPaperLayers: null,
+    }
+  }
 
   let url = data.customBackgroundUrl || null
   if (!url) {
@@ -557,8 +584,11 @@ async function prepareDataForPdfCapture(data: CertificateRenderData): Promise<Ce
 export async function generateCertificatePDF(certificateData: Record<string, any>): Promise<Blob> {
   const hydrated = await hydrateCertificateRenderData(certificateData)
   const data = await prepareDataForPdfCapture(hydrated)
-  const isUpload = data.layoutKey === 'custom_upload'
-  const isBuilder = data.layoutKey === 'logo_builder' && !!data.logoBuilderDesign?.canvas
+  const hasDesignCanvas = Boolean(data.logoBuilderDesign?.canvas)
+  const isBuilder =
+    hasDesignCanvas &&
+    (data.layoutKey === 'logo_builder' || data.layoutKey === 'custom_upload')
+  const isUpload = data.layoutKey === 'custom_upload' && !hasDesignCanvas
   const isLandscape = isLandscapeCertificateLayout(data.layoutKey)
 
   const aspect =

@@ -1829,10 +1829,10 @@ const CertificateLogoPageBuilder = ({
       <div className="relative z-40 border-b border-slate-800 bg-[var(--builder-bar)]">
         <div className="flex flex-wrap items-center gap-1 px-2 py-1">
           <span className="hidden text-[11px] font-semibold text-[var(--builder-text)] sm:inline">
-            {isUploadEdit ? 'Edit upload' : `${docLabel} Builder`}
+            {isUploadEdit ? 'Edit upload' : `Page Builder · ${docLabel}`}
           </span>
           {activeLayout === 'logo_builder' ? (
-            <Badge className="bg-emerald-600/20 text-emerald-300 border-emerald-700/40 text-[10px]">Active</Badge>
+            <Badge className="bg-violet-600/20 text-violet-200 border-violet-700/40 text-[10px]">Live builder</Badge>
           ) : hasSavedDesign ? (
             <Badge className="bg-amber-600/20 text-amber-200 border-amber-700/40 text-[10px]">Draft</Badge>
           ) : null}
