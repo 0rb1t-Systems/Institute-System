@@ -3593,13 +3593,34 @@ function mapRegistrationInquiry(row) {
 export const getGeneralRegistrations = async () => {
   const { data, error } = await supabase
     .from('registration_inquiries')
-    .select('*, class:classes(id, name)')
+    .select(`
+      *,
+      class:classes(id, name, program_type, course_id, diploma_id),
+      preferred_course:courses!preferred_course_id(id, name),
+      preferred_diploma:diplomas!preferred_diploma_id(id, name)
+    `)
     .order('created_at', { ascending: false })
   if (error) throw error
-  return (data || []).map((row) => ({
-    ...mapRegistrationInquiry(row),
-    class: row.class || null,
-  }))
+  return (data || []).map((row) => {
+    const preferredCourse = row.preferred_course || null
+    const preferredDiploma = row.preferred_diploma || null
+    const classRow = row.class || null
+    const programName =
+      preferredCourse?.name || preferredDiploma?.name || null
+    const programType = preferredCourse
+      ? 'course'
+      : preferredDiploma
+        ? 'diploma'
+        : classRow?.program_type || null
+    return {
+      ...mapRegistrationInquiry(row),
+      class: classRow,
+      preferred_course: preferredCourse,
+      preferred_diploma: preferredDiploma,
+      program_name: programName,
+      program_type: programType,
+    }
+  })
 }
 
 export const getPublicClassesBySubdomain = async (subdomain, affiliateId = null) => {

@@ -14,7 +14,15 @@ import { Textarea } from '@/components/ui/textarea';
 import { notify, MESSAGES } from '@/lib/notify';
 
 const GeneralRegistrationsList = () => {
-  const { generalRegistrations, approveRegistrationRecord, deleteRegistrationRecord, updateGeneralRegistration, users } = useData();
+  const {
+    generalRegistrations,
+    approveRegistrationRecord,
+    deleteRegistrationRecord,
+    updateGeneralRegistration,
+    users,
+    courses,
+    diplomas,
+  } = useData();
   const { user } = useAuth();
   const { toast } = useToast();
   const [searchTerm, setSearchTerm] = useState('');
@@ -37,9 +45,42 @@ const GeneralRegistrationsList = () => {
     return map;
   }, [users]);
 
+  const courseNameById = useMemo(() => {
+    const map = new Map();
+    for (const c of courses || []) map.set(c.id, c.name);
+    return map;
+  }, [courses]);
+
+  const diplomaNameById = useMemo(() => {
+    const map = new Map();
+    for (const d of diplomas || []) map.set(d.id, d.name);
+    return map;
+  }, [diplomas]);
+
   const resolveAffiliateName = (affiliateId) => {
     if (!affiliateId) return null;
     return affiliateNameById.get(affiliateId) || 'Referred';
+  };
+
+  const resolveProgramLabel = (reg) => {
+    const name =
+      reg.program_name ||
+      reg.preferred_course?.name ||
+      (reg.preferred_course_id ? courseNameById.get(reg.preferred_course_id) : null) ||
+      reg.preferred_diploma?.name ||
+      (reg.preferred_diploma_id ? diplomaNameById.get(reg.preferred_diploma_id) : null) ||
+      (reg.class?.course_id ? courseNameById.get(reg.class.course_id) : null) ||
+      (reg.class?.diploma_id ? diplomaNameById.get(reg.class.diploma_id) : null) ||
+      null;
+    if (!name) return null;
+    const type =
+      reg.program_type ||
+      (reg.preferred_course || reg.preferred_course_id ? 'course' : null) ||
+      (reg.preferred_diploma || reg.preferred_diploma_id ? 'diploma' : null) ||
+      reg.class?.program_type ||
+      null;
+    const typeLabel = type === 'diploma' ? 'Diploma' : type === 'course' ? 'Course' : null;
+    return { name, typeLabel };
   };
 
   // Categorize Registrations
@@ -221,7 +262,7 @@ const GeneralRegistrationsList = () => {
                     <TableHeader>
                         <TableRow className="border-slate-800 hover:bg-slate-800/50">
                             <TableHead className="text-slate-400">Student</TableHead>
-                            <TableHead className="text-slate-400">Class Applied</TableHead>
+                            <TableHead className="text-slate-400">Program</TableHead>
                             <TableHead className="text-slate-400">Affiliate</TableHead>
                             <TableHead className="text-slate-400">Date</TableHead>
                             <TableHead className="text-slate-400 text-right">Status</TableHead>
@@ -236,9 +277,20 @@ const GeneralRegistrationsList = () => {
                                         <div className="text-xs text-slate-500">{reg.student_email}</div>
                                     </TableCell>
                                     <TableCell className="text-slate-300">
-                                      {reg.class?.name || (
-                                        <span className="text-slate-500 italic">No class selected</span>
-                                      )}
+                                      {(() => {
+                                        const program = resolveProgramLabel(reg);
+                                        if (!program) {
+                                          return <span className="text-slate-500 italic">No program selected</span>;
+                                        }
+                                        return (
+                                          <div>
+                                            <div className="font-medium">{program.name}</div>
+                                            {program.typeLabel ? (
+                                              <div className="text-[11px] text-slate-500">{program.typeLabel}</div>
+                                            ) : null}
+                                          </div>
+                                        );
+                                      })()}
                                     </TableCell>
                                     <TableCell className="text-purple-300 text-sm">
                                         {resolveAffiliateName(reg.affiliate_id) || '—'}
@@ -289,7 +341,7 @@ const GeneralRegistrationsList = () => {
                         <TableRow className="border-slate-800 hover:bg-slate-800/50">
                             <TableHead className="text-slate-400">Applicant</TableHead>
                             <TableHead className="text-slate-400">Details</TableHead>
-                            <TableHead className="text-slate-400">Class</TableHead>
+                            <TableHead className="text-slate-400">Program</TableHead>
                             <TableHead className="text-slate-400">Affiliate</TableHead>
                             <TableHead className="text-slate-400">Date</TableHead>
                             <TableHead className="text-right text-slate-400">Actions</TableHead>
@@ -310,9 +362,20 @@ const GeneralRegistrationsList = () => {
                                         <div>Year: {reg.year}</div>
                                     </TableCell>
                                     <TableCell className="text-slate-300 font-medium">
-                                      {reg.class?.name || (
-                                        <span className="text-slate-500 italic">No class selected</span>
-                                      )}
+                                      {(() => {
+                                        const program = resolveProgramLabel(reg);
+                                        if (!program) {
+                                          return <span className="text-slate-500 italic">No program selected</span>;
+                                        }
+                                        return (
+                                          <div>
+                                            <div>{program.name}</div>
+                                            {program.typeLabel ? (
+                                              <div className="text-[11px] font-normal text-slate-500">{program.typeLabel}</div>
+                                            ) : null}
+                                          </div>
+                                        );
+                                      })()}
                                     </TableCell>
                                     <TableCell className="text-purple-300 text-sm">
                                         {resolveAffiliateName(reg.affiliate_id) || '—'}
