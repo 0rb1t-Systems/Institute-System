@@ -883,6 +883,8 @@ export const verifyStudentProfile = async (identifier, subdomain) => {
 
   if (!data?.valid) return { valid: false, data: null }
 
+  const enrollments = Array.isArray(data.enrollments) ? data.enrollments : []
+
   return {
     valid: true,
     data: {
@@ -900,6 +902,7 @@ export const verifyStudentProfile = async (identifier, subdomain) => {
       program_name: data.program_name || data.class_name,
       program_type: data.program_type,
       avatar_url: data.avatar_url || null,
+      enrollments,
     },
   }
 }

@@ -32,7 +32,7 @@ const academicStatusTone = (status?: string, platform?: boolean, light?: boolean
       ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
       : 'bg-emerald-600/25 text-emerald-300 border-emerald-500/40'
   }
-  if (s === 'enrolled' || s === 'verified') {
+  if (s === 'ongoing' || s === 'enrolled' || s === 'verified') {
     if (platform) return 'bg-teal-500/12 text-[var(--pf-text)] border-teal-500/30'
     return light
       ? 'bg-sky-50 text-sky-800 border-sky-200'
@@ -47,6 +47,13 @@ const academicStatusTone = (status?: string, platform?: boolean, light?: boolean
   return light
     ? 'bg-slate-100 text-slate-700 border-slate-200'
     : 'bg-slate-700/50 text-slate-300 border-slate-600/50'
+}
+
+type VerifyEnrollment = {
+  program_name?: string | null
+  class_name?: string | null
+  program_type?: string | null
+  status?: string | null
 }
 
 type Props = {
@@ -136,8 +143,28 @@ export default function StudentIdentityVerify({
   const institutionName = student?.institution_name || tenantName || 'Training Center'
   const logoUrl = student?.institution_logo_url || null
   const recordAccent = isPlatform ? brand : student?.theme_primary || brand
-  const programLabel = student?.program_name || student?.class_name || '—'
-  const academicStatus = student?.academic_status || 'Verified'
+  const enrollments: VerifyEnrollment[] = (
+    Array.isArray(student?.enrollments)
+      ? student.enrollments
+      : student?.program_name || student?.class_name
+        ? [
+            {
+              program_name: student.program_name || student.class_name,
+              class_name: student.class_name,
+              program_type: student.program_type,
+              status: student.academic_status || 'Verified',
+            },
+          ]
+        : []
+  ).slice().sort((a, b) => {
+    const rank = (s?: string | null) => {
+      const v = String(s || '').toLowerCase()
+      if (v === 'completed') return 0
+      if (v === 'ongoing' || v === 'enrolled') return 1
+      return 2
+    }
+    return rank(a.status) - rank(b.status)
+  })
   const idPlaceholder = studentIdVerifyPlaceholder(
     isPlatform
       ? null
@@ -356,35 +383,60 @@ export default function StudentIdentityVerify({
                 </div>
               </div>
 
-              <div className="grid grid-cols-1 gap-3 px-5 pb-5 sm:grid-cols-2">
-                <div className={cn('rounded-xl border p-3.5 text-left sm:col-span-2', panelCls)}>
+              <div className="grid grid-cols-1 gap-3 px-5 pb-5">
+                <div className={cn('rounded-xl border p-3.5 text-left', panelCls)}>
                   <div className="mb-2 flex items-center gap-1.5">
                     <Building2 className="h-3.5 w-3.5" style={{ color: recordAccent }} />
                     <p className={cn('text-[10px] font-semibold uppercase tracking-wider', faintCls)}>Institution</p>
                   </div>
                   <p className={cn('text-sm font-semibold leading-snug', titleCls)}>{institutionName}</p>
                 </div>
+
                 <div className={cn('rounded-xl border p-3.5 text-left', panelCls)}>
                   <div className="mb-2 flex items-center gap-1.5">
                     <BookOpen className={cn('h-3.5 w-3.5', isPlatform ? 'text-teal-600' : light ? 'text-sky-600' : 'text-sky-400')} />
                     <p className={cn('text-[10px] font-semibold uppercase tracking-wider', faintCls)}>
-                      Program / Course
+                      Programs / Courses
                     </p>
                   </div>
-                  <p className={cn('text-sm font-semibold leading-snug', titleCls)}>{programLabel}</p>
-                </div>
-                <div className={cn('rounded-xl border p-3.5 text-left', panelCls)}>
-                  <p className={cn('mb-2 text-[10px] font-semibold uppercase tracking-wider', faintCls)}>
-                    Academic Status
-                  </p>
-                  <span
-                    className={cn(
-                      'inline-flex items-center rounded-full border px-3 py-1 text-xs font-semibold',
-                      academicStatusTone(academicStatus, isPlatform, light),
-                    )}
-                  >
-                    {academicStatus}
-                  </span>
+
+                  {enrollments.length === 0 ? (
+                    <p className={cn('text-sm', mutedCls)}>No enrollment records found.</p>
+                  ) : (
+                    <ul
+                      className={cn(
+                        'divide-y',
+                        isPlatform
+                          ? 'divide-[var(--pf-line)]'
+                          : light
+                            ? 'divide-slate-200'
+                            : 'divide-slate-700/40',
+                      )}
+                    >
+                      {enrollments.map((item, idx) => {
+                        const programLabel = item.program_name || item.class_name || '—'
+                        const statusLabel = item.status || 'Verified'
+                        return (
+                          <li
+                            key={`${programLabel}-${idx}`}
+                            className="flex items-center justify-between gap-3 py-2.5 first:pt-0 last:pb-0"
+                          >
+                            <p className={cn('min-w-0 truncate text-sm font-semibold', titleCls)}>
+                              {programLabel}
+                            </p>
+                            <span
+                              className={cn(
+                                'inline-flex shrink-0 items-center rounded-full border px-2.5 py-1 text-[11px] font-semibold',
+                                academicStatusTone(statusLabel, isPlatform, light),
+                              )}
+                            >
+                              {statusLabel}
+                            </span>
+                          </li>
+                        )
+                      })}
+                    </ul>
+                  )}
                 </div>
               </div>
 
