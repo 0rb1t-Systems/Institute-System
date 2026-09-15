@@ -3170,6 +3170,7 @@ export const submitRatingResponse = async (data: {
     institution_id: me.institution_id,
     evaluation_id: data.evaluation_id,
     student_id: me.id,
+    source: 'student',
     answers: data.answers || [],
     submitted_at: new Date().toISOString(),
   }
@@ -3180,6 +3181,39 @@ export const submitRatingResponse = async (data: {
     .single()
   if (error) throw error
   return row
+}
+
+/** Public token-gated rating form (no login). */
+export const getPublicRatingEvaluation = async (token: string) => {
+  const { data, error } = await supabase.rpc('get_public_rating_evaluation', {
+    p_token: token,
+  })
+  if (error) throw error
+  return data
+}
+
+export const submitPublicRatingResponse = async (data: {
+  token: string
+  respondent_name: string
+  respondent_phone?: string | null
+  answers: Array<{ question_id: string; value: string }>
+}) => {
+  const { data: row, error } = await supabase.rpc('submit_public_rating_response', {
+    p_token: data.token,
+    p_respondent_name: data.respondent_name,
+    p_respondent_phone: data.respondent_phone || null,
+    p_answers: data.answers || [],
+  })
+  if (error) throw error
+  return row
+}
+
+export const rotateRatingPublicToken = async (evaluationId: string) => {
+  const { data, error } = await supabase.rpc('rotate_rating_public_token', {
+    p_evaluation_id: evaluationId,
+  })
+  if (error) throw error
+  return data as string
 }
 
 export const getExams = async () => {

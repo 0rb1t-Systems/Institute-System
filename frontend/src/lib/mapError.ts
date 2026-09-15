@@ -63,7 +63,35 @@ const CODE_MAP = {
   },
   INVALID_NAME: {
     title: 'Name required',
-    description: 'Please enter the student full name.',
+    description: 'Please enter your full name.',
+  },
+  INVALID_PHONE: {
+    title: 'Invalid phone',
+    description: 'Please enter a valid phone number.',
+  },
+  INVALID_TOKEN: {
+    title: 'Invalid link',
+    description: 'This feedback link is invalid. Ask the institution for a new link.',
+  },
+  CLOSED: {
+    title: 'Feedback closed',
+    description: 'This rating evaluation is closed. Ask the institution for an open link.',
+  },
+  RATE_LIMITED: {
+    title: 'Too many attempts',
+    description: 'Please wait a few minutes before submitting again.',
+  },
+  INVALID_ANSWERS: {
+    title: 'Incomplete answers',
+    description: 'Please answer every question with a valid choice.',
+  },
+  INCOMPLETE_ANSWERS: {
+    title: 'Incomplete answers',
+    description: 'Please answer every question before submitting.',
+  },
+  NO_QUESTIONS: {
+    title: 'Unavailable',
+    description: 'This feedback form has no questions yet.',
   },
   INVALID_EMAIL: {
     title: 'Invalid email',

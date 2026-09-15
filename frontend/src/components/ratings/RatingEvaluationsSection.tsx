@@ -28,6 +28,9 @@ import {
   ClipboardList,
   ListPlus,
   ClipboardPaste,
+  Copy,
+  Link as LinkIcon,
+  RefreshCw,
 } from 'lucide-react';
 import { formatDateTime } from '@/lib/utils';
 import { coursesForClass } from '@/lib/diplomaCourses';
@@ -54,6 +57,8 @@ import {
   parseBulkQuestions,
   type RatingQuestionDraft,
 } from '@/lib/ratingEvaluation';
+import { getTenantBaseUrl } from '@/lib/institution';
+import { rotateRatingPublicToken } from '@/lib/api';
 
 type Props = {
   /** Parent Assignments page binds Create Rating to this opener. */
@@ -62,7 +67,7 @@ type Props = {
 
 /** Rating evaluations list + create/edit dialog — lives on Assignments (not a separate nav page). */
 export default function RatingEvaluationsSection({ createOpenerRef }: Props) {
-  const { user } = useAuth();
+  const { user, institution } = useAuth();
   const {
     classes,
     courses,
@@ -73,9 +78,57 @@ export default function RatingEvaluationsSection({ createOpenerRef }: Props) {
     ratingResponses,
     saveRatingEvaluation,
     deleteRatingEvaluationData,
+    refreshData,
   } = useData();
   const { toast } = useToast();
   const navigate = useNavigate();
+  const [rotatingId, setRotatingId] = useState<string | null>(null);
+
+  const publicLinkFor = (ev: { public_token?: string | null }) => {
+    const token = String(ev?.public_token || '').trim();
+    if (!token) return '';
+    const base = institution ? getTenantBaseUrl(institution) : window.location.origin;
+    return `${base}/rate/${token}`;
+  };
+
+  const copyPublicLink = async (ev: { id: string; public_token?: string | null; title?: string }) => {
+    const link = publicLinkFor(ev);
+    if (!link) {
+      notify.validation('Public link is not ready yet. Refresh the page and try again.');
+      return;
+    }
+    try {
+      await navigator.clipboard.writeText(link);
+      toast({
+        title: 'Link copied',
+        description: 'Share this link so visitors can submit feedback without logging in.',
+      });
+    } catch {
+      notify.error(new Error('Clipboard failed'), {
+        context: 'RatingEvaluationsSection - copy link',
+        fallback: { title: 'Copy failed', description: 'Could not copy the link. Select it manually.' },
+      });
+    }
+  };
+
+  const rotateLink = async (ev: { id: string }) => {
+    setRotatingId(ev.id);
+    try {
+      await rotateRatingPublicToken(ev.id);
+      if (typeof refreshData === 'function') await refreshData();
+      toast({
+        title: 'Link rotated',
+        description: 'The old public link no longer works. Copy the new link to share.',
+      });
+    } catch (error) {
+      notify.error(error, {
+        context: 'RatingEvaluationsSection - rotate link',
+        fallback: MESSAGES.SAVE_FAILED,
+      });
+    } finally {
+      setRotatingId(null);
+    }
+  };
 
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editing, setEditing] = useState(null);
@@ -337,6 +390,44 @@ export default function RatingEvaluationsSection({ createOpenerRef }: Props) {
                         <span className="text-slate-300 font-medium">{stats.responses}</span>
                       </div>
                     </div>
+                    {ev.public_token && ev.is_active !== false ? (
+                      <div className="space-y-2 rounded-lg border border-slate-800/80 bg-slate-950/50 p-2.5">
+                        <p className="text-[11px] text-slate-400 flex items-center gap-1.5">
+                          <LinkIcon className="h-3.5 w-3.5 shrink-0" />
+                          Public feedback link (no login)
+                        </p>
+                        <div className="flex gap-1.5">
+                          <Input
+                            readOnly
+                            value={publicLinkFor(ev)}
+                            className="h-8 bg-slate-950 border-slate-700 text-[11px] font-mono text-slate-300"
+                            onFocus={(e) => e.target.select()}
+                          />
+                          <Button
+                            type="button"
+                            size="sm"
+                            className="h-8 shrink-0"
+                            onClick={() => copyPublicLink(ev)}
+                          >
+                            <Copy className="h-3.5 w-3.5 sm:mr-1.5" />
+                            <span className="hidden sm:inline">Copy</span>
+                          </Button>
+                          <Button
+                            type="button"
+                            size="sm"
+                            variant="outline"
+                            className="h-8 shrink-0 border-slate-700"
+                            disabled={rotatingId === ev.id}
+                            title="Invalidate old link and create a new one"
+                            onClick={() => rotateLink(ev)}
+                          >
+                            <RefreshCw
+                              className={`h-3.5 w-3.5 ${rotatingId === ev.id ? 'animate-spin' : ''}`}
+                            />
+                          </Button>
+                        </div>
+                      </div>
+                    ) : null}
                   </CardContent>
                   <CardFooter className="pt-2 gap-2">
                     <Button

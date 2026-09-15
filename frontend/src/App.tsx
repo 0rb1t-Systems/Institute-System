@@ -74,6 +74,7 @@ const VerificationPage = lazy(() => import('@/pages/public/VerificationPage'));
 const VerifyCertificatePage = lazy(() => import('@/pages/public/VerifyCertificatePage'));
 const PublicRegistrationPage = lazy(() => import('@/pages/public/PublicRegistrationPage'));
 const PublicGeneralRegistrationPage = lazy(() => import('@/pages/public/PublicGeneralRegistrationPage'));
+const PublicRatingPage = lazy(() => import('@/pages/public/PublicRatingPage'));
 const PublicCreateInstitutionPage = lazy(() => import('@/pages/public/PublicCreateInstitutionPage'));
 const ReportsPage = lazy(() => import('@/pages/ReportsPage'));
 const CertificatePage = lazy(() => import('@/pages/CertificatePage'));
@@ -285,6 +286,7 @@ const App = () => {
           <Route path="/register" element={<Lazy><PublicGeneralRegistrationPage /></Lazy>} />
           <Route path="/Registration" element={<Lazy><PublicGeneralRegistrationPage /></Lazy>} />
           <Route path="/register/:classId" element={<Lazy><PublicRegistrationPage /></Lazy>} />
+          <Route path="/rate/:token" element={<Lazy><PublicRatingPage /></Lazy>} />
 
           {/* Super Admin — System Owner only (isolated from tenant dashboards) */}
           <Route element={<ProtectedRoute roles={['super_admin']}><MainLayout /></ProtectedRoute>}>

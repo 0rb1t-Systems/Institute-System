@@ -192,9 +192,13 @@ const RatingFeedbackPage = () => {
   }, [questions, responses]);
 
   const selected = responses.find((r) => r.id === selectedId) || null;
-  const selectedStudent = selected
+  const selectedStudent = selected?.student_id
     ? students.find((s) => s.id === selected.student_id)
     : null;
+  const selectedDisplayName =
+    selectedStudent?.name ||
+    selected?.respondent_name ||
+    (selected?.source === 'public' ? 'Visitor' : 'Student');
 
   const responseHasComment = (r: (typeof responses)[number]) => {
     const textQs = questions.filter((q) => q.type === 'text');
@@ -203,6 +207,13 @@ const RatingFeedbackPage = () => {
       const ans = (r.answers || []).find((a) => a.question_id === q.id);
       return Boolean(ans?.value?.trim());
     });
+  };
+
+  const responseDisplayName = (r: (typeof responses)[number]) => {
+    if (r.student_id) {
+      return students.find((s) => s.id === r.student_id)?.name || 'Student';
+    }
+    return r.respondent_name || 'Visitor';
   };
 
   const resolveAnswerLabel = (q: (typeof questions)[number], value?: string) => {
@@ -330,7 +341,7 @@ const RatingFeedbackPage = () => {
           <h2 className="mb-3 text-[13px] font-medium text-slate-300">Individual responses</h2>
           <div className="space-y-2">
             {responses.map((r) => {
-              const student = students.find((s) => s.id === r.student_id);
+              const displayName = responseDisplayName(r);
               const active = selectedId === r.id;
               const hasComment = responseHasComment(r);
               return (
@@ -346,9 +357,10 @@ const RatingFeedbackPage = () => {
                 >
                   <div className="min-w-0 flex-1">
                     <p className="truncate text-[13px] font-medium text-slate-100">
-                      {student?.name || 'Student'}
+                      {displayName}
                     </p>
                     <p className="mt-0.5 text-[11px] text-slate-500">
+                      {r.source === 'public' ? 'Public link · ' : ''}
                       {formatDateTime(r.submitted_at)}
                     </p>
                   </div>
@@ -374,7 +386,7 @@ const RatingFeedbackPage = () => {
             <div className="mt-3 overflow-hidden rounded-xl border border-slate-800/90 bg-[#12171f]">
               <div className="flex items-center justify-between gap-2 border-b border-slate-800/80 px-3.5 py-2.5">
                 <span className="truncate text-[13px] font-medium text-slate-100">
-                  {selectedStudent?.name || 'Student'}
+                  {selectedDisplayName}
                 </span>
                 <span className="shrink-0 text-[10px] text-slate-500">
                   {formatDateTime(selected.submitted_at)}
