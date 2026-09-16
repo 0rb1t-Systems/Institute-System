@@ -1,13 +1,11 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useMemo } from 'react';
 import { Helmet } from 'react-helmet';
 import { useNavigate, useParams } from 'react-router-dom';
 import { Cell, Pie, PieChart, ResponsiveContainer } from 'recharts';
 import AnimatedPage from '@/components/AnimatedPage';
 import { Button } from '@/components/ui/button';
 import { useData } from '@/contexts/DataContext';
-import { ArrowLeft, MessageSquare } from 'lucide-react';
-import { formatDateTime } from '@/lib/utils';
-import { likertToneClass } from '@/lib/ratingEvaluation';
+import { ArrowLeft } from 'lucide-react';
 
 const TONE_META: Record<string, { label: string; color: string }> = {
   positive: { label: 'Agree', color: '#22c55e' },
@@ -79,7 +77,7 @@ function DonutChart({ slices, total }: { slices: Slice[]; total: number }) {
       : [{ key: 'empty', label: 'Empty', count: 1, pct: 0, color: '#1e293b' }];
 
   return (
-    <div className="relative h-[168px] w-[168px] shrink-0">
+    <div className="relative mx-auto h-36 w-36 shrink-0 overflow-hidden">
       <ResponsiveContainer width="100%" height="100%">
         <PieChart>
           <Pie
@@ -88,10 +86,10 @@ function DonutChart({ slices, total }: { slices: Slice[]; total: number }) {
             nameKey="label"
             cx="50%"
             cy="50%"
-            innerRadius={52}
-            outerRadius={76}
+            innerRadius={44}
+            outerRadius={64}
             stroke="none"
-            paddingAngle={total > 0 && slices.length > 1 ? 2 : 0}
+            paddingAngle={total > 0 && slices.length > 1 ? 3 : 0}
             startAngle={90}
             endAngle={-270}
             isAnimationActive={false}
@@ -103,10 +101,8 @@ function DonutChart({ slices, total }: { slices: Slice[]; total: number }) {
         </PieChart>
       </ResponsiveContainer>
       <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center">
-        <span className="text-[22px] font-semibold tabular-nums leading-none text-white">
-          {total}
-        </span>
-        <span className="mt-1 text-[10px] font-medium uppercase tracking-[0.12em] text-slate-400">
+        <span className="text-xl font-semibold tabular-nums leading-none text-white">{total}</span>
+        <span className="mt-1 text-[10px] font-medium uppercase tracking-[0.14em] text-slate-400">
           Votes
         </span>
       </div>
@@ -117,14 +113,7 @@ function DonutChart({ slices, total }: { slices: Slice[]; total: number }) {
 const RatingFeedbackPage = () => {
   const { evaluationId } = useParams();
   const navigate = useNavigate();
-  const {
-    ratingEvaluations,
-    ratingQuestions,
-    ratingResponses,
-    classes,
-    courses,
-  } = useData();
-  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const { ratingEvaluations, ratingQuestions, ratingResponses, classes, courses } = useData();
 
   const evaluation = useMemo(
     () => ratingEvaluations.find((e) => e.id === evaluationId),
@@ -146,16 +135,6 @@ const RatingFeedbackPage = () => {
       ),
     [ratingResponses, evaluationId]
   );
-
-  useEffect(() => {
-    if (!responses.length) {
-      setSelectedId(null);
-      return;
-    }
-    setSelectedId((prev) =>
-      prev && responses.some((r) => r.id === prev) ? prev : null
-    );
-  }, [responses]);
 
   const courseName = courses.find((c) => c.id === evaluation?.course_id)?.name;
   const className = classes.find((c) => c.id === evaluation?.class_id)?.name;
@@ -190,26 +169,6 @@ const RatingFeedbackPage = () => {
     });
   }, [questions, responses]);
 
-  const selected = responses.find((r) => r.id === selectedId) || null;
-
-  const responseHasComment = (r: (typeof responses)[number]) => {
-    const textQs = questions.filter((q) => q.type === 'text');
-    if (!textQs.length) return false;
-    return textQs.some((q) => {
-      const ans = (r.answers || []).find((a) => a.question_id === q.id);
-      return Boolean(ans?.value?.trim());
-    });
-  };
-
-  /** Feedback is anonymous — never show respondent or student names. */
-  const responseLabel = (index: number) => `Response ${index + 1}`;
-
-  const resolveAnswerLabel = (q: (typeof questions)[number], value?: string) => {
-    if (value == null || value === '') return null;
-    const opt = Array.isArray(q.options) ? q.options.find((o) => o.value === value) : null;
-    return opt?.label || value;
-  };
-
   if (!evaluation) {
     return (
       <AnimatedPage>
@@ -229,17 +188,17 @@ const RatingFeedbackPage = () => {
         <title>Rating Feedback - Portal</title>
       </Helmet>
 
-      <div className="mb-5">
+      <div className="mb-8">
         <Button
           variant="ghost"
           size="sm"
-          className="mb-1 -ml-2 h-8 text-slate-400 hover:text-slate-100"
+          className="mb-2 -ml-2 h-8 text-slate-400 hover:text-slate-100"
           onClick={() => navigate('/assignments')}
         >
           <ArrowLeft className="mr-2 h-4 w-4" /> Back
         </Button>
-        <h1 className="text-xl font-semibold tracking-tight text-slate-100">{evaluation.title}</h1>
-        <p className="mt-0.5 text-xs text-slate-400">
+        <h1 className="text-2xl font-semibold tracking-tight text-slate-100">{evaluation.title}</h1>
+        <p className="mt-1 text-sm text-slate-400">
           {courseName ? (
             <>
               <span className="text-emerald-300/90">{courseName}</span>
@@ -253,172 +212,74 @@ const RatingFeedbackPage = () => {
         </p>
       </div>
 
-      <div className="grid gap-8 xl:grid-cols-[minmax(0,1.65fr)_minmax(340px,0.85fr)]">
-        {/* Summary by question */}
-        <section className="min-w-0">
-          <h2 className="mb-4 text-[13px] font-medium text-slate-300">Summary by question</h2>
-          <div className="grid gap-4 sm:grid-cols-2">
-            {aggregates.map((agg) => (
-              <article
-                key={agg.question.id}
-                className="rounded-xl border border-slate-800/90 bg-[#12171f] p-5 shadow-[0_1px_0_rgba(255,255,255,0.03)_inset]"
-              >
-                <p className="mb-5 text-[14px] leading-snug text-slate-100">
-                  <span className="mr-1 text-slate-500">{agg.qIndex + 1}.</span>
-                  {agg.question.text}
-                </p>
+      <section>
+        <h2 className="mb-5 text-sm font-medium text-slate-300">Summary by question</h2>
+        <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+          {aggregates.map((agg) => (
+            <article
+              key={agg.question.id}
+              className="flex min-w-0 flex-col rounded-2xl border border-slate-800 bg-[#12171f] p-6"
+            >
+              <p className="mb-6 text-[15px] font-medium leading-relaxed text-slate-100">
+                <span className="mr-1.5 text-slate-500">{agg.qIndex + 1}.</span>
+                {agg.question.text}
+              </p>
 
-                {agg.kind === 'choice' ? (
-                  <div className="flex flex-col items-center gap-5 sm:flex-row sm:items-center">
-                    <DonutChart slices={agg.slices} total={agg.answered} />
-                    <ul className="min-w-0 w-full flex-1 space-y-2.5">
-                      {agg.slices.length ? (
-                        agg.slices.map((slice) => (
-                          <li key={slice.key} className="flex items-center gap-2.5 text-[13px]">
-                            <span
-                              className="h-2.5 w-2.5 shrink-0 rounded-full"
-                              style={{ backgroundColor: slice.color }}
-                              aria-hidden
-                            />
-                            <span className="min-w-0 flex-1 text-slate-300">
-                              {slice.label}
-                            </span>
-                            <span className="shrink-0 tabular-nums text-slate-400">
-                              {slice.count} · {slice.pct}%
-                            </span>
-                          </li>
-                        ))
-                      ) : (
-                        <li className="text-[13px] text-slate-500">No votes yet</li>
-                      )}
-                    </ul>
-                  </div>
-                ) : (
-                  <div className="space-y-2">
-                    {agg.texts.length ? (
-                      agg.texts.slice(0, 3).map((text, i) => (
-                        <p
-                          key={`${agg.question.id}-t-${i}`}
-                          className="rounded-lg bg-slate-900/70 px-3 py-2 text-[13px] leading-relaxed text-slate-300"
+              {agg.kind === 'choice' ? (
+                <div className="mt-auto flex flex-col items-stretch gap-6 sm:flex-row sm:items-center">
+                  <DonutChart slices={agg.slices} total={agg.answered} />
+                  <ul className="min-w-0 flex-1 space-y-3">
+                    {agg.slices.length ? (
+                      agg.slices.map((slice) => (
+                        <li
+                          key={slice.key}
+                          className="grid grid-cols-[10px_minmax(0,1fr)_auto] items-center gap-x-3 gap-y-0"
                         >
-                          “{text}”
-                        </p>
+                          <span
+                            className="h-2.5 w-2.5 rounded-full"
+                            style={{ backgroundColor: slice.color }}
+                            aria-hidden
+                          />
+                          <span className="truncate text-sm text-slate-300">{slice.label}</span>
+                          <span className="whitespace-nowrap text-sm tabular-nums text-slate-400">
+                            {slice.count} · {slice.pct}%
+                          </span>
+                        </li>
                       ))
                     ) : (
-                      <p className="text-[13px] text-slate-500">No written answers</p>
+                      <li className="text-sm text-slate-500">No votes yet</li>
                     )}
-                    {agg.texts.length > 3 ? (
-                      <p className="text-[11px] text-slate-500">
-                        +{agg.texts.length - 3} more
+                  </ul>
+                </div>
+              ) : (
+                <div className="mt-auto space-y-2.5">
+                  {agg.texts.length ? (
+                    agg.texts.slice(0, 4).map((text, i) => (
+                      <p
+                        key={`${agg.question.id}-t-${i}`}
+                        className="rounded-xl bg-slate-900/80 px-3.5 py-2.5 text-sm leading-relaxed text-slate-300"
+                      >
+                        “{text}”
                       </p>
-                    ) : null}
-                  </div>
-                )}
-              </article>
-            ))}
-            {aggregates.length === 0 && (
-              <p className="col-span-full rounded-xl border border-dashed border-slate-800 py-10 text-center text-sm text-slate-500">
-                No questions.
-              </p>
-            )}
-          </div>
-        </section>
+                    ))
+                  ) : (
+                    <p className="text-sm text-slate-500">No written answers</p>
+                  )}
+                  {agg.texts.length > 4 ? (
+                    <p className="text-xs text-slate-500">+{agg.texts.length - 4} more</p>
+                  ) : null}
+                </div>
+              )}
+            </article>
+          ))}
 
-        {/* Individual responses — anonymous labels only */}
-        <section className="min-w-0 xl:sticky xl:top-4 xl:self-start">
-          <h2 className="mb-4 text-[13px] font-medium text-slate-300">Individual responses</h2>
-          <div className="space-y-2">
-            {responses.map((r, index) => {
-              const label = responseLabel(index);
-              const active = selectedId === r.id;
-              const hasComment = responseHasComment(r);
-              return (
-                <button
-                  key={r.id}
-                  type="button"
-                  onClick={() => setSelectedId((prev) => (prev === r.id ? null : r.id))}
-                  className={`flex w-full items-start gap-3 rounded-xl border px-4 py-3.5 text-left transition-colors ${
-                    active
-                      ? 'border-emerald-500/35 bg-emerald-950/25'
-                      : 'border-slate-800/90 bg-[#12171f] hover:border-slate-700 hover:bg-[#151b24]'
-                  }`}
-                >
-                  <div className="min-w-0 flex-1">
-                    <p className="truncate text-[13px] font-medium text-slate-100">
-                      {label}
-                    </p>
-                    <p className="mt-0.5 text-[11px] text-slate-500">
-                      {r.source === 'public' ? 'Public link · ' : 'Portal · '}
-                      {formatDateTime(r.submitted_at)}
-                    </p>
-                  </div>
-                  <MessageSquare
-                    className={`mt-0.5 h-4 w-4 shrink-0 ${
-                      hasComment ? 'text-slate-400' : 'text-slate-600'
-                    }`}
-                    strokeWidth={1.75}
-                    aria-hidden
-                  />
-                </button>
-              );
-            })}
-
-            {responses.length === 0 && (
-              <p className="rounded-xl border border-dashed border-slate-800 py-8 text-center text-xs text-slate-500">
-                No submissions yet.
-              </p>
-            )}
-          </div>
-
-          {selected ? (
-            <div className="mt-3 overflow-hidden rounded-xl border border-slate-800/90 bg-[#12171f]">
-              <div className="flex items-center justify-between gap-2 border-b border-slate-800/80 px-4 py-3">
-                <span className="truncate text-[13px] font-medium text-slate-100">
-                  {responseLabel(responses.findIndex((r) => r.id === selected.id))}
-                </span>
-                <span className="shrink-0 text-[10px] text-slate-500">
-                  {formatDateTime(selected.submitted_at)}
-                </span>
-              </div>
-              <div className="divide-y divide-slate-800/60">
-                {questions.map((q, idx) => {
-                  const ans = (selected.answers || []).find((a) => a.question_id === q.id);
-                  const label = resolveAnswerLabel(q, ans?.value);
-                  const opt =
-                    Array.isArray(q.options) &&
-                    q.options.find((o) => o.value === ans?.value);
-                  const tone = opt?.tone || toneForValue(ans?.value);
-                  const isChoice =
-                    Array.isArray(q.options) && q.options.length > 0 && q.type !== 'text';
-                  return (
-                    <div key={q.id} className="flex items-start gap-3 px-4 py-2.5">
-                      <p className="min-w-0 flex-1 text-[12px] leading-snug text-slate-400">
-                        <span className="mr-1 text-slate-600">{idx + 1}.</span>
-                        {q.text}
-                      </p>
-                      {label ? (
-                        isChoice ? (
-                          <span
-                            className={`shrink-0 rounded border px-2 py-0.5 text-[11px] font-medium ${likertToneClass(tone)}`}
-                          >
-                            {label}
-                          </span>
-                        ) : (
-                          <span className="max-w-[45%] shrink-0 text-[12px] leading-snug text-slate-200">
-                            {label}
-                          </span>
-                        )
-                      ) : (
-                        <span className="text-[10px] text-slate-600">—</span>
-                      )}
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-          ) : null}
-        </section>
-      </div>
+          {aggregates.length === 0 && (
+            <p className="col-span-full rounded-2xl border border-dashed border-slate-800 py-14 text-center text-sm text-slate-500">
+              No questions.
+            </p>
+          )}
+        </div>
+      </section>
     </AnimatedPage>
   );
 };

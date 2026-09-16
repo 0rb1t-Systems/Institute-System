@@ -225,18 +225,18 @@ const AssignmentsPage = () => {
             </div>
         </PageHeader>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 gap-5 md:grid-cols-2 xl:grid-cols-3">
             {filteredAssignments.map(assign => {
                 const stats = getSubmissionStats(assign.id);
                 const cls = classes.find((c) => c.id === assign.class_id);
                 const courseName = courses.find((c) => c.id === assign.course_id)?.name;
                 return (
-                    <Card key={assign.id} className="bg-slate-900/50 border-slate-800 flex flex-col">
-                        <CardHeader>
-                            <div className="flex justify-between items-start">
-                                <div>
-                                    <CardTitle className="text-lg text-slate-100 line-clamp-1" title={assign.title}>{assign.title}</CardTitle>
-                                    <CardDescription className="mt-1">
+                    <Card key={assign.id} className="flex min-h-[280px] min-w-0 flex-col overflow-hidden bg-slate-900/50 border-slate-800">
+                        <CardHeader className="space-y-0 pb-3">
+                            <div className="flex justify-between items-start gap-3">
+                                <div className="min-w-0 flex-1">
+                                    <CardTitle className="text-base text-slate-100 line-clamp-2 leading-snug" title={assign.title}>{assign.title}</CardTitle>
+                                    <CardDescription className="mt-1.5 line-clamp-1">
                                       {courseName ? (
                                         <>
                                           <span className="text-indigo-300">{courseName}</span>
@@ -247,9 +247,9 @@ const AssignmentsPage = () => {
                                       )}
                                     </CardDescription>
                                 </div>
-                                <div className="flex flex-col items-end gap-2">
+                                <div className="flex shrink-0 flex-col items-end gap-2">
                                     <span
-                                      className={`text-[10px] px-2 py-0.5 rounded border ${
+                                      className={`text-[10px] px-2 py-0.5 rounded border whitespace-nowrap ${
                                         assign.counts_toward_grade !== false
                                           ? 'border-amber-700/50 text-amber-300 bg-amber-950/30'
                                           : 'border-slate-600 text-slate-400 bg-slate-800/50'
@@ -263,26 +263,26 @@ const AssignmentsPage = () => {
                                 </div>
                             </div>
                         </CardHeader>
-                        <CardContent className="flex-1 space-y-4">
-                            <div className="flex items-center text-sm text-slate-400 gap-2">
-                                <Calendar className="h-4 w-4" />
-                                <span>Due: {formatDateTime(assign.due_date)}</span>
+                        <CardContent className="flex-1 space-y-3 pt-0">
+                            <div className="flex items-center text-sm text-slate-400 gap-2 min-w-0">
+                                <Calendar className="h-4 w-4 shrink-0" />
+                                <span className="truncate">Due: {formatDateTime(assign.due_date)}</span>
                             </div>
-                            <div className="flex items-center text-sm text-slate-400 gap-2">
-                                <CheckCircle className="h-4 w-4" />
-                                <span>
+                            <div className="flex items-start text-sm text-slate-400 gap-2 min-w-0">
+                                <CheckCircle className="mt-0.5 h-4 w-4 shrink-0" />
+                                <span className="leading-snug">
                                   {assign.counts_toward_grade !== false
                                     ? `Gradebook bonus: ${assign.total_marks} pts (added to exam)`
                                     : `Practice: ${assign.total_marks} pts (not in gradebook)`}
                                 </span>
                             </div>
                             {assign.attachment_url && (
-                                <div className="flex items-center text-sm text-blue-400 gap-2 bg-blue-950/20 p-2 rounded border border-blue-900/30">
-                                    <File className="h-3 w-3" />
-                                    <span className="truncate w-full">File Attached</span>
+                                <div className="flex items-center text-sm text-blue-400 gap-2 bg-blue-950/20 p-2 rounded border border-blue-900/30 min-w-0">
+                                    <File className="h-3 w-3 shrink-0" />
+                                    <span className="truncate">File Attached</span>
                                 </div>
                             )}
-                            <div className="flex justify-between items-center pt-2 border-t border-slate-800/50 mt-2">
+                            <div className="flex justify-between items-center pt-2 border-t border-slate-800/50 mt-auto">
                                 <div className="text-xs text-slate-500">
                                     Submitted: <span className="text-slate-300 font-medium">{stats.total}</span>
                                 </div>
@@ -292,15 +292,15 @@ const AssignmentsPage = () => {
                             </div>
                         </CardContent>
                         <CardFooter className="pt-2 gap-2">
-                            <Button variant="secondary" className="flex-1" onClick={() => navigate(`/assignments/${assign.id}/grading`)}>
-                                <Users className="mr-2 h-4 w-4" /> View Submissions
+                            <Button variant="secondary" className="min-w-0 flex-1" onClick={() => navigate(`/assignments/${assign.id}/grading`)}>
+                                <Users className="mr-2 h-4 w-4 shrink-0" /> <span className="truncate">View Submissions</span>
                             </Button>
-                            <Button variant="ghost" size="icon" onClick={() => handleOpenDialog(assign)}>
+                            <Button variant="ghost" size="icon" className="shrink-0" onClick={() => handleOpenDialog(assign)}>
                                 <Edit className="h-4 w-4" />
                             </Button>
                             <AlertDialog>
                                 <AlertDialogTrigger asChild>
-                                    <Button variant="ghost" size="icon" className="hover:bg-red-900/20 hover:text-red-400">
+                                    <Button variant="ghost" size="icon" className="shrink-0 hover:bg-red-900/20 hover:text-red-400">
                                         <Trash2 className="h-4 w-4" />
                                     </Button>
                                 </AlertDialogTrigger>

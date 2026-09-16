@@ -331,20 +331,20 @@ export default function RatingEvaluationsSection({ createOpenerRef }: Props) {
             <Star className="h-4 w-4 text-amber-400" />
             Rating Evaluations
           </h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+          <div className="grid grid-cols-1 gap-5 md:grid-cols-2 xl:grid-cols-3">
             {ratingEvaluations.map((ev) => {
               const stats = getStats(ev.id);
               const cls = classes.find((c) => c.id === ev.class_id);
               const courseName = courses.find((c) => c.id === ev.course_id)?.name;
               return (
-                <Card key={ev.id} className="bg-slate-900/50 border-slate-800 flex flex-col">
-                  <CardHeader>
-                    <div className="flex justify-between items-start gap-2">
-                      <div>
-                        <CardTitle className="text-lg text-slate-100 line-clamp-1" title={ev.title}>
+                <Card key={ev.id} className="flex min-h-[280px] min-w-0 flex-col overflow-hidden bg-slate-900/50 border-slate-800">
+                  <CardHeader className="space-y-0 pb-3">
+                    <div className="flex justify-between items-start gap-3">
+                      <div className="min-w-0 flex-1">
+                        <CardTitle className="text-base text-slate-100 line-clamp-2 leading-snug" title={ev.title}>
                           {ev.title}
                         </CardTitle>
-                        <CardDescription className="mt-1">
+                        <CardDescription className="mt-1.5 line-clamp-1">
                           {courseName ? (
                             <>
                               <span className="text-indigo-300">{courseName}</span>
@@ -355,9 +355,9 @@ export default function RatingEvaluationsSection({ createOpenerRef }: Props) {
                           )}
                         </CardDescription>
                       </div>
-                      <div className="flex flex-col items-end gap-2">
+                      <div className="flex shrink-0 flex-col items-end gap-2">
                         <span
-                          className={`text-[10px] px-2 py-0.5 rounded border ${
+                          className={`text-[10px] px-2 py-0.5 rounded border whitespace-nowrap ${
                             ev.is_active !== false
                               ? 'border-emerald-700/50 text-emerald-300 bg-emerald-950/30'
                               : 'border-slate-600 text-slate-400 bg-slate-800/50'
@@ -371,15 +371,15 @@ export default function RatingEvaluationsSection({ createOpenerRef }: Props) {
                       </div>
                     </div>
                   </CardHeader>
-                  <CardContent className="flex-1 space-y-3">
+                  <CardContent className="flex-1 space-y-3 pt-0">
                     {ev.due_date && (
-                      <div className="flex items-center text-sm text-slate-400 gap-2">
-                        <Calendar className="h-4 w-4" />
-                        <span>Due: {formatDateTime(ev.due_date)}</span>
+                      <div className="flex items-center text-sm text-slate-400 gap-2 min-w-0">
+                        <Calendar className="h-4 w-4 shrink-0" />
+                        <span className="truncate">Due: {formatDateTime(ev.due_date)}</span>
                       </div>
                     )}
                     <div className="flex items-center text-sm text-slate-400 gap-2">
-                      <ClipboardList className="h-4 w-4" />
+                      <ClipboardList className="h-4 w-4 shrink-0" />
                       <span>
                         {stats.questions} question{stats.questions === 1 ? '' : 's'}
                       </span>
@@ -391,16 +391,16 @@ export default function RatingEvaluationsSection({ createOpenerRef }: Props) {
                       </div>
                     </div>
                     {ev.public_token && ev.is_active !== false ? (
-                      <div className="space-y-2 rounded-lg border border-slate-800/80 bg-slate-950/50 p-2.5">
+                      <div className="mt-auto space-y-2 rounded-lg border border-slate-800/80 bg-slate-950/50 p-2.5 min-w-0">
                         <p className="text-[11px] text-slate-400 flex items-center gap-1.5">
                           <LinkIcon className="h-3.5 w-3.5 shrink-0" />
                           Public feedback link (no login)
                         </p>
-                        <div className="flex gap-1.5">
+                        <div className="flex min-w-0 gap-1.5">
                           <Input
                             readOnly
                             value={publicLinkFor(ev)}
-                            className="h-8 bg-slate-950 border-slate-700 text-[11px] font-mono text-slate-300"
+                            className="h-8 min-w-0 flex-1 bg-slate-950 border-slate-700 text-[11px] font-mono text-slate-300"
                             onFocus={(e) => e.target.select()}
                           />
                           <Button
@@ -432,12 +432,12 @@ export default function RatingEvaluationsSection({ createOpenerRef }: Props) {
                   <CardFooter className="pt-2 gap-2">
                     <Button
                       variant="secondary"
-                      className="flex-1"
+                      className="min-w-0 flex-1"
                       onClick={() => navigate(`/assignments/ratings/${ev.id}/feedback`)}
                     >
-                      <Users className="mr-2 h-4 w-4" /> View Feedback
+                      <Users className="mr-2 h-4 w-4 shrink-0" /> <span className="truncate">View Feedback</span>
                     </Button>
-                    <Button variant="ghost" size="icon" onClick={() => handleOpenDialog(ev)}>
+                    <Button variant="ghost" size="icon" className="shrink-0" onClick={() => handleOpenDialog(ev)}>
                       <Edit className="h-4 w-4" />
                     </Button>
                     <AlertDialog>
@@ -445,7 +445,7 @@ export default function RatingEvaluationsSection({ createOpenerRef }: Props) {
                         <Button
                           variant="ghost"
                           size="icon"
-                          className="hover:bg-red-900/20 hover:text-red-400"
+                          className="shrink-0 hover:bg-red-900/20 hover:text-red-400"
                         >
                           <Trash2 className="h-4 w-4" />
                         </Button>
