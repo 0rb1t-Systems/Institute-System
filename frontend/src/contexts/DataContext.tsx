@@ -193,12 +193,21 @@ export const DataProvider = ({ children }) => {
   /**
    * Fetch a set of slices. Concurrent requests for the same key are shared,
    * and a response is only applied if its generation is still current.
+   *
+   * `force: true` drops any in-flight promise for those keys and starts a
+   * fresh network request. Required after mutations — otherwise a soft refresh
+   * can reuse a getResults/getExams that started *before* the write and paint
+   * stale rows (success toast while grades look unsaved).
    */
-  const fetchKeys = useCallback(async (keys, generation) => {
+  const fetchKeys = useCallback(async (keys, generation, { force = false } = {}) => {
     const results = await Promise.allSettled(
       keys.map((key) => {
-        const existing = inFlightRef.current.get(key);
-        if (existing) return existing;
+        if (!force) {
+          const existing = inFlightRef.current.get(key);
+          if (existing) return existing;
+        } else {
+          inFlightRef.current.delete(key);
+        }
         const p = FETCHERS[key]().finally(() => {
           if (inFlightRef.current.get(key) === p) inFlightRef.current.delete(key);
         });
@@ -222,8 +231,15 @@ export const DataProvider = ({ children }) => {
   }, [SETTERS]);
 
   const loadData = useCallback(
-    async ({ soft = false, keys = null } = {}) => {
-      const generation = keys ? generationRef.current : (generationRef.current += 1);
+    async ({ soft = false, keys = null, force = false } = {}) => {
+      const isPartial = Boolean(keys);
+      const generation = isPartial ? generationRef.current : (generationRef.current += 1);
+
+      // Full reload: drop every shared in-flight promise. Otherwise the new
+      // generation can still join a pre-reload getResults and apply stale rows.
+      if (!isPartial) {
+        inFlightRef.current.clear();
+      }
 
       try {
         if (!soft) {
@@ -232,16 +248,16 @@ export const DataProvider = ({ children }) => {
         }
 
         if (keys) {
-          await fetchKeys(keys, generation);
+          await fetchKeys(keys, generation, { force });
           return;
         }
 
-        await fetchKeys(CORE_KEYS, generation);
+        await fetchKeys(CORE_KEYS, generation, { force: true });
         hasLoadedOnceRef.current = true;
         if (!soft) setLoading(false);
 
         // Secondary never blocks the UI.
-        fetchKeys(SECONDARY_KEYS, generation).catch((err) =>
+        fetchKeys(SECONDARY_KEYS, generation, { force: true }).catch((err) =>
           console.warn('Secondary data fetch failed', err)
         );
       } catch (err) {
@@ -346,11 +362,29 @@ export const DataProvider = ({ children }) => {
   const loadDataRef = useRef(loadData);
   loadDataRef.current = loadData;
 
-  /** Runs the mutation, then refreshes only the slices it can have changed. */
+  /** Merge upserted exam_results into local state by exam_id+student_id. */
+  const mergeExamResults = useCallback((prev, rows) => {
+    if (!rows?.length) return prev;
+    const byKey = new Map(
+      (prev || []).map((r) => [`${r.exam_id}:${r.student_id}`, r]),
+    );
+    for (const row of rows) {
+      if (!row?.exam_id || !row?.student_id) continue;
+      byKey.set(`${row.exam_id}:${row.student_id}`, row);
+    }
+    return Array.from(byKey.values());
+  }, []);
+
+  /**
+   * Runs the mutation, then force-refreshes only the slices it can have changed.
+   * Awaits the refresh so callers never toast "saved" against a stale cache.
+   */
   const runMutation = useCallback(async (scope, apiCall) => {
     const result = await apiCall();
     const keys = MUTATION_SCOPES[scope] || [];
-    if (keys.length) loadDataRef.current({ soft: true, keys });
+    if (keys.length) {
+      await loadDataRef.current({ soft: true, keys, force: true });
+    }
     return result;
   }, []);
 
@@ -469,8 +503,41 @@ export const DataProvider = ({ children }) => {
         }),
       updateExamPartial: (id, u) => runMutation('exam', () => api.updateExam(id, u)),
       deleteExamData: (id) => runMutation('exam', () => api.deleteExam(id)),
-      saveManualGrades: (gradesArray) =>
-        runMutation('exam', () => Promise.all(gradesArray.map((g) => api.upsertResult(g)))),
+      saveManualGrades: async (gradesArray) => {
+        const list = Array.isArray(gradesArray) ? gradesArray : [];
+        const outcomes = await Promise.allSettled(list.map((g) => api.upsertResult(g)));
+        const saved = [];
+        const failures = [];
+        outcomes.forEach((outcome, i) => {
+          if (outcome.status === 'fulfilled') saved.push(outcome.value);
+          else failures.push({ student_id: list[i]?.student_id, error: outcome.reason });
+        });
+
+        // Paint confirmed rows immediately so UI cannot flash empty after close.
+        if (saved.length) {
+          setResults((prev) => mergeExamResults(prev, saved));
+        }
+
+        // Force a fresh fetch — never reuse a pre-write in-flight getResults.
+        await loadDataRef.current({
+          soft: true,
+          keys: MUTATION_SCOPES.exam,
+          force: true,
+        });
+
+        if (failures.length) {
+          const err = Object.assign(
+            new Error(
+              failures.length === list.length
+                ? 'Failed to save grades.'
+                : `Saved ${saved.length} of ${list.length} grades; ${failures.length} failed.`,
+            ),
+            { partialFailures: failures, savedCount: saved.length },
+          );
+          throw err;
+        }
+        return saved;
+      },
       finalizeGradebookForClass: (classId) =>
         runMutation('transcript', () => api.finalizeGradebook(classId)),
       ensureStudentTranscript: (classId, studentId = null) =>
@@ -480,7 +547,7 @@ export const DataProvider = ({ children }) => {
 
       refreshData: () => loadDataRef.current({ soft: false }),
     }),
-    [runMutation]
+    [runMutation, mergeExamResults]
   );
 
   const value = useMemo(

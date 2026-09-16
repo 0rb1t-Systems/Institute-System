@@ -218,11 +218,12 @@ const ExaminationsPageContent = () => {
               return;
           }
 
+          // saveManualGrades awaits a forced results refresh — do not fire a
+          // parallel full refresh (that used to race and re-apply pre-save rows).
           await saveManualGrades(updates);
 
           toast({ title: "Success", description: MESSAGES.SUCCESS.GRADE_SAVED, className: "bg-green-600 border-green-700 text-white" });
           setMarkingContext(null);
-          setTimeout(() => refreshData(), 500);
       } catch (e) {
           notify.error(e, { context: 'ExaminationsPage - saveGrades', fallback: MESSAGES.SAVE_FAILED });
       } finally {
