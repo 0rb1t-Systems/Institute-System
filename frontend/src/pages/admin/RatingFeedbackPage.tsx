@@ -79,7 +79,7 @@ function DonutChart({ slices, total }: { slices: Slice[]; total: number }) {
       : [{ key: 'empty', label: 'Empty', count: 1, pct: 0, color: '#1e293b' }];
 
   return (
-    <div className="relative h-[112px] w-[112px] shrink-0">
+    <div className="relative h-[168px] w-[168px] shrink-0">
       <ResponsiveContainer width="100%" height="100%">
         <PieChart>
           <Pie
@@ -88,8 +88,8 @@ function DonutChart({ slices, total }: { slices: Slice[]; total: number }) {
             nameKey="label"
             cx="50%"
             cy="50%"
-            innerRadius={34}
-            outerRadius={50}
+            innerRadius={52}
+            outerRadius={76}
             stroke="none"
             paddingAngle={total > 0 && slices.length > 1 ? 2 : 0}
             startAngle={90}
@@ -103,10 +103,10 @@ function DonutChart({ slices, total }: { slices: Slice[]; total: number }) {
         </PieChart>
       </ResponsiveContainer>
       <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center">
-        <span className="text-[15px] font-semibold tabular-nums leading-none text-white">
+        <span className="text-[22px] font-semibold tabular-nums leading-none text-white">
           {total}
         </span>
-        <span className="mt-0.5 text-[9px] font-medium uppercase tracking-[0.12em] text-slate-400">
+        <span className="mt-1 text-[10px] font-medium uppercase tracking-[0.12em] text-slate-400">
           Votes
         </span>
       </div>
@@ -123,7 +123,6 @@ const RatingFeedbackPage = () => {
     ratingResponses,
     classes,
     courses,
-    students,
   } = useData();
   const [selectedId, setSelectedId] = useState<string | null>(null);
 
@@ -192,13 +191,6 @@ const RatingFeedbackPage = () => {
   }, [questions, responses]);
 
   const selected = responses.find((r) => r.id === selectedId) || null;
-  const selectedStudent = selected?.student_id
-    ? students.find((s) => s.id === selected.student_id)
-    : null;
-  const selectedDisplayName =
-    selectedStudent?.name ||
-    selected?.respondent_name ||
-    (selected?.source === 'public' ? 'Visitor' : 'Student');
 
   const responseHasComment = (r: (typeof responses)[number]) => {
     const textQs = questions.filter((q) => q.type === 'text');
@@ -209,12 +201,8 @@ const RatingFeedbackPage = () => {
     });
   };
 
-  const responseDisplayName = (r: (typeof responses)[number]) => {
-    if (r.student_id) {
-      return students.find((s) => s.id === r.student_id)?.name || 'Student';
-    }
-    return r.respondent_name || 'Visitor';
-  };
+  /** Feedback is anonymous — never show respondent or student names. */
+  const responseLabel = (index: number) => `Response ${index + 1}`;
 
   const resolveAnswerLabel = (q: (typeof questions)[number], value?: string) => {
     if (value == null || value === '') return null;
@@ -265,34 +253,34 @@ const RatingFeedbackPage = () => {
         </p>
       </div>
 
-      <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_280px] xl:grid-cols-[minmax(0,1fr)_300px]">
+      <div className="grid gap-8 xl:grid-cols-[minmax(0,1.65fr)_minmax(340px,0.85fr)]">
         {/* Summary by question */}
-        <section>
-          <h2 className="mb-3 text-[13px] font-medium text-slate-300">Summary by question</h2>
-          <div className="grid gap-3 sm:grid-cols-2">
+        <section className="min-w-0">
+          <h2 className="mb-4 text-[13px] font-medium text-slate-300">Summary by question</h2>
+          <div className="grid gap-4 sm:grid-cols-2">
             {aggregates.map((agg) => (
               <article
                 key={agg.question.id}
-                className="rounded-xl border border-slate-800/90 bg-[#12171f] p-4 shadow-[0_1px_0_rgba(255,255,255,0.03)_inset]"
+                className="rounded-xl border border-slate-800/90 bg-[#12171f] p-5 shadow-[0_1px_0_rgba(255,255,255,0.03)_inset]"
               >
-                <p className="mb-4 text-[13px] leading-snug text-slate-100">
+                <p className="mb-5 text-[14px] leading-snug text-slate-100">
                   <span className="mr-1 text-slate-500">{agg.qIndex + 1}.</span>
                   {agg.question.text}
                 </p>
 
                 {agg.kind === 'choice' ? (
-                  <div className="flex items-center gap-4">
+                  <div className="flex flex-col items-center gap-5 sm:flex-row sm:items-center">
                     <DonutChart slices={agg.slices} total={agg.answered} />
-                    <ul className="min-w-0 flex-1 space-y-2">
+                    <ul className="min-w-0 w-full flex-1 space-y-2.5">
                       {agg.slices.length ? (
                         agg.slices.map((slice) => (
-                          <li key={slice.key} className="flex items-center gap-2 text-[12px]">
+                          <li key={slice.key} className="flex items-center gap-2.5 text-[13px]">
                             <span
-                              className="h-2 w-2 shrink-0 rounded-full"
+                              className="h-2.5 w-2.5 shrink-0 rounded-full"
                               style={{ backgroundColor: slice.color }}
                               aria-hidden
                             />
-                            <span className="min-w-0 flex-1 truncate text-slate-300">
+                            <span className="min-w-0 flex-1 text-slate-300">
                               {slice.label}
                             </span>
                             <span className="shrink-0 tabular-nums text-slate-400">
@@ -301,7 +289,7 @@ const RatingFeedbackPage = () => {
                           </li>
                         ))
                       ) : (
-                        <li className="text-[12px] text-slate-500">No votes yet</li>
+                        <li className="text-[13px] text-slate-500">No votes yet</li>
                       )}
                     </ul>
                   </div>
@@ -311,13 +299,13 @@ const RatingFeedbackPage = () => {
                       agg.texts.slice(0, 3).map((text, i) => (
                         <p
                           key={`${agg.question.id}-t-${i}`}
-                          className="rounded-lg bg-slate-900/70 px-3 py-2 text-[12px] leading-relaxed text-slate-300"
+                          className="rounded-lg bg-slate-900/70 px-3 py-2 text-[13px] leading-relaxed text-slate-300"
                         >
                           “{text}”
                         </p>
                       ))
                     ) : (
-                      <p className="text-[12px] text-slate-500">No written answers</p>
+                      <p className="text-[13px] text-slate-500">No written answers</p>
                     )}
                     {agg.texts.length > 3 ? (
                       <p className="text-[11px] text-slate-500">
@@ -336,12 +324,12 @@ const RatingFeedbackPage = () => {
           </div>
         </section>
 
-        {/* Individual responses */}
-        <section className="lg:sticky lg:top-4 lg:self-start">
-          <h2 className="mb-3 text-[13px] font-medium text-slate-300">Individual responses</h2>
+        {/* Individual responses — anonymous labels only */}
+        <section className="min-w-0 xl:sticky xl:top-4 xl:self-start">
+          <h2 className="mb-4 text-[13px] font-medium text-slate-300">Individual responses</h2>
           <div className="space-y-2">
-            {responses.map((r) => {
-              const displayName = responseDisplayName(r);
+            {responses.map((r, index) => {
+              const label = responseLabel(index);
               const active = selectedId === r.id;
               const hasComment = responseHasComment(r);
               return (
@@ -349,7 +337,7 @@ const RatingFeedbackPage = () => {
                   key={r.id}
                   type="button"
                   onClick={() => setSelectedId((prev) => (prev === r.id ? null : r.id))}
-                  className={`flex w-full items-start gap-3 rounded-xl border px-3.5 py-3 text-left transition-colors ${
+                  className={`flex w-full items-start gap-3 rounded-xl border px-4 py-3.5 text-left transition-colors ${
                     active
                       ? 'border-emerald-500/35 bg-emerald-950/25'
                       : 'border-slate-800/90 bg-[#12171f] hover:border-slate-700 hover:bg-[#151b24]'
@@ -357,10 +345,10 @@ const RatingFeedbackPage = () => {
                 >
                   <div className="min-w-0 flex-1">
                     <p className="truncate text-[13px] font-medium text-slate-100">
-                      {displayName}
+                      {label}
                     </p>
                     <p className="mt-0.5 text-[11px] text-slate-500">
-                      {r.source === 'public' ? 'Public link · ' : ''}
+                      {r.source === 'public' ? 'Public link · ' : 'Portal · '}
                       {formatDateTime(r.submitted_at)}
                     </p>
                   </div>
@@ -384,9 +372,9 @@ const RatingFeedbackPage = () => {
 
           {selected ? (
             <div className="mt-3 overflow-hidden rounded-xl border border-slate-800/90 bg-[#12171f]">
-              <div className="flex items-center justify-between gap-2 border-b border-slate-800/80 px-3.5 py-2.5">
+              <div className="flex items-center justify-between gap-2 border-b border-slate-800/80 px-4 py-3">
                 <span className="truncate text-[13px] font-medium text-slate-100">
-                  {selectedDisplayName}
+                  {responseLabel(responses.findIndex((r) => r.id === selected.id))}
                 </span>
                 <span className="shrink-0 text-[10px] text-slate-500">
                   {formatDateTime(selected.submitted_at)}
@@ -403,20 +391,20 @@ const RatingFeedbackPage = () => {
                   const isChoice =
                     Array.isArray(q.options) && q.options.length > 0 && q.type !== 'text';
                   return (
-                    <div key={q.id} className="flex items-start gap-2 px-3.5 py-2">
-                      <p className="min-w-0 flex-1 text-[11px] leading-snug text-slate-400">
+                    <div key={q.id} className="flex items-start gap-3 px-4 py-2.5">
+                      <p className="min-w-0 flex-1 text-[12px] leading-snug text-slate-400">
                         <span className="mr-1 text-slate-600">{idx + 1}.</span>
                         {q.text}
                       </p>
                       {label ? (
                         isChoice ? (
                           <span
-                            className={`shrink-0 rounded border px-1.5 py-px text-[10px] font-medium ${likertToneClass(tone)}`}
+                            className={`shrink-0 rounded border px-2 py-0.5 text-[11px] font-medium ${likertToneClass(tone)}`}
                           >
                             {label}
                           </span>
                         ) : (
-                          <span className="max-w-[45%] shrink-0 text-[11px] leading-snug text-slate-200">
+                          <span className="max-w-[45%] shrink-0 text-[12px] leading-snug text-slate-200">
                             {label}
                           </span>
                         )

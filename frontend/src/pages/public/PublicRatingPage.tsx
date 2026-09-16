@@ -2,8 +2,6 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { Helmet } from 'react-helmet';
 import { useParams } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { getPublicRatingEvaluation, submitPublicRatingResponse } from '@/lib/api';
@@ -35,8 +33,6 @@ const PublicRatingPage = () => {
   const [success, setSuccess] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [evaluation, setEvaluation] = useState<PublicEval | null>(null);
-  const [name, setName] = useState('');
-  const [phone, setPhone] = useState('');
   const [answers, setAnswers] = useState<Record<string, string>>({});
 
   const questions = useMemo(
@@ -95,10 +91,6 @@ const PublicRatingPage = () => {
     e.preventDefault();
     if (!token || !evaluation) return;
 
-    if (name.trim().length < 2) {
-      notify.validation('Please enter your full name.');
-      return;
-    }
     const missing = questions.filter((q) => !String(answers[q.id] || '').trim());
     if (missing.length > 0) {
       notify.validation('Please answer every question before submitting.');
@@ -109,8 +101,6 @@ const PublicRatingPage = () => {
     try {
       await submitPublicRatingResponse({
         token,
-        respondent_name: name.trim(),
-        respondent_phone: phone.trim() || null,
         answers: questions.map((q) => ({
           question_id: q.id,
           value: String(answers[q.id] || '').trim(),
@@ -162,7 +152,8 @@ const PublicRatingPage = () => {
           </div>
           <h1 className="text-xl font-semibold text-slate-100">Thank you</h1>
           <p className="text-sm text-slate-400">
-            Your feedback was submitted to {evaluation.institution_name}. You can close this page.
+            Your anonymous feedback was submitted to {evaluation.institution_name}. You can close this
+            page.
           </p>
         </div>
       </div>
@@ -188,42 +179,12 @@ const PublicRatingPage = () => {
             <p className="text-sm text-slate-400 leading-relaxed">{evaluation.description}</p>
           ) : (
             <p className="text-sm text-slate-400">
-              Please share your honest feedback. No login is required.
+              Please share your honest feedback. Responses are anonymous — no name required.
             </p>
           )}
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-6">
-          <div className="rounded-xl border border-slate-800 bg-slate-900/60 p-4 space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="respondent_name">Your name</Label>
-              <Input
-                id="respondent_name"
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                placeholder="Full name"
-                autoComplete="name"
-                required
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="respondent_phone">
-                Phone <span className="text-slate-500 font-normal">(optional)</span>
-              </Label>
-              <Input
-                id="respondent_phone"
-                value={phone}
-                onChange={(e) => setPhone(e.target.value)}
-                placeholder="e.g. 0612345678"
-                autoComplete="tel"
-                inputMode="tel"
-              />
-              <p className="text-[11px] text-slate-500">
-                If you include a phone number, you can update your answers later with the same number.
-              </p>
-            </div>
-          </div>
-
           <div className="space-y-4">
             {questions.map((q, idx) => {
               const options = Array.isArray(q.options) ? q.options : [];

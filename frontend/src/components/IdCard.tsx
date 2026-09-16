@@ -14,7 +14,7 @@ import {
 } from '@/lib/institution'
 
 /** Fixed width so columns never collapse. Height follows content so nothing is clipped. */
-const CARD_WIDTH = 560
+const CARD_WIDTH = 680
 
 const INK = '#334155'
 const CHIP_H = 16
@@ -349,96 +349,87 @@ const IdCard = ({
             className="relative flex flex-col rounded-[14px] overflow-hidden shadow-2xl select-none text-left"
             style={cardShell}
           >
-            {/* Header */}
+            {/* Header — role badge is shrink-0 so labels like INSTRUCTOR never clip */}
             <div
-              className="shrink-0"
-              style={{ height: 80, backgroundColor: primary, padding: '0 20px 0 18px' }}
+              className="shrink-0 flex items-center gap-3"
+              style={{ minHeight: 88, backgroundColor: primary, padding: '14px 20px 14px 18px' }}
             >
-              <table cellPadding={0} cellSpacing={0} style={{ width: '100%', height: 80, borderCollapse: 'collapse' }}>
-                <tbody>
-                  <tr>
-                    <td valign="middle" style={{ verticalAlign: 'middle', width: 46, padding: 0 }}>
-                      {institution?.logo_url ? (
-                        <div
-                          className="rounded-full bg-white overflow-hidden shadow-sm ring-2 ring-white/40"
-                          style={{ width: 46, height: 46 }}
-                        >
-                          <img
-                            src={institution.logo_url}
-                            alt=""
-                            className="w-full h-full object-contain"
-                            crossOrigin="anonymous"
-                          />
-                        </div>
-                      ) : (
-                        <div
-                          className="rounded-full bg-white/15 border border-white/25 flex items-center justify-center text-white text-base font-black"
-                          style={{ width: 46, height: 46 }}
-                        >
-                          {brandName.slice(0, 1)}
-                        </div>
-                      )}
-                    </td>
-                    <td valign="middle" style={{ verticalAlign: 'middle', padding: '0 12px', minWidth: 0 }}>
-                      <div
-                        className="font-black uppercase"
-                        style={{
-                          color: '#ffffff',
-                          fontSize: 20,
-                          lineHeight: '22px',
-                          letterSpacing: '0.12em',
-                          whiteSpace: 'nowrap',
-                        }}
-                      >
-                        {brandName}
-                      </div>
-                      {brandRest ? (
-                        <div
-                          className="font-bold uppercase"
-                          style={{
-                            color: 'rgba(255,255,255,0.86)',
-                            fontSize: 10,
-                            lineHeight: '12px',
-                            letterSpacing: '0.22em',
-                            marginTop: 3,
-                            whiteSpace: 'nowrap',
-                          }}
-                        >
-                          {brandRest}
-                        </div>
-                      ) : null}
-                    </td>
-                    <td valign="middle" style={{ verticalAlign: 'middle', width: 1, whiteSpace: 'nowrap', padding: 0, textAlign: 'right' }}>
-                      <span
-                        className="inline-block px-3 py-1.5 rounded-md border font-bold uppercase"
-                        style={{
-                          borderColor: 'rgba(255,255,255,0.35)',
-                          backgroundColor: 'rgba(255,255,255,0.18)',
-                          color: '#ffffff',
-                          fontSize: 10,
-                          lineHeight: '14px',
-                          letterSpacing: '0.14em',
-                        }}
-                      >
-                        {roleLabel}
-                      </span>
-                    </td>
-                  </tr>
-                </tbody>
-              </table>
+              {institution?.logo_url ? (
+                <div
+                  className="rounded-full bg-white overflow-hidden shadow-sm ring-2 ring-white/40 shrink-0"
+                  style={{ width: 48, height: 48 }}
+                >
+                  <img
+                    src={institution.logo_url}
+                    alt=""
+                    className="w-full h-full object-contain"
+                    crossOrigin="anonymous"
+                  />
+                </div>
+              ) : (
+                <div
+                  className="rounded-full bg-white/15 border border-white/25 flex items-center justify-center text-white text-base font-black shrink-0"
+                  style={{ width: 48, height: 48 }}
+                >
+                  {brandName.slice(0, 1)}
+                </div>
+              )}
+
+              <div className="min-w-0 flex-1">
+                <div
+                  className="font-black uppercase"
+                  style={{
+                    color: '#ffffff',
+                    fontSize: 20,
+                    lineHeight: '22px',
+                    letterSpacing: '0.12em',
+                  }}
+                >
+                  {brandName}
+                </div>
+                {brandRest ? (
+                  <div
+                    className="font-bold uppercase"
+                    style={{
+                      color: 'rgba(255,255,255,0.86)',
+                      fontSize: 10,
+                      lineHeight: '13px',
+                      letterSpacing: '0.14em',
+                      marginTop: 4,
+                    }}
+                  >
+                    {brandRest}
+                  </div>
+                ) : null}
+              </div>
+
+              <span
+                className="inline-block shrink-0 px-3 py-1.5 rounded-md border font-bold uppercase"
+                style={{
+                  borderColor: 'rgba(255,255,255,0.35)',
+                  backgroundColor: 'rgba(255,255,255,0.18)',
+                  color: '#ffffff',
+                  fontSize: 10,
+                  lineHeight: '14px',
+                  letterSpacing: '0.12em',
+                  whiteSpace: 'nowrap',
+                }}
+              >
+                {roleLabel}
+              </span>
             </div>
 
             {/* Body — auto height; photo + fields never share space with the QR */}
             <div
               className="grid items-start"
               style={{
-                gridTemplateColumns: '128px 1fr',
-                columnGap: 22,
-                padding: '20px 24px 16px 24px',
+                gridTemplateColumns: '140px 1fr',
+                columnGap: 24,
+                padding: '22px 26px 18px 26px',
               }}
             >
               <div className="flex flex-col items-center gap-2.5">
-                <div className="w-[118px] h-[118px] rounded-[10px] overflow-hidden bg-slate-100 shadow-md ring-[3px] ring-white shrink-0">
+                <div className="w-[128px] h-[128px] rounded-[10px] overflow-hidden bg-slate-100 shadow-md ring-[3px] ring-white shrink-0">
                   {user?.avatar_url ? (
                     <img
                       src={user.avatar_url}
@@ -448,17 +439,17 @@ const IdCard = ({
                     />
                   ) : (
                     <div className="w-full h-full flex items-center justify-center text-slate-300">
-                      <User className="h-14 w-14" />
+                      <User className="h-16 w-16" />
                     </div>
                   )}
                 </div>
                 {isExpired ? (
-                  <div className="w-full text-center px-2 py-1 rounded-full bg-red-50 text-red-600 text-[9px] font-bold uppercase tracking-[0.16em] border border-red-100">
+                  <div className="w-full text-center px-2 py-1 rounded-full bg-red-50 text-red-600 text-[10px] font-bold uppercase tracking-[0.16em] border border-red-100">
                     Expired
                   </div>
                 ) : (
-                  <div className="w-full flex items-center justify-center gap-1 px-2 py-1 rounded-full bg-emerald-50 text-emerald-700 text-[9px] font-bold uppercase tracking-[0.16em] border border-emerald-100">
-                    <BadgeCheck className="h-3 w-3 text-emerald-600 shrink-0" />
+                  <div className="w-full flex items-center justify-center gap-1 px-2 py-1 rounded-full bg-emerald-50 text-emerald-700 text-[10px] font-bold uppercase tracking-[0.16em] border border-emerald-100">
+                    <BadgeCheck className="h-3.5 w-3.5 text-emerald-600 shrink-0" />
                     Verified
                   </div>
                 )}

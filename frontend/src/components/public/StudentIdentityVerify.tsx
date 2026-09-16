@@ -11,6 +11,8 @@ import {
   BookOpen,
   BadgeCheck,
   Building2,
+  Briefcase,
+  CalendarDays,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -18,10 +20,10 @@ import { Label } from '@/components/ui/label'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { Dialog, DialogContent } from '@/components/ui/dialog'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
-import { verifyStudentProfile } from '@/lib/api'
+import { isStaffEmployeeCode, verifyStudentProfile } from '@/lib/api'
 import { MESSAGES } from '@/lib/messages'
 import { studentIdVerifyPlaceholder } from '@/lib/institution'
-import { cn } from '@/lib/utils'
+import { cn, formatDate } from '@/lib/utils'
 import { usePlatformTheme } from '@/contexts/PlatformThemeContext'
 
 const academicStatusTone = (status?: string, platform?: boolean, light?: boolean) => {
@@ -32,7 +34,7 @@ const academicStatusTone = (status?: string, platform?: boolean, light?: boolean
       ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
       : 'bg-emerald-600/25 text-emerald-300 border-emerald-500/40'
   }
-  if (s === 'ongoing' || s === 'enrolled' || s === 'verified') {
+  if (s === 'ongoing' || s === 'enrolled' || s === 'verified' || s === 'active') {
     if (platform) return 'bg-teal-500/12 text-[var(--pf-text)] border-teal-500/30'
     return light
       ? 'bg-sky-50 text-sky-800 border-sky-200'
@@ -50,6 +52,13 @@ const academicStatusTone = (status?: string, platform?: boolean, light?: boolean
 }
 
 type VerifyEnrollment = {
+  program_name?: string | null
+  class_name?: string | null
+  program_type?: string | null
+  status?: string | null
+}
+
+type VerifyAssignment = {
   program_name?: string | null
   class_name?: string | null
   program_type?: string | null
@@ -102,6 +111,7 @@ export default function StudentIdentityVerify({
   const [isOpen, setIsOpen] = useState(false)
   const [status, setStatus] = useState<'idle' | 'success' | 'error'>('idle')
   const [student, setStudent] = useState<any>(null)
+  const [lastQuery, setLastQuery] = useState(prefillId || '')
 
   const {
     register,
@@ -113,11 +123,13 @@ export default function StudentIdentityVerify({
   })
 
   const runVerify = async (studentId: string) => {
+    const query = String(studentId || '').trim()
     setIsLoading(true)
     setStatus('idle')
     setStudent(null)
+    setLastQuery(query)
     try {
-      const result: any = await verifyStudentProfile(studentId, isPlatform ? '' : tenantSlug)
+      const result: any = await verifyStudentProfile(query, isPlatform ? '' : tenantSlug)
       const studentData = result?.data || (result?.name ? result : null)
       if (result?.valid && studentData) {
         setStudent(studentData)
@@ -143,6 +155,7 @@ export default function StudentIdentityVerify({
   const institutionName = student?.institution_name || tenantName || 'Training Center'
   const logoUrl = student?.institution_logo_url || null
   const recordAccent = isPlatform ? brand : student?.theme_primary || brand
+  const isStaffRecord = student?.kind === 'staff'
   const enrollments: VerifyEnrollment[] = (
     Array.isArray(student?.enrollments)
       ? student.enrollments
@@ -165,6 +178,9 @@ export default function StudentIdentityVerify({
     }
     return rank(a.status) - rank(b.status)
   })
+  const assignments: VerifyAssignment[] = Array.isArray(student?.assignments)
+    ? student.assignments
+    : []
   const idPlaceholder = studentIdVerifyPlaceholder(
     isPlatform
       ? null
@@ -177,7 +193,13 @@ export default function StudentIdentityVerify({
       .slice(0, 2)
       .map((p) => p[0])
       .join('')
-      .toUpperCase() || 'ST'
+      .toUpperCase() || (isStaffRecord ? 'IN' : 'ST')
+  const credentialCode = isStaffRecord
+    ? student?.employee_code
+    : student?.student_code
+  const notFoundMessage = isStaffEmployeeCode(lastQuery)
+    ? MESSAGES.DOMAIN.STAFF_NOT_FOUND
+    : MESSAGES.DOMAIN.STUDENT_NOT_FOUND
 
   return (
     <div className="mx-auto w-full max-w-lg space-y-8">
@@ -196,8 +218,8 @@ export default function StudentIdentityVerify({
           <h2 className={cn('font-display text-2xl font-bold', titleCls)}>Verify Identity</h2>
           <p className={cn('mt-2 text-sm', mutedCls)}>
             {isPlatform
-              ? 'Enter a Student ID to confirm the official academic record at any institution on TvetFlow.'
-              : `Enter a Student ID to confirm the official academic record${tenantName ? ` at ${tenantName}` : ''}.`}
+              ? 'Enter a Student ID or instructor/staff Employee ID to confirm the official record at any institution on TvetFlow.'
+              : `Enter a Student ID or instructor/staff Employee ID to confirm the official record${tenantName ? ` at ${tenantName}` : ''}.`}
           </p>
         </div>
       </div>
@@ -214,7 +236,7 @@ export default function StudentIdentityVerify({
       >
         <div className="h-1 w-full" style={{ backgroundColor: brand }} />
         <CardHeader className="pb-2 text-center">
-          <CardTitle className={titleCls}>Student Verification</CardTitle>
+          <CardTitle className={titleCls}>Credential Verification</CardTitle>
           <CardDescription className={mutedCls}>
             {isPlatform ? 'Secure check against TvetFlow records' : 'Secure check against the institution registry'}
           </CardDescription>
@@ -237,7 +259,11 @@ export default function StudentIdentityVerify({
                 />
                 <Input
                   id="studentId"
-                  placeholder={idPlaceholder}
+                  placeholder={
+                    isStaffEmployeeCode(prefillId)
+                      ? 'INST-XXXXXX or STF-XXXXXX'
+                      : idPlaceholder
+                  }
                   className={cn(
                     'h-11 pl-9',
                     isPlatform
@@ -281,7 +307,7 @@ export default function StudentIdentityVerify({
       <Dialog open={isOpen} onOpenChange={setIsOpen}>
         <DialogContent
           className={cn(
-            'gap-0 overflow-hidden p-0 sm:max-w-lg',
+            'gap-0 overflow-hidden p-0 sm:max-w-xl',
             isPlatform
               ? 'border-[var(--pf-line)] bg-[var(--pf-surface)] text-[var(--pf-text)]'
               : light
@@ -309,9 +335,9 @@ export default function StudentIdentityVerify({
                   </div>
                   <div className="min-w-0 text-left">
                     <p className={cn('text-[11px] font-bold uppercase tracking-[0.14em]', titleCls)}>
-                      Official Record
+                      {isStaffRecord ? 'Official Staff Credential' : 'Official Record'}
                     </p>
-                    <p className={cn('mt-0.5 line-clamp-2 text-xs leading-snug', mutedCls)}>
+                    <p className={cn('mt-0.5 text-xs leading-snug', mutedCls)}>
                       {institutionName}
                     </p>
                   </div>
@@ -327,7 +353,7 @@ export default function StudentIdentityVerify({
                   )}
                 >
                   <CheckCircle2 className="h-3.5 w-3.5" />
-                  Verified Credential
+                  Verified
                 </div>
               </div>
 
@@ -335,7 +361,7 @@ export default function StudentIdentityVerify({
                 <div className="relative shrink-0">
                   <Avatar
                     className={cn(
-                      'h-20 w-20 border-2 shadow-lg',
+                      'h-24 w-24 border-2 shadow-lg',
                       isPlatform ? 'border-[var(--pf-line)]' : light ? 'border-slate-200' : 'border-slate-700',
                     )}
                   >
@@ -359,15 +385,15 @@ export default function StudentIdentityVerify({
                       isPlatform
                         ? 'border-[var(--pf-surface)] bg-teal-500'
                         : light
-                          ? 'border-white bg-amber-400'
-                          : 'border-[#121826] bg-amber-400',
+                          ? 'border-white bg-emerald-500'
+                          : 'border-[#121826] bg-emerald-500',
                     )}
                   >
-                    <BadgeCheck className={cn('h-3.5 w-3.5', isPlatform ? 'text-[#04201c]' : 'text-slate-900')} />
+                    <BadgeCheck className={cn('h-3.5 w-3.5', isPlatform ? 'text-[#04201c]' : 'text-white')} />
                   </span>
                 </div>
                 <div className="min-w-0 space-y-2 text-left">
-                  <h3 className={cn('truncate text-xl font-bold leading-tight', titleCls)}>{student.name}</h3>
+                  <h3 className={cn('text-xl font-bold leading-tight break-words', titleCls)}>{student.name}</h3>
                   <span
                     className={cn(
                       'inline-flex items-center rounded-full border px-3 py-1 font-mono text-sm tracking-wide',
@@ -378,8 +404,14 @@ export default function StudentIdentityVerify({
                           : 'border-slate-700 bg-slate-800 text-white',
                     )}
                   >
-                    {student.student_code}
+                    {credentialCode}
                   </span>
+                  {isStaffRecord ? (
+                    <p className={cn('text-sm font-semibold', mutedCls)}>
+                      {student.role_label || 'Staff'}
+                      {student.department ? ` · ${student.department}` : ''}
+                    </p>
+                  ) : null}
                 </div>
               </div>
 
@@ -392,56 +424,137 @@ export default function StudentIdentityVerify({
                   <p className={cn('text-sm font-semibold leading-snug', titleCls)}>{institutionName}</p>
                 </div>
 
-                <div className={cn('rounded-xl border p-3.5 text-left', panelCls)}>
-                  <div className="mb-2 flex items-center gap-1.5">
-                    <BookOpen className={cn('h-3.5 w-3.5', isPlatform ? 'text-teal-600' : light ? 'text-sky-600' : 'text-sky-400')} />
-                    <p className={cn('text-[10px] font-semibold uppercase tracking-wider', faintCls)}>
-                      Programs / Courses
-                    </p>
-                  </div>
+                {isStaffRecord ? (
+                  <>
+                    <div className="grid grid-cols-2 gap-3">
+                      <div className={cn('rounded-xl border p-3.5 text-left', panelCls)}>
+                        <div className="mb-2 flex items-center gap-1.5">
+                          <Briefcase className="h-3.5 w-3.5" style={{ color: recordAccent }} />
+                          <p className={cn('text-[10px] font-semibold uppercase tracking-wider', faintCls)}>Role</p>
+                        </div>
+                        <p className={cn('text-sm font-semibold leading-snug', titleCls)}>
+                          {student.role_label || 'Staff'}
+                        </p>
+                      </div>
+                      <div className={cn('rounded-xl border p-3.5 text-left', panelCls)}>
+                        <div className="mb-2 flex items-center gap-1.5">
+                          <CalendarDays className="h-3.5 w-3.5" style={{ color: recordAccent }} />
+                          <p className={cn('text-[10px] font-semibold uppercase tracking-wider', faintCls)}>
+                            Valid Until
+                          </p>
+                        </div>
+                        <p className={cn('text-sm font-semibold leading-snug', titleCls)}>
+                          {student.valid_until ? formatDate(student.valid_until) : 'Indefinite'}
+                        </p>
+                      </div>
+                    </div>
 
-                  {enrollments.length === 0 ? (
-                    <p className={cn('text-sm', mutedCls)}>No enrollment records found.</p>
-                  ) : (
-                    <ul
-                      className={cn(
-                        'divide-y',
-                        isPlatform
-                          ? 'divide-[var(--pf-line)]'
-                          : light
-                            ? 'divide-slate-200'
-                            : 'divide-slate-700/40',
+                    <div className={cn('rounded-xl border p-3.5 text-left', panelCls)}>
+                      <div className="mb-2 flex items-center gap-1.5">
+                        <BookOpen className={cn('h-3.5 w-3.5', isPlatform ? 'text-teal-600' : light ? 'text-sky-600' : 'text-sky-400')} />
+                        <p className={cn('text-[10px] font-semibold uppercase tracking-wider', faintCls)}>
+                          Assigned Classes
+                        </p>
+                      </div>
+
+                      {assignments.length === 0 ? (
+                        <p className={cn('text-sm', mutedCls)}>No class assignments on record.</p>
+                      ) : (
+                        <ul
+                          className={cn(
+                            'divide-y',
+                            isPlatform
+                              ? 'divide-[var(--pf-line)]'
+                              : light
+                                ? 'divide-slate-200'
+                                : 'divide-slate-700/40',
+                          )}
+                        >
+                          {assignments.map((item, idx) => {
+                            const programLabel = item.program_name || item.class_name || '—'
+                            const statusLabel = item.status || 'Active'
+                            return (
+                              <li
+                                key={`${programLabel}-${idx}`}
+                                className="flex items-center justify-between gap-3 py-2.5 first:pt-0 last:pb-0"
+                              >
+                                <div className="min-w-0">
+                                  <p className={cn('text-sm font-semibold break-words', titleCls)}>
+                                    {programLabel}
+                                  </p>
+                                  {item.class_name && item.class_name !== programLabel ? (
+                                    <p className={cn('mt-0.5 text-xs', mutedCls)}>{item.class_name}</p>
+                                  ) : null}
+                                </div>
+                                <span
+                                  className={cn(
+                                    'inline-flex shrink-0 items-center rounded-full border px-2.5 py-1 text-[11px] font-semibold',
+                                    academicStatusTone(statusLabel, isPlatform, light),
+                                  )}
+                                >
+                                  {statusLabel}
+                                </span>
+                              </li>
+                            )
+                          })}
+                        </ul>
                       )}
-                    >
-                      {enrollments.map((item, idx) => {
-                        const programLabel = item.program_name || item.class_name || '—'
-                        const statusLabel = item.status || 'Verified'
-                        return (
-                          <li
-                            key={`${programLabel}-${idx}`}
-                            className="flex items-center justify-between gap-3 py-2.5 first:pt-0 last:pb-0"
-                          >
-                            <p className={cn('min-w-0 truncate text-sm font-semibold', titleCls)}>
-                              {programLabel}
-                            </p>
-                            <span
-                              className={cn(
-                                'inline-flex shrink-0 items-center rounded-full border px-2.5 py-1 text-[11px] font-semibold',
-                                academicStatusTone(statusLabel, isPlatform, light),
-                              )}
+                    </div>
+                  </>
+                ) : (
+                  <div className={cn('rounded-xl border p-3.5 text-left', panelCls)}>
+                    <div className="mb-2 flex items-center gap-1.5">
+                      <BookOpen className={cn('h-3.5 w-3.5', isPlatform ? 'text-teal-600' : light ? 'text-sky-600' : 'text-sky-400')} />
+                      <p className={cn('text-[10px] font-semibold uppercase tracking-wider', faintCls)}>
+                        Programs / Courses
+                      </p>
+                    </div>
+
+                    {enrollments.length === 0 ? (
+                      <p className={cn('text-sm', mutedCls)}>No enrollment records found.</p>
+                    ) : (
+                      <ul
+                        className={cn(
+                          'divide-y',
+                          isPlatform
+                            ? 'divide-[var(--pf-line)]'
+                            : light
+                              ? 'divide-slate-200'
+                              : 'divide-slate-700/40',
+                        )}
+                      >
+                        {enrollments.map((item, idx) => {
+                          const programLabel = item.program_name || item.class_name || '—'
+                          const statusLabel = item.status || 'Verified'
+                          return (
+                            <li
+                              key={`${programLabel}-${idx}`}
+                              className="flex items-center justify-between gap-3 py-2.5 first:pt-0 last:pb-0"
                             >
-                              {statusLabel}
-                            </span>
-                          </li>
-                        )
-                      })}
-                    </ul>
-                  )}
-                </div>
+                              <p className={cn('min-w-0 text-sm font-semibold break-words', titleCls)}>
+                                {programLabel}
+                              </p>
+                              <span
+                                className={cn(
+                                  'inline-flex shrink-0 items-center rounded-full border px-2.5 py-1 text-[11px] font-semibold',
+                                  academicStatusTone(statusLabel, isPlatform, light),
+                                )}
+                              >
+                                {statusLabel}
+                              </span>
+                            </li>
+                          )
+                        })}
+                      </ul>
+                    )}
+                  </div>
+                )}
               </div>
 
               <p className={cn('px-5 pb-5 text-center text-[11px] leading-relaxed', faintCls)}>
-                This verification confirms the authenticity of the student&apos;s academic record at {institutionName}.
+                {isStaffRecord
+                  ? `This verification confirms the authenticity of the ${String(student.role_label || 'staff').toLowerCase()} credential at ${institutionName}.`
+                  : `This verification confirms the authenticity of the student's academic record at ${institutionName}.`}
               </p>
 
               <div className="px-5 pb-5">
@@ -455,7 +568,7 @@ export default function StudentIdentityVerify({
               <XCircle className="mx-auto h-12 w-12 text-red-500" />
               <div>
                 <h3 className={cn('text-xl font-bold', titleCls)}>Not Verified</h3>
-                <p className={cn('mt-2 text-sm', mutedCls)}>{MESSAGES.DOMAIN.STUDENT_NOT_FOUND}</p>
+                <p className={cn('mt-2 text-sm', mutedCls)}>{notFoundMessage}</p>
                 <p className={cn('mt-1 text-sm', faintCls)}>Please check the ID and try again.</p>
               </div>
               <Button variant="outline" onClick={() => setIsOpen(false)} className={outlineBtnCls}>

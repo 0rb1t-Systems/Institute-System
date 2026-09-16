@@ -4,7 +4,7 @@ import AnimatedPage from '@/components/AnimatedPage';
 import PageHeader from '@/components/PageHeader';
 import UniversalIdCard from '@/components/UniversalIdCard';
 import { useAuth } from '@/contexts/AuthContext';
-import { getProfile, updateProfile } from '@/lib/api';
+import { buildEmployeeIdCode, getProfile, updateProfile } from '@/lib/api';
 import { useToast } from '@/components/ui/use-toast';
 import { Loader2 } from 'lucide-react';
 
@@ -69,8 +69,9 @@ const StaffIdPage = () => {
             roleLabel="STAFF"
             department="Administration"
             expirationDate={expirationDate}
-            code={`STF-${user.id.substring(0,6).toUpperCase()}`}
+            code={buildEmployeeIdCode(user?.role || 'staff', user.id)}
             onRenew={handleRenew}
+            className="w-full max-w-none"
         />
         
          <div className="text-center text-xs text-slate-500 max-w-sm mt-8">

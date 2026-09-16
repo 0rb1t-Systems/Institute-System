@@ -863,6 +863,58 @@ export const updateStudentAndProfile = async (studentId, profileId, updates) => 
   return updateStudent(id, updates)
 }
 
+/** Employee ID printed on instructor/staff cards: INST-XXXXXX / STF-XXXXXX */
+export const isStaffEmployeeCode = (identifier) =>
+  /^(INST|STF|EMP)-[0-9A-Fa-f]{6,12}$/i.test(String(identifier || '').trim())
+
+export const buildEmployeeIdCode = (role, userId) => {
+  const suffix = String(userId || '').substring(0, 6).toUpperCase()
+  const r = String(role || '').toLowerCase()
+  if (r === 'instructor') return `INST-${suffix}`
+  if (r === 'staff' || r === 'admin') return `STF-${suffix}`
+  return `EMP-${suffix}`
+}
+
+export const verifyStaffProfile = async (identifier, subdomain) => {
+  const raw = String(identifier || '').trim()
+  if (!isStaffEmployeeCode(raw)) return { valid: false, data: null }
+
+  const slug = String(subdomain || '').trim().toLowerCase()
+  const { data, error } = await supabase.rpc('verify_staff_identity', {
+    p_identifier: raw,
+    p_subdomain: slug || null,
+  })
+  if (error) throw error
+  if (!data?.valid) return { valid: false, data: null }
+
+  const assignments = Array.isArray(data.assignments) ? data.assignments : []
+  const roleLabel =
+    data.role === 'instructor' ? 'Instructor' : data.role === 'admin' ? 'Admin' : 'Staff'
+
+  return {
+    valid: true,
+    data: {
+      kind: 'staff',
+      id: data.employee_code,
+      name: data.full_name,
+      employee_code: data.employee_code,
+      role: data.role,
+      role_label: roleLabel,
+      department: data.department || 'General',
+      email: null,
+      institution_name: data.institution_name,
+      institution_logo_url: data.institution_logo_url,
+      institution_subdomain: data.institution_subdomain,
+      theme_primary: data.theme_primary,
+      theme_accent: data.theme_accent,
+      avatar_url: data.avatar_url || null,
+      valid_until: data.valid_until || null,
+      assignments,
+      academic_status: 'Verified',
+    },
+  }
+}
+
 export const verifyStudentProfile = async (identifier, subdomain) => {
   const raw = String(identifier || '').trim()
   if (raw.length < 3) return { valid: false, data: null }
@@ -871,6 +923,11 @@ export const verifyStudentProfile = async (identifier, subdomain) => {
   if (raw.includes('@')) return { valid: false, data: null }
   if (/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(raw)) {
     return { valid: false, data: null }
+  }
+
+  // Instructor / staff employee codes use a dedicated RPC.
+  if (isStaffEmployeeCode(raw)) {
+    return verifyStaffProfile(raw, subdomain)
   }
 
   const slug = String(subdomain || '').trim().toLowerCase()
@@ -888,6 +945,7 @@ export const verifyStudentProfile = async (identifier, subdomain) => {
   return {
     valid: true,
     data: {
+      kind: 'student',
       id: data.student_code,
       name: data.student_name,
       student_code: data.student_code,
@@ -3194,14 +3252,15 @@ export const getPublicRatingEvaluation = async (token: string) => {
 
 export const submitPublicRatingResponse = async (data: {
   token: string
-  respondent_name: string
-  respondent_phone?: string | null
   answers: Array<{ question_id: string; value: string }>
+  /** @deprecated Public forms are anonymous; ignored if provided. */
+  respondent_name?: string | null
+  respondent_phone?: string | null
 }) => {
   const { data: row, error } = await supabase.rpc('submit_public_rating_response', {
     p_token: data.token,
-    p_respondent_name: data.respondent_name,
-    p_respondent_phone: data.respondent_phone || null,
+    p_respondent_name: null,
+    p_respondent_phone: null,
     p_answers: data.answers || [],
   })
   if (error) throw error

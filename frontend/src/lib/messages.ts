@@ -243,6 +243,8 @@ export const MESSAGES = {
     STUDENT_DELETE_ADMIN:
       'Only a tenant administrator can permanently delete students.',
     STUDENT_NOT_FOUND: 'Student not found.',
+    STAFF_NOT_FOUND: 'Instructor or staff credential not found.',
+    CREDENTIAL_NOT_FOUND: 'Credential not found.',
     DELETION_DEPENDENCIES:
       'This item could not be deleted because related records still depend on it. Please remove those first, then try again.',
   },
