@@ -27,6 +27,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '
 import { useToast } from '@/components/ui/use-toast';
 import { notify, MESSAGES } from '@/lib/notify';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Label } from '@/components/ui/label';
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { formatDate } from '@/lib/utils';
 import StudentIdCard from '@/components/StudentIdCard';
 import StudentRegistrationModal from '@/components/student/StudentRegistrationModal';
@@ -44,26 +46,71 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 
-// --- Manual Transfer ---
+// --- Enroll (add class) or Transfer (move between classes) ---
 const ManualTransferDialog = ({ student, closeDialog }) => {
     const { classes, enrollStudent, transferStudent, enrollments } = useData();
     const { toast } = useToast();
+    const [mode, setMode] = useState('enroll');
     const [selectedClassId, setSelectedClassId] = useState('');
+    const [fromEnrollmentId, setFromEnrollmentId] = useState('');
     const [loading, setLoading] = useState(false);
-    const activeClasses = useMemo(() => classes.filter(c => c.is_active), [classes]);
-    const currentActiveEnrollment = enrollments.find(e => e.student_id === student.id && e.status === 'active');
+
+    const activeEnrollments = useMemo(
+      () =>
+        enrollments.filter(
+          (e) => e.student_id === student.id && (e.status === 'active' || !e.status),
+        ),
+      [enrollments, student.id],
+    );
+    const enrolledClassIds = useMemo(
+      () => new Set(activeEnrollments.map((e) => e.class_id)),
+      [activeEnrollments],
+    );
+    const activeClasses = useMemo(() => classes.filter((c) => c.is_active), [classes]);
+    const availableClasses = useMemo(
+      () => activeClasses.filter((c) => !enrolledClassIds.has(c.id)),
+      [activeClasses, enrolledClassIds],
+    );
+
+    React.useEffect(() => {
+      if (activeEnrollments.length === 0) setMode('enroll');
+      else if (availableClasses.length === 0) setMode('transfer');
+      else setMode('enroll');
+      if (activeEnrollments.length === 1) {
+        setFromEnrollmentId(activeEnrollments[0].id);
+      }
+    }, [activeEnrollments, availableClasses.length]);
 
     const handleAction = async () => {
         if (!selectedClassId) return;
+        if (enrolledClassIds.has(selectedClassId)) {
+          toast({
+            variant: 'destructive',
+            title: 'Already enrolled',
+            description: 'This student is already in that class.',
+          });
+          return;
+        }
         setLoading(true);
         try {
-            if (currentActiveEnrollment) {
-                if (selectedClassId === currentActiveEnrollment.class_id) return;
-                await transferStudent(currentActiveEnrollment.id, selectedClassId);
-                toast({ title: "Success", description: MESSAGES.SUCCESS.TRANSFER_COMPLETED });
+            if (mode === 'transfer') {
+                const fromId =
+                  fromEnrollmentId ||
+                  (activeEnrollments.length === 1 ? activeEnrollments[0].id : '');
+                if (!fromId) {
+                  toast({
+                    variant: 'destructive',
+                    title: 'Choose current class',
+                    description: 'Select which class to move the student from.',
+                  });
+                  setLoading(false);
+                  return;
+                }
+                await transferStudent(fromId, selectedClassId);
+                toast({ title: 'Success', description: MESSAGES.SUCCESS.TRANSFER_COMPLETED });
             } else {
                 await enrollStudent({ student_id: student.id, class_id: selectedClassId });
-                toast({ title: "Success", description: MESSAGES.SUCCESS.ENROLLMENT_SAVED });
+                toast({ title: 'Success', description: MESSAGES.SUCCESS.ENROLLMENT_SAVED });
             }
             closeDialog();
         } catch (error) {
@@ -73,22 +120,103 @@ const ManualTransferDialog = ({ student, closeDialog }) => {
         }
     };
 
+    const canEnrollMore = availableClasses.length > 0;
+    const canTransfer = activeEnrollments.length > 0 && availableClasses.length > 0;
+
     return (
-        <DialogContent className="sm:max-w-[400px]">
-            <DialogHeader><DialogTitle>{currentActiveEnrollment ? 'Transfer Student' : 'Enroll Student'}</DialogTitle></DialogHeader>
+        <DialogContent className="sm:max-w-[440px]">
+            <DialogHeader>
+              <DialogTitle>
+                {mode === 'transfer' ? 'Transfer Student' : 'Enroll Student'}
+              </DialogTitle>
+            </DialogHeader>
             <div className="py-4 space-y-4">
-                <Select value={selectedClassId} onValueChange={setSelectedClassId}>
-                    <SelectTrigger><SelectValue placeholder="Choose a class..." /></SelectTrigger>
-                    <SelectContent>
-                        {activeClasses.map(c => (
-                            <SelectItem key={c.id} value={c.id} disabled={currentActiveEnrollment?.class_id === c.id}>{c.name}</SelectItem>
+                {activeEnrollments.length > 0 && (
+                  <div className="rounded-md border border-slate-800 bg-slate-950/50 px-3 py-2 text-sm text-slate-300">
+                    Currently in:{' '}
+                    {activeEnrollments
+                      .map((e) => classes.find((c) => c.id === e.class_id)?.name || 'Class')
+                      .join(', ')}
+                  </div>
+                )}
+
+                {activeEnrollments.length > 0 && (canEnrollMore || canTransfer) && (
+                  <RadioGroup
+                    value={mode}
+                    onValueChange={(v) => {
+                      setMode(v);
+                      setSelectedClassId('');
+                    }}
+                    className="gap-3"
+                  >
+                    <div className="flex items-start gap-2">
+                      <RadioGroupItem value="enroll" id="mode-enroll" disabled={!canEnrollMore} />
+                      <Label htmlFor="mode-enroll" className="font-normal leading-snug cursor-pointer">
+                        <span className="font-medium text-slate-100">Add to another class</span>
+                        <span className="block text-xs text-slate-400">
+                          Keep existing classes — enroll in an additional class.
+                        </span>
+                      </Label>
+                    </div>
+                    <div className="flex items-start gap-2">
+                      <RadioGroupItem value="transfer" id="mode-transfer" disabled={!canTransfer} />
+                      <Label htmlFor="mode-transfer" className="font-normal leading-snug cursor-pointer">
+                        <span className="font-medium text-slate-100">Transfer</span>
+                        <span className="block text-xs text-slate-400">
+                          Move from one class to another (grades are preserved).
+                        </span>
+                      </Label>
+                    </div>
+                  </RadioGroup>
+                )}
+
+                {mode === 'transfer' && activeEnrollments.length > 1 && (
+                  <div className="space-y-2">
+                    <Label className="text-slate-400 text-xs uppercase">From class</Label>
+                    <Select value={fromEnrollmentId} onValueChange={setFromEnrollmentId}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Choose current class..." />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {activeEnrollments.map((e) => (
+                          <SelectItem key={e.id} value={e.id}>
+                            {classes.find((c) => c.id === e.class_id)?.name || 'Class'}
+                          </SelectItem>
                         ))}
-                    </SelectContent>
-                </Select>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                )}
+
+                <div className="space-y-2">
+                  <Label className="text-slate-400 text-xs uppercase">
+                    {mode === 'transfer' ? 'To class' : 'Class'}
+                  </Label>
+                  <Select value={selectedClassId} onValueChange={setSelectedClassId}>
+                      <SelectTrigger><SelectValue placeholder="Choose a class..." /></SelectTrigger>
+                      <SelectContent>
+                          {availableClasses.map((c) => (
+                              <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
+                          ))}
+                      </SelectContent>
+                  </Select>
+                  {availableClasses.length === 0 && (
+                    <p className="text-xs text-slate-400">
+                      This student is already enrolled in every active class.
+                    </p>
+                  )}
+                </div>
             </div>
             <DialogFooter>
                  <Button variant="outline" onClick={closeDialog}>Cancel</Button>
-                 <Button onClick={handleAction} disabled={!selectedClassId || loading}>{loading ? 'Processing...' : 'Confirm'}</Button>
+                 <Button
+                   onClick={handleAction}
+                   disabled={!selectedClassId || loading || (mode === 'transfer' && activeEnrollments.length > 1 && !fromEnrollmentId)}
+                 >
+                   {loading ? (
+                     <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Processing...</>
+                   ) : mode === 'transfer' ? 'Transfer' : 'Enroll'}
+                 </Button>
             </DialogFooter>
         </DialogContent>
     );

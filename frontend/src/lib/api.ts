@@ -136,9 +136,10 @@ function classPayloadFromUi(data) {
 
 function mapEnrollment(row) {
   if (!row) return null
+  const status = row.status === 'inactive' ? 'inactive' : 'active'
   return {
     ...row,
-    status: 'active',
+    status,
     enrollment_date: row.enrolled_at,
   }
 }
@@ -2271,6 +2272,32 @@ export const getEnrollments = async () => {
 }
 
 export const createEnrollment = async (data) => {
+  // Re-activate soft-removed enrollment for same student+class (never duplicate / never wipe grades).
+  const { data: existing, error: existingErr } = await supabase
+    .from('enrollments')
+    .select('*')
+    .eq('student_id', data.student_id)
+    .eq('class_id', data.class_id)
+    .maybeSingle()
+  if (existingErr) throw existingErr
+  if (existing) {
+    if (existing.status === 'active' && data.discount_amount === undefined) {
+      return mapEnrollment(existing)
+    }
+    const updates: Record<string, unknown> = { status: 'active' }
+    if (data.discount_amount !== undefined) {
+      updates.discount_amount = Number(data.discount_amount)
+    }
+    const { data: revived, error: reviveErr } = await supabase
+      .from('enrollments')
+      .update(updates)
+      .eq('id', existing.id)
+      .select()
+      .single()
+    if (reviveErr) throw reviveErr
+    return mapEnrollment(revived)
+  }
+
   const me = await getMyProfile()
   const { data: row, error } = await supabase
     .from('enrollments')
@@ -2279,6 +2306,7 @@ export const createEnrollment = async (data) => {
       student_id: data.student_id,
       class_id: data.class_id,
       discount_amount: Number(data.discount_amount ?? 0),
+      status: 'active',
     })
     .select()
     .single()
@@ -2291,15 +2319,29 @@ export const updateEnrollment = async (id, data) => {
   if (data.class_id) updates.class_id = data.class_id
   if (data.student_id) updates.student_id = data.student_id
   if (data.discount_amount !== undefined) updates.discount_amount = Number(data.discount_amount)
+  if (data.status === 'active' || data.status === 'inactive') updates.status = data.status
   const { data: row, error } = await supabase.from('enrollments').update(updates).eq('id', id).select().single()
   if (error) throw error
   return mapEnrollment(row)
 }
 
+/** Soft-remove from roster. Keeps enrollment row, exam_results, and gradebook. */
 export const deleteEnrollment = async (id) => {
-  const { error } = await supabase.from('enrollments').delete().eq('id', id)
-  if (error) throw error
-  return true
+  const { data, error } = await supabase.rpc('deactivate_enrollment', {
+    p_enrollment_id: id,
+  })
+  if (error) {
+    // Fallback: direct status update (same safety — never hard-delete).
+    const { data: row, error: updErr } = await supabase
+      .from('enrollments')
+      .update({ status: 'inactive' })
+      .eq('id', id)
+      .select()
+      .single()
+    if (updErr) throw error
+    return mapEnrollment(row)
+  }
+  return mapEnrollment(data)
 }
 
 // --- Payments ---

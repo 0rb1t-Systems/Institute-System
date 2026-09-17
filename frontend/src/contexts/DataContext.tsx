@@ -81,7 +81,10 @@ const MUTATION_SCOPES = {
   course: ['courses', 'diplomaCourses', 'diplomaSemesters'],
   diploma: ['diplomas', 'courses', 'diplomaCourses', 'diplomaSemesters'],
   class: ['classes', 'classCourses'],
+  // Plain enroll / soft-unenroll: roster only (fast).
   enrollment: ['enrollments'],
+  // Transfer moves class_id and may copy grades — refresh academic slices.
+  enrollmentTransfer: ['enrollments', 'results', 'gradebookEntries', 'exams'],
   payment: ['payments', 'instructorEarnings', 'affiliateSettlements'],
   withdrawal: ['withdrawalRequests', 'instructorEarnings'],
   exam: ['exams', 'results', 'gradebookEntries'],
@@ -433,9 +436,26 @@ export const DataProvider = ({ children }) => {
         runMutation('enrollment', () =>
           api.createEnrollment({ ...d, status: 'active', enrollment_date: new Date().toISOString() })
         ),
-      updateEnrollment: (id, data) => runMutation('enrollment', () => api.updateEnrollment(id, data)),
+      enrollStudents: (list) =>
+        runMutation('enrollment', async () => {
+          const rows = Array.isArray(list) ? list : [];
+          return Promise.all(
+            rows.map((d) =>
+              api.createEnrollment({
+                ...d,
+                status: 'active',
+                enrollment_date: new Date().toISOString(),
+              }),
+            ),
+          );
+        }),
+      updateEnrollment: (id, data) =>
+        runMutation(data?.class_id ? 'enrollmentTransfer' : 'enrollment', () =>
+          api.updateEnrollment(id, data),
+        ),
       unenrollStudent: (id) => runMutation('enrollment', () => api.deleteEnrollment(id)),
-      transferStudent: (id, nid) => runMutation('enrollment', () => api.updateEnrollment(id, { class_id: nid })),
+      transferStudent: (id, nid) =>
+        runMutation('enrollmentTransfer', () => api.updateEnrollment(id, { class_id: nid })),
 
       addPayment: (d) => runMutation('payment', () => api.createPayment(d)),
       updatePaymentData: (id, d) => runMutation('payment', () => api.updatePayment(id, d)),

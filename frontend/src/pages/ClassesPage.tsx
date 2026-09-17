@@ -3,7 +3,7 @@ import { Helmet } from 'react-helmet';
 import AnimatedPage from '@/components/AnimatedPage';
 import PageHeader from '@/components/PageHeader';
 import { Button } from '@/components/ui/button';
-import { PlusCircle, Users, X, Search, ArrowRightLeft, Eye, FileSpreadsheet, Printer, Pencil, Trash2, CheckCircle2, XCircle, BookOpen, DollarSign, Clock, Percent, AlertTriangle, History } from 'lucide-react';
+import { PlusCircle, Users, X, Search, ArrowRightLeft, Eye, FileSpreadsheet, Printer, Pencil, Trash2, CheckCircle2, XCircle, BookOpen, DollarSign, Clock, Percent, AlertTriangle, History, Loader2 } from 'lucide-react';
 import { useData } from '@/contexts/DataContext';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -546,31 +546,46 @@ const ManageDiscountDialog = ({ enrollment, onClose }) => {
 };
 
 const ClassRosterDialog = ({ classData, isOpen, onClose }) => {
-    const { students, enrollments, enrollStudent, unenrollStudent } = useData();
+    const { students, enrollments, enrollStudents, unenrollStudent } = useData();
     const { toast } = useToast();
     const [selectedStudentIds, setSelectedStudentIds] = useState([]);
     const [searchQuery, setSearchQuery] = useState("");
     const [transferEnrollment, setTransferEnrollment] = useState(null);
     const [discountEnrollment, setDiscountEnrollment] = useState(null);
+    const [enrolling, setEnrolling] = useState(false);
+    const [removingId, setRemovingId] = useState(null);
 
     if (!classData) return null;
 
-    const classEnrollments = enrollments.filter(e => e.class_id === classData.id).sort((a, b) => Number(new Date(b.enrollment_date)) - Number(new Date(a.enrollment_date)));
+    const classEnrollments = enrollments
+        .filter((e) => e.class_id === classData.id && e.status !== 'inactive')
+        .sort((a, b) => Number(new Date(b.enrollment_date)) - Number(new Date(a.enrollment_date)));
     const enrolledStudentIds = classEnrollments.map(e => e.student_id);
     const availableStudents = students.filter(s => !enrolledStudentIds.includes(s.id) && s.name.toLowerCase().includes(searchQuery.toLowerCase()));
 
     const handleEnroll = async () => {
-        if (selectedStudentIds.length === 0) return;
+        if (selectedStudentIds.length === 0 || enrolling) return;
+        setEnrolling(true);
         try {
-            for (const studentId of selectedStudentIds) await enrollStudent({ student_id: studentId, class_id: classData.id });
+            // One batch + one enrollments refresh (not per-student full gradebook reload).
+            await enrollStudents(
+              selectedStudentIds.map((studentId) => ({
+                student_id: studentId,
+                class_id: classData.id,
+              })),
+            );
             setSelectedStudentIds([]);
             toast({ title: "Success", description: MESSAGES.SUCCESS.ENROLLMENT_SAVED });
         } catch (error) { notify.error(error, { context: 'ClassesPage - enroll', fallback: { title: 'Enrollment Failed', description: MESSAGES.DOMAIN.ENROLLMENT_FAILED } }); }
+        finally { setEnrolling(false); }
     };
 
     const handleRemove = async (enrollmentId) => {
+        if (removingId) return;
+        setRemovingId(enrollmentId);
         try { await unenrollStudent(enrollmentId); toast({ title: "Success", description: MESSAGES.SUCCESS.UPDATED }); } 
         catch (error) { notify.error(error, { context: 'ClassesPage - unenroll', fallback: MESSAGES.UPDATE_FAILED }); }
+        finally { setRemovingId(null); }
     };
 
     const toggleSelection = (id) => setSelectedStudentIds(prev => prev.includes(id) ? prev.filter(pid => pid !== id) : [...prev, id]);
@@ -601,7 +616,10 @@ const ClassRosterDialog = ({ classData, isOpen, onClose }) => {
                             </div>
                         ))}
                     </div>
-                    <Button onClick={handleEnroll} disabled={selectedStudentIds.length === 0} className="w-full shrink-0"><PlusCircle className="mr-2 h-4 w-4" /> Enroll</Button>
+                    <Button onClick={handleEnroll} disabled={selectedStudentIds.length === 0 || enrolling} className="w-full shrink-0">
+                      {enrolling ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <PlusCircle className="mr-2 h-4 w-4" />}
+                      {enrolling ? 'Enrolling...' : 'Enroll'}
+                    </Button>
                 </div>
                 <div className="flex-1 flex flex-col gap-4 min-w-0 min-h-0">
                     <div className="flex-1 overflow-auto border border-slate-800 rounded-md min-h-0">
@@ -631,7 +649,9 @@ const ClassRosterDialog = ({ classData, isOpen, onClose }) => {
                                             <TableCell className="text-right">
                                                  <Button variant="ghost" size="sm" onClick={() => setDiscountEnrollment(e)} className="hover:bg-slate-800 text-yellow-500 hover:text-yellow-400 mr-1" title="Manage Discount"><Percent className="h-3 w-3" /></Button>
                                                  <Button variant="ghost" size="sm" onClick={() => setTransferEnrollment(e)} className="hover:bg-slate-800 mr-1" title="Transfer"><ArrowRightLeft className="h-3 w-3" /></Button>
-                                                 <Button variant="ghost" size="sm" className="text-red-400 hover:bg-red-900/20 hover:text-red-300" onClick={() => handleRemove(e.id)} title="Remove"><X className="h-3 w-3" /></Button>
+                                                 <Button variant="ghost" size="sm" className="text-red-400 hover:bg-red-900/20 hover:text-red-300" onClick={() => handleRemove(e.id)} title="Remove" disabled={!!removingId}>
+                                                   {removingId === e.id ? <Loader2 className="h-3 w-3 animate-spin" /> : <X className="h-3 w-3" />}
+                                                 </Button>
                                             </TableCell>
                                         </TableRow>
                                     ) : null;
