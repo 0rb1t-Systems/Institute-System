@@ -21,6 +21,7 @@ import {
   COURSE_PROJECT_MAX_LEN,
   sanitizeCourseProject,
 } from '@/lib/institution';
+import { pickCanonicalManualExam } from '@/lib/manualExam';
 
 const ExaminationsPageContent = () => {
   const { user, institution } = useAuth();
@@ -57,11 +58,9 @@ const ExaminationsPageContent = () => {
   const activeClasses = useMemo(() => {
     if (!classes) return [];
 
-    // Keep inactive classes that already have exams/grades so recorded marks stay reachable.
-    const classIdsWithExams = new Set((exams || []).map((e) => e.class_id).filter(Boolean));
-    let relevantClasses = classes.filter(
-      (c) => c.is_active || classIdsWithExams.has(c.id),
-    );
+    // Active classes only — inactive cohorts with history stay reachable via Class Gradebook
+    // (including them here re-showed the same diploma program twice next to the live class).
+    let relevantClasses = classes.filter((c) => c.is_active);
     if (user?.role === 'instructor') {
         relevantClasses = relevantClasses.filter(c => c.instructor_id === user.id);
     }
@@ -105,11 +104,8 @@ const ExaminationsPageContent = () => {
   }, [classes, courses, classCourses, diplomaCourses, user, searchTerm, users, exams]);
   
   const handleOpenGrading = async (cls, course) => {
-      let exam = exams.find(e => 
-          e.class_id === cls.id && 
-          e.course_id === course.id && 
-          e.marking_type === 'manual'
-      );
+      // Always reuse the canonical container — never create a second exam for the same course.
+      let exam = pickCanonicalManualExam(exams, cls.id, course.id, results);
 
       if (!exam) {
           try {
@@ -124,7 +120,14 @@ const ExaminationsPageContent = () => {
                 description: 'Manual course grading container'
             });
             
-            await refreshData(); 
+            await refreshData();
+            exam = pickCanonicalManualExam(
+              // refresh may still be settling — prefer returned exam id
+              [...(exams || []), exam].filter(Boolean),
+              cls.id,
+              course.id,
+              results,
+            ) || exam;
           } catch (e) {
             toast({ variant: "destructive", title: "Unable to start grading", description: MESSAGES.UNEXPECTED.description });
             return;
@@ -299,7 +302,7 @@ const ExaminationsPageContent = () => {
                             <div className="mt-4 space-y-2">
                                 {cls.derivedCourses.length > 0 ? (
                                     cls.derivedCourses.map(course => {
-                                        const exam = exams.find(e => e.class_id === cls.id && e.course_id === course.id && e.marking_type === 'manual');
+                                        const exam = pickCanonicalManualExam(exams, cls.id, course.id, results);
                                         const gradedCount = exam ? results.filter(r => r.exam_id === exam.id).length : 0;
 
                                         return (

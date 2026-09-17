@@ -3285,12 +3285,27 @@ export const createExam = async (data) => {
   const me = await getMyProfile()
   const passingRaw = Number(data.passing_score ?? 50)
   const passing_score = Math.min(100, Math.max(0, Number.isFinite(passingRaw) ? passingRaw : 50))
+  const courseId = data.course_id || null
+
+  // One manual grading container per class+course (unique index enforced in DB).
+  if (courseId) {
+    const { data: existing, error: existingErr } = await supabase
+      .from('exams')
+      .select('*')
+      .eq('class_id', data.class_id)
+      .eq('course_id', courseId)
+      .eq('marking_type', 'manual')
+      .order('created_at', { ascending: true })
+    if (existingErr) throw existingErr
+    if (existing?.length) return mapExam(existing[0])
+  }
+
   const { data: row, error } = await supabase
     .from('exams')
     .insert({
       institution_id: me.institution_id,
       class_id: data.class_id,
-      course_id: data.course_id || null,
+      course_id: courseId,
       title: data.title,
       description: data.description || null,
       // Manual grading only — online MCQ exams are disabled.
@@ -3306,6 +3321,20 @@ export const createExam = async (data) => {
     })
     .select()
     .single()
+  // Concurrent Grade Course clicks: unique index → reuse the winner row.
+  if (error?.code === '23505' && courseId) {
+    const { data: raced, error: racedErr } = await supabase
+      .from('exams')
+      .select('*')
+      .eq('class_id', data.class_id)
+      .eq('course_id', courseId)
+      .eq('marking_type', 'manual')
+      .order('created_at', { ascending: true })
+      .limit(1)
+      .maybeSingle()
+    if (racedErr) throw racedErr
+    if (raced) return mapExam(raced)
+  }
   if (error) throw error
   return mapExam(row)
 }

@@ -11,6 +11,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { AlertCircle, Loader2, ScrollText } from 'lucide-react';
 import { useToast } from '@/components/ui/use-toast';
 import { notify, MESSAGES } from '@/lib/notify';
+import { dedupeManualExamsByCourse } from '@/lib/manualExam';
 
 const GradebookPage = () => {
   const { user } = useAuth();
@@ -21,11 +22,26 @@ const GradebookPage = () => {
   const [finalizing, setFinalizing] = useState(false);
 
   const availableClasses = useMemo(() => {
+    // Prefer active classes; keep inactive only when they already have marks
+    // so history stays reachable without listing every retired diploma cohort.
+    const classIdsWithMarks = new Set([
+      ...(exams || []).map((e) => e.class_id).filter(Boolean),
+      ...(gradebookEntries || []).map((g) => g.class_id).filter(Boolean),
+    ]);
+    let list = (classes || []).filter(
+      (c) => c.is_active || classIdsWithMarks.has(c.id),
+    );
     if (user?.role === 'instructor') {
-      return classes.filter((c) => c.instructor_id === user.id);
+      list = list.filter((c) => c.instructor_id === user.id);
     }
-    return classes;
-  }, [classes, user]);
+    // If both an active and inactive class exist for the same diploma, hide the inactive one.
+    const activeDiplomaIds = new Set(
+      list.filter((c) => c.is_active && c.diploma_id).map((c) => c.diploma_id),
+    );
+    return list.filter(
+      (c) => c.is_active || !c.diploma_id || !activeDiplomaIds.has(c.diploma_id),
+    );
+  }, [classes, user, exams, gradebookEntries]);
 
   const classData = useMemo(() => {
     if (!selectedClassId) return null;
@@ -53,8 +69,11 @@ const GradebookPage = () => {
       String(a.name || a.full_name || '').localeCompare(String(b.name || b.full_name || '')),
     );
 
-    const classExams = exams.filter(
-      (e) => e.class_id === selectedClassId && (e.marking_type === 'manual' || !e.marking_type),
+    const classExams = dedupeManualExamsByCourse(
+      exams.filter(
+        (e) => e.class_id === selectedClassId && (e.marking_type === 'manual' || !e.marking_type),
+      ),
+      results,
     );
     const enrichedExams = classExams.map((e) => {
       const course = courses.find((c) => c.id === e.course_id);
