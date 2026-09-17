@@ -10,6 +10,28 @@ import { landingContentForSave } from '@/lib/landingContent'
 
 const notReady = (_feature) => new Error('FEATURE_UNAVAILABLE')
 
+/** Supabase caps a single response at ~1000 rows unless paginated. */
+const SUPABASE_PAGE_SIZE = 1000
+
+/**
+ * Fetch every row for a table query (ordered), paging past the default 1000-row cap.
+ * Without this, older exam_results / gradebook rows silently vanish from the UI.
+ */
+async function fetchAllPaged(buildQuery) {
+  const all = []
+  let from = 0
+  for (;;) {
+    const to = from + SUPABASE_PAGE_SIZE - 1
+    const { data, error } = await buildQuery().range(from, to)
+    if (error) throw error
+    const chunk = data || []
+    all.push(...chunk)
+    if (chunk.length < SUPABASE_PAGE_SIZE) break
+    from += SUPABASE_PAGE_SIZE
+  }
+  return all
+}
+
 const INST_SELECT =
   'id, name, subdomain, logo_url, description, email, phone, address, website, motto, theme_primary, theme_accent, theme_tertiary, social_whatsapp, social_facebook, social_tiktok, status, created_at, affiliate_commission_rate, registration_fee_amount, default_instructor_commission_rate, currency, currency_symbol, signatory_left_title, signatory_right_title, signatory_left_name, signatory_right_name, seal_url, signature_url, certificate_footer_text, transcript_footer_text, transcript_narrative_text, invoice_footer_text, certificate_number_start, certificate_number_pad, certificate_number_last, student_id_prefix, student_id_start, student_id_pad, student_id_last, settings_completed_at, landing_template_id, hero_image_url, hero_headline, footer_text, landing_content, grading_scale'
 
@@ -3412,9 +3434,28 @@ export const deleteExam = async (id) => {
 }
 
 export const getResults = async () => {
-  const { data, error } = await supabase.from('exam_results').select('*').order('created_at', { ascending: false })
-  if (error) throw error
-  return (data || []).map(mapResult)
+  const data = await fetchAllPaged(() =>
+    supabase
+      .from('exam_results')
+      .select('*')
+      .order('created_at', { ascending: false })
+      .order('id', { ascending: false }),
+  )
+  return data.map(mapResult)
+}
+
+/** All results for one exam — used when opening a grading dialog so scores cannot hide behind the global page cap. */
+export const getResultsForExam = async (examId) => {
+  if (!examId) return []
+  const data = await fetchAllPaged(() =>
+    supabase
+      .from('exam_results')
+      .select('*')
+      .eq('exam_id', examId)
+      .order('created_at', { ascending: false })
+      .order('id', { ascending: false }),
+  )
+  return data.map(mapResult)
 }
 
 /** Fetch a single exam result by id (or by exam_id for the current user). */
@@ -3448,8 +3489,20 @@ export const checkResultExists = async (examId, studentId) => {
 
 export const createOrUpdateExamResult = async (data) => {
   const me = await getMyProfile()
-  const raw = Number(data.raw_score ?? data.score ?? data.final_score ?? 0)
-  const final = Number(data.final_score ?? data.score ?? raw)
+  // Never coerce blank/missing scores to 0 — that silently wiped existing grades.
+  const scoreRaw = data.raw_score ?? data.score ?? data.final_score
+  if (scoreRaw === '' || scoreRaw === null || scoreRaw === undefined) {
+    throw new Error('Score is required')
+  }
+  const raw = Number(scoreRaw)
+  if (!Number.isFinite(raw)) {
+    throw new Error('Invalid score')
+  }
+  const finalRaw = data.final_score ?? data.score ?? raw
+  const final = Number(finalRaw)
+  if (!Number.isFinite(final)) {
+    throw new Error('Invalid score')
+  }
 
   let enrollmentId = data.enrollment_id || null
   if (!enrollmentId && data.exam_id && data.student_id) {
@@ -3520,9 +3573,13 @@ export const deleteResult = async (id) => {
 }
 
 export const getGradebookEntries = async () => {
-  const { data, error } = await supabase.from('gradebook_entries').select('*').order('synced_at', { ascending: false })
-  if (error) throw error
-  return data || []
+  return fetchAllPaged(() =>
+    supabase
+      .from('gradebook_entries')
+      .select('*')
+      .order('synced_at', { ascending: false })
+      .order('id', { ascending: false }),
+  )
 }
 
 export const finalizeGradebook = async (classId) => {

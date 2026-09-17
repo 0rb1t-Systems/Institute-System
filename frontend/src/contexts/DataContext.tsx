@@ -545,6 +545,11 @@ export const DataProvider = ({ children }) => {
           force: true,
         });
 
+        // If a refresh raced or was truncated, keep the rows we just wrote.
+        if (saved.length) {
+          setResults((prev) => mergeExamResults(prev, saved));
+        }
+
         if (failures.length) {
           const err = Object.assign(
             new Error(

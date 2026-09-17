@@ -22,6 +22,7 @@ import {
   sanitizeCourseProject,
 } from '@/lib/institution';
 import { pickCanonicalManualExam } from '@/lib/manualExam';
+import { getResultsForExam } from '@/lib/api';
 
 const ExaminationsPageContent = () => {
   const { user, institution } = useAuth();
@@ -48,6 +49,8 @@ const ExaminationsPageContent = () => {
   const [marksBuffer, setMarksBuffer] = useState({});
   const [isSaving, setIsSaving] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
+  /** Exam-scoped results for the open grading dialog (avoids global cache gaps). */
+  const [dialogResults, setDialogResults] = useState([]);
 
   const handleManualRefresh = async () => {
     setIsRefreshing(true);
@@ -134,7 +137,15 @@ const ExaminationsPageContent = () => {
           }
       }
 
-      const currentResults = results.filter(r => r.exam_id === exam.id);
+      // Load THIS exam's results directly — global cache can omit older rows past the 1000-row page.
+      let currentResults = [];
+      try {
+        currentResults = await getResultsForExam(exam.id);
+      } catch {
+        currentResults = (results || []).filter((r) => r.exam_id === exam.id);
+      }
+      setDialogResults(currentResults);
+
       const initialBuffer: any = {};
       
       const classEnrollments = enrollments.filter(
@@ -154,8 +165,9 @@ const ExaminationsPageContent = () => {
                  comments = res.answers[0].answer;
               }
 
+              const scoreVal = res.score ?? res.final_score ?? res.raw_score;
               initialBuffer[sid] = {
-                  score: res.score !== null && res.score !== undefined ? res.score : (res.final_score ?? ''),
+                  score: scoreVal !== null && scoreVal !== undefined && scoreVal !== '' ? scoreVal : '',
                   comments: comments,
                   course_project: res.course_project || '',
               };
@@ -193,6 +205,7 @@ const ExaminationsPageContent = () => {
       setIsSaving(true);
       try {
           const updates = Object.entries(marksBuffer).map(([studentId, data]: [string, any]) => {
+              // Leave blank rows alone — never overwrite an existing DB grade with 0/empty.
               if (data.score === '' || data.score === null || data.score === undefined) return null;
 
               const scoreNum = parseFloat(data.score);
@@ -223,10 +236,22 @@ const ExaminationsPageContent = () => {
 
           // saveManualGrades awaits a forced results refresh — do not fire a
           // parallel full refresh (that used to race and re-apply pre-save rows).
-          await saveManualGrades(updates);
+          const saved = await saveManualGrades(updates);
+
+          // Keep dialog cache in sync so a re-open mid-session still shows fresh scores.
+          if (Array.isArray(saved) && saved.length) {
+            setDialogResults((prev) => {
+              const byStudent = new Map((prev || []).map((r) => [r.student_id, r]));
+              saved.forEach((r) => {
+                if (r?.student_id) byStudent.set(r.student_id, r);
+              });
+              return Array.from(byStudent.values());
+            });
+          }
 
           toast({ title: "Success", description: MESSAGES.SUCCESS.GRADE_SAVED, className: "bg-green-600 border-green-700 text-white" });
           setMarkingContext(null);
+          setDialogResults([]);
       } catch (e) {
           notify.error(e, { context: 'ExaminationsPage - saveGrades', fallback: MESSAGES.SAVE_FAILED });
       } finally {
@@ -243,9 +268,11 @@ const ExaminationsPageContent = () => {
           const s = students.find((st) => st.id === e.student_id);
           if (s) byId.set(s.id, s);
         });
-      (results || [])
-        .filter((r) => r.exam_id === markingContext.examId)
-        .forEach((r) => {
+      // Prefer exam-scoped dialog results; fall back to global results cache.
+      const resultRows = (dialogResults?.length ? dialogResults : results || []).filter(
+        (r) => r.exam_id === markingContext.examId,
+      );
+      resultRows.forEach((r) => {
           if (byId.has(r.student_id)) return;
           const s = students.find((st) => st.id === r.student_id);
           if (s) byId.set(s.id, s);
@@ -253,7 +280,7 @@ const ExaminationsPageContent = () => {
       return Array.from(byId.values()).sort((a, b) =>
         String(a.name || a.full_name || '').localeCompare(String(b.name || b.full_name || '')),
       );
-  }, [markingContext, enrollments, students, results]);
+  }, [markingContext, enrollments, students, results, dialogResults]);
 
   return (
     <>
@@ -346,7 +373,12 @@ const ExaminationsPageContent = () => {
         )}
       </div>
 
-      <Dialog open={!!markingContext} onOpenChange={(open) => !open && setMarkingContext(null)}>
+      <Dialog open={!!markingContext} onOpenChange={(open) => {
+        if (!open) {
+          setMarkingContext(null);
+          setDialogResults([]);
+        }
+      }}>
           <DialogContent className={`${showCourseProject ? 'max-w-5xl' : 'max-w-4xl'} h-[85vh] flex flex-col bg-slate-950 border-slate-800 p-0 gap-0`}>
               <DialogHeader className="p-6 border-b border-slate-800 bg-slate-900/50">
                   <div className="flex items-center justify-between">

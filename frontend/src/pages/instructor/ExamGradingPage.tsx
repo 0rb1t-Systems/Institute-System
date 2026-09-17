@@ -57,8 +57,9 @@ const ExamGradingPage = () => {
 
     const handleOpenGradeDialog = (item) => {
         setSelectedStudent(item);
+        const existing = item.result?.score ?? item.result?.final_score ?? item.result?.raw_score;
         setGradeData({
-            score: item.result?.final_score !== undefined ? item.result.final_score : '',
+            score: existing !== null && existing !== undefined && existing !== '' ? String(existing) : '',
             course_project: item.result?.course_project || '',
         });
         setIsGradeDialogOpen(true);
