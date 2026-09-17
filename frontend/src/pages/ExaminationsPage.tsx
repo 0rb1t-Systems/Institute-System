@@ -22,7 +22,7 @@ import {
   sanitizeCourseProject,
 } from '@/lib/institution';
 import { pickCanonicalManualExam } from '@/lib/manualExam';
-import { getResultsForExam } from '@/lib/api';
+import { getClassGradingContext, getResultsForExam } from '@/lib/api';
 
 const ExaminationsPageContent = () => {
   const { user, institution } = useAuth();
@@ -49,8 +49,11 @@ const ExaminationsPageContent = () => {
   const [marksBuffer, setMarksBuffer] = useState({});
   const [isSaving, setIsSaving] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [isOpeningGrading, setIsOpeningGrading] = useState(false);
   /** Exam-scoped results for the open grading dialog (avoids global cache gaps). */
   const [dialogResults, setDialogResults] = useState([]);
+  /** Roster loaded with the dialog so missing global students never hide a learner. */
+  const [dialogStudents, setDialogStudents] = useState([]);
 
   const handleManualRefresh = async () => {
     setIsRefreshing(true);
@@ -107,11 +110,14 @@ const ExaminationsPageContent = () => {
   }, [classes, courses, classCourses, diplomaCourses, user, searchTerm, users, exams]);
   
   const handleOpenGrading = async (cls, course) => {
+      setIsOpeningGrading(true);
+      try {
       // Always reuse the canonical container — never create a second exam for the same course.
       let exam = pickCanonicalManualExam(exams, cls.id, course.id, results);
 
       if (!exam) {
           try {
+            // createExam reuses DB row if it already exists; only refreshes exams slice.
             exam = await saveExam({
                 title: `${course.name} - Final Grade`,
                 class_id: cls.id,
@@ -122,37 +128,42 @@ const ExaminationsPageContent = () => {
                 open_time: new Date().toISOString(),
                 description: 'Manual course grading container'
             });
-            
-            await refreshData();
-            exam = pickCanonicalManualExam(
-              // refresh may still be settling — prefer returned exam id
-              [...(exams || []), exam].filter(Boolean),
-              cls.id,
-              course.id,
-              results,
-            ) || exam;
           } catch (e) {
             toast({ variant: "destructive", title: "Unable to start grading", description: MESSAGES.UNEXPECTED.description });
             return;
           }
       }
 
-      // Load THIS exam's results directly — global cache can omit older rows past the 1000-row page.
+      if (!exam?.id) {
+        toast({ variant: "destructive", title: "Unable to start grading", description: MESSAGES.UNEXPECTED.description });
+        return;
+      }
+
+      // Load roster + this exam's results only — never wait on the global 4k-row cache.
       let currentResults = [];
+      let rosterStudents = [];
       try {
-        currentResults = await getResultsForExam(exam.id);
+        const ctx = await getClassGradingContext(cls.id, exam.id);
+        currentResults = ctx.results || [];
+        rosterStudents = ctx.students || [];
       } catch {
-        currentResults = (results || []).filter((r) => r.exam_id === exam.id);
+        try {
+          currentResults = await getResultsForExam(exam.id);
+        } catch {
+          currentResults = (results || []).filter((r) => r.exam_id === exam.id);
+        }
+        const classEnrollments = enrollments.filter(
+          (e) => e.class_id === cls.id && (e.status === 'active' || !e.status),
+        );
+        rosterStudents = classEnrollments
+          .map((e) => students.find((s) => s.id === e.student_id))
+          .filter(Boolean);
       }
       setDialogResults(currentResults);
+      setDialogStudents(rosterStudents);
 
       const initialBuffer: any = {};
-      
-      const classEnrollments = enrollments.filter(
-        (e) => e.class_id === cls.id && (e.status === 'active' || !e.status),
-      );
-      const enrolledStudentIds = new Set(classEnrollments.map((e) => e.student_id));
-      // Include students who already have marks even if enrollment row was missing.
+      const enrolledStudentIds = new Set(rosterStudents.map((s) => s.id));
       currentResults.forEach((r) => {
         if (r?.student_id) enrolledStudentIds.add(r.student_id);
       });
@@ -189,6 +200,9 @@ const ExaminationsPageContent = () => {
           courseName: course.name,
           totalMarks: Number(exam.total_marks ?? exam.final_marks ?? 100) || 100,
       });
+      } finally {
+        setIsOpeningGrading(false);
+      }
   };
 
   const handleMarkChange = (studentId, field, value) => {
@@ -249,9 +263,10 @@ const ExaminationsPageContent = () => {
             });
           }
 
-          toast({ title: "Success", description: MESSAGES.SUCCESS.GRADE_SAVED, className: "bg-green-600 border-green-700 text-white" });
+          toast({ title: "Success", description: MESSAGES.SUCCESS.GRADE_SAVED });
           setMarkingContext(null);
           setDialogResults([]);
+          setDialogStudents([]);
       } catch (e) {
           notify.error(e, { context: 'ExaminationsPage - saveGrades', fallback: MESSAGES.SAVE_FAILED });
       } finally {
@@ -261,6 +276,11 @@ const ExaminationsPageContent = () => {
 
   const contextStudents = useMemo(() => {
       if (!markingContext) return [];
+      if (dialogStudents?.length) {
+        return [...dialogStudents].sort((a, b) =>
+          String(a.name || a.full_name || '').localeCompare(String(b.name || b.full_name || '')),
+        );
+      }
       const byId = new Map();
       enrollments
         .filter((e) => e.class_id === markingContext.classId && (e.status === 'active' || !e.status))
@@ -268,7 +288,6 @@ const ExaminationsPageContent = () => {
           const s = students.find((st) => st.id === e.student_id);
           if (s) byId.set(s.id, s);
         });
-      // Prefer exam-scoped dialog results; fall back to global results cache.
       const resultRows = (dialogResults?.length ? dialogResults : results || []).filter(
         (r) => r.exam_id === markingContext.examId,
       );
@@ -280,52 +299,52 @@ const ExaminationsPageContent = () => {
       return Array.from(byId.values()).sort((a, b) =>
         String(a.name || a.full_name || '').localeCompare(String(b.name || b.full_name || '')),
       );
-  }, [markingContext, enrollments, students, results, dialogResults]);
+  }, [markingContext, enrollments, students, results, dialogResults, dialogStudents]);
 
   return (
     <>
       <div className="mb-6 flex gap-3">
           <div className="relative flex-1">
-            <Search className="absolute left-3 top-3 h-4 w-4 text-slate-500" />
+            <Search className="absolute left-3 top-3 h-4 w-4 text-[var(--ds-text-tertiary,#8A978E)]" />
             <Input 
                 placeholder="Search active classes..." 
-                className="pl-10 bg-slate-900/50 border-slate-800"
+                className="pl-10"
                 value={searchTerm}
                 onChange={e => setSearchTerm(e.target.value)}
             />
           </div>
-          <Button variant="outline" onClick={handleManualRefresh} disabled={isRefreshing} className="border-slate-800 bg-slate-900">
+          <Button variant="outline" onClick={handleManualRefresh} disabled={isRefreshing}>
               <RefreshCw className={`h-4 w-4 mr-2 ${isRefreshing ? 'animate-spin' : ''}`} />
               Refresh
           </Button>
       </div>
 
-      <h3 className="text-sm font-semibold text-slate-300 uppercase tracking-wider mb-3">Manual Course Grading</h3>
+      <h3 className="text-sm font-semibold text-[var(--ds-text-secondary,#5B6B61)] uppercase tracking-wider mb-3">Manual Course Grading</h3>
 
       <div className="space-y-4">
         {activeClasses.length > 0 ? (
             activeClasses.map(cls => (
-                <Card key={cls.id} className={`bg-slate-900/50 border-slate-800 transition-all ${expandedClass === cls.id ? 'ring-1 ring-indigo-500/50' : ''}`}>
+                <Card key={cls.id} className={`transition-all ${expandedClass === cls.id ? 'ring-1 ring-[var(--ds-accent,#1F8A5B)]/40' : ''}`}>
                     <div 
-                        className="p-4 flex items-center justify-between cursor-pointer hover:bg-slate-800/50 rounded-t-lg"
+                        className="p-4 flex items-center justify-between cursor-pointer hover:bg-[var(--ds-surface-muted,#F7FAF8)] rounded-t-[var(--ds-radius-xl,16px)]"
                         onClick={() => setExpandedClass(expandedClass === cls.id ? null : cls.id)}
                     >
                         <div className="flex items-center gap-4">
-                            <div className={`p-2 rounded-lg ${expandedClass === cls.id ? 'bg-indigo-500/20 text-indigo-400' : 'bg-slate-800 text-slate-400'}`}>
+                            <div className={`p-2 rounded-[var(--ds-radius-lg,12px)] ${expandedClass === cls.id ? 'bg-[var(--ds-primary-soft,#ECFDF5)] text-[var(--ds-accent,#1F8A5B)]' : 'bg-[var(--ds-surface-muted,#F7FAF8)] text-[var(--ds-text-secondary,#5B6B61)]'}`}>
                                 <BookOpen className="h-5 w-5" />
                             </div>
                             <div>
-                                <h3 className="font-semibold text-slate-200">{cls.name}</h3>
-                                <p className="text-sm text-slate-500">
+                                <h3 className="font-semibold">{cls.name}</h3>
+                                <p className="text-sm text-[var(--ds-text-tertiary,#8A978E)]">
                                     {cls.derivedCourses.length} Courses • {cls.instructorName || 'No Instructor'}
                                 </p>
                             </div>
                         </div>
-                        {expandedClass === cls.id ? <ChevronDown className="h-5 w-5 text-slate-500" /> : <ChevronRight className="h-5 w-5 text-slate-500" />}
+                        {expandedClass === cls.id ? <ChevronDown className="h-5 w-5 text-[var(--ds-text-tertiary,#8A978E)]" /> : <ChevronRight className="h-5 w-5 text-[var(--ds-text-tertiary,#8A978E)]" />}
                     </div>
 
                     {expandedClass === cls.id && (
-                        <CardContent className="pt-0 pb-4 px-4 bg-slate-950/30 border-t border-slate-800">
+                        <CardContent className="pt-0 pb-4 px-4 border-t border-[var(--ds-border,#DDE5DF)] bg-[var(--ds-surface-muted,#F7FAF8)]/50">
                             <div className="mt-4 space-y-2">
                                 {cls.derivedCourses.length > 0 ? (
                                     cls.derivedCourses.map(course => {
@@ -333,31 +352,35 @@ const ExaminationsPageContent = () => {
                                         const gradedCount = exam ? results.filter(r => r.exam_id === exam.id).length : 0;
 
                                         return (
-                                            <div key={course.id} className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-3 rounded bg-slate-900 border border-slate-800 hover:border-slate-700 transition-colors">
+                                            <div key={course.id} className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-3 rounded-[var(--ds-radius-md,8px)] bg-[var(--ds-surface,#fff)] border border-[var(--ds-border,#DDE5DF)] hover:border-[var(--ds-border-strong,#C5D0C8)] transition-colors">
                                                 <div className="min-w-0">
-                                                    <div className="font-medium text-slate-300 break-words">{course.name}</div>
-                                                    <div className="text-xs text-slate-500">Code: {course.code || '—'}</div>
+                                                    <div className="font-medium break-words">{course.name}</div>
+                                                    <div className="text-xs text-[var(--ds-text-tertiary,#8A978E)]">Code: {course.code || '—'}</div>
                                                 </div>
                                                 <div className="flex items-center gap-3 sm:gap-4 shrink-0">
                                                     <div className="text-right text-xs hidden sm:block">
-                                                        <div className="text-slate-400">Status</div>
-                                                        <div className={gradedCount > 0 ? "text-green-400" : "text-yellow-500"}>
+                                                        <div className="text-[var(--ds-text-secondary,#5B6B61)]">Status</div>
+                                                        <div className={gradedCount > 0 ? "text-[var(--ds-accent,#1F8A5B)]" : "text-[var(--ds-warning,#C2410C)]"}>
                                                             {gradedCount > 0 ? `${gradedCount} Graded` : 'Not Started'}
                                                         </div>
                                                     </div>
                                                     <Button 
                                                         size="sm" 
-                                                        className="bg-indigo-600 hover:bg-indigo-700"
                                                         onClick={() => handleOpenGrading(cls, course)}
+                                                        disabled={isOpeningGrading || isSaving}
                                                     >
-                                                        Grade Course
+                                                        {isOpeningGrading ? (
+                                                          <><Loader2 className="h-4 w-4 mr-2 animate-spin" /> Opening...</>
+                                                        ) : (
+                                                          'Grade Course'
+                                                        )}
                                                     </Button>
                                                 </div>
                                             </div>
                                         );
                                     })
                                 ) : (
-                                    <div className="text-center py-4 text-slate-500 text-sm">No courses linked to this class.</div>
+                                    <div className="text-center py-4 text-[var(--ds-text-tertiary,#8A978E)] text-sm">No courses linked to this class.</div>
                                 )}
                             </div>
                         </CardContent>
@@ -365,10 +388,10 @@ const ExaminationsPageContent = () => {
                 </Card>
             ))
         ) : (
-            <div className="text-center py-12 border-2 border-dashed border-slate-800 rounded-xl">
-                <AlertCircle className="h-10 w-10 text-slate-600 mx-auto mb-3" />
-                <h3 className="text-lg font-medium text-slate-300">No Active Classes Found</h3>
-                <p className="text-slate-500">Make sure you have active classes assigned to you.</p>
+            <div className="text-center py-12 border-2 border-dashed border-[var(--ds-border,#DDE5DF)] rounded-[var(--ds-radius-xl,16px)]">
+                <AlertCircle className="h-10 w-10 text-[var(--ds-text-tertiary,#8A978E)] mx-auto mb-3" />
+                <h3 className="text-lg font-medium">No Active Classes Found</h3>
+                <p className="text-[var(--ds-text-secondary,#5B6B61)]">Make sure you have active classes assigned to you.</p>
             </div>
         )}
       </div>
@@ -377,18 +400,19 @@ const ExaminationsPageContent = () => {
         if (!open) {
           setMarkingContext(null);
           setDialogResults([]);
+          setDialogStudents([]);
         }
       }}>
-          <DialogContent className={`${showCourseProject ? 'max-w-5xl' : 'max-w-4xl'} h-[85vh] flex flex-col bg-slate-950 border-slate-800 p-0 gap-0`}>
-              <DialogHeader className="p-6 border-b border-slate-800 bg-slate-900/50">
+          <DialogContent className={`${showCourseProject ? 'max-w-5xl' : 'max-w-4xl'} h-[85vh] flex flex-col p-0 gap-0`}>
+              <DialogHeader className="p-6 border-b border-[var(--ds-border,#DDE5DF)]">
                   <div className="flex items-center justify-between">
                       <div>
                         <DialogTitle className="text-xl">{markingContext?.courseName}</DialogTitle>
-                        <DialogDescription className="mt-1 text-slate-400">
-                            Grading for <span className="text-white font-medium">{markingContext?.className}</span>
+                        <DialogDescription className="mt-1">
+                            Grading for <span className="font-medium text-[var(--ds-text-primary,#122018)]">{markingContext?.className}</span>
                         </DialogDescription>
                       </div>
-                      <Badge variant="outline" className="border-indigo-500/50 text-indigo-400 bg-indigo-500/10">
+                      <Badge variant="outline" className="border-[var(--ds-accent,#1F8A5B)]/40 text-[var(--ds-accent,#1F8A5B)] bg-[var(--ds-primary-soft,#ECFDF5)]">
                           Max Score: {markingContext?.totalMarks}
                       </Badge>
                   </div>
@@ -397,7 +421,7 @@ const ExaminationsPageContent = () => {
               <ScrollArea className="flex-1 p-6">
                   <Table>
                       <TableHeader>
-                          <TableRow className="border-slate-800 hover:bg-transparent">
+                          <TableRow>
                               <TableHead className="w-[220px]">Student</TableHead>
                               <TableHead className="w-[130px]">Score (0-{markingContext?.totalMarks})</TableHead>
                               {showCourseProject ? (
@@ -415,17 +439,17 @@ const ExaminationsPageContent = () => {
                                   const isValid = buffer.score === '' || (!isNaN(scoreVal) && scoreVal >= 0 && scoreVal <= (markingContext?.totalMarks || 100));
                                   
                                   return (
-                                      <TableRow key={student.id} className="border-slate-800 hover:bg-slate-900/50">
+                                      <TableRow key={student.id}>
                                           <TableCell>
-                                              <div className="font-medium text-slate-200">{student.name}</div>
-                                              <div className="text-xs text-slate-500">{student.student_code}</div>
+                                              <div className="font-medium">{student.name}</div>
+                                              <div className="text-xs text-[var(--ds-text-tertiary,#8A978E)]">{student.student_code}</div>
                                           </TableCell>
                                           <TableCell>
                                               <Input 
                                                 type="number" 
                                                 value={buffer.score}
                                                 onChange={(e) => handleMarkChange(student.id, 'score', e.target.value)}
-                                                className={`bg-slate-900 border-slate-700 ${!isValid ? 'border-red-500 focus-visible:ring-red-500' : 'focus-visible:ring-indigo-500'}`}
+                                                className={!isValid ? 'border-[var(--ds-danger,#DC2626)] focus-visible:ring-[var(--ds-danger,#DC2626)]' : undefined}
                                                 placeholder="-"
                                                 min={0}
                                                 max={markingContext?.totalMarks}
@@ -437,7 +461,6 @@ const ExaminationsPageContent = () => {
                                                 value={buffer.course_project || ''}
                                                 maxLength={COURSE_PROJECT_MAX_LEN}
                                                 onChange={(e) => handleMarkChange(student.id, 'course_project', e.target.value)}
-                                                className="bg-slate-900 border-slate-700"
                                                 placeholder="e.g. Research Proposal Development"
                                               />
                                             </TableCell>
@@ -446,15 +469,14 @@ const ExaminationsPageContent = () => {
                                               <Input 
                                                 value={buffer.comments}
                                                 onChange={(e) => handleMarkChange(student.id, 'comments', e.target.value)}
-                                                className="bg-slate-900 border-slate-700"
                                                 placeholder="Add feedback..."
                                               />
                                           </TableCell>
                                           <TableCell className="text-right">
                                               {buffer.score !== '' && isValid ? (
-                                                  <CheckCircle2 className="h-5 w-5 text-green-500 ml-auto" />
+                                                  <CheckCircle2 className="h-5 w-5 text-[var(--ds-accent,#1F8A5B)] ml-auto" />
                                               ) : (
-                                                  <span className="text-slate-600 text-xs">Pending</span>
+                                                  <span className="text-[var(--ds-text-tertiary,#8A978E)] text-xs">Pending</span>
                                               )}
                                           </TableCell>
                                       </TableRow>
@@ -462,7 +484,7 @@ const ExaminationsPageContent = () => {
                               })
                           ) : (
                               <TableRow>
-                                  <TableCell colSpan={showCourseProject ? 5 : 4} className="text-center py-8 text-slate-500">
+                                  <TableCell colSpan={showCourseProject ? 5 : 4} className="text-center py-8 text-[var(--ds-text-tertiary,#8A978E)]">
                                       No students enrolled in this class.
                                   </TableCell>
                               </TableRow>
@@ -471,9 +493,9 @@ const ExaminationsPageContent = () => {
                   </Table>
               </ScrollArea>
 
-              <DialogFooter className="p-6 border-t border-slate-800 bg-slate-900/50">
+              <DialogFooter className="p-6 border-t border-[var(--ds-border,#DDE5DF)]">
                   <Button variant="ghost" onClick={() => setMarkingContext(null)} disabled={isSaving}>Cancel</Button>
-                  <Button onClick={handleSaveMarks} disabled={isSaving} className="bg-indigo-600 hover:bg-indigo-700 min-w-[140px]">
+                  <Button onClick={handleSaveMarks} disabled={isSaving} className="min-w-[140px]">
                       {isSaving ? <><Loader2 className="mr-2 h-4 w-4 animate-spin"/> Saving...</> : <><Save className="mr-2 h-4 w-4" /> Save Grades</>}
                   </Button>
               </DialogFooter>

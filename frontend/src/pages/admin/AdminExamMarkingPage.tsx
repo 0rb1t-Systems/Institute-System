@@ -12,7 +12,7 @@ import { useData } from '@/contexts/DataContext';
 import { useToast } from '@/components/ui/use-toast';
 import { notify, MESSAGES } from '@/lib/notify';
 import { Loader2, Search, FileEdit, Plus, Trash2, AlertCircle, RefreshCw } from 'lucide-react';
-import { getResults, getEnrollments, deleteResult } from '@/lib/api';
+import { getResultsForExam, getClassGradingContext, deleteResult } from '@/lib/api';
 import ExamResultForm from '@/components/admin/ExamResultForm';
 import ResultsErrorBoundary from '@/components/ui/ResultsErrorBoundary';
 import { handleFetchError } from '@/lib/resultErrorHandler';
@@ -50,34 +50,35 @@ const AdminExamMarkingPageContent = () => {
     const loadSubmissions = useCallback(async () => {
         if (!selectedExamId) {
             setSubmissions([]);
+            setClassStudents([]);
             return;
         }
 
         setLoading(true);
         try {
-            // Error handling strictly defined: it will not throw but return [] if failed in api level.
-            const allResults = await getResults();
-            if (!Array.isArray(allResults)) throw new Error("Invalid results data");
-
-            const enrollments = await getEnrollments();
-            
             const exam = exams.find(e => e.id === selectedExamId);
             if (!exam) throw new Error("Exam not found");
 
-            // Get students enrolled in the class associated with the exam
-            const enrolledData = enrollments.filter(en => en.class_id === exam.class_id);
-            
-            const studentsList = enrolledData.map(en => {
-                return students.find(s => s.id === en.student_id);
-            }).filter(Boolean);
-            
+            // Exam-scoped fetch only — never download all 4k+ institution results.
+            let examResults = [];
+            let studentsList = [];
+            if (exam.class_id) {
+              const ctx = await getClassGradingContext(exam.class_id, selectedExamId);
+              examResults = ctx.results || [];
+              studentsList = ctx.students || [];
+            } else {
+              examResults = await getResultsForExam(selectedExamId);
+              studentsList = (students || []).filter((s) =>
+                examResults.some((r) => r.student_id === s.id),
+              );
+            }
+
             setClassStudents(studentsList);
-            
-            // Filter results for this exam
-            const examResults = allResults.filter(r => r.exam_id === selectedExamId);
 
             const processedData = examResults.map(r => {
-                const student = students.find(s => s.id === r.student_id);
+                const student =
+                  studentsList.find(s => s.id === r.student_id) ||
+                  students.find(s => s.id === r.student_id);
                 return {
                     ...r,
                     student_name: student?.name || 'Unknown',

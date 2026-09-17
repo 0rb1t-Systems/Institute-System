@@ -87,7 +87,11 @@ const MUTATION_SCOPES = {
   enrollmentTransfer: ['enrollments', 'results', 'gradebookEntries', 'exams'],
   payment: ['payments', 'instructorEarnings', 'affiliateSettlements'],
   withdrawal: ['withdrawalRequests', 'instructorEarnings'],
-  exam: ['exams', 'results', 'gradebookEntries'],
+  // Creating/updating an exam shell must NOT re-download all exam_results
+  // (4k+ rows) — that made "Grade Course" hang for minutes.
+  exam: ['exams'],
+  // Grade writes: callers merge rows locally; background refresh is optional.
+  examResults: ['results', 'gradebookEntries'],
   assignment: ['assignments', 'assignmentSubmissions', 'gradebookEntries'],
   rating: ['ratingEvaluations', 'ratingQuestions', 'ratingResponses'],
   certificate: ['certificates'],
@@ -525,29 +529,32 @@ export const DataProvider = ({ children }) => {
       deleteExamData: (id) => runMutation('exam', () => api.deleteExam(id)),
       saveManualGrades: async (gradesArray) => {
         const list = Array.isArray(gradesArray) ? gradesArray : [];
-        const outcomes = await Promise.allSettled(list.map((g) => api.upsertResult(g)));
+        // Sequential upserts avoid gradebook-trigger lock storms that hung Save.
         const saved = [];
         const failures = [];
-        outcomes.forEach((outcome, i) => {
-          if (outcome.status === 'fulfilled') saved.push(outcome.value);
-          else failures.push({ student_id: list[i]?.student_id, error: outcome.reason });
-        });
+        for (const g of list) {
+          try {
+            saved.push(await api.upsertResult(g));
+          } catch (reason) {
+            failures.push({ student_id: g?.student_id, error: reason });
+          }
+        }
 
-        // Paint confirmed rows immediately so UI cannot flash empty after close.
+        // Paint confirmed rows immediately — do not await a full 4k-row results reload.
         if (saved.length) {
           setResults((prev) => mergeExamResults(prev, saved));
         }
 
-        // Force a fresh fetch — never reuse a pre-write in-flight getResults.
-        await loadDataRef.current({
-          soft: true,
-          keys: MUTATION_SCOPES.exam,
-          force: true,
-        });
-
-        // If a refresh raced or was truncated, keep the rows we just wrote.
+        // Gradebook is synced by DB triggers; refresh it in the background only.
         if (saved.length) {
-          setResults((prev) => mergeExamResults(prev, saved));
+          void loadDataRef
+            .current({ soft: true, keys: ['gradebookEntries'], force: true })
+            .then(() => {
+              if (saved.length) {
+                setResults((prev) => mergeExamResults(prev, saved));
+              }
+            })
+            .catch((err) => logError('DataContext - gradebook refresh after save', err));
         }
 
         if (failures.length) {

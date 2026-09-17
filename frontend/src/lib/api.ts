@@ -734,14 +734,16 @@ export const linkStudentToProfile = async (_studentId, _profileId) => true
 
 // --- Students (profiles where role = student) ---
 export const getStudents = async () => {
-  const { data, error } = await supabase
-    .from('profiles')
-    .select('*')
-    .eq('role', 'student')
-    .neq('status', 'suspended')
-    .order('created_at', { ascending: false })
-  if (error) throw error
-  return (data || []).map(mapStudent)
+  const data = await fetchAllPaged(() =>
+    supabase
+      .from('profiles')
+      .select('*')
+      .eq('role', 'student')
+      .neq('status', 'suspended')
+      .order('created_at', { ascending: false })
+      .order('id', { ascending: false }),
+  )
+  return data.map(mapStudent)
 }
 
 export const createStudentWithAutoCode = async (data) => {
@@ -2288,9 +2290,68 @@ export const removeClassCourse = async (id) => {
 
 // --- Enrollments ---
 export const getEnrollments = async () => {
-  const { data, error } = await supabase.from('enrollments').select('*').order('enrolled_at', { ascending: false })
-  if (error) throw error
-  return (data || []).map(mapEnrollment)
+  const data = await fetchAllPaged(() =>
+    supabase
+      .from('enrollments')
+      .select('*')
+      .order('enrolled_at', { ascending: false })
+      .order('id', { ascending: false }),
+  )
+  return data.map(mapEnrollment)
+}
+
+/**
+ * Class roster + exam results for grading dialogs.
+ * Avoids waiting on the global 4k-row results cache and missing students.
+ */
+export const getClassGradingContext = async (classId, examId) => {
+  if (!classId) return { students: [], results: [], enrollments: [] }
+
+  const [enrollmentRows, results] = await Promise.all([
+    fetchAllPaged(() =>
+      supabase
+        .from('enrollments')
+        .select(
+          'id, student_id, class_id, status, institution_id, enrolled_at, discount_amount, student:profiles!enrollments_student_id_fkey(*)',
+        )
+        .eq('class_id', classId)
+        .order('enrolled_at', { ascending: false })
+        .order('id', { ascending: false }),
+    ),
+    examId ? getResultsForExam(examId) : Promise.resolve([]),
+  ])
+
+  const enrollments = (enrollmentRows || [])
+    .filter((e) => e.status === 'active' || !e.status)
+    .map((e) => mapEnrollment(e))
+
+  const byId = new Map()
+  for (const row of enrollmentRows || []) {
+    if (row.status && row.status !== 'active') continue
+    const student = mapStudent(row.student)
+    if (student?.id) byId.set(student.id, student)
+  }
+
+  const missingIds = (results || [])
+    .map((r) => r?.student_id)
+    .filter((id) => id && !byId.has(id))
+  if (missingIds.length) {
+    const unique = [...new Set(missingIds)]
+    const { data: profiles, error } = await supabase.from('profiles').select('*').in('id', unique)
+    if (error) throw error
+    for (const p of profiles || []) {
+      const student = mapStudent(p)
+      if (student?.id) byId.set(student.id, student)
+    }
+  }
+
+  return {
+    students: Array.from(byId.values()).sort((a, b) =>
+      String(a.name || '').localeCompare(String(b.name || '')),
+    ),
+    results: results || [],
+    enrollments,
+  }
 }
 
 export const createEnrollment = async (data) => {
@@ -3023,9 +3084,15 @@ function mapExam(row) {
 
 function mapResult(row) {
   if (!row) return null
+  const scoreRaw = row.final_score ?? row.raw_score
+  const scoreNum =
+    scoreRaw === null || scoreRaw === undefined || scoreRaw === ''
+      ? null
+      : Number(scoreRaw)
   return {
     ...row,
-    score: Number(row.final_score ?? row.raw_score ?? 0),
+    // Never coerce missing grades to 0 — that looked like a stuck/wrong mark.
+    score: Number.isFinite(scoreNum) ? scoreNum : null,
     total_marks: Number(row.total_marks ?? 0) || undefined,
     submission_date: row.graded_at || row.created_at,
   }
@@ -3434,10 +3501,13 @@ export const deleteExam = async (id) => {
 }
 
 export const getResults = async () => {
+  // Lean columns — answers payloads are unused in most list UIs and slow the 4k-row pull.
   const data = await fetchAllPaged(() =>
     supabase
       .from('exam_results')
-      .select('*')
+      .select(
+        'id, institution_id, exam_id, student_id, enrollment_id, raw_score, final_score, comments, course_project, graded_by, graded_at, created_at, answers',
+      )
       .order('created_at', { ascending: false })
       .order('id', { ascending: false }),
   )
