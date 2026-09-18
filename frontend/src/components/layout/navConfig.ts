@@ -34,6 +34,35 @@ export type NavItem = {
   label: string;
 };
 
+export type NavSection = {
+  label: string | null;
+  items: NavItem[];
+};
+
+/** Grouped nav for sidebar section labels (Pencil Admin Dashboard). Routes unchanged. */
+export function getNavSectionsForRole(role?: string | null): NavSection[] {
+  const items = getNavItemsForRole(role);
+  if (!items.length) return [];
+
+  if (role === 'admin') {
+    return [
+      { label: 'MAIN', items: items.slice(0, 6) },
+      { label: 'ACADEMICS', items: items.slice(6, 12) },
+      { label: 'ADMIN', items: items.slice(12) },
+    ];
+  }
+
+  if (role === 'staff') {
+    return [
+      { label: 'MAIN', items: items.slice(0, 6) },
+      { label: 'ACADEMICS', items: items.slice(6, 12) },
+      { label: null, items: items.slice(12) },
+    ];
+  }
+
+  return [{ label: null, items }];
+}
+
 export function getNavItemsForRole(role?: string | null): NavItem[] {
   if (!role) return [];
 

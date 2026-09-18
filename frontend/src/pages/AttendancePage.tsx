@@ -2,6 +2,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { Helmet } from 'react-helmet';
 import AnimatedPage from '@/components/AnimatedPage';
 import PageHeader from '@/components/PageHeader';
+import StatCard from '@/components/StatCard';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -12,7 +13,7 @@ import { useToast } from '@/components/ui/use-toast';
 import { notify, MESSAGES } from '@/lib/notify';
 import { useData } from '@/contexts/DataContext';
 import { useAuth } from '@/contexts/AuthContext';
-import { Save, Loader2, Calendar, CheckCircle2, AlertCircle } from 'lucide-react';
+import { Loader2, Calendar, CheckCircle2, AlertCircle, Users, ClipboardCheck } from 'lucide-react';
 import { upsertAttendanceRecord, bulkUpsertAttendanceWithDuplicatePrevention, getAttendanceByClassAndDate } from '@/lib/api';
 
 const AttendancePage = () => {
@@ -171,76 +172,68 @@ const AttendancePage = () => {
         subtitle="Record daily student participation. Changes save automatically."
       />
 
-      <div className="grid gap-6 md:grid-cols-4 mb-6">
-          <Card className="bg-slate-900/50 border-slate-800 md:col-span-2 shadow-lg">
+      <div className="grid gap-4 md:grid-cols-4 mb-6">
+          <Card className="md:col-span-2">
               <CardContent className="pt-6 grid gap-4 md:grid-cols-2">
                   <div className="space-y-2">
-                      <Label className="text-slate-300">Select Class</Label>
+                      <Label>Select Class</Label>
                       <Select value={selectedClassId} onValueChange={setSelectedClassId}>
-                          <SelectTrigger className="bg-slate-950 border-slate-800"><SelectValue placeholder="Choose Class" /></SelectTrigger>
-                          <SelectContent className="bg-slate-900 border-slate-800 text-slate-100">
+                          <SelectTrigger><SelectValue placeholder="Choose Class" /></SelectTrigger>
+                          <SelectContent>
                               {availableClasses.map(c => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
                           </SelectContent>
                       </Select>
                   </div>
                   <div className="space-y-2">
-                      <Label className="text-slate-300">Date</Label>
+                      <Label>Date</Label>
                       <div className="relative">
                           <Input 
                             type="date" 
                             max={new Date().toISOString().split('T')[0]}
                             value={selectedDate} 
                             onChange={e => setSelectedDate(e.target.value)} 
-                            className="bg-slate-950 border-slate-800 text-white pl-10"
+                            className="pl-10"
                           />
-                          <Calendar className="absolute left-3 top-2.5 h-4 w-4 text-slate-500" />
+                          <Calendar className="absolute left-3 top-2.5 h-4 w-4 text-[var(--ds-text-tertiary,#8A978E)]" />
                       </div>
                   </div>
               </CardContent>
           </Card>
 
-          <Card className="bg-slate-900/50 border-slate-800 flex items-center justify-center shadow-lg border-b-4 border-b-blue-500">
-              <CardContent className="pt-6 text-center">
-                  <h3 className="font-bold text-4xl text-blue-400">{enrolledStudents.length}</h3>
-                  <p className="text-sm text-slate-400 mt-1 uppercase tracking-wider font-semibold">Total Active</p>
-              </CardContent>
-          </Card>
+          <StatCard
+            title="Total Active"
+            value={enrolledStudents.length}
+            icon={<Users className="h-5 w-5" />}
+            tone="info"
+          />
 
-          <Card className={`bg-slate-900/50 border-slate-800 flex items-center justify-center shadow-lg border-b-4 ${pendingCount === 0 && enrolledStudents.length > 0 ? 'border-b-green-500' : 'border-b-yellow-500'}`}>
-              <CardContent className="pt-6 text-center">
-                  <div className="flex justify-center items-center gap-4">
-                      <div>
-                          <h3 className="font-bold text-2xl text-green-400">{markedCount}</h3>
-                          <p className="text-xs text-slate-400 mt-1 uppercase tracking-wider font-semibold">Marked</p>
-                      </div>
-                      <div className="w-px h-8 bg-slate-800"></div>
-                      <div>
-                          <h3 className="font-bold text-2xl text-yellow-400">{pendingCount}</h3>
-                          <p className="text-xs text-slate-400 mt-1 uppercase tracking-wider font-semibold">Pending</p>
-                      </div>
-                  </div>
-              </CardContent>
-          </Card>
+          <StatCard
+            title="Marked / Pending"
+            value={`${markedCount} / ${pendingCount}`}
+            icon={<ClipboardCheck className="h-5 w-5" />}
+            tone={pendingCount === 0 && enrolledStudents.length > 0 ? 'primary' : 'warning'}
+            description={enrolledStudents.length ? `${Math.round((markedCount / enrolledStudents.length) * 100)}% complete` : 'Select a class'}
+            descriptionTone={pendingCount === 0 && enrolledStudents.length > 0 ? 'accent' : 'warning'}
+          />
       </div>
 
       {selectedClassId && (
-          <Card className="bg-slate-900/50 border-slate-800 shadow-xl relative overflow-hidden">
-              {/* Progress Bar Indicator */}
+          <Card className="relative overflow-hidden">
               <div 
-                 className="absolute top-0 left-0 h-1 bg-green-500 transition-all duration-500" 
+                 className="absolute top-0 left-0 h-1 bg-[var(--ds-accent,#1F8A5B)] transition-all duration-500" 
                  style={{ width: `${enrolledStudents.length ? (markedCount / enrolledStudents.length) * 100 : 0}%` }}
               ></div>
               
               <CardHeader className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
                   <div>
                       <CardTitle>Student Roster</CardTitle>
-                      <CardDescription className="text-slate-400">Click a status to save immediately.</CardDescription>
+                      <CardDescription>Click a status to save immediately.</CardDescription>
                   </div>
                   <div className="flex gap-2 w-full sm:w-auto">
                       <Button 
                         onClick={handleMarkAllPresent} 
                         disabled={bulkSaving || enrolledStudents.length === 0} 
-                        className="bg-green-600 hover:bg-green-700 text-white w-full sm:w-auto shadow-md shadow-green-900/20"
+                        className="w-full sm:w-auto"
                       >
                           {bulkSaving ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <CheckCircle2 className="h-4 w-4 mr-2" />}
                           Mark All Present
@@ -249,30 +242,30 @@ const AttendancePage = () => {
               </CardHeader>
               <CardContent>
                   {loading ? (
-                      <div className="text-center py-16"><Loader2 className="h-8 w-8 animate-spin mx-auto text-blue-500" /></div>
+                      <div className="text-center py-16"><Loader2 className="h-8 w-8 animate-spin mx-auto text-[var(--ds-accent,#1F8A5B)]" /></div>
                   ) : (
-                      <div className="rounded-md border border-slate-800 overflow-hidden">
+                      <div className="rounded-[var(--ds-radius-md,8px)] border border-[var(--ds-border,#DDE5DF)] overflow-hidden">
                           <Table>
-                              <TableHeader className="bg-slate-950">
-                                  <TableRow className="border-slate-800">
-                                      <TableHead className="min-w-[140px] sm:w-[300px] text-slate-400">Student Name</TableHead>
-                                      <TableHead className="text-center text-slate-400 min-w-[200px] sm:min-w-[320px]">Status</TableHead>
-                                      <TableHead className="text-slate-400">Notes (Optional)</TableHead>
+                              <TableHeader>
+                                  <TableRow>
+                                      <TableHead className="min-w-[140px] sm:w-[300px]">Student Name</TableHead>
+                                      <TableHead className="text-center min-w-[200px] sm:min-w-[320px]">Status</TableHead>
+                                      <TableHead>Notes (Optional)</TableHead>
                                   </TableRow>
                               </TableHeader>
                               <TableBody>
                                   {enrolledStudents.map(student => (
-                                      <TableRow key={student.id} className="hover:bg-slate-800/50 border-slate-800 transition-colors">
+                                      <TableRow key={student.id}>
                                           <TableCell>
                                               <div className="flex items-center gap-3">
                                                   <div className="relative">
-                                                      {!attendanceState[student.id] && <AlertCircle className="h-4 w-4 text-yellow-500 absolute -left-5 top-1" />}
+                                                      {!attendanceState[student.id] && <AlertCircle className="h-4 w-4 text-[var(--ds-warning,#C2410C)] absolute -left-5 top-1" />}
                                                   </div>
                                                   <div>
-                                                      <div className="font-medium text-slate-200 flex items-center gap-2">
+                                                      <div className="font-medium flex items-center gap-2">
                                                           {student.name}
                                                       </div>
-                                                      <div className="text-xs text-slate-500 font-mono mt-0.5">{student.student_code}</div>
+                                                      <div className="text-xs text-[var(--ds-text-tertiary,#8A978E)] font-mono mt-0.5">{student.student_code}</div>
                                                   </div>
                                               </div>
                                           </TableCell>
@@ -280,7 +273,7 @@ const AttendancePage = () => {
                                               <div className="flex justify-center gap-1.5 relative">
                                                   {savingId === student.id && (
                                                       <div className="absolute -right-6 top-2">
-                                                          <Loader2 className="h-4 w-4 animate-spin text-blue-500" />
+                                                          <Loader2 className="h-4 w-4 animate-spin text-[var(--ds-accent,#1F8A5B)]" />
                                                       </div>
                                                   )}
                                                   {['present', 'late', 'absent', 'excused'].map(status => (
@@ -289,13 +282,13 @@ const AttendancePage = () => {
                                                           onClick={() => handleStatusChange(student.id, status)}
                                                           disabled={savingId === student.id}
                                                           className={`
-                                                              px-3 py-1.5 rounded-md text-xs font-bold uppercase tracking-wider transition-all border
+                                                              px-3 py-1.5 rounded-[var(--ds-radius-md,8px)] text-xs font-bold uppercase tracking-wider transition-all border
                                                               ${attendanceState[student.id] === status 
-                                                                  ? status === 'present' ? 'bg-green-600/20 border-green-500 text-green-400 shadow-[0_0_10px_rgba(34,197,94,0.2)]'
-                                                                  : status === 'late' ? 'bg-yellow-600/20 border-yellow-500 text-yellow-400 shadow-[0_0_10px_rgba(234,179,8,0.2)]'
-                                                                  : status === 'absent' ? 'bg-red-600/20 border-red-500 text-red-400 shadow-[0_0_10px_rgba(239,68,68,0.2)]'
-                                                                  : 'bg-blue-600/20 border-blue-500 text-blue-400 shadow-[0_0_10px_rgba(59,130,246,0.2)]'
-                                                                  : 'bg-slate-900 border-slate-700 text-slate-400 hover:bg-slate-800 hover:border-slate-600 disabled:opacity-50'
+                                                                  ? status === 'present' ? 'bg-[var(--ds-success-bg,#ECFDF5)] border-[var(--ds-accent,#1F8A5B)] text-[var(--ds-accent,#1F8A5B)]'
+                                                                  : status === 'late' ? 'bg-[var(--ds-warning-bg,#FFF7ED)] border-[var(--ds-warning,#C2410C)] text-[var(--ds-warning,#C2410C)]'
+                                                                  : status === 'absent' ? 'bg-[var(--ds-danger-bg,#FEF2F2)] border-[var(--ds-danger,#DC2626)] text-[var(--ds-danger,#DC2626)]'
+                                                                  : 'bg-[var(--ds-info-bg,#EFF6FF)] border-[var(--ds-info,#2563EB)] text-[var(--ds-info,#2563EB)]'
+                                                                  : 'bg-[var(--ds-surface,#fff)] border-[var(--ds-border,#DDE5DF)] text-[var(--ds-text-secondary,#5B6B61)] hover:bg-[var(--ds-surface-muted,#F7FAF8)] hover:border-[var(--ds-border-strong,#C5D0C8)] disabled:opacity-50'
                                                               }
                                                           `}
                                                       >
@@ -310,13 +303,13 @@ const AttendancePage = () => {
                                                   value={notesState[student.id] || ''}
                                                   onChange={e => setNotesState(p => ({...p, [student.id]: e.target.value}))}
                                                   onBlur={(e) => handleNoteBlur(student.id, e.target.value)}
-                                                  className="h-9 text-sm bg-slate-950/50 border-slate-800 text-slate-300 focus-visible:ring-blue-500"
+                                                  className="h-9 text-sm"
                                               />
                                           </TableCell>
                                       </TableRow>
                                   ))}
                                   {enrolledStudents.length === 0 && (
-                                      <TableRow><TableCell colSpan={3} className="text-center py-12 text-slate-500">No active students found in this class.</TableCell></TableRow>
+                                      <TableRow><TableCell colSpan={3} className="text-center py-12 text-[var(--ds-text-tertiary,#8A978E)]">No active students found in this class.</TableCell></TableRow>
                                   )}
                               </TableBody>
                           </Table>

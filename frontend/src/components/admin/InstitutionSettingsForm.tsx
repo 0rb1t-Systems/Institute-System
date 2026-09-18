@@ -150,8 +150,8 @@ const SECTION_FOCUS = {
 const SectionBlock = ({ id, icon: Icon, title, children }) => (
   <section id={id} className="scroll-mt-6 border-b border-[var(--tenant-line)] p-4 sm:p-5">
     <div className="mb-4 flex items-center gap-2">
-      <Icon className="h-4 w-4 shrink-0 text-[var(--brand-primary,#4f46e5)]" />
-      <h3 className="text-sm font-semibold text-[var(--tenant-text)]">{title}</h3>
+      <Icon className="h-4 w-4 shrink-0 text-[var(--ds-accent,#1F8A5B)]" />
+      <h3 className="text-sm font-semibold text-[var(--ds-text-primary,var(--tenant-text))]">{title}</h3>
     </div>
     {children}
   </section>

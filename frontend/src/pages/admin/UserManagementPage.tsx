@@ -39,6 +39,8 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/components/ui/use-toast';
+import AnimatedPage from '@/components/AnimatedPage';
+import PageHeader from '@/components/PageHeader';
 import { updateProfile, deleteUser, updateUser, createNewUser } from '@/lib/api';
 import { Loader2, Search, RefreshCw, Trash2, Pencil, AlertCircle, UserPlus, Copy, CheckCircle2, Mail, Users } from 'lucide-react';
 import { useUsers } from '@/hooks/useUsers';
@@ -149,8 +151,8 @@ const CreateUserDialog = ({ isOpen, onClose, onCreated }) => {
       <Dialog open={isOpen} onOpenChange={(open) => !open && handleClose()}>
         <DialogContent>
           <DialogHeader>
-            <div className="mx-auto w-14 h-14 bg-green-50 text-green-600 rounded-2xl flex items-center justify-center mb-2 border border-green-100">
-              <CheckCircle2 className="w-7 h-7" />
+            <div className="mx-auto mb-2 flex h-14 w-14 items-center justify-center rounded-2xl border border-[var(--ds-border,#DDE5DF)] bg-[var(--ds-success-bg,#ECFDF5)] text-[var(--ds-success,#059669)]">
+              <CheckCircle2 className="h-7 w-7" />
             </div>
             <DialogTitle className="text-center">User Created Successfully</DialogTitle>
             <DialogDescription className="text-center">
@@ -161,36 +163,36 @@ const CreateUserDialog = ({ isOpen, onClose, onCreated }) => {
             </DialogDescription>
           </DialogHeader>
 
-          <div className="bg-muted/40 p-4 rounded-lg border space-y-3 my-2">
+          <div className="my-2 space-y-3 rounded-lg border border-[var(--ds-border,#DDE5DF)] bg-[var(--ds-surface-muted,#F7FAF8)] p-4">
             <div>
-              <p className="text-xs text-muted-foreground uppercase tracking-wider font-semibold mb-1">Name</p>
-              <p className="font-medium">{created.name}</p>
+              <p className="mb-1 text-xs font-semibold uppercase tracking-wider text-[var(--ds-text-tertiary,#8A978E)]">Name</p>
+              <p className="font-medium text-[var(--ds-text-primary,#122018)]">{created.name}</p>
             </div>
             <div>
-              <p className="text-xs text-muted-foreground uppercase tracking-wider font-semibold mb-1">Email</p>
+              <p className="mb-1 text-xs font-semibold uppercase tracking-wider text-[var(--ds-text-tertiary,#8A978E)]">Email</p>
               <div className="flex items-center justify-between gap-2">
-                <span className="font-medium break-all">{created.email}</span>
+                <span className="break-all font-medium text-[var(--ds-text-primary,#122018)]">{created.email}</span>
                 <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => { navigator.clipboard.writeText(created.email); toast({ title: 'Copied email' }); }}>
                   <Copy className="h-4 w-4" />
                 </Button>
               </div>
             </div>
             <div>
-              <p className="text-xs text-muted-foreground uppercase tracking-wider font-semibold mb-1">Temporary Password</p>
+              <p className="mb-1 text-xs font-semibold uppercase tracking-wider text-[var(--ds-text-tertiary,#8A978E)]">Temporary Password</p>
               <div className="flex items-center justify-between gap-2">
-                <span className="font-mono font-bold">{created.password}</span>
+                <span className="font-mono font-bold text-[var(--ds-text-primary,#122018)]">{created.password}</span>
                 <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => { navigator.clipboard.writeText(created.password); toast({ title: 'Copied password' }); }}>
                   <Copy className="h-4 w-4" />
                 </Button>
               </div>
             </div>
             <div>
-              <p className="text-xs text-muted-foreground uppercase tracking-wider font-semibold mb-1">Role</p>
+              <p className="mb-1 text-xs font-semibold uppercase tracking-wider text-[var(--ds-text-tertiary,#8A978E)]">Role</p>
               <Badge className="capitalize">{created.role}</Badge>
             </div>
             {!created.emailed && created.role !== 'affiliate' && (
-              <div className="flex items-start gap-2 text-sm text-amber-700 bg-amber-50 border border-amber-200 rounded-md p-2">
-                <Mail className="h-4 w-4 mt-0.5 shrink-0" />
+              <div className="flex items-start gap-2 rounded-md border border-[var(--ds-warning,#C2410C)]/25 bg-[var(--ds-warning-bg,#FFF7ED)] p-2 text-sm text-[var(--ds-warning,#C2410C)]">
+                <Mail className="mt-0.5 h-4 w-4 shrink-0" />
                 <span>{MESSAGES.DOMAIN.EMAIL_SEND_FAILED}</span>
               </div>
             )}
@@ -541,67 +543,65 @@ const UserManagementPage = () => {
   };
 
   return (
-    <>
+    <AnimatedPage>
       <Helmet>
         <title>Staff & Affiliates - Admin Dashboard</title>
       </Helmet>
-      <div className="space-y-6 p-6">
-        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-          <div>
-            <h1 className="text-3xl font-bold tracking-tight">Staff & Affiliates</h1>
-            <p className="text-muted-foreground">
-              Create and manage staff and affiliate accounts only.
-            </p>
-          </div>
-          <div className="flex items-center gap-2">
-            {isTenantAdmin && (
-              <Button onClick={() => setIsCreateOpen(true)}>
-                <UserPlus className="mr-2 h-4 w-4" />
-                Create Staff / Affiliate
-              </Button>
-            )}
-            <Button variant="outline" onClick={refresh} disabled={loading}>
-                <RefreshCw className={`mr-2 h-4 w-4 ${loading ? 'animate-spin' : ''}`} /> 
-                Sync Data
-            </Button>
-          </div>
-        </div>
 
+      <PageHeader
+        title="Staff & Affiliates"
+        subtitle="Create and manage staff and affiliate accounts only."
+      >
+        {isTenantAdmin && (
+          <Button onClick={() => setIsCreateOpen(true)}>
+            <UserPlus className="mr-2 h-4 w-4" />
+            Create Staff / Affiliate
+          </Button>
+        )}
+        <Button variant="outline" onClick={refresh} disabled={loading}>
+          <RefreshCw className={`mr-2 h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
+          Sync Data
+        </Button>
+      </PageHeader>
+
+      <div className="space-y-6">
         {error && (
-            <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded flex items-center gap-3">
-                <AlertCircle className="h-5 w-5" />
-                <div>
-                    <p className="font-medium">{MESSAGES.LOAD_FAILED.title}</p>
-                    <p className="text-sm">{typeof error === 'string' ? error : MESSAGES.LOAD_FAILED.description}</p>
-                </div>
+          <div className="flex items-center gap-3 rounded-[var(--ds-radius-md,8px)] border border-[var(--ds-danger,#DC2626)]/25 bg-[var(--ds-danger-bg,#FEF2F2)] px-4 py-3 text-[var(--ds-danger,#DC2626)]">
+            <AlertCircle className="h-5 w-5 shrink-0" />
+            <div>
+              <p className="font-medium">{MESSAGES.LOAD_FAILED.title}</p>
+              <p className="text-sm opacity-90">
+                {typeof error === 'string' ? error : MESSAGES.LOAD_FAILED.description}
+              </p>
             </div>
+          </div>
         )}
 
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
-              <Users className="h-5 w-5" /> Staff & Affiliates
+              <Users className="h-5 w-5 text-[var(--ds-accent,#1F8A5B)]" /> Staff & Affiliates
             </CardTitle>
             <CardDescription>
               Only Staff and Affiliate roles can be created here.
             </CardDescription>
-            <div className="pt-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <div className="flex flex-col justify-between gap-3 pt-4 sm:flex-row sm:items-center">
               <div className="relative w-full max-w-md">
-                <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
-                <Input 
-                    placeholder="Search by name, email, or ID..." 
-                    value={searchTerm} 
-                    onChange={(e) => { setSearchTerm(e.target.value); setCurrentPage(1); }} 
-                    className="pl-8" 
+                <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-[var(--ds-text-tertiary,#8A978E)]" />
+                <Input
+                  placeholder="Search by name, email, or ID..."
+                  value={searchTerm}
+                  onChange={(e) => { setSearchTerm(e.target.value); setCurrentPage(1); }}
+                  className="pl-8"
                 />
               </div>
-              <div className="text-sm text-muted-foreground shrink-0">
-                  Total: {filteredUsers.length}
+              <div className="shrink-0 text-sm text-[var(--ds-text-secondary,#5B6B61)]">
+                Total: {filteredUsers.length}
               </div>
             </div>
           </CardHeader>
           <CardContent>
-            <div className="rounded-md border">
+            <div className="overflow-hidden rounded-[var(--ds-radius-md,8px)] border border-[var(--ds-border,#DDE5DF)]">
               <Table>
                 <TableHeader>
                   <TableRow>
@@ -615,113 +615,138 @@ const UserManagementPage = () => {
                 </TableHeader>
                 <TableBody>
                   {loading ? (
-                      Array.from({ length: 5 }).map((_, i) => (
-                          <TableRow key={i}>
-                              <TableCell><Skeleton className="h-4 w-[150px] mb-2"/><Skeleton className="h-3 w-[100px]"/></TableCell>
-                              <TableCell><Skeleton className="h-4 w-[120px]"/></TableCell>
-                              <TableCell><Skeleton className="h-6 w-[80px] rounded-full"/></TableCell>
-                              <TableCell><Skeleton className="h-8 w-[120px]"/></TableCell>
-                              <TableCell className="text-right"><Skeleton className="h-8 w-8 inline-block rounded"/></TableCell>
-                          </TableRow>
-                      ))
+                    Array.from({ length: 5 }).map((_, i) => (
+                      <TableRow key={i}>
+                        <TableCell><Skeleton className="mb-2 h-4 w-[150px]" /><Skeleton className="h-3 w-[100px]" /></TableCell>
+                        <TableCell><Skeleton className="h-4 w-[120px]" /></TableCell>
+                        <TableCell><Skeleton className="h-6 w-[80px] rounded-full" /></TableCell>
+                        <TableCell><Skeleton className="h-6 w-[80px] rounded-full" /></TableCell>
+                        <TableCell><Skeleton className="h-8 w-[120px]" /></TableCell>
+                        <TableCell className="text-right"><Skeleton className="inline-block h-8 w-8 rounded" /></TableCell>
+                      </TableRow>
+                    ))
                   ) : pagedUsers.length === 0 ? (
                     <TableRow>
-                      <TableCell colSpan={6} className="text-center h-24 text-muted-foreground">
+                      <TableCell colSpan={6} className="h-24 text-center text-[var(--ds-text-secondary,#5B6B61)]">
                         No staff or affiliates yet. Create one to get started.
                       </TableCell>
                     </TableRow>
                   ) : (
                     pagedUsers.map((user) => {
-                        const isMissingData = !user.name || !user.role;
-                        
-                        return (
-                          <TableRow key={user.id} className={isMissingData ? 'bg-orange-50/50' : ''}>
-                            <TableCell>
-                                <div className="font-medium flex items-center gap-2">
-                                    {user.name || 'Unnamed User'}
-                                    {isMissingData && <AlertCircle className="h-3 w-3 text-orange-500" aria-label="Missing Profile Data" />}
-                                </div>
-                                <div className="text-xs text-muted-foreground mt-1">
-                                    Code: {getStudentCode(user)}
-                                </div>
-                            </TableCell>
-                            <TableCell>
-                                <div className="text-sm">{getDisplayEmail(user)}</div>
-                            </TableCell>
-                            <TableCell><Badge variant={getRoleBadgeVariant(user.role)} className="capitalize">{user.role || 'Unknown'}</Badge></TableCell>
-                            <TableCell>
-                              <Badge
-                                variant="outline"
-                                className={
-                                  user.status === 'suspended'
-                                    ? 'border-amber-600 text-amber-600'
-                                    : user.status === 'pending'
-                                      ? 'border-slate-500 text-slate-500'
-                                      : 'border-emerald-600 text-emerald-600'
-                                }
+                      const isMissingData = !user.name || !user.role;
+
+                      return (
+                        <TableRow
+                          key={user.id}
+                          className={isMissingData ? 'bg-[var(--ds-warning-bg,#FFF7ED)]/60' : ''}
+                        >
+                          <TableCell>
+                            <div className="flex items-center gap-2 font-medium text-[var(--ds-text-primary,#122018)]">
+                              {user.name || 'Unnamed User'}
+                              {isMissingData && (
+                                <AlertCircle
+                                  className="h-3 w-3 text-[var(--ds-warning,#C2410C)]"
+                                  aria-label="Missing Profile Data"
+                                />
+                              )}
+                            </div>
+                            <div className="mt-1 text-xs text-[var(--ds-text-secondary,#5B6B61)]">
+                              Code: {getStudentCode(user)}
+                            </div>
+                          </TableCell>
+                          <TableCell>
+                            <div className="text-sm text-[var(--ds-text-primary,#122018)]">{getDisplayEmail(user)}</div>
+                          </TableCell>
+                          <TableCell>
+                            <Badge variant={getRoleBadgeVariant(user.role)} className="capitalize">
+                              {user.role || 'Unknown'}
+                            </Badge>
+                          </TableCell>
+                          <TableCell>
+                            <Badge
+                              variant="outline"
+                              className={
+                                user.status === 'suspended'
+                                  ? 'border-[var(--ds-warning,#C2410C)] text-[var(--ds-warning,#C2410C)]'
+                                  : user.status === 'pending'
+                                    ? 'border-[var(--ds-border-strong,#C5D0C8)] text-[var(--ds-text-secondary,#5B6B61)]'
+                                    : 'border-[var(--ds-success,#059669)] text-[var(--ds-success,#059669)]'
+                              }
+                            >
+                              {user.status || 'approved'}
+                            </Badge>
+                          </TableCell>
+                          <TableCell>
+                            <Select value={user.role} onValueChange={(value) => handleRoleChange(user.id, value)}>
+                              <SelectTrigger className="h-8 w-[130px] text-xs"><SelectValue /></SelectTrigger>
+                              <SelectContent>
+                                {STAFF_AFFILIATE_ROLES.map((r) => (
+                                  <SelectItem key={r.value} value={r.value}>{r.label}</SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          </TableCell>
+                          <TableCell className="text-right">
+                            <div className="flex items-center justify-end gap-1">
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => handleStatusToggle(user)}
+                                className="h-8 text-xs"
+                                title={user.status === 'suspended' ? 'Activate' : 'Deactivate'}
                               >
-                                {user.status || 'approved'}
-                              </Badge>
-                            </TableCell>
-                            <TableCell>
-                              <Select value={user.role} onValueChange={(value) => handleRoleChange(user.id, value)}>
-                                <SelectTrigger className="w-[130px] h-8 text-xs"><SelectValue /></SelectTrigger>
-                                <SelectContent>
-                                  {STAFF_AFFILIATE_ROLES.map((r) => (
-                                    <SelectItem key={r.value} value={r.value}>{r.label}</SelectItem>
-                                  ))}
-                                </SelectContent>
-                              </Select>
-                            </TableCell>
-                            <TableCell className="text-right">
-                                <div className="flex justify-end items-center gap-1">
-                                    <Button
-                                      variant="ghost"
-                                      size="sm"
-                                      onClick={() => handleStatusToggle(user)}
-                                      className="h-8 text-xs"
-                                      title={user.status === 'suspended' ? 'Activate' : 'Deactivate'}
-                                    >
-                                      {user.status === 'suspended' ? 'Activate' : 'Deactivate'}
-                                    </Button>
-                                    <Button variant="ghost" size="icon" onClick={() => setEditUser(user)} className="h-8 w-8 text-blue-600 hover:bg-blue-100/50" title="Edit User">
-                                        <Pencil className="h-4 w-4" />
-                                    </Button>
-                                    <Button variant="ghost" size="icon" onClick={() => handleDeleteClick(user.id)} className="h-8 w-8 text-red-600 hover:bg-red-100/50" title="Delete Account">
-                                        <Trash2 className="h-4 w-4" />
-                                    </Button>
-                                </div>
-                            </TableCell>
-                          </TableRow>
-                        );
+                                {user.status === 'suspended' ? 'Activate' : 'Deactivate'}
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                onClick={() => setEditUser(user)}
+                                className="h-8 w-8 text-[var(--ds-accent,#1F8A5B)] hover:bg-[var(--ds-primary-soft,#ECFDF5)]"
+                                title="Edit User"
+                              >
+                                <Pencil className="h-4 w-4" />
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                onClick={() => handleDeleteClick(user.id)}
+                                className="h-8 w-8 text-[var(--ds-danger,#DC2626)] hover:bg-[var(--ds-danger-bg,#FEF2F2)]"
+                                title="Delete Account"
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      );
                     })
                   )}
                 </TableBody>
               </Table>
             </div>
-            
+
             {!loading && totalPages > 1 && (
-                <div className="flex items-center justify-between mt-4">
-                    <Button 
-                        variant="outline" 
-                        size="sm" 
-                        onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
-                        disabled={currentPage === 1}
-                    >
-                        Previous
-                    </Button>
-                    <span className="text-sm text-muted-foreground">
-                        Page {currentPage} of {totalPages}
-                    </span>
-                    <Button 
-                        variant="outline" 
-                        size="sm" 
-                        onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
-                        disabled={currentPage === totalPages}
-                    >
-                        Next
-                    </Button>
-                </div>
+              <div className="mt-4 flex items-center justify-between">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                  disabled={currentPage === 1}
+                >
+                  Previous
+                </Button>
+                <span className="text-sm text-[var(--ds-text-secondary,#5B6B61)]">
+                  Page {currentPage} of {totalPages}
+                </span>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+                  disabled={currentPage === totalPages}
+                >
+                  Next
+                </Button>
+              </div>
             )}
           </CardContent>
         </Card>
@@ -733,28 +758,30 @@ const UserManagementPage = () => {
         />
 
         {editUser && (
-            <EditUserDialog user={editUser} isOpen={!!editUser} onClose={() => setEditUser(null)} onSave={refresh} />
+          <EditUserDialog user={editUser} isOpen={!!editUser} onClose={() => setEditUser(null)} onSave={refresh} />
         )}
 
         <AlertDialog open={isDeleteOpen} onOpenChange={setIsDeleteOpen}>
-            <AlertDialogContent>
-                <AlertDialogHeader>
-                    <AlertDialogTitle className="text-red-600">Delete User Account?</AlertDialogTitle>
-                    <AlertDialogDescription>
-                        This action <b>cannot be undone</b>. This will permanently delete the user's authentication account, profile, and associated data.
-                    </AlertDialogDescription>
-                </AlertDialogHeader>
-                <AlertDialogFooter>
-                    <AlertDialogCancel>Cancel</AlertDialogCancel>
-                    <AlertDialogAction onClick={handleConfirmDelete} className="bg-red-600 text-white hover:bg-red-700">
-                        Permanently Delete
-                    </AlertDialogAction>
-                </AlertDialogFooter>
-            </AlertDialogContent>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle className="text-[var(--ds-danger,#DC2626)]">Delete User Account?</AlertDialogTitle>
+              <AlertDialogDescription>
+                This action <b>cannot be undone</b>. This will permanently delete the user's authentication account, profile, and associated data.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Cancel</AlertDialogCancel>
+              <AlertDialogAction
+                onClick={handleConfirmDelete}
+                className="bg-[var(--ds-danger,#DC2626)] text-[var(--ds-text-on-primary,#fff)] hover:bg-[var(--ds-danger-hover,#B91C1C)]"
+              >
+                Permanently Delete
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
         </AlertDialog>
-
       </div>
-    </>
+    </AnimatedPage>
   );
 };
 

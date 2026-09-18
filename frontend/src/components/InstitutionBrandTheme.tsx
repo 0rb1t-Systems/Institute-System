@@ -1,14 +1,17 @@
 import { useEffect } from 'react'
 import { useAuth } from '@/contexts/AuthContext'
+import { usePlatformTheme } from '@/contexts/PlatformThemeContext'
 import { getInstitutionAccent, getInstitutionPrimary, getInstitutionTertiary } from '@/lib/institution'
 import { applyInstitutionBrandCss, clearInstitutionBrandCss } from '@/lib/logoBrandColors'
 
 /**
  * Pushes the tenant's saved brand colors onto CSS variables so the app shell
  * (buttons, rings, nav accents) and branded surfaces stay consistent.
+ * Light mode UI chrome uses Amanah design-system.pen greens via applyInstitutionBrandCss.
  */
 export default function InstitutionBrandTheme() {
   const { user, institution } = useAuth()
+  const { mode } = usePlatformTheme()
 
   useEffect(() => {
     const root = document.documentElement
@@ -27,7 +30,7 @@ export default function InstitutionBrandTheme() {
       root.removeAttribute('data-tenant-chrome')
       clearInstitutionBrandCss()
     }
-  }, [institution, user?.role])
+  }, [institution, user?.role, mode])
 
   return null
 }

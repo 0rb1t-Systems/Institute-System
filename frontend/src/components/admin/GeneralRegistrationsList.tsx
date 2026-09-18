@@ -31,9 +31,10 @@ const GeneralRegistrationsList = () => {
   const [loadingId, setLoadingId] = useState(null);
   const [createdCreds, setCreatedCreds] = useState(null); // To show after approval
 
-  // Pagination State for Approved List
+  // Pagination
   const [approvedPage, setApprovedPage] = useState(1);
-  const APPROVED_ITEMS_PER_PAGE = 10;
+  const [pendingPage, setPendingPage] = useState(1);
+  const ITEMS_PER_PAGE = 10;
 
   const affiliateNameById = useMemo(() => {
     const map = new Map();
@@ -102,14 +103,27 @@ const GeneralRegistrationsList = () => {
             else r.push(reg);
         }
     });
-    // Sort Approved by date desc (newest first)
-    a.sort((x, y) => Number(new Date(y.submitted_at)) - Number(new Date(x.submitted_at)));
+    // Newest first
+    const byDateDesc = (x, y) => Number(new Date(y.submitted_at)) - Number(new Date(x.submitted_at));
+    p.sort(byDateDesc);
+    a.sort(byDateDesc);
     return { pending: p, approved: a, rejected: r };
   }, [generalRegistrations, searchTerm]);
 
-  // Pagination Logic for Approved
-  const totalApprovedPages = Math.ceil(approved.length / APPROVED_ITEMS_PER_PAGE);
-  const currentApproved = approved.slice((approvedPage - 1) * APPROVED_ITEMS_PER_PAGE, approvedPage * APPROVED_ITEMS_PER_PAGE);
+  // Pagination Logic
+  const totalApprovedPages = Math.max(1, Math.ceil(approved.length / ITEMS_PER_PAGE));
+  const safeApprovedPage = Math.min(approvedPage, totalApprovedPages);
+  const currentApproved = approved.slice(
+    (safeApprovedPage - 1) * ITEMS_PER_PAGE,
+    safeApprovedPage * ITEMS_PER_PAGE
+  );
+
+  const totalPendingPages = Math.max(1, Math.ceil(pending.length / ITEMS_PER_PAGE));
+  const safePendingPage = Math.min(pendingPage, totalPendingPages);
+  const currentPending = pending.slice(
+    (safePendingPage - 1) * ITEMS_PER_PAGE,
+    safePendingPage * ITEMS_PER_PAGE
+  );
 
   const handleApprove = async (reg) => {
     setLoadingId(reg.id);
@@ -239,7 +253,11 @@ const GeneralRegistrationsList = () => {
                     placeholder="Search registrations..." 
                     className="pl-9 bg-slate-900/50 border-slate-700" 
                     value={searchTerm}
-                    onChange={e => setSearchTerm(e.target.value)}
+                    onChange={e => {
+                      setSearchTerm(e.target.value);
+                      setPendingPage(1);
+                      setApprovedPage(1);
+                    }}
                 />
             </div>
         </div>
@@ -310,13 +328,13 @@ const GeneralRegistrationsList = () => {
                 </Table>
                 
                 {/* Approved Pagination */}
-                {totalApprovedPages > 1 && (
+                {approved.length > ITEMS_PER_PAGE && (
                     <div className="flex items-center justify-end gap-2 mt-4">
-                        <Button variant="outline" size="sm" onClick={() => setApprovedPage(p => Math.max(1, p - 1))} disabled={approvedPage === 1}>
+                        <Button variant="outline" size="sm" onClick={() => setApprovedPage(p => Math.max(1, p - 1))} disabled={safeApprovedPage === 1}>
                             <ChevronLeft className="h-4 w-4" />
                         </Button>
-                        <span className="text-xs text-slate-400">Page {approvedPage} of {totalApprovedPages}</span>
-                        <Button variant="outline" size="sm" onClick={() => setApprovedPage(p => Math.min(totalApprovedPages, p + 1))} disabled={approvedPage === totalApprovedPages}>
+                        <span className="text-xs text-slate-400">Page {safeApprovedPage} of {totalApprovedPages}</span>
+                        <Button variant="outline" size="sm" onClick={() => setApprovedPage(p => Math.min(totalApprovedPages, p + 1))} disabled={safeApprovedPage === totalApprovedPages}>
                             <ChevronRight className="h-4 w-4" />
                         </Button>
                     </div>
@@ -348,8 +366,8 @@ const GeneralRegistrationsList = () => {
                         </TableRow>
                     </TableHeader>
                     <TableBody>
-                        {pending.length > 0 ? (
-                            pending.map(reg => (
+                        {currentPending.length > 0 ? (
+                            currentPending.map(reg => (
                                 <TableRow key={reg.id} className="border-slate-800 hover:bg-slate-800/50">
                                     <TableCell>
                                         <div className="font-medium text-slate-200">{reg.student_name}</div>
@@ -411,6 +429,25 @@ const GeneralRegistrationsList = () => {
                         )}
                     </TableBody>
                 </Table>
+
+                {/* Pending Pagination */}
+                {pending.length > ITEMS_PER_PAGE && (
+                    <div className="flex items-center justify-between gap-2 mt-4">
+                        <span className="text-xs text-slate-500">
+                            Showing {(safePendingPage - 1) * ITEMS_PER_PAGE + 1}–
+                            {Math.min(safePendingPage * ITEMS_PER_PAGE, pending.length)} of {pending.length}
+                        </span>
+                        <div className="flex items-center gap-2">
+                            <Button variant="outline" size="sm" onClick={() => setPendingPage(p => Math.max(1, p - 1))} disabled={safePendingPage === 1}>
+                                <ChevronLeft className="h-4 w-4" />
+                            </Button>
+                            <span className="text-xs text-slate-400">Page {safePendingPage} of {totalPendingPages}</span>
+                            <Button variant="outline" size="sm" onClick={() => setPendingPage(p => Math.min(totalPendingPages, p + 1))} disabled={safePendingPage === totalPendingPages}>
+                                <ChevronRight className="h-4 w-4" />
+                            </Button>
+                        </div>
+                    </div>
+                )}
             </CardContent>
         </Card>
 

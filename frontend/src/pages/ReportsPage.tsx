@@ -91,12 +91,12 @@ const ReportsPage = () => {
   if (error) {
       return (
           <div className="p-8 max-w-2xl mx-auto mt-20">
-              <Alert variant="destructive" className="bg-red-950/20 border-red-900/50">
+              <Alert variant="destructive">
                   <AlertTriangle className="h-5 w-5" />
                   <AlertTitle className="text-lg ml-2">Data Load Failed</AlertTitle>
                   <AlertDescription className="mt-2 ml-2">
                       <p>{getUserMessage(error, { context: 'ReportsPage', fallback: MESSAGES.LOAD_FAILED })}</p>
-                      <Button onClick={handleRetry} disabled={isRetrying} variant="outline" className="mt-4 border-red-900 text-red-100 hover:bg-red-900/30">
+                      <Button onClick={handleRetry} disabled={isRetrying} variant="outline" className="mt-4">
                           {isRetrying && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                           Retry Loading Data
                       </Button>
@@ -124,14 +124,14 @@ const ReportsPage = () => {
 
       {loading && !error && (
           <div className="flex items-center justify-center py-20">
-              <Loader2 className="h-8 w-8 animate-spin text-blue-500" />
-              <span className="ml-3 text-slate-400">Loading Report Data...</span>
+              <Loader2 className="h-8 w-8 animate-spin text-[var(--ds-accent,#1F8A5B)]" />
+              <span className="ml-3 text-[var(--ds-text-secondary,#5B6B61)]">Loading Report Data...</span>
           </div>
       )}
 
       {!loading && !error && (
         <Tabs value={activeTab} onValueChange={handleTabChange} className="w-full">
-            <TabsList className="flex flex-wrap w-full bg-slate-900 border border-slate-800 h-auto p-1 gap-1 justify-start">
+            <TabsList className="flex flex-wrap w-full h-auto p-1 gap-1 justify-start">
             {showFinance && <TabsTrigger value="finance">Fees / Finance</TabsTrigger>}
             {showRevenue && <TabsTrigger value="revenue">Revenue</TabsTrigger>}
             {showSettlement && <TabsTrigger value="settlement">Settlement</TabsTrigger>}

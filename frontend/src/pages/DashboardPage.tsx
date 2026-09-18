@@ -1,11 +1,21 @@
 import React, { useMemo } from 'react';
+import { Link } from 'react-router-dom';
 import { Helmet } from 'react-helmet';
 import AnimatedPage from '@/components/AnimatedPage';
 import PageHeader from '@/components/PageHeader';
 import StatCard from '@/components/StatCard';
 import { useData } from '@/contexts/DataContext';
 import { useAuth } from '@/contexts/AuthContext';
-import { Users, School, DollarSign, Activity, AlertCircle } from 'lucide-react';
+import {
+  Users,
+  School,
+  DollarSign,
+  Activity,
+  AlertCircle,
+  TrendingUp,
+  TrendingDown,
+  Timer,
+} from 'lucide-react';
 import { formatCurrency } from '@/lib/utils';
 import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -25,10 +35,13 @@ import {
   CartesianGrid,
   Tooltip,
   ResponsiveContainer,
+  Cell,
+  LabelList,
 } from 'recharts';
 
 /**
- * Administrator / Staff overview — matches product dashboard reference.
+ * Administrator / Staff overview — visual layout from design-system.pen Admin Dashboard.
+ * Data fetching and business logic unchanged.
  */
 const DashboardPage = () => {
   const { user, institution } = useAuth();
@@ -51,6 +64,12 @@ const DashboardPage = () => {
   const registrationFee = getRegistrationFeeAmount(institution);
   const gradeScale = useMemo(() => getInstitutionGradeScale(institution), [institution]);
 
+  const periodLabel = useMemo(
+    () =>
+      new Intl.DateTimeFormat(undefined, { month: 'short', year: 'numeric' }).format(new Date()),
+    [],
+  );
+
   const stats = useMemo(() => {
     const activeClasses = classes.filter((c) => c.is_active).length;
     const completed = payments.filter((p) => (p.status || 'completed') === 'completed');
@@ -62,7 +81,6 @@ const DashboardPage = () => {
       .filter((p) => p.is_registration_fee)
       .reduce((sum: any, p: any) => sum + Number(p.amount || 0), 0);
 
-    // Outstanding balance — shared SSOT with Finance page
     let outstandingBalance = 0;
     let outstandingStudents = 0;
     for (const student of students) {
@@ -83,7 +101,6 @@ const DashboardPage = () => {
       }
     }
 
-    // Rough month-over-month student growth from registration_date / created_at
     const now = new Date();
     const thisMonth = now.getMonth();
     const thisYear = now.getFullYear();
@@ -100,11 +117,18 @@ const DashboardPage = () => {
     const addedThis = countInMonth(thisYear, thisMonth);
     const addedLast = countInMonth(lastYear, lastMonth);
     let growthLabel = 'Enrolled in your institution';
+    let growthTone: 'secondary' | 'accent' | 'muted' = 'secondary';
+    let growthTrend: 'up' | 'down' | 'none' = 'none';
+
     if (addedLast > 0) {
       const pct = Math.round(((addedThis - addedLast) / addedLast) * 100);
       growthLabel = `${pct >= 0 ? '+' : ''}${pct}% from last month`;
+      growthTone = 'secondary';
+      growthTrend = pct >= 0 ? 'up' : 'down';
     } else if (addedThis > 0) {
       growthLabel = `+${addedThis} new this month`;
+      growthTone = 'accent';
+      growthTrend = 'up';
     }
 
     return {
@@ -114,6 +138,8 @@ const DashboardPage = () => {
       tuition,
       registration,
       growthLabel,
+      growthTone,
+      growthTrend,
       outstandingBalance,
       outstandingStudents,
     };
@@ -121,10 +147,10 @@ const DashboardPage = () => {
 
   const chartData = useMemo(
     () => [
-      { name: 'Tuition', amount: stats.tuition },
-      { name: 'Registration', amount: stats.registration },
+      { name: 'Tuition', amount: stats.tuition, fill: 'var(--ds-primary, #1F8A5B)' },
+      { name: 'Registration', amount: stats.registration, fill: 'var(--ds-accent, #1F8A5B)' },
     ],
-    [stats.tuition, stats.registration]
+    [stats.tuition, stats.registration],
   );
 
   const latestResults = useMemo(() => {
@@ -148,12 +174,18 @@ const DashboardPage = () => {
             ? g.letter_grade
             : getLetterGrade(percentage, gradeScale);
         const name = student?.name || 'Unknown Student';
+        const parts = name.trim().split(/\s+/);
+        const initial =
+          parts.length >= 2
+            ? `${parts[0][0] || ''}${parts[parts.length - 1][0] || ''}`.toUpperCase()
+            : (name.trim()[0] || '?').toUpperCase();
         return {
           id: `gb-${g.id}`,
           name,
-          initial: (name.trim()[0] || '?').toUpperCase(),
-          subtitle: course?.name ? `Gradebook · ${course.name}` : 'Gradebook final',
-          scoreLabel: `${Math.round(percentage)}/100 (${letter})`,
+          initial,
+          subtitle: course?.name || 'Gradebook final',
+          scoreLabel: `${Math.round(percentage)}/100`,
+          letter,
         };
       });
 
@@ -173,12 +205,18 @@ const DashboardPage = () => {
         const percentage = getExamScorePercent(r.final_score ?? r.score, exam);
         const letter = getLetterGrade(percentage, gradeScale);
         const name = student?.name || 'Unknown Student';
+        const parts = name.trim().split(/\s+/);
+        const initial =
+          parts.length >= 2
+            ? `${parts[0][0] || ''}${parts[parts.length - 1][0] || ''}`.toUpperCase()
+            : (name.trim()[0] || '?').toUpperCase();
         return {
           id: `ex-${r.id}`,
           name,
-          initial: (name.trim()[0] || '?').toUpperCase(),
-          subtitle: exam?.title ? `Exam · ${exam.title}` : 'Submitted exam',
-          scoreLabel: `${Math.round(Number(r.final_score ?? r.score ?? 0))}/${Math.round(total)} (${letter})`,
+          initial,
+          subtitle: exam?.title || 'Submitted exam',
+          scoreLabel: `${Math.round(Number(r.final_score ?? r.score ?? 0))}/${Math.round(total)}`,
+          letter,
         };
       });
   }, [gradebookEntries, results, exams, students, courses, gradeScale]);
@@ -198,6 +236,9 @@ const DashboardPage = () => {
   }
 
   const v = (n) => (loading ? '…' : n);
+  const chartEmpty = !loading && stats.tuition === 0 && stats.registration === 0;
+  const axisColor = isLight ? 'var(--ds-text-secondary, #5B6B61)' : '#94a3b8';
+  const gridColor = isLight ? 'var(--ds-border, #DDE5DF)' : '#1e293b';
 
   return (
     <AnimatedPage>
@@ -206,35 +247,52 @@ const DashboardPage = () => {
       </Helmet>
 
       <PageHeader
+        eyebrow="Institution · Today"
         title={isAdmin ? 'Administrator Dashboard' : 'Staff Dashboard'}
-        subtitle="System overview and performance metrics."
+        subtitle="Enrollment, cash flow, and academic pulse in one scan."
       />
 
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4 mb-6">
+      <div className="mb-5 grid grid-cols-2 gap-3 lg:grid-cols-4 lg:gap-4">
         <StatCard
           title="Total Students"
           value={v(stats.students)}
-          icon={<Users className="h-4 w-4 text-blue-400" />}
+          tone="info"
+          descriptionTone={stats.growthTone}
+          trendIcon={
+            stats.growthTrend === 'up' ? (
+              <TrendingUp className="h-3 w-3 shrink-0" />
+            ) : stats.growthTrend === 'down' ? (
+              <TrendingDown className="h-3 w-3 shrink-0 text-[var(--ds-text-tertiary,#8A978E)]" />
+            ) : null
+          }
+          icon={<Users className="h-[18px] w-[18px]" />}
           description={loading ? '…' : stats.growthLabel}
         />
         <StatCard
           title="Active Classes"
           value={v(stats.classes)}
-          icon={<School className="h-4 w-4 text-violet-400" />}
+          tone="corporate"
+          descriptionTone="secondary"
+          icon={<School className="h-[18px] w-[18px]" />}
           description="Currently running"
         />
         {showFinance ? (
           <StatCard
             title="Total Revenue"
             value={loading ? '…' : formatCurrency(stats.revenue)}
-            icon={<DollarSign className="h-4 w-4 text-emerald-400" />}
+            tone="primary"
+            descriptionTone="accent"
+            trendIcon={<TrendingUp className="h-3 w-3 shrink-0" />}
+            icon={<DollarSign className="h-[18px] w-[18px]" />}
             description="Gross volume"
           />
         ) : (
           <StatCard
             title="Total Revenue"
             value="—"
-            icon={<DollarSign className="h-4 w-4 text-emerald-400" />}
+            tone="primary"
+            descriptionTone="secondary"
+            icon={<DollarSign className="h-[18px] w-[18px]" />}
             description="Admin / staff only"
           />
         )}
@@ -242,7 +300,10 @@ const DashboardPage = () => {
           <StatCard
             title="Outstanding Balance"
             value={loading ? '…' : formatCurrency(stats.outstandingBalance)}
-            icon={<AlertCircle className="h-4 w-4 text-orange-400" />}
+            tone="warning"
+            descriptionTone="warning"
+            trendIcon={<Timer className="h-3 w-3 shrink-0" />}
+            icon={<AlertCircle className="h-[18px] w-[18px]" />}
             description={
               loading
                 ? '…'
@@ -253,91 +314,146 @@ const DashboardPage = () => {
           <StatCard
             title="System Status"
             value="Healthy"
-            icon={<Activity className="h-4 w-4 text-emerald-400" />}
+            tone="primary"
+            descriptionTone="accent"
+            icon={<Activity className="h-[18px] w-[18px]" />}
             description="All services operational"
           />
         )}
       </div>
 
       <div className="grid gap-4 lg:grid-cols-5">
-        <Card className="bg-slate-900/50 border-slate-800 lg:col-span-3 [.tenant-shell_&]:bg-[var(--tenant-surface)] [.tenant-shell_&]:border-[var(--tenant-line)] [.tenant-shell_&]:shadow-[0_10px_30px_color-mix(in_srgb,var(--brand-primary)_8%,transparent)]">
-          <CardHeader>
-            <CardTitle className="text-white text-lg [.tenant-shell_&]:text-[var(--tenant-text)]">Financial Overview</CardTitle>
-            <CardDescription className="text-slate-400 [.tenant-shell_&]:text-[var(--tenant-muted)]">
-              Distribution of revenue sources.
-            </CardDescription>
+        <Card className="border-slate-800 bg-slate-900/50 lg:col-span-3 [.tenant-shell_&]:rounded-[var(--ds-radius-xl,16px)] [.tenant-shell_&]:border-[var(--ds-border,#DDE5DF)] [.tenant-shell_&]:bg-[var(--ds-surface,#fff)] [.tenant-shell_&]:shadow-[var(--ds-shadow-card,0_1px_2px_#1F8A5B14,0_8px_24px_#1F8A5B0A)]">
+          <CardHeader className="flex flex-row items-start justify-between gap-3 space-y-0 p-6 pb-2">
+            <div className="min-w-0 space-y-1">
+              <CardTitle className="text-lg text-white [.tenant-shell_&]:text-[17px] [.tenant-shell_&]:font-bold [.tenant-shell_&]:tracking-[-0.01em] [.tenant-shell_&]:text-[var(--ds-text-primary,#122018)]">
+                Revenue mix
+              </CardTitle>
+              <CardDescription className="text-slate-400 [.tenant-shell_&]:text-[12px] [.tenant-shell_&]:text-[var(--ds-text-secondary,#5B6B61)]">
+                Tuition vs registration this term
+              </CardDescription>
+            </div>
+            <span className="shrink-0 font-data text-[11px] font-semibold text-slate-500 [.tenant-shell_&]:text-[var(--ds-text-tertiary,#8A978E)]">
+              {periodLabel}
+            </span>
           </CardHeader>
-          <CardContent className="h-[280px] pt-2">
+          <CardContent className="h-[300px] px-6 pb-6 pt-2">
             {showFinance ? (
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={chartData} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
-                  <CartesianGrid strokeDasharray="3 3" stroke={isLight ? '#dbe4ef' : '#1e293b'} vertical={false} />
-                  <XAxis
-                    dataKey="name"
-                    stroke={isLight ? '#64748b' : '#64748b'}
-                    tick={{ fill: isLight ? '#475569' : '#94a3b8', fontSize: 12 }}
-                    axisLine={false}
-                    tickLine={false}
-                  />
-                  <YAxis
-                    stroke="#64748b"
-                    tick={{ fill: isLight ? '#475569' : '#94a3b8', fontSize: 12 }}
-                    axisLine={false}
-                    tickLine={false}
-                    tickFormatter={(val) =>
-                      val >= 1000 ? `$${Math.round(val / 1000)}k` : `$${val}`
-                    }
-                  />
-                  <Tooltip
-                    cursor={{ fill: isLight ? 'color-mix(in srgb, var(--brand-primary) 8%, transparent)' : 'rgba(148, 163, 184, 0.08)' }}
-                    contentStyle={{
-                      background: isLight ? '#ffffff' : '#0f172a',
-                      border: isLight ? '1px solid #dbe4ef' : '1px solid #1e293b',
-                      borderRadius: 8,
-                      color: isLight ? '#0f172a' : '#f8fafc',
-                    }}
-                    formatter={(value) => [formatCurrency(Number(value)), 'Amount']}
-                  />
-                  <Bar dataKey="amount" fill={isLight ? 'var(--brand-primary)' : '#334155'} radius={[4, 4, 0, 0]} maxBarSize={72} />
-                </BarChart>
-              </ResponsiveContainer>
+              loading ? (
+                <div className="flex h-full items-center justify-center text-sm text-slate-500">
+                  Loading revenue…
+                </div>
+              ) : chartEmpty ? (
+                <div className="flex h-full items-center justify-center text-sm text-slate-500 [.tenant-shell_&]:text-[var(--ds-text-tertiary,#8A978E)]">
+                  No completed payments yet this term.
+                </div>
+              ) : (
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={chartData} margin={{ top: 28, right: 12, left: 0, bottom: 4 }}>
+                    <CartesianGrid strokeDasharray="0" stroke={gridColor} vertical={false} />
+                    <XAxis
+                      dataKey="name"
+                      stroke={axisColor}
+                      tick={{ fill: axisColor, fontSize: 12, fontWeight: 500 }}
+                      axisLine={false}
+                      tickLine={false}
+                    />
+                    <YAxis hide />
+                    <Tooltip
+                      cursor={{
+                        fill: isLight
+                          ? 'color-mix(in srgb, var(--ds-primary, #1F8A5B) 6%, transparent)'
+                          : 'rgba(148, 163, 184, 0.08)',
+                      }}
+                      contentStyle={{
+                        background: isLight ? 'var(--ds-surface, #fff)' : '#0f172a',
+                        border: isLight
+                          ? '1px solid var(--ds-border, #DDE5DF)'
+                          : '1px solid #1e293b',
+                        borderRadius: 8,
+                        color: isLight ? 'var(--ds-text-primary, #122018)' : '#f8fafc',
+                        fontSize: 13,
+                      }}
+                      formatter={(value) => [formatCurrency(Number(value)), 'Amount']}
+                    />
+                    <Bar dataKey="amount" radius={[10, 10, 10, 10]} maxBarSize={96}>
+                      {chartData.map((entry) => (
+                        <Cell key={entry.name} fill={entry.fill} />
+                      ))}
+                      <LabelList
+                        dataKey="amount"
+                        position="top"
+                        formatter={(value: number) => formatCurrency(Number(value))}
+                        style={{
+                          fill: isLight ? 'var(--ds-text-primary, #122018)' : '#e2e8f0',
+                          fontSize: 12,
+                          fontWeight: 600,
+                          fontFamily: 'Arial, Helvetica, sans-serif',
+                        }}
+                      />
+                    </Bar>
+                  </BarChart>
+                </ResponsiveContainer>
+              )
             ) : (
-              <div className="h-full flex items-center justify-center text-slate-500 text-sm">
+              <div className="flex h-full items-center justify-center text-sm text-slate-500">
                 Finance metrics are available to admin and staff.
               </div>
             )}
           </CardContent>
         </Card>
 
-        <Card className="bg-slate-900/50 border-slate-800 lg:col-span-2 [.tenant-shell_&]:bg-[var(--tenant-surface)] [.tenant-shell_&]:border-[var(--tenant-line)] [.tenant-shell_&]:shadow-[0_10px_30px_color-mix(in_srgb,var(--brand-primary)_8%,transparent)]">
-          <CardHeader>
-            <CardTitle className="text-white text-lg [.tenant-shell_&]:text-[var(--tenant-text)]">Latest Results</CardTitle>
-            <CardDescription className="text-slate-400 [.tenant-shell_&]:text-[var(--tenant-muted)]">
-              Latest gradebook finals for your institution.
-            </CardDescription>
+        <Card className="border-slate-800 bg-slate-900/50 lg:col-span-2 [.tenant-shell_&]:rounded-[var(--ds-radius-xl,16px)] [.tenant-shell_&]:border-[var(--ds-border,#DDE5DF)] [.tenant-shell_&]:bg-[var(--ds-surface,#fff)] [.tenant-shell_&]:shadow-[var(--ds-shadow-card,0_1px_2px_#1F8A5B14,0_8px_24px_#1F8A5B0A)]">
+          <CardHeader className="flex flex-row items-start justify-between gap-3 space-y-0 p-6 pb-2">
+            <div className="min-w-0 space-y-1">
+              <CardTitle className="text-lg text-white [.tenant-shell_&]:text-[17px] [.tenant-shell_&]:font-bold [.tenant-shell_&]:tracking-[-0.01em] [.tenant-shell_&]:text-[var(--ds-text-primary,#122018)]">
+                Latest results
+              </CardTitle>
+              <CardDescription className="text-slate-400 [.tenant-shell_&]:text-[12px] [.tenant-shell_&]:text-[var(--ds-text-secondary,#5B6B61)]">
+                Gradebook updates
+              </CardDescription>
+            </div>
+            <Link
+              to="/gradebook"
+              className="shrink-0 text-[12px] font-semibold text-[var(--ds-accent,#1F8A5B)] transition-colors hover:text-[var(--ds-primary,#1F8A5B)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ds-focus-ring,#1F8A5B)]/40 rounded-sm"
+            >
+              View all
+            </Link>
           </CardHeader>
-          <CardContent className="space-y-4">
+          <CardContent className="space-y-0 px-6 pb-4 pt-2">
             {loading ? (
-              <p className="text-sm text-slate-500 py-8 text-center">Loading results…</p>
+              <p className="py-8 text-center text-sm text-slate-500">Loading results…</p>
             ) : latestResults.length > 0 ? (
               latestResults.map((item) => (
-                <div key={item.id} className="flex items-center gap-3">
-                  <Avatar className="h-9 w-9 border border-slate-700 [.tenant-shell_&]:border-[var(--tenant-line)]">
-                    <AvatarFallback className="bg-slate-800 text-white text-sm [html[data-platform-theme='light']_&]:bg-[color-mix(in_srgb,var(--brand-primary)_14%,transparent)] [html[data-platform-theme='light']_&]:text-[var(--brand-primary)]">
+                <div
+                  key={item.id}
+                  className="flex items-center gap-3 border-b border-transparent py-2.5 last:border-0 [.tenant-shell_&]:border-[var(--ds-border,#DDE5DF)]/0"
+                >
+                  <Avatar className="h-9 w-9 border border-slate-700 [.tenant-shell_&]:border-transparent">
+                    <AvatarFallback className="bg-slate-800 text-sm text-white [.tenant-shell_&]:bg-[var(--ds-primary-soft,#ECFDF5)] [.tenant-shell_&]:text-[12px] [.tenant-shell_&]:font-bold [.tenant-shell_&]:text-[var(--ds-primary,#1F8A5B)]">
                       {item.initial}
                     </AvatarFallback>
                   </Avatar>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium text-white truncate [.tenant-shell_&]:text-[var(--tenant-text)]">{item.name}</p>
-                    <p className="text-xs text-slate-500 truncate">{item.subtitle}</p>
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-sm font-medium text-white [.tenant-shell_&]:text-[13px] [.tenant-shell_&]:font-semibold [.tenant-shell_&]:text-[var(--ds-text-primary,#122018)]">
+                      {item.name}
+                    </p>
+                    <p className="truncate text-xs text-slate-500 [.tenant-shell_&]:text-[11px] [.tenant-shell_&]:text-[var(--ds-text-tertiary,#8A978E)]">
+                      {item.subtitle}
+                    </p>
                   </div>
-                  <span className="text-sm font-semibold text-emerald-400 tabular-nums shrink-0 [.tenant-shell_&]:text-emerald-600">
-                    {item.scoreLabel}
-                  </span>
+                  <div className="shrink-0 text-right">
+                    <p className="font-data text-[13px] font-bold tabular-nums text-emerald-400 [.tenant-shell_&]:text-[var(--ds-primary,#1F8A5B)]">
+                      {item.scoreLabel}
+                    </p>
+                    <p className="text-[11px] font-semibold text-emerald-400/80 [.tenant-shell_&]:text-[var(--ds-accent,#1F8A5B)]">
+                      {item.letter}
+                    </p>
+                  </div>
                 </div>
               ))
             ) : (
-              <p className="text-sm text-slate-500 py-8 text-center">
+              <p className="py-8 text-center text-sm text-slate-500 [.tenant-shell_&]:text-[var(--ds-text-tertiary,#8A978E)]">
                 No gradebook results yet. Marks appear here after exams and assignments are graded.
               </p>
             )}

@@ -285,9 +285,21 @@ export function applyInstitutionBrandCss(
   root.style.setProperty('--brand-soft', `color-mix(in srgb, ${primary} 12%, #ffffff)`)
   if (tertiary) root.style.setProperty('--brand-tertiary', tertiary)
   else root.style.removeProperty('--brand-tertiary')
-  root.style.setProperty('--primary', hexToHslChannels(primary))
-  root.style.setProperty('--primary-foreground', hexForegroundChannels(primary))
-  root.style.setProperty('--ring', hexToHslChannels(primary))
+
+  // Light mode UI chrome follows Amanah / design-system.pen (not institution logo colors).
+  // Institution brand remains on --brand-* for logo and marketing accents.
+  const isLight = root.getAttribute('data-platform-theme') === 'light'
+  if (isLight) {
+    const dsPrimary = '#1F8A5B'
+    const dsRing = '#1F8A5B'
+    root.style.setProperty('--primary', hexToHslChannels(dsPrimary))
+    root.style.setProperty('--primary-foreground', hexForegroundChannels(dsPrimary))
+    root.style.setProperty('--ring', hexToHslChannels(dsRing))
+  } else {
+    root.style.setProperty('--primary', hexToHslChannels(primary))
+    root.style.setProperty('--primary-foreground', hexForegroundChannels(primary))
+    root.style.setProperty('--ring', hexToHslChannels(primary))
+  }
 }
 
 export function clearInstitutionBrandCss(): void {

@@ -73,13 +73,13 @@ const InstitutionSettingsPage = () => {
         <title>Institution Settings — {institutionName}</title>
       </Helmet>
 
-      <div className="max-w-6xl mx-auto">
+      <div className="mx-auto max-w-6xl">
         <PageHeader title="Institution Settings" subtitle={SUBTITLES[group]} />
 
         <AdminSettingsShell active={group}>
           {tabs ? (
             <Tabs value={tab} onValueChange={setTab} className="w-full">
-              <div className="px-2 sm:px-3">
+              <div className="border-b border-[var(--ds-border,#DDE5DF)] px-2 sm:px-3">
                 <TabsList className={settingsSubListClass}>
                   {tabs.map(({ value, label, icon: Icon }) => (
                     <TabsTrigger key={value} value={value} className={settingsSubTriggerClass}>

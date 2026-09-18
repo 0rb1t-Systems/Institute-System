@@ -192,7 +192,7 @@ const CreateInstructorDialog = ({ isOpen, onClose, onCreated }) => {
       <Dialog open={isOpen} onOpenChange={(open) => !open && handleClose()}>
         <DialogContent>
           <DialogHeader>
-            <div className="mx-auto w-14 h-14 bg-green-50 text-green-600 rounded-2xl flex items-center justify-center mb-2 border border-green-100">
+            <div className="mx-auto mb-2 flex h-14 w-14 items-center justify-center rounded-2xl border border-[var(--ds-border,#DDE5DF)] bg-[var(--ds-primary-soft,#ECFDF5)] text-[var(--ds-primary,#1F8A5B)]">
               <CheckCircle2 className="w-7 h-7" />
             </div>
             <DialogTitle className="text-center">Instructor Created Successfully</DialogTitle>
@@ -248,7 +248,7 @@ const CreateInstructorDialog = ({ isOpen, onClose, onCreated }) => {
               </div>
             </div>
             {!created.emailed && (
-              <div className="flex items-start gap-2 text-sm text-amber-700 bg-amber-50 border border-amber-200 rounded-md p-2">
+              <div className="flex items-start gap-2 rounded-md border border-[var(--ds-warning,#C2410C)]/25 bg-[var(--ds-warning-bg,#FFF7ED)] p-2 text-sm text-[var(--ds-warning,#C2410C)]">
                 <Mail className="h-4 w-4 mt-0.5 shrink-0" />
                 <span>{MESSAGES.DOMAIN.EMAIL_SEND_FAILED}</span>
               </div>
@@ -703,8 +703,8 @@ const InstructorsPage = () => {
       <div className="space-y-6 p-6">
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
           <div>
-            <h1 className="text-3xl font-bold tracking-tight">Instructors</h1>
-            <p className="text-muted-foreground">
+            <h1 className="text-3xl font-bold tracking-tight text-[var(--ds-text-primary,#122018)]">Instructors</h1>
+            <p className="text-[var(--ds-text-secondary,#5B6B61)]">
               {isTenantAdmin
                 ? 'Create and manage instructor accounts for your institution.'
                 : 'View instructor accounts for your institution.'}
@@ -725,7 +725,7 @@ const InstructorsPage = () => {
         </div>
 
         {error && (
-          <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded flex items-center gap-3">
+          <div className="flex items-center gap-3 rounded border border-[var(--ds-danger,#DC2626)]/25 bg-[var(--ds-danger-bg,#FEF2F2)] px-4 py-3 text-[var(--ds-danger,#DC2626)]">
             <AlertCircle className="h-5 w-5" />
             <div>
               <p className="font-medium">{MESSAGES.LOAD_FAILED.title}</p>
@@ -737,99 +737,103 @@ const InstructorsPage = () => {
         )}
 
         <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <GraduationCap className="h-5 w-5" /> Instructor Directory
-            </CardTitle>
-            <CardDescription>
-              Instructors are managed here — not under Users.
-            </CardDescription>
-            <div className="pt-4 flex items-center justify-between">
-              <div className="relative w-full max-w-md">
-                <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
-                <Input
-                  placeholder="Search by name, email, or phone..."
-                  value={searchTerm}
-                  onChange={(e) => {
-                    setSearchTerm(e.target.value);
-                    setCurrentPage(1);
-                  }}
-                  className="pl-8"
-                />
+          <CardHeader className="flex flex-col gap-4 border-b border-[var(--ds-border,#DDE5DF)] px-5 py-4">
+            <div className="flex flex-row items-start justify-between gap-4">
+              <div>
+                <CardTitle className="flex items-center gap-2 text-base font-semibold">
+                  <GraduationCap className="h-5 w-5 text-[var(--ds-primary,#1F8A5B)]" /> Instructor Directory
+                </CardTitle>
+                <CardDescription>
+                  Instructors are managed here — not under Users.
+                </CardDescription>
               </div>
-              <div className="text-sm text-muted-foreground">Total: {filtered.length}</div>
+              <div className="text-[13px] text-[var(--ds-text-secondary,#5B6B61)] shrink-0">
+                Total: {filtered.length}
+              </div>
+            </div>
+            <div className="relative w-full max-w-md">
+              <Search className="absolute left-2 top-2.5 h-4 w-4 text-[var(--ds-text-secondary,#5B6B61)]" />
+              <Input
+                placeholder="Search by name, email, or phone..."
+                value={searchTerm}
+                onChange={(e) => {
+                  setSearchTerm(e.target.value);
+                  setCurrentPage(1);
+                }}
+                className="pl-8"
+              />
             </div>
           </CardHeader>
-          <CardContent>
-            <div className="rounded-md border">
+          <CardContent className="p-0">
+            <div className="overflow-x-auto">
               <Table>
                 <TableHeader>
-                  <TableRow>
-                    <TableHead>Instructor</TableHead>
-                    <TableHead>Email / Phone</TableHead>
-                    <TableHead>Settlement</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead className="text-right">Actions</TableHead>
+                  <TableRow className="border-[var(--ds-border,#DDE5DF)] bg-[var(--ds-surface-muted,#F7FAF8)] hover:bg-[var(--ds-surface-muted,#F7FAF8)]">
+                    <TableHead className="px-5 py-3 text-[11px] font-semibold uppercase tracking-wide text-[var(--ds-text-tertiary,#8A978E)]">Instructor</TableHead>
+                    <TableHead className="px-5 py-3 text-[11px] font-semibold uppercase tracking-wide text-[var(--ds-text-tertiary,#8A978E)]">Email / Phone</TableHead>
+                    <TableHead className="px-5 py-3 text-[11px] font-semibold uppercase tracking-wide text-[var(--ds-text-tertiary,#8A978E)]">Settlement</TableHead>
+                    <TableHead className="px-5 py-3 text-[11px] font-semibold uppercase tracking-wide text-[var(--ds-text-tertiary,#8A978E)]">Status</TableHead>
+                    <TableHead className="px-5 py-3 text-right text-[11px] font-semibold uppercase tracking-wide text-[var(--ds-text-tertiary,#8A978E)]">Actions</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {loading ? (
                     Array.from({ length: 5 }).map((_, i) => (
-                      <TableRow key={i}>
-                        <TableCell>
+                      <TableRow key={i} className="border-[var(--ds-border,#DDE5DF)]">
+                        <TableCell className="px-5">
                           <Skeleton className="h-4 w-[150px] mb-2" />
                           <Skeleton className="h-3 w-[100px]" />
                         </TableCell>
-                        <TableCell>
+                        <TableCell className="px-5">
                           <Skeleton className="h-4 w-[120px]" />
                         </TableCell>
-                        <TableCell>
+                        <TableCell className="px-5">
                           <Skeleton className="h-4 w-[100px]" />
                         </TableCell>
-                        <TableCell>
+                        <TableCell className="px-5">
                           <Skeleton className="h-6 w-[80px] rounded-full" />
                         </TableCell>
-                        <TableCell className="text-right">
+                        <TableCell className="px-5 text-right">
                           <Skeleton className="h-8 w-8 inline-block rounded" />
                         </TableCell>
                       </TableRow>
                     ))
                   ) : paged.length === 0 ? (
-                    <TableRow>
-                      <TableCell colSpan={5} className="text-center h-24 text-muted-foreground">
+                    <TableRow className="border-[var(--ds-border,#DDE5DF)]">
+                      <TableCell colSpan={5} className="py-12 text-center text-[var(--ds-text-tertiary,#8A978E)]">
                         No instructors found. Create your first instructor to get started.
                       </TableCell>
                     </TableRow>
                   ) : (
                     paged.map((user) => (
-                      <TableRow key={user.id}>
-                        <TableCell>
-                          <div className="font-medium">{user.name || 'Unnamed Instructor'}</div>
+                      <TableRow key={user.id} className="border-[var(--ds-border,#DDE5DF)] transition-colors hover:bg-[var(--ds-surface-muted,#F7FAF8)]">
+                        <TableCell className="px-5">
+                          <div className="font-semibold text-[var(--ds-text-primary,#122018)]">{user.name || 'Unnamed Instructor'}</div>
                         </TableCell>
-                        <TableCell>
-                          <div className="text-sm">{user.email || '—'}</div>
+                        <TableCell className="px-5">
+                          <div className="text-sm text-[var(--ds-text-primary,#122018)]">{user.email || '—'}</div>
                           {user.phone && (
-                            <div className="text-xs text-muted-foreground mt-1">{user.phone}</div>
+                            <div className="mt-1 text-xs text-[var(--ds-text-secondary,#5B6B61)]">{user.phone}</div>
                           )}
                         </TableCell>
-                        <TableCell>
-                          <span className="text-sm">{settlementLabel(user)}</span>
+                        <TableCell className="px-5">
+                          <span className="text-[13px] text-[var(--ds-text-secondary,#5B6B61)]">{settlementLabel(user)}</span>
                         </TableCell>
-                        <TableCell>
+                        <TableCell className="px-5">
                           <Badge
                             variant="outline"
                             className={
                               user.status === 'suspended'
-                                ? 'border-amber-600 text-amber-600'
+                                ? 'border-[var(--ds-warning,#C2410C)] text-[var(--ds-warning,#C2410C)]'
                                 : user.status === 'pending'
-                                  ? 'border-slate-500 text-slate-500'
-                                  : 'border-emerald-600 text-emerald-600'
+                                  ? 'border-[var(--ds-border,#DDE5DF)] text-[var(--ds-text-secondary,#5B6B61)]'
+                                  : 'border-[var(--ds-primary,#1F8A5B)] text-[var(--ds-primary,#1F8A5B)]'
                             }
                           >
                             {user.status || 'approved'}
                           </Badge>
                         </TableCell>
-                        <TableCell className="text-right">
+                        <TableCell className="px-5 text-right">
                           <div className="flex justify-end items-center gap-1">
                             {isTenantAdmin && (
                               <>
@@ -848,7 +852,7 @@ const InstructorsPage = () => {
                                   variant="ghost"
                                   size="icon"
                                   onClick={() => setEditUser(user)}
-                                  className="h-8 w-8 text-blue-600 hover:bg-blue-100/50"
+                                  className="h-8 w-8"
                                   title="Edit Instructor"
                                 >
                                   <Pencil className="h-4 w-4" />
@@ -857,7 +861,7 @@ const InstructorsPage = () => {
                                   variant="ghost"
                                   size="icon"
                                   onClick={() => handleDeleteClick(user.id)}
-                                  className="h-8 w-8 text-red-600 hover:bg-red-100/50"
+                                  className="h-8 w-8 text-[var(--ds-danger,#DC2626)] hover:bg-[var(--ds-danger-bg,#FEF2F2)] hover:text-[var(--ds-danger,#DC2626)]"
                                   title="Delete Account"
                                 >
                                   <Trash2 className="h-4 w-4" />
@@ -874,7 +878,7 @@ const InstructorsPage = () => {
             </div>
 
             {!loading && totalPages > 1 && (
-              <div className="flex items-center justify-between mt-4">
+              <div className="flex items-center justify-between border-t border-[var(--ds-border,#DDE5DF)] p-4">
                 <Button
                   variant="outline"
                   size="sm"
@@ -883,7 +887,7 @@ const InstructorsPage = () => {
                 >
                   Previous
                 </Button>
-                <span className="text-sm text-muted-foreground">
+                <span className="text-sm text-[var(--ds-text-secondary,#5B6B61)]">
                   Page {currentPage} of {totalPages}
                 </span>
                 <Button
@@ -920,7 +924,7 @@ const InstructorsPage = () => {
         <AlertDialog open={isDeleteOpen} onOpenChange={setIsDeleteOpen}>
           <AlertDialogContent>
             <AlertDialogHeader>
-              <AlertDialogTitle className="text-red-600">Delete Instructor?</AlertDialogTitle>
+              <AlertDialogTitle className="text-[var(--ds-danger,#DC2626)]">Delete Instructor?</AlertDialogTitle>
               <AlertDialogDescription>
                 This action <b>cannot be undone</b>. This will permanently delete the instructor
                 account and related data.
@@ -930,7 +934,7 @@ const InstructorsPage = () => {
               <AlertDialogCancel>Cancel</AlertDialogCancel>
               <AlertDialogAction
                 onClick={handleConfirmDelete}
-                className="bg-red-600 text-white hover:bg-red-700"
+                className="bg-[var(--ds-danger,#DC2626)] text-white hover:bg-[var(--ds-danger-hover,#B91C1C)]"
               >
                 Permanently Delete
               </AlertDialogAction>

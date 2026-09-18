@@ -254,7 +254,7 @@ const RatingFeedbackPage = () => {
               ) : (
                 <div className="mt-auto space-y-2.5">
                   {agg.texts.length ? (
-                    agg.texts.slice(0, 4).map((text, i) => (
+                    agg.texts.map((text, i) => (
                       <p
                         key={`${agg.question.id}-t-${i}`}
                         className="rounded-xl bg-slate-900/80 px-3.5 py-2.5 text-sm leading-relaxed text-slate-300"
@@ -265,9 +265,6 @@ const RatingFeedbackPage = () => {
                   ) : (
                     <p className="text-sm text-slate-500">No written answers</p>
                   )}
-                  {agg.texts.length > 4 ? (
-                    <p className="text-xs text-slate-500">+{agg.texts.length - 4} more</p>
-                  ) : null}
                 </div>
               )}
             </article>

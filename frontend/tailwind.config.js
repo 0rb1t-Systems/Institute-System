@@ -71,8 +71,10 @@ module.exports = {
         "accordion-up": "accordion-up 0.2s ease-out",
       },
        fontFamily: {
-        sans: ['"DM Sans"', 'system-ui', 'sans-serif'],
-        display: ['Syne', '"DM Sans"', 'system-ui', 'sans-serif'],
+        sans: ['Arial', 'Helvetica', 'sans-serif'],
+        display: ['Arial', 'Helvetica', 'sans-serif'],
+        geist: ['Arial', 'Helvetica', 'sans-serif'],
+        data: ['Arial', 'Helvetica', 'sans-serif'],
       },
     },
   },

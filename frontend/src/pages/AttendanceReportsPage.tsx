@@ -124,7 +124,7 @@ const AttendanceReportsPage = () => {
       />
 
       {error && (
-          <Alert variant="destructive" className="mb-6 bg-red-950/50 border-red-900 text-red-200">
+          <Alert variant="destructive" className="mb-6">
               <AlertCircle className="h-4 w-4" />
               <AlertTitle>Error fetching data</AlertTitle>
               <AlertDescription>{error}</AlertDescription>

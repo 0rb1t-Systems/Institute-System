@@ -231,15 +231,15 @@ const AssignmentsPage = () => {
                 const cls = classes.find((c) => c.id === assign.class_id);
                 const courseName = courses.find((c) => c.id === assign.course_id)?.name;
                 return (
-                    <Card key={assign.id} className="flex min-h-[280px] min-w-0 flex-col overflow-hidden bg-slate-900/50 border-slate-800">
+                    <Card key={assign.id} className="flex min-h-[280px] min-w-0 flex-col overflow-hidden">
                         <CardHeader className="space-y-0 pb-3">
                             <div className="flex justify-between items-start gap-3">
                                 <div className="min-w-0 flex-1">
-                                    <CardTitle className="text-base text-slate-100 line-clamp-2 leading-snug" title={assign.title}>{assign.title}</CardTitle>
+                                    <CardTitle className="text-base line-clamp-2 leading-snug" title={assign.title}>{assign.title}</CardTitle>
                                     <CardDescription className="mt-1.5 line-clamp-1">
                                       {courseName ? (
                                         <>
-                                          <span className="text-indigo-300">{courseName}</span>
+                                          <span className="text-[var(--ds-accent,#1F8A5B)]">{courseName}</span>
                                           {cls?.name ? <span> · {cls.name}</span> : null}
                                         </>
                                       ) : (
@@ -251,24 +251,24 @@ const AssignmentsPage = () => {
                                     <span
                                       className={`text-[10px] px-2 py-0.5 rounded border whitespace-nowrap ${
                                         assign.counts_toward_grade !== false
-                                          ? 'border-amber-700/50 text-amber-300 bg-amber-950/30'
-                                          : 'border-slate-600 text-slate-400 bg-slate-800/50'
+                                          ? 'border-[var(--ds-warning,#C2410C)]/40 text-[var(--ds-warning,#C2410C)] bg-[var(--ds-warning-bg,#FFF7ED)]'
+                                          : 'border-[var(--ds-border,#DDE5DF)] text-[var(--ds-text-secondary,#5B6B61)] bg-[var(--ds-surface-muted,#F7FAF8)]'
                                       }`}
                                     >
                                       {assign.counts_toward_grade !== false ? 'Gradebook' : 'Practice'}
                                     </span>
-                                    <div className="p-2 bg-slate-800 rounded-full">
-                                        <BookOpen className="h-4 w-4 text-indigo-400" />
+                                    <div className="p-2 bg-[var(--ds-primary-soft,#ECFDF5)] rounded-full">
+                                        <BookOpen className="h-4 w-4 text-[var(--ds-accent,#1F8A5B)]" />
                                     </div>
                                 </div>
                             </div>
                         </CardHeader>
                         <CardContent className="flex-1 space-y-3 pt-0">
-                            <div className="flex items-center text-sm text-slate-400 gap-2 min-w-0">
+                            <div className="flex items-center text-sm text-[var(--ds-text-secondary,#5B6B61)] gap-2 min-w-0">
                                 <Calendar className="h-4 w-4 shrink-0" />
                                 <span className="truncate">Due: {formatDateTime(assign.due_date)}</span>
                             </div>
-                            <div className="flex items-start text-sm text-slate-400 gap-2 min-w-0">
+                            <div className="flex items-start text-sm text-[var(--ds-text-secondary,#5B6B61)] gap-2 min-w-0">
                                 <CheckCircle className="mt-0.5 h-4 w-4 shrink-0" />
                                 <span className="leading-snug">
                                   {assign.counts_toward_grade !== false
@@ -277,17 +277,17 @@ const AssignmentsPage = () => {
                                 </span>
                             </div>
                             {assign.attachment_url && (
-                                <div className="flex items-center text-sm text-blue-400 gap-2 bg-blue-950/20 p-2 rounded border border-blue-900/30 min-w-0">
+                                <div className="flex items-center text-sm text-[var(--ds-info,#2563EB)] gap-2 bg-[var(--ds-info-bg,#EFF6FF)] p-2 rounded border border-[var(--ds-info,#2563EB)]/20 min-w-0">
                                     <File className="h-3 w-3 shrink-0" />
                                     <span className="truncate">File Attached</span>
                                 </div>
                             )}
-                            <div className="flex justify-between items-center pt-2 border-t border-slate-800/50 mt-auto">
-                                <div className="text-xs text-slate-500">
-                                    Submitted: <span className="text-slate-300 font-medium">{stats.total}</span>
+                            <div className="flex justify-between items-center pt-2 border-t border-[var(--ds-border,#DDE5DF)] mt-auto">
+                                <div className="text-xs text-[var(--ds-text-tertiary,#8A978E)]">
+                                    Submitted: <span className="text-[var(--ds-text-primary,#122018)] font-medium">{stats.total}</span>
                                 </div>
-                                <div className="text-xs text-slate-500">
-                                    Graded: <span className="text-slate-300 font-medium">{stats.graded}</span>
+                                <div className="text-xs text-[var(--ds-text-tertiary,#8A978E)]">
+                                    Graded: <span className="text-[var(--ds-text-primary,#122018)] font-medium">{stats.graded}</span>
                                 </div>
                             </div>
                         </CardContent>
@@ -300,7 +300,7 @@ const AssignmentsPage = () => {
                             </Button>
                             <AlertDialog>
                                 <AlertDialogTrigger asChild>
-                                    <Button variant="ghost" size="icon" className="shrink-0 hover:bg-red-900/20 hover:text-red-400">
+                                    <Button variant="ghost" size="icon" className="shrink-0 text-[var(--ds-danger,#DC2626)] hover:bg-[var(--ds-danger-bg,#FEF2F2)] hover:text-[var(--ds-danger,#DC2626)]">
                                         <Trash2 className="h-4 w-4" />
                                     </Button>
                                 </AlertDialogTrigger>
@@ -313,7 +313,7 @@ const AssignmentsPage = () => {
                                     </AlertDialogHeader>
                                     <AlertDialogFooter>
                                         <AlertDialogCancel>Cancel</AlertDialogCancel>
-                                        <AlertDialogAction className="bg-red-600 hover:bg-red-700" onClick={() => handleDelete(assign.id)}>Delete</AlertDialogAction>
+                                        <AlertDialogAction className="bg-[var(--ds-danger,#DC2626)] hover:bg-[var(--ds-danger-hover,#B91C1C)]" onClick={() => handleDelete(assign.id)}>Delete</AlertDialogAction>
                                     </AlertDialogFooter>
                                 </AlertDialogContent>
                             </AlertDialog>
@@ -323,10 +323,10 @@ const AssignmentsPage = () => {
             })}
             
             {filteredAssignments.length === 0 && (
-                <div className="col-span-full text-center py-12 border-2 border-dashed border-slate-800 rounded-xl">
-                    <BookOpen className="h-12 w-12 mx-auto text-slate-600 mb-4" />
-                    <h3 className="text-lg font-medium text-slate-300">No Assignments</h3>
-                    <p className="text-slate-500 mb-6">Create your first assignment to get started.</p>
+                <div className="col-span-full text-center py-12 border-2 border-dashed border-[var(--ds-border,#DDE5DF)] rounded-[var(--ds-radius-xl,16px)]">
+                    <BookOpen className="h-12 w-12 mx-auto text-[var(--ds-text-tertiary,#8A978E)] mb-4" />
+                    <h3 className="text-lg font-medium">No Assignments</h3>
+                    <p className="text-[var(--ds-text-secondary,#5B6B61)] mb-6">Create your first assignment to get started.</p>
                     <Button onClick={() => handleOpenDialog()}>
                         <Plus className="mr-2 h-4 w-4" /> Create Assignment
                     </Button>
@@ -383,7 +383,7 @@ const AssignmentsPage = () => {
                             ))}
                           </SelectContent>
                         </Select>
-                        <p className="text-[10px] text-slate-500">
+                        <p className="text-[10px] text-[var(--ds-text-tertiary,#8A978E)]">
                           {isDiplomaClass
                             ? 'Students will see this course name on the assignment. Graded bonus points go to this course exam.'
                             : 'Graded assignment points are added to this course exam score (capped at exam total).'}
@@ -410,7 +410,7 @@ const AssignmentsPage = () => {
                             </SelectItem>
                           </SelectContent>
                         </Select>
-                        <p className="text-[10px] text-slate-500">
+                        <p className="text-[10px] text-[var(--ds-text-tertiary,#8A978E)]">
                           {formData.counts_toward_grade !== false
                             ? 'Scores appear in Gradebook and are added to the student exam grade (never above exam total).'
                             : 'Students can submit and be graded for feedback only — no Gradebook or GPA impact.'}
@@ -435,7 +435,7 @@ const AssignmentsPage = () => {
                           value={formData.total_marks}
                           onChange={(e) => setFormData({...formData, total_marks: parseInt(e.target.value) || 0})}
                         />
-                        <p className="text-[10px] text-slate-500">
+                        <p className="text-[10px] text-[var(--ds-text-tertiary,#8A978E)]">
                           {formData.counts_toward_grade !== false
                             ? 'e.g. 2, 5, 10, 20 — added to exam, never above exam total.'
                             : 'Practice score only — does not change the student grade.'}
@@ -453,8 +453,8 @@ const AssignmentsPage = () => {
                             />
                             {isUploading && <span className="text-xs animate-pulse">Uploading...</span>}
                          </div>
-                         {uploadedFileUrl && <p className="text-xs text-green-500">File attached successfully.</p>}
-                         <p className="text-[10px] text-slate-500">PDF, Word, TXT, or image — max 10MB.</p>
+                         {uploadedFileUrl && <p className="text-xs text-[var(--ds-accent,#1F8A5B)]">File attached successfully.</p>}
+                         <p className="text-[10px] text-[var(--ds-text-tertiary,#8A978E)]">PDF, Word, TXT, or image — max 10MB.</p>
                     </div>
                     <div className="space-y-2">
                         <Label>Description / Instructions</Label>

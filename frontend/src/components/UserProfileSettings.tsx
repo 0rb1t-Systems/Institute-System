@@ -143,29 +143,29 @@ const UserProfileSettings = ({ user, onUpdate }) => {
   const displaySrc = avatarPreview || avatarUrl;
 
   return (
-    <Card className="bg-[var(--tenant-surface)] border-[var(--tenant-line)] text-[var(--tenant-text)] shadow-none">
+    <Card>
       <CardHeader className="pb-4">
-        <CardTitle className="text-[var(--tenant-text)] text-base">Your account</CardTitle>
+        <CardTitle className="text-base">Your account</CardTitle>
         <CardDescription>Photo, name, and password.</CardDescription>
       </CardHeader>
       <form onSubmit={handleSubmit}>
         <CardContent className="space-y-6">
           <div className="space-y-3">
-            <h3 className="font-medium text-[var(--tenant-text)]">Profile Picture</h3>
-            <div className="flex flex-col sm:flex-row items-start gap-5">
+            <h3 className="font-medium text-[var(--ds-text-primary,#122018)]">Profile Picture</h3>
+            <div className="flex flex-col items-start gap-5 sm:flex-row">
               <div className="relative shrink-0">
-                <Avatar className="h-28 w-28 border-4 border-[var(--tenant-line)] shadow-sm">
+                <Avatar className="h-28 w-28 border-4 border-[var(--ds-border,#DDE5DF)] shadow-sm">
                   <AvatarImage src={displaySrc} className="object-cover" />
-                  <AvatarFallback className="text-2xl bg-[var(--tenant-bg-2)] text-[var(--tenant-muted)]">
+                  <AvatarFallback className="bg-[var(--ds-primary-soft,#ECFDF5)] text-2xl text-[var(--ds-primary,#1F8A5B)]">
                     {name?.charAt(0) || <User />}
                   </AvatarFallback>
                 </Avatar>
-                {(displaySrc) && (
+                {displaySrc && (
                   <button
                     type="button"
                     onClick={handleRemovePhoto}
                     disabled={isLoading}
-                    className="absolute -top-1 -right-1 h-7 w-7 rounded-full bg-red-600 text-white flex items-center justify-center shadow-lg hover:bg-red-500"
+                    className="absolute -right-1 -top-1 flex h-7 w-7 items-center justify-center rounded-full bg-[var(--ds-danger,#DC2626)] text-[var(--ds-text-on-primary,#fff)] shadow-lg hover:bg-[var(--ds-danger-hover,#B91C1C)]"
                     title="Remove photo"
                   >
                     <X className="h-4 w-4" />
@@ -186,17 +186,17 @@ const UserProfileSettings = ({ user, onUpdate }) => {
                   pickFile(e.dataTransfer.files?.[0]);
                 }}
                 className={cn(
-                  'flex-1 w-full min-h-[112px] rounded-xl border-2 border-dashed px-4 py-6 text-center cursor-pointer transition-colors',
+                  'min-h-[112px] w-full flex-1 cursor-pointer rounded-[var(--ds-radius-lg,12px)] border-2 border-dashed px-4 py-6 text-center transition-colors',
                   dragging
-                    ? 'border-indigo-500 bg-indigo-500/10'
-                    : 'border-[var(--tenant-line)] bg-[var(--tenant-bg-2)] hover:border-[var(--brand-primary)] hover:bg-[var(--tenant-bg)]',
+                    ? 'border-[var(--ds-accent,#1F8A5B)] bg-[var(--ds-primary-soft,#ECFDF5)]'
+                    : 'border-[var(--ds-border,#DDE5DF)] bg-[var(--ds-surface-muted,#F7FAF8)] hover:border-[var(--ds-primary,#1F8A5B)] hover:bg-[var(--ds-bg,#F2F5F3)]',
                 )}
               >
-                <Upload className="h-5 w-5 text-[var(--tenant-muted)] mx-auto mb-2" />
-                <p className="text-sm text-[var(--tenant-text)]">Click or drag image here to upload</p>
-                <p className="text-xs text-[var(--tenant-muted)] mt-1">JPG, PNG, GIF, WEBP — max 2MB</p>
+                <Upload className="mx-auto mb-2 h-5 w-5 text-[var(--ds-text-secondary,#5B6B61)]" />
+                <p className="text-sm text-[var(--ds-text-primary,#122018)]">Click or drag image here to upload</p>
+                <p className="mt-1 text-xs text-[var(--ds-text-secondary,#5B6B61)]">JPG, PNG, GIF, WEBP — max 2MB</p>
                 {avatarFile && (
-                  <p className="text-xs text-emerald-400 mt-2">Selected: {avatarFile.name}</p>
+                  <p className="mt-2 text-xs text-[var(--ds-success,#059669)]">Selected: {avatarFile.name}</p>
                 )}
                 <input
                   ref={fileInputRef}
@@ -211,22 +211,21 @@ const UserProfileSettings = ({ user, onUpdate }) => {
 
           <div className="grid gap-4 md:grid-cols-2">
             <div className="space-y-2">
-              <Label htmlFor="name" className="text-[var(--tenant-text)]">Full Name</Label>
+              <Label htmlFor="name">Full Name</Label>
               <Input
                 id="name"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
-                className="bg-[var(--tenant-bg-2)] border-[var(--tenant-line)] text-[var(--tenant-text)]"
                 placeholder="Your full name"
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="username" className="text-[var(--tenant-text)]">Username (ID)</Label>
+              <Label htmlFor="username">Username (ID)</Label>
               <Input
                 id="username"
                 value={username}
                 onChange={(e) => setUsername(e.target.value)}
-                className="bg-[var(--tenant-bg-2)] border-[var(--tenant-line)] text-[var(--tenant-text)] font-mono"
+                className="font-mono"
                 placeholder="e.g. INST1234"
                 readOnly={user?.role !== 'admin'}
                 disabled={user?.role !== 'admin'}
@@ -234,47 +233,44 @@ const UserProfileSettings = ({ user, onUpdate }) => {
             </div>
           </div>
 
-          <div className="space-y-4 border-t border-[var(--tenant-line)] pt-4">
-            <h3 className="text-sm font-medium text-[var(--tenant-text)] flex items-center gap-2">
-              <Lock className="h-4 w-4" /> Security
+          <div className="space-y-4 border-t border-[var(--ds-border,#DDE5DF)] pt-4">
+            <h3 className="flex items-center gap-2 text-sm font-medium text-[var(--ds-text-primary,#122018)]">
+              <Lock className="h-4 w-4 text-[var(--ds-accent,#1F8A5B)]" /> Security
             </h3>
-            
+
             <div className="space-y-2">
-              <Label htmlFor="email" className="text-[var(--tenant-text)]">Email Address</Label>
+              <Label htmlFor="email">Email Address</Label>
               <Input
                 id="email"
                 type="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                className="bg-[var(--tenant-bg-2)] border-[var(--tenant-line)] text-[var(--tenant-text)]"
               />
-              <p className="text-xs text-muted-foreground flex items-center">
-                <AlertTriangle className="h-3 w-3 mr-1 text-yellow-500" />
+              <p className="flex items-center text-xs text-[var(--ds-text-secondary,#5B6B61)]">
+                <AlertTriangle className="mr-1 h-3 w-3 text-[var(--ds-warning,#C2410C)]" />
                 Changing email requires confirmation.
               </p>
             </div>
 
-            <div className="grid gap-4 md:grid-cols-2 pt-2">
+            <div className="grid gap-4 pt-2 md:grid-cols-2">
               <div className="space-y-2">
-                <Label htmlFor="current-password" className="text-[var(--tenant-text)]">Current Password</Label>
+                <Label htmlFor="current-password">Current Password</Label>
                 <Input
                   id="current-password"
                   type="password"
                   value={currentPassword}
                   onChange={(e) => setCurrentPassword(e.target.value)}
-                  className="bg-[var(--tenant-bg-2)] border-[var(--tenant-line)] text-[var(--tenant-text)]"
                   placeholder="Required to change password"
                   autoComplete="current-password"
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="new-password" className="text-[var(--tenant-text)]">New Password</Label>
+                <Label htmlFor="new-password">New Password</Label>
                 <Input
                   id="new-password"
                   type="password"
                   value={newPassword}
                   onChange={(e) => setNewPassword(e.target.value)}
-                  className="bg-[var(--tenant-bg-2)] border-[var(--tenant-line)] text-[var(--tenant-text)]"
                   placeholder="Min. 8 characters"
                   autoComplete="new-password"
                 />
@@ -282,8 +278,8 @@ const UserProfileSettings = ({ user, onUpdate }) => {
             </div>
           </div>
         </CardContent>
-        <CardFooter className="border-t border-[var(--tenant-line)] pt-6">
-          <Button type="submit" disabled={isLoading} className="bg-indigo-600 hover:bg-indigo-500">
+        <CardFooter className="border-t border-[var(--ds-border,#DDE5DF)] pt-6">
+          <Button type="submit" disabled={isLoading}>
             {isLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
             Save Changes
           </Button>

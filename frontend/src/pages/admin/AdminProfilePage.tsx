@@ -35,7 +35,7 @@ const AdminProfilePage = () => {
         <title>Account</title>
       </Helmet>
 
-      <div className="max-w-3xl mx-auto">
+      <div className="mx-auto max-w-3xl">
         <PageHeader title="Account" subtitle="Photo, name, email, and password." />
         <UserProfileSettings user={user} onUpdate={refreshUser} />
       </div>

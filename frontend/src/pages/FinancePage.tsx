@@ -412,7 +412,7 @@ const PaymentForm = ({ closeDialog, preSelectedStudentId, existingPayment, finan
           </div>
 
           {requiresRegistrationFirst && (
-              <Alert className="border-amber-500/40 bg-amber-500/10 text-amber-900 dark:text-amber-100">
+              <Alert className="border-[var(--ds-warning,#C2410C)]/25 bg-[var(--ds-warning-bg,#FFF7ED)] text-[var(--ds-warning,#C2410C)]">
                   <Lock className="h-4 w-4" />
                   <AlertTitle>Registration fee required first</AlertTitle>
                   <AlertDescription>
@@ -485,7 +485,7 @@ const PaymentForm = ({ closeDialog, preSelectedStudentId, existingPayment, finan
                                 })
                               }}
                             >
-                                <SelectTrigger className={validation.isDuplicate || validation.isInvalidMonth || validation.isOverAmount ? "border-red-500 focus:ring-red-500" : ""}>
+                                <SelectTrigger className={validation.isDuplicate || validation.isInvalidMonth || validation.isOverAmount ? "border-[var(--ds-danger,#DC2626)] focus:ring-[var(--ds-danger,#DC2626)]" : ""}>
                                     <SelectValue placeholder="Select billing month" />
                                 </SelectTrigger>
                                 <SelectContent>
@@ -544,16 +544,16 @@ const PaymentForm = ({ closeDialog, preSelectedStudentId, existingPayment, finan
                     onChange={e => setFormData({...formData, amount: e.target.value})} 
                     required 
                     readOnly={formData.type === 'registration' && !isEditing}
-                    className={validation.isOverAmount ? 'border-red-500 focus-visible:ring-red-500' : undefined}
+                    className={validation.isOverAmount ? 'border-[var(--ds-danger,#DC2626)] focus-visible:ring-[var(--ds-danger,#DC2626)]' : undefined}
                   />
                   {formData.type === 'tuition' && formData.month_paid ? (
-                     <div className="text-[10px] text-slate-400 text-right">
+                     <div className="text-right text-[10px] text-[var(--ds-text-secondary,#5B6B61)]">
                         Max for {formData.month_paid}: {formatCurrency(remainingForSelectedMonth)}
                         {discountedMonthlyFee > 0 ? ` · monthly due ${formatCurrency(discountedMonthlyFee)}` : ''}
                      </div>
                   ) : null}
                   {monthlyDiscount > 0 && formData.type === 'tuition' && (
-                     <div className="text-[10px] text-green-500 text-right">
+                     <div className="text-right text-[10px] text-[var(--ds-primary,#1F8A5B)]">
                         Discount applied: -{formatCurrency(monthlyDiscount)}
                      </div>
                   )}
@@ -561,10 +561,10 @@ const PaymentForm = ({ closeDialog, preSelectedStudentId, existingPayment, finan
                <div className="space-y-2">
                   <Label>Status</Label>
                   <Select value={formData.status} onValueChange={v => setFormData({...formData, status: v})}>
-                      <SelectTrigger className={formData.status === 'pending' ? 'text-orange-500 font-medium' : 'text-green-500 font-medium'}><SelectValue /></SelectTrigger>
+                      <SelectTrigger className={formData.status === 'pending' ? 'font-medium text-[var(--ds-warning,#C2410C)]' : 'font-medium text-[var(--ds-primary,#1F8A5B)]'}><SelectValue /></SelectTrigger>
                       <SelectContent>
-                          <SelectItem value="completed" className="text-green-600">Completed (Paid)</SelectItem>
-                          <SelectItem value="pending" className="text-orange-500">Pending (Charge/Invoice)</SelectItem>
+                          <SelectItem value="completed" className="text-[var(--ds-primary,#1F8A5B)]">Completed (Paid)</SelectItem>
+                          <SelectItem value="pending" className="text-[var(--ds-warning,#C2410C)]">Pending (Charge/Invoice)</SelectItem>
                       </SelectContent>
                   </Select>
                </div>
@@ -600,7 +600,7 @@ const PaymentForm = ({ closeDialog, preSelectedStudentId, existingPayment, finan
           <DialogFooter>
               <Button 
                 type="submit" 
-                className={`w-full disabled:opacity-50 disabled:cursor-not-allowed ${formData.status === 'pending' ? 'bg-orange-600 hover:bg-orange-700' : 'bg-green-600 hover:bg-green-700'}`}
+                className={`w-full disabled:opacity-50 disabled:cursor-not-allowed ${formData.status === 'pending' ? 'bg-[var(--ds-warning,#C2410C)] hover:bg-[var(--ds-warning,#C2410C)]/90' : ''}`}
                 disabled={!validation.valid}
               >
                 {validation.isDuplicate ? "Month fully paid" : validation.isOverAmount ? "Amount too high" : (isEditing ? "Update Record" : (initialMode === 'charge' ? "Create Charge" : "Record Payment"))}
@@ -649,48 +649,47 @@ const WithdrawalApprovalList = () => {
     return (
         <div className="space-y-6">
             {/* Pending Requests Table */}
-            <Card className="bg-slate-900/50 border-slate-800">
-                <CardHeader>
-                    <CardTitle className="flex items-center gap-2">
-                        <AlertCircle className="h-5 w-5 text-yellow-500" />
+            <Card>
+                <CardHeader className="border-b border-[var(--ds-border,#DDE5DF)] px-5 py-4">
+                    <CardTitle className="flex items-center gap-2 text-base font-semibold">
+                        <AlertCircle className="h-5 w-5 text-[var(--ds-warning,#C2410C)]" />
                         Pending Requests
                     </CardTitle>
                     <CardDescription>Instructors and affiliates waiting for payout. Approve to deduct from available balance.</CardDescription>
                 </CardHeader>
-                <CardContent>
+                <CardContent className="p-0">
                     <Table>
                         <TableHeader>
-                            <TableRow className="border-slate-800 hover:bg-transparent">
-                                <TableHead>Payee</TableHead>
-                                <TableHead>Date</TableHead>
-                                <TableHead>Details</TableHead>
-                                <TableHead>Amount</TableHead>
-                                <TableHead className="text-right">Actions</TableHead>
+                            <TableRow className="border-[var(--ds-border,#DDE5DF)] bg-[var(--ds-surface-muted,#F7FAF8)] hover:bg-[var(--ds-surface-muted,#F7FAF8)]">
+                                <TableHead className="px-5 py-3 text-[11px] font-semibold uppercase tracking-wide text-[var(--ds-text-tertiary,#8A978E)]">Payee</TableHead>
+                                <TableHead className="px-5 py-3 text-[11px] font-semibold uppercase tracking-wide text-[var(--ds-text-tertiary,#8A978E)]">Date</TableHead>
+                                <TableHead className="px-5 py-3 text-[11px] font-semibold uppercase tracking-wide text-[var(--ds-text-tertiary,#8A978E)]">Details</TableHead>
+                                <TableHead className="px-5 py-3 text-[11px] font-semibold uppercase tracking-wide text-[var(--ds-text-tertiary,#8A978E)]">Amount</TableHead>
+                                <TableHead className="px-5 py-3 text-right text-[11px] font-semibold uppercase tracking-wide text-[var(--ds-text-tertiary,#8A978E)]">Actions</TableHead>
                             </TableRow>
                         </TableHeader>
                         <TableBody>
                             {pendingRequests.length > 0 ? pendingRequests.map(req => (
-                                <TableRow key={req.id} className="border-slate-800 hover:bg-slate-800/50">
-                                    <TableCell className="font-medium text-white">{payeeName(req)}</TableCell>
-                                    <TableCell className="text-slate-400">{formatDate(req.requested_at)}</TableCell>
-                                    <TableCell>
-                                        <div className="text-xs text-slate-300">{req.method || '—'}</div>
-                                        <div className="text-[10px] text-slate-500">{req.payment_details || req.note || ''}</div>
+                                <TableRow key={req.id} className="border-[var(--ds-border,#DDE5DF)] transition-colors hover:bg-[var(--ds-surface-muted,#F7FAF8)]">
+                                    <TableCell className="px-5 font-semibold text-[var(--ds-text-primary,#122018)]">{payeeName(req)}</TableCell>
+                                    <TableCell className="px-5 text-[13px] text-[var(--ds-text-secondary,#5B6B61)]">{formatDate(req.requested_at)}</TableCell>
+                                    <TableCell className="px-5">
+                                        <div className="text-xs text-[var(--ds-text-primary,#122018)]">{req.method || '—'}</div>
+                                        <div className="text-[10px] text-[var(--ds-text-tertiary,#8A978E)]">{req.payment_details || req.note || ''}</div>
                                     </TableCell>
-                                    <TableCell className="font-bold text-green-400">{formatCurrency(req.amount)}</TableCell>
-                                    <TableCell className="text-right">
+                                    <TableCell className="px-5 font-bold text-[var(--ds-primary,#1F8A5B)]">{formatCurrency(req.amount)}</TableCell>
+                                    <TableCell className="px-5 text-right">
                                         <div className="flex justify-end gap-2">
                                             <Button 
                                                 size="sm" 
                                                 variant="outline" 
-                                                className="text-red-400 hover:bg-red-900/20 border-red-900/50 hover:text-red-300" 
+                                                className="border-[var(--ds-danger,#DC2626)]/30 text-[var(--ds-danger,#DC2626)] hover:bg-[var(--ds-danger-bg,#FEF2F2)] hover:text-[var(--ds-danger,#DC2626)]" 
                                                 onClick={() => handleAction(req.id, 'reject')}
                                             >
                                                 <XCircle className="h-4 w-4 mr-1" /> Reject
                                             </Button>
                                             <Button 
                                                 size="sm" 
-                                                className="bg-green-600 hover:bg-green-700 text-white border-none" 
                                                 onClick={() => handleAction(req.id, 'approve')}
                                             >
                                                 <CheckCircle2 className="h-4 w-4 mr-1" /> Approve
@@ -699,9 +698,9 @@ const WithdrawalApprovalList = () => {
                                     </TableCell>
                                 </TableRow>
                             )) : (
-                                <TableRow>
-                                    <TableCell colSpan={5} className="text-center py-8 text-slate-500">
-                                        <CheckCircle2 className="h-8 w-8 mx-auto mb-2 opacity-20" />
+                                <TableRow className="border-[var(--ds-border,#DDE5DF)]">
+                                    <TableCell colSpan={5} className="py-12 text-center text-[var(--ds-text-tertiary,#8A978E)]">
+                                        <CheckCircle2 className="mx-auto mb-2 h-8 w-8 opacity-20" />
                                         No pending withdrawal requests.
                                     </TableCell>
                                 </TableRow>
@@ -712,42 +711,42 @@ const WithdrawalApprovalList = () => {
             </Card>
 
             {/* History Table */}
-            <Card className="bg-slate-900/50 border-slate-800">
-                <CardHeader>
-                    <CardTitle className="flex items-center gap-2">
-                        <Lock className="h-5 w-5 text-slate-500" />
+            <Card>
+                <CardHeader className="border-b border-[var(--ds-border,#DDE5DF)] px-5 py-4">
+                    <CardTitle className="flex items-center gap-2 text-base font-semibold">
+                        <Lock className="h-5 w-5 text-[var(--ds-text-secondary,#5B6B61)]" />
                         Transaction History
                     </CardTitle>
                 </CardHeader>
-                <CardContent>
+                <CardContent className="p-0">
                     <Table>
                         <TableHeader>
-                            <TableRow className="border-slate-800 hover:bg-transparent">
-                                <TableHead>Payee</TableHead>
-                                <TableHead>Date Requested</TableHead>
-                                <TableHead>Date Processed</TableHead>
-                                <TableHead>Amount</TableHead>
-                                <TableHead className="text-right">Status</TableHead>
+                            <TableRow className="border-[var(--ds-border,#DDE5DF)] bg-[var(--ds-surface-muted,#F7FAF8)] hover:bg-[var(--ds-surface-muted,#F7FAF8)]">
+                                <TableHead className="px-5 py-3 text-[11px] font-semibold uppercase tracking-wide text-[var(--ds-text-tertiary,#8A978E)]">Payee</TableHead>
+                                <TableHead className="px-5 py-3 text-[11px] font-semibold uppercase tracking-wide text-[var(--ds-text-tertiary,#8A978E)]">Date Requested</TableHead>
+                                <TableHead className="px-5 py-3 text-[11px] font-semibold uppercase tracking-wide text-[var(--ds-text-tertiary,#8A978E)]">Date Processed</TableHead>
+                                <TableHead className="px-5 py-3 text-[11px] font-semibold uppercase tracking-wide text-[var(--ds-text-tertiary,#8A978E)]">Amount</TableHead>
+                                <TableHead className="px-5 py-3 text-right text-[11px] font-semibold uppercase tracking-wide text-[var(--ds-text-tertiary,#8A978E)]">Status</TableHead>
                             </TableRow>
                         </TableHeader>
                         <TableBody>
                             {historyRequests.length > 0 ? historyRequests.slice(0, 10).map(req => (
-                                <TableRow key={req.id} className="border-slate-800 hover:bg-slate-800/50">
-                                    <TableCell className="text-slate-300">{payeeName(req)}</TableCell>
-                                    <TableCell className="text-slate-400">{formatDate(req.requested_at)}</TableCell>
-                                    <TableCell className="text-slate-400">{req.processed_at ? formatDate(req.processed_at) : '-'}</TableCell>
-                                    <TableCell className="font-medium text-white">{formatCurrency(req.amount)}</TableCell>
-                                    <TableCell className="text-right">
+                                <TableRow key={req.id} className="border-[var(--ds-border,#DDE5DF)] transition-colors hover:bg-[var(--ds-surface-muted,#F7FAF8)]">
+                                    <TableCell className="px-5 text-[var(--ds-text-primary,#122018)]">{payeeName(req)}</TableCell>
+                                    <TableCell className="px-5 text-[13px] text-[var(--ds-text-secondary,#5B6B61)]">{formatDate(req.requested_at)}</TableCell>
+                                    <TableCell className="px-5 text-[13px] text-[var(--ds-text-secondary,#5B6B61)]">{req.processed_at ? formatDate(req.processed_at) : '-'}</TableCell>
+                                    <TableCell className="px-5 font-medium text-[var(--ds-text-primary,#122018)]">{formatCurrency(req.amount)}</TableCell>
+                                    <TableCell className="px-5 text-right">
                                         {req.status === 'approved' ? (
-                                            <Badge className="bg-green-900/30 text-green-400 border-green-900">Approved</Badge>
+                                            <Badge className="border-[var(--ds-primary,#1F8A5B)]/25 bg-[var(--ds-primary-soft,#ECFDF5)] text-[var(--ds-primary,#1F8A5B)]">Approved</Badge>
                                         ) : (
-                                            <Badge className="bg-red-900/30 text-red-400 border-red-900">Rejected</Badge>
+                                            <Badge className="border-[var(--ds-danger,#DC2626)]/25 bg-[var(--ds-danger-bg,#FEF2F2)] text-[var(--ds-danger,#DC2626)]">Rejected</Badge>
                                         )}
                                     </TableCell>
                                 </TableRow>
                             )) : (
-                                <TableRow>
-                                    <TableCell colSpan={5} className="text-center py-8 text-slate-500">
+                                <TableRow className="border-[var(--ds-border,#DDE5DF)]">
+                                    <TableCell colSpan={5} className="py-12 text-center text-[var(--ds-text-tertiary,#8A978E)]">
                                         No history found.
                                     </TableCell>
                                 </TableRow>
@@ -875,7 +874,7 @@ const FinancePage = () => {
       </Dialog>
 
       <Tabs defaultValue="billing" className="mt-6">
-          <TabsList className="bg-slate-900 border-slate-800">
+          <TabsList>
               <TabsTrigger value="billing">Student Billing</TabsTrigger>
               {/* PRD: instructor settlements/withdrawals — Admin only (Staff —) */}
               {isAdmin && <TabsTrigger value="withdrawals">Withdrawals</TabsTrigger>}

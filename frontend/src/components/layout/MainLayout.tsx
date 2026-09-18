@@ -13,20 +13,24 @@ const MainLayout = () => {
     <div
       className={cn(
         'flex h-screen overflow-hidden',
-        isPlatform ? 'platform-shell text-[var(--pf-text)]' : 'tenant-shell bg-[var(--tenant-bg)] text-[var(--tenant-text)]',
+        isPlatform
+          ? 'platform-shell text-[var(--pf-text)]'
+          : 'tenant-shell bg-[var(--tenant-bg)] text-[var(--tenant-text)]',
       )}
     >
       <Sidebar />
 
-      <div className="flex flex-1 flex-col overflow-hidden relative">
+      <div className="relative flex flex-1 flex-col overflow-hidden">
         <Header />
         <main
           className={cn(
-            'flex-1 overflow-y-auto overflow-x-hidden',
-            isPlatform ? 'platform-main p-4 lg:p-5' : 'bg-[var(--tenant-bg)] p-4 md:p-6',
+            'flex-1 overflow-x-hidden overflow-y-auto',
+            isPlatform
+              ? 'platform-main p-4 lg:p-5'
+              : 'bg-[var(--ds-bg,var(--tenant-bg))] p-4 md:px-7 md:pb-7 md:pt-2',
           )}
         >
-          <div className="w-full h-full">
+          <div className="h-full w-full">
             <Outlet />
           </div>
         </main>

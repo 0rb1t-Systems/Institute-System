@@ -149,7 +149,7 @@ const GradebookPage = () => {
 
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6">
         <Select value={selectedClassId} onValueChange={setSelectedClassId}>
-          <SelectTrigger className="w-full sm:w-[300px] bg-slate-900 border-slate-800">
+          <SelectTrigger className="w-full sm:w-[300px]">
             <SelectValue placeholder="Select a Class" />
           </SelectTrigger>
           <SelectContent>
@@ -161,7 +161,7 @@ const GradebookPage = () => {
           </SelectContent>
         </Select>
         {selectedClassId && (
-          <Button onClick={handleFinalize} disabled={finalizing} className="bg-indigo-600 hover:bg-indigo-700">
+          <Button onClick={handleFinalize} disabled={finalizing}>
             {finalizing ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <ScrollText className="h-4 w-4 mr-2" />}
             Sync to Transcripts
           </Button>
@@ -169,29 +169,29 @@ const GradebookPage = () => {
       </div>
 
       {selectedClassId && classData ? (
-        <Card className="bg-slate-900/50 border-slate-800 overflow-hidden">
+        <Card className="overflow-hidden">
           <CardContent className="p-0">
             <div className="overflow-x-auto">
               <Table>
-                <TableHeader className="bg-slate-950">
+                <TableHeader>
                   <TableRow>
-                    <TableHead className="min-w-[250px] sticky left-0 bg-slate-950 z-10">Student Name</TableHead>
+                    <TableHead className="min-w-[250px] sticky left-0 bg-[var(--ds-surface,#fff)] z-10">Student Name</TableHead>
                     {classData.exams.map((exam) => (
-                      <TableHead key={exam.id} className="min-w-[150px] text-center border-l border-slate-800">
-                        <div className="font-bold text-indigo-400 truncate" title={exam.courseName}>
+                      <TableHead key={exam.id} className="min-w-[150px] text-center border-l border-[var(--ds-border,#DDE5DF)]">
+                        <div className="font-bold text-[var(--ds-primary,#1F8A5B)] truncate" title={exam.courseName}>
                           {exam.courseName}
                         </div>
-                        <div className="text-[10px] text-slate-500 font-normal">
+                        <div className="text-[10px] text-[var(--ds-text-tertiary,#8A978E)] font-normal">
                           Exam / {exam.total_marks || exam.final_marks}
                         </div>
                       </TableHead>
                     ))}
                     {(classData.assignments || []).map((assign) => (
-                      <TableHead key={assign.id} className="min-w-[140px] text-center border-l border-slate-800">
-                        <div className="font-bold text-amber-400 truncate" title={assign.title}>
+                      <TableHead key={assign.id} className="min-w-[140px] text-center border-l border-[var(--ds-border,#DDE5DF)]">
+                        <div className="font-bold text-[var(--ds-warning,#C2410C)] truncate" title={assign.title}>
                           {assign.title}
                         </div>
-                        <div className="text-[10px] text-slate-500 font-normal">
+                        <div className="text-[10px] text-[var(--ds-text-tertiary,#8A978E)] font-normal">
                           Bonus / {assign.total_marks}
                         </div>
                       </TableHead>
@@ -201,10 +201,10 @@ const GradebookPage = () => {
                       return (
                         <TableHead
                           key={`final-${courseId}`}
-                          className="min-w-[120px] text-center border-l border-slate-700 bg-slate-900"
+                          className="min-w-[120px] text-center border-l border-[var(--ds-border,#DDE5DF)] bg-[var(--ds-surface-muted,#F7FAF8)]"
                         >
-                          <div className="font-bold text-emerald-400">Final</div>
-                          <div className="text-[10px] text-slate-500">{course?.name || ''}</div>
+                          <div className="font-bold text-[var(--ds-accent,#1F8A5B)]">Final</div>
+                          <div className="text-[10px] text-[var(--ds-text-tertiary,#8A978E)]">{course?.name || ''}</div>
                         </TableHead>
                       );
                     })}
@@ -213,25 +213,25 @@ const GradebookPage = () => {
                 <TableBody>
                   {classData.students.length > 0 ? (
                     classData.students.map((student) => (
-                      <TableRow key={student.id} className="border-slate-800 hover:bg-slate-800/30">
-                        <TableCell className="sticky left-0 bg-slate-900/95 z-10 font-medium">
+                      <TableRow key={student.id}>
+                        <TableCell className="sticky left-0 bg-[var(--ds-surface,#fff)] z-10 font-medium">
                           {student.name}
-                          <div className="text-xs text-slate-500">{student.student_code}</div>
+                          <div className="text-xs text-[var(--ds-text-tertiary,#8A978E)]">{student.student_code}</div>
                         </TableCell>
                         {classData.exams.map((exam) => (
-                          <TableCell key={exam.id} className="text-center border-l border-slate-800">
+                          <TableCell key={exam.id} className="text-center border-l border-[var(--ds-border,#DDE5DF)]">
                             {getStudentScore(student.id, exam.id)}
                           </TableCell>
                         ))}
                         {(classData.assignments || []).map((assign) => (
-                          <TableCell key={assign.id} className="text-center border-l border-slate-800 text-amber-200/90">
+                          <TableCell key={assign.id} className="text-center border-l border-[var(--ds-border,#DDE5DF)] text-[var(--ds-warning,#C2410C)]">
                             {getAssignmentScore(student.id, assign.id)}
                           </TableCell>
                         ))}
                         {classData.courseIds.map((courseId) => (
                           <TableCell
                             key={`f-${student.id}-${courseId}`}
-                            className="text-center border-l border-slate-700 font-semibold text-emerald-400"
+                            className="text-center border-l border-[var(--ds-border,#DDE5DF)] font-semibold text-[var(--ds-accent,#1F8A5B)]"
                           >
                             {getFinalMark(student.id, courseId)}
                           </TableCell>
@@ -248,7 +248,7 @@ const GradebookPage = () => {
                             classData.courseIds.length +
                             1
                         )}
-                        className="text-center py-10 text-slate-500"
+                        className="text-center py-10 text-[var(--ds-text-tertiary,#8A978E)]"
                       >
                         <AlertCircle className="h-8 w-8 mx-auto mb-2 opacity-30" />
                         No enrolled students in this class.
@@ -261,7 +261,7 @@ const GradebookPage = () => {
           </CardContent>
         </Card>
       ) : (
-        <div className="text-center py-16 text-slate-500">
+        <div className="text-center py-16 text-[var(--ds-text-secondary,#5B6B61)]">
           <p>Please select a class to view the gradebook.</p>
         </div>
       )}

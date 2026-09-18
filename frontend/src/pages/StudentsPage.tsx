@@ -3,6 +3,7 @@ import { Helmet } from 'react-helmet';
 import { useNavigate, Link } from 'react-router-dom';
 import AnimatedPage from '@/components/AnimatedPage';
 import PageHeader from '@/components/PageHeader';
+import StatCard from '@/components/StatCard';
 import { Button } from '@/components/ui/button';
 import { 
   Pencil, 
@@ -16,9 +17,14 @@ import {
   UserPlus,
   Upload,
   ShieldCheck,
+  Users,
+  UserCheck,
+  Timer,
+  AlertCircle,
 } from 'lucide-react';
 import { useData } from '@/contexts/DataContext';
-import { getTenantPortalUrl, usesTenantSubdomainHosts } from '@/lib/institution';
+import { getRegistrationFeeAmount, getTenantPortalUrl, usesTenantSubdomainHosts } from '@/lib/institution';
+import { computeStudentBalance } from '@/lib/finance';
 import { useAuth } from '@/contexts/AuthContext';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -240,13 +246,14 @@ const StudentsPage = () => {
     const [isDeleting, setIsDeleting] = useState(false);
     const [deletingRowId, setDeletingRowId] = useState(null);
 
-    const { students, deleteStudentData, enrollments, classes, courses, diplomas, users, generalRegistrations, refreshData } = useData();
+    const { students, deleteStudentData, enrollments, classes, courses, diplomas, users, generalRegistrations, payments, refreshData } = useData();
     const { user, institution } = useAuth();
     const canManageStudents = user?.role === 'admin' || user?.role === 'staff';
     const canDeleteStudents = user?.role === 'admin';
     const [searchTerm, setSearchTerm] = useState('');
     const { toast } = useToast();
     const navigate = useNavigate();
+    const registrationFee = getRegistrationFeeAmount(institution);
 
     const tenantSlug = String(institution?.subdomain || '').trim().toLowerCase();
     const verifyCredentialPath = tenantSlug
@@ -254,6 +261,11 @@ const StudentsPage = () => {
             ? `${getTenantPortalUrl(institution)}/verify-credential`
             : `/verify-credential?tenant=${encodeURIComponent(tenantSlug)}`
         : '/verify-credential';
+
+    const pendingCount = useMemo(
+        () => generalRegistrations.filter((r) => r.status === 'pending').length,
+        [generalRegistrations],
+    );
 
     const filteredStudents = useMemo(() => {
         const pendingEmails = new Set(
@@ -280,6 +292,32 @@ const StudentsPage = () => {
             )
             .sort((a, b) => Number(new Date(b.registration_date || b.created_at)) - Number(new Date(a.registration_date || a.created_at)));
     }, [students, searchTerm, generalRegistrations, enrollments]);
+
+    const studentMetrics = useMemo(() => {
+        const activeStudentIds = new Set(
+            enrollments.filter((e) => e.status === 'active').map((e) => e.student_id),
+        );
+        let outstanding = 0;
+        for (const student of filteredStudents) {
+            const enrollment = enrollments.find((e) => e.student_id === student.id && e.status === 'active');
+            const activeClass = enrollment ? classes.find((c) => c.id === enrollment.class_id) : null;
+            const studentPayments = payments.filter((p) => p.student_id === student.id);
+            const { balance } = computeStudentBalance({
+                payments: studentPayments,
+                activeClass,
+                enrollment,
+                institution,
+                registrationFeeAmount: registrationFee,
+            });
+            if (balance > 0) outstanding += 1;
+        }
+        return {
+            total: filteredStudents.length,
+            active: filteredStudents.filter((s) => activeStudentIds.has(s.id)).length,
+            pending: pendingCount,
+            outstanding,
+        };
+    }, [filteredStudents, enrollments, classes, payments, institution, registrationFee, pendingCount]);
 
     // Pagination Logic
     const totalPages = Math.ceil(filteredStudents.length / ITEMS_PER_PAGE);
@@ -352,26 +390,76 @@ const StudentsPage = () => {
         <AnimatedPage>
             <Helmet><title>Students - Portal</title></Helmet>
 
-            <PageHeader title="Student Management" subtitle={`Total Approved Students: ${filteredStudents.length}`} />
+            <PageHeader
+              title="Student Management"
+              subtitle={`Total Approved Students: ${filteredStudents.length}`}
+            />
 
-            <div className="mb-5 flex min-w-0 flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center">
-                <Input type="search" placeholder="Search students..." className="w-full min-w-[12rem] bg-slate-900 border-slate-700 text-white sm:max-w-xs" value={searchTerm} onChange={e => { setSearchTerm(e.target.value); setCurrentPage(1); }} />
+            <div className="mb-5 grid grid-cols-2 gap-3 md:grid-cols-4 md:gap-4">
+              <StatCard
+                title="Total Students"
+                value={studentMetrics.total}
+                tone="primary"
+                descriptionTone="secondary"
+                icon={<Users className="h-5 w-5" strokeWidth={1.75} />}
+                description="In your institution directory"
+              />
+              <StatCard
+                title="Active"
+                value={studentMetrics.active}
+                tone="primary"
+                descriptionTone="accent"
+                icon={<UserCheck className="h-5 w-5" strokeWidth={1.75} />}
+                description="Currently enrolled"
+              />
+              <StatCard
+                title="Pending"
+                value={studentMetrics.pending}
+                tone="warning"
+                descriptionTone="warning"
+                trendIcon={<Timer className="h-3 w-3 shrink-0" strokeWidth={2} />}
+                icon={<Timer className="h-5 w-5" strokeWidth={1.75} />}
+                description="Awaiting approval"
+              />
+              <StatCard
+                title="Outstanding"
+                value={studentMetrics.outstanding}
+                tone="danger"
+                descriptionTone="danger"
+                trendIcon={<AlertCircle className="h-3 w-3 shrink-0" strokeWidth={2} />}
+                icon={<AlertCircle className="h-5 w-5" strokeWidth={1.75} />}
+                description="With balance due"
+              />
+            </div>
+
+            <div className="mb-5 flex min-w-0 items-center gap-3">
+                <Input
+                  type="search"
+                  placeholder="Search students..."
+                  className="h-9 w-[200px] shrink-0"
+                  value={searchTerm}
+                  onChange={e => { setSearchTerm(e.target.value); setCurrentPage(1); }}
+                />
                 {canManageStudents ? (
-                    <div className="flex min-w-0 flex-wrap gap-2">
-                        <Button
-                            asChild
-                            variant="outline"
-                            className="h-9 gap-2 border-blue-500/30 bg-blue-950/40 text-blue-300 hover:bg-blue-900/50 hover:text-blue-200 hover:border-blue-400/40"
-                        >
+                    <div className="ml-auto flex shrink-0 items-center gap-2">
+                        <Button asChild variant="outline" className="h-9 shrink-0 gap-2 px-3">
                             <a href={verifyCredentialPath} target="_blank" rel="noopener noreferrer">
                                 <ShieldCheck className="h-4 w-4 shrink-0" />
                                 Verify Credential
                             </a>
                         </Button>
-                        <Button variant="outline" onClick={() => navigate('/students/forms')} className="bg-slate-800 border-slate-700 hover:bg-slate-700 text-slate-200"><FileText className="mr-2 h-4 w-4 shrink-0" /> Forms</Button>
-                        <Button variant="outline" onClick={() => setIsBulkImportOpen(true)} className="bg-slate-800 border-slate-700 hover:bg-slate-700 text-slate-200"><Upload className="mr-2 h-4 w-4 shrink-0" /> Bulk Import</Button>
-                        <Button variant="outline" onClick={() => setIsAlumniImportOpen(true)} className="bg-slate-800 border-slate-700 hover:bg-slate-700 text-slate-200"><Upload className="mr-2 h-4 w-4 shrink-0" /> Alumni Import</Button>
-                        <Button onClick={() => setIsRegistrationModalOpen(true)} className="bg-indigo-600 hover:bg-indigo-700 text-white"><UserPlus className="mr-2 h-4 w-4 shrink-0" /> Register New Student</Button>
+                        <Button variant="outline" onClick={() => navigate('/students/forms')} className="h-9 shrink-0 gap-2 px-3">
+                          <FileText className="h-4 w-4 shrink-0" /> Forms
+                        </Button>
+                        <Button variant="outline" onClick={() => setIsBulkImportOpen(true)} className="h-9 shrink-0 gap-2 px-3">
+                          <Upload className="h-4 w-4 shrink-0" /> Bulk Import
+                        </Button>
+                        <Button variant="outline" onClick={() => setIsAlumniImportOpen(true)} className="h-9 shrink-0 gap-2 px-3">
+                          <Upload className="h-4 w-4 shrink-0" /> Alumni Import
+                        </Button>
+                        <Button onClick={() => setIsRegistrationModalOpen(true)} className="h-9 shrink-0 gap-2 px-3">
+                          <UserPlus className="h-4 w-4 shrink-0" /> Register New Student
+                        </Button>
                     </div>
                 ) : null}
             </div>
@@ -431,10 +519,10 @@ const StudentsPage = () => {
                 </AlertDialogContent>
             </AlertDialog>
 
-            <Card className="border-slate-800 bg-slate-900/50 shadow-xl [.tenant-shell_&]:bg-[var(--tenant-surface)] [.tenant-shell_&]:border-[var(--tenant-line)] [.tenant-shell_&]:shadow-[0_10px_30px_color-mix(in_srgb,var(--brand-primary)_8%,transparent)]">
-                <CardHeader className="flex flex-row items-center justify-between border-b border-slate-800 pb-4 [.tenant-shell_&]:border-[var(--tenant-line)]">
-                    <CardTitle className="text-white [.tenant-shell_&]:text-[var(--tenant-text)]">Student Directory</CardTitle>
-                    <div className="text-sm text-slate-400">
+            <Card>
+                <CardHeader className="flex flex-row items-center justify-between border-b border-[var(--ds-border,var(--tenant-line))] px-5 py-4">
+                    <CardTitle className="text-base font-semibold">Student Directory</CardTitle>
+                    <div className="text-[13px] text-[var(--ds-text-secondary,#5B6B61)]">
                         Page {currentPage} of {totalPages || 1}
                     </div>
                 </CardHeader>
@@ -442,13 +530,13 @@ const StudentsPage = () => {
                     <div className="overflow-x-auto">
                         <Table>
                             <TableHeader>
-                                <TableRow className="bg-slate-950/50 border-slate-800 hover:bg-transparent">
-                                    <TableHead className="text-slate-400 py-4 px-6 w-[80px]">Avatar</TableHead>
-                                    <TableHead className="text-slate-400 py-4 px-6">Code</TableHead>
-                                    <TableHead className="text-slate-400 py-4 px-6">Name</TableHead>
-                                    <TableHead className="text-slate-400 py-4 px-6">Affiliate</TableHead>
-                                    <TableHead className="text-slate-400 py-4 px-6">Registration</TableHead>
-                                    <TableHead className="text-right text-slate-400 py-4 px-6">Actions</TableHead>
+                                <TableRow className="border-[var(--ds-border,#DDE5DF)] bg-[var(--ds-surface-muted,#F7FAF8)] hover:bg-[var(--ds-surface-muted,#F7FAF8)]">
+                                    <TableHead className="w-[80px] px-5 py-3 text-[11px] font-semibold uppercase tracking-wide text-[var(--ds-text-tertiary,#8A978E)]">Avatar</TableHead>
+                                    <TableHead className="px-5 py-3 text-[11px] font-semibold uppercase tracking-wide text-[var(--ds-text-tertiary,#8A978E)]">Code</TableHead>
+                                    <TableHead className="px-5 py-3 text-[11px] font-semibold uppercase tracking-wide text-[var(--ds-text-tertiary,#8A978E)]">Name</TableHead>
+                                    <TableHead className="px-5 py-3 text-[11px] font-semibold uppercase tracking-wide text-[var(--ds-text-tertiary,#8A978E)]">Affiliate</TableHead>
+                                    <TableHead className="px-5 py-3 text-[11px] font-semibold uppercase tracking-wide text-[var(--ds-text-tertiary,#8A978E)]">Registration</TableHead>
+                                    <TableHead className="px-5 py-3 text-right text-[11px] font-semibold uppercase tracking-wide text-[var(--ds-text-tertiary,#8A978E)]">Actions</TableHead>
                                 </TableRow>
                             </TableHeader>
                             <TableBody>
@@ -456,41 +544,41 @@ const StudentsPage = () => {
                                     currentStudents.map(s => (
                                         <TableRow 
                                             key={s.id} 
-                                            className={`border-slate-800 hover:bg-slate-800/40 transition-colors ${deletingRowId === s.id ? 'opacity-50 pointer-events-none' : ''}`}
+                                            className={`border-[var(--ds-border,#DDE5DF)] transition-colors hover:bg-[var(--ds-surface-muted,#F7FAF8)] ${deletingRowId === s.id ? 'pointer-events-none opacity-50' : ''}`}
                                         >
-                                            <TableCell className="px-6 py-3">
-                                                <Avatar className="h-10 w-10 border border-slate-700 [.tenant-shell_&]:border-[var(--tenant-line)]">
+                                            <TableCell className="px-5 py-3">
+                                                <Avatar className="h-10 w-10 border-0">
                                                     <AvatarImage src={s.avatar_url} alt={s.name} className="object-cover" />
-                                                    <AvatarFallback className="bg-slate-800 text-white text-xs font-medium [html[data-platform-theme='light']_&]:bg-[color-mix(in_srgb,var(--brand-primary)_14%,transparent)] [html[data-platform-theme='light']_&]:text-[var(--brand-primary)]">
+                                                    <AvatarFallback className="bg-[var(--ds-primary-soft,#ECFDF5)] text-xs font-bold text-[var(--ds-primary,#1F8A5B)]">
                                                         {s.name?.substring(0, 2).toUpperCase() || 'ST'}
                                                     </AvatarFallback>
                                                 </Avatar>
                                             </TableCell>
-                                            <TableCell className="font-medium text-indigo-400 font-mono px-6">{s.student_code}</TableCell>
-                                            <TableCell className="px-6">
-                                                <div className="text-slate-200 font-medium">{s.name}</div>
-                                                <div className="text-xs text-slate-500">{s.email}</div>
+                                            <TableCell className="px-5 font-semibold text-[var(--ds-primary,#1F8A5B)]">{s.student_code}</TableCell>
+                                            <TableCell className="px-5">
+                                                <div className="font-semibold text-[var(--ds-text-primary,#122018)]">{s.name}</div>
+                                                <div className="text-xs text-[var(--ds-text-secondary,#5B6B61)]">{s.email}</div>
                                             </TableCell>
-                                            <TableCell className="px-6">
+                                            <TableCell className="px-5">
                                               {(() => {
                                                 const aff = users.find((u) => u.id === s.affiliate_id);
                                                 return aff?.name || aff?.full_name
-                                                  ? <span className="text-xs bg-purple-500/10 text-purple-400 px-2 py-1 rounded border border-purple-500/20">{aff.name || aff.full_name}</span>
-                                                  : <span className="text-slate-600">-</span>;
+                                                  ? <span className="text-[13px] text-[var(--ds-text-secondary,#5B6B61)]">{aff.name || aff.full_name}</span>
+                                                  : <span className="text-[var(--ds-text-tertiary,#8A978E)]">—</span>;
                                               })()}
                                             </TableCell>
-                                            <TableCell className="text-slate-400 px-6">{formatDate(s.registration_date)}</TableCell>
-                                            <TableCell className="text-right px-6">
-                                                <div className="flex justify-end gap-2">
-                                                    <Button variant="outline" size="icon" className="h-8 w-8 border-slate-700 bg-slate-800 hover:bg-slate-700 text-slate-300" onClick={() => handlePrintClick(s)} title="Print ID" disabled={isDeleting}><Printer className="h-4 w-4" /></Button>
+                                            <TableCell className="px-5 text-[13px] text-[var(--ds-text-secondary,#5B6B61)]">{formatDate(s.registration_date)}</TableCell>
+                                            <TableCell className="px-5 text-right">
+                                                <div className="flex justify-end gap-1">
+                                                    <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => handlePrintClick(s)} title="Print ID" disabled={isDeleting}><Printer className="h-4 w-4" /></Button>
                                                     {canManageStudents && (
                                                       <>
-                                                        <Button variant="outline" size="icon" className="h-8 w-8 border-slate-700 bg-slate-800 hover:bg-slate-700 text-slate-300" onClick={() => setTransferDialogStudent(s)} title="Transfer/Enroll" disabled={isDeleting}><ArrowLeftRight className="h-3 w-3" /></Button>
-                                                        <Button variant="ghost" size="icon" className="h-8 w-8 text-blue-400 hover:text-blue-300 hover:bg-blue-900/20" onClick={() => handleEdit(s)} title="Edit Student" disabled={isDeleting}><Pencil className="h-4 w-4" /></Button>
+                                                        <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setTransferDialogStudent(s)} title="Transfer/Enroll" disabled={isDeleting}><ArrowLeftRight className="h-3.5 w-3.5" /></Button>
+                                                        <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => handleEdit(s)} title="Edit Student" disabled={isDeleting}><Pencil className="h-4 w-4" /></Button>
                                                       </>
                                                     )}
                                                     {canDeleteStudents && (
-                                                      <Button variant="ghost" size="icon" className="h-8 w-8 text-red-400 hover:text-red-300 hover:bg-red-900/20" onClick={() => handleDeleteClick(s)} title="Delete Student" disabled={isDeleting}><Trash2 className="h-4 w-4" /></Button>
+                                                      <Button variant="ghost" size="icon" className="h-8 w-8 text-[var(--ds-danger,#DC2626)] hover:bg-[var(--ds-danger-bg,#FEF2F2)] hover:text-[var(--ds-danger,#DC2626)]" onClick={() => handleDeleteClick(s)} title="Delete Student" disabled={isDeleting}><Trash2 className="h-4 w-4" /></Button>
                                                     )}
                                                 </div>
                                             </TableCell>
@@ -498,7 +586,7 @@ const StudentsPage = () => {
                                     ))
                                 ) : (
                                     <TableRow>
-                                        <TableCell colSpan={6} className="text-center py-12 text-slate-500 bg-slate-900/20">
+                                        <TableCell colSpan={6} className="py-12 text-center text-[var(--ds-text-tertiary,#8A978E)]">
                                             No active/approved students found. Check the "Forms" section for pending approvals.
                                         </TableCell>
                                     </TableRow>
@@ -508,17 +596,16 @@ const StudentsPage = () => {
                     </div>
                     
                     {totalPages > 1 && (
-                        <div className="flex items-center justify-between p-4 border-t border-slate-800 bg-slate-950/20">
-                            <div className="text-sm text-slate-400 hidden sm:block">
+                        <div className="flex items-center justify-between border-t border-[var(--ds-border,#DDE5DF)] p-4">
+                            <div className="hidden text-sm text-[var(--ds-text-secondary,#5B6B61)] sm:block">
                                 Showing {(currentPage - 1) * ITEMS_PER_PAGE + 1} to {Math.min(currentPage * ITEMS_PER_PAGE, filteredStudents.length)} of {filteredStudents.length}
                             </div>
                             <div className="flex items-center gap-2">
-                                <Button variant="outline" size="icon" onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))} disabled={currentPage === 1 || isDeleting} className="bg-slate-900 border-slate-800 text-slate-400 hover:text-white h-8 w-8">
-                                    <ChevronLeft className="h-4 w-4" />
+                                <Button variant="outline" size="sm" onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))} disabled={currentPage === 1 || isDeleting}>
+                                    <ChevronLeft className="mr-1 h-4 w-4" /> Previous
                                 </Button>
-                                <span className="text-sm text-slate-300 px-3 font-medium">{currentPage} / {totalPages}</span>
-                                <Button variant="outline" size="icon" onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))} disabled={currentPage === totalPages || isDeleting} className="bg-slate-900 border-slate-800 text-slate-400 hover:text-white h-8 w-8">
-                                    <ChevronRight className="h-4 w-4" />
+                                <Button variant="outline" size="sm" onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))} disabled={currentPage === totalPages || isDeleting}>
+                                    Next <ChevronRight className="ml-1 h-4 w-4" />
                                 </Button>
                             </div>
                         </div>

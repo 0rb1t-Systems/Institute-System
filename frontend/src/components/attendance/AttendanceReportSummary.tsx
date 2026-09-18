@@ -1,6 +1,7 @@
 import React, { useMemo } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
+import StatCard from '@/components/StatCard';
 import { format } from 'date-fns';
 import { Users, CheckCircle, Percent, Clock } from 'lucide-react';
 
@@ -37,9 +38,9 @@ const AttendanceReportSummary = ({ records, loading, lastUpdated }) => {
     return (
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
         {[1, 2, 3, 4].map(i => (
-          <Card key={i} className="bg-slate-900/50 border-slate-800 p-4">
-             <Skeleton className="h-8 w-16 mb-2 bg-slate-800" />
-             <Skeleton className="h-4 w-24 bg-slate-800" />
+          <Card key={i} className="p-4">
+             <Skeleton className="h-8 w-16 mb-2" />
+             <Skeleton className="h-4 w-24" />
           </Card>
         ))}
       </div>
@@ -49,55 +50,37 @@ const AttendanceReportSummary = ({ records, loading, lastUpdated }) => {
   return (
     <div className="space-y-6 mb-6">
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            <Card className="bg-slate-900/50 border-slate-800">
-                <CardContent className="p-4 flex items-center justify-between">
-                    <div>
-                        <div className="text-3xl font-bold text-[var(--tenant-text)]">{stats.total}</div>
-                        <div className="text-xs text-[var(--tenant-muted)] uppercase tracking-wider mt-1 font-medium">Total Records</div>
-                    </div>
-                    <Users className="h-8 w-8 text-blue-500 opacity-50" />
-                </CardContent>
-            </Card>
-            
-            <Card className="bg-slate-900/50 border-slate-800 border-b-4 border-b-green-500">
-                <CardContent className="p-4 flex items-center justify-between">
-                    <div>
-                        <div className="text-3xl font-bold text-green-400">{stats.present + stats.late}</div>
-                        <div className="text-xs text-[var(--tenant-muted)] uppercase tracking-wider mt-1 font-medium">Total Attended</div>
-                    </div>
-                    <CheckCircle className="h-8 w-8 text-green-500 opacity-50" />
-                </CardContent>
-            </Card>
-
-            <Card className="bg-slate-900/50 border-slate-800 border-b-4 border-b-blue-500">
-                <CardContent className="p-4 flex items-center justify-between">
-                    <div>
-                        <div className="text-3xl font-bold text-blue-400">{stats.percentage.toFixed(1)}%</div>
-                        <div className="text-xs text-[var(--tenant-muted)] uppercase tracking-wider mt-1 font-medium">Overall %</div>
-                    </div>
-                    <Percent className="h-8 w-8 text-blue-500 opacity-50" />
-                </CardContent>
-            </Card>
-
-            <Card className="bg-slate-900/50 border-slate-800">
-                <CardContent className="p-4 flex items-center justify-between">
-                    <div>
-                        <div className="text-sm font-semibold text-[var(--tenant-text)] mt-2">
-                            {lastUpdated ? format(lastUpdated, 'HH:mm:ss') : '--:--'}
-                        </div>
-                        <div className="text-xs text-[var(--tenant-muted)] uppercase tracking-wider mt-1 font-medium">Last Updated</div>
-                    </div>
-                    <Clock className="h-8 w-8 text-slate-500 opacity-50" />
-                </CardContent>
-            </Card>
+            <StatCard
+              title="Total Records"
+              value={stats.total}
+              icon={<Users className="h-5 w-5" />}
+              tone="info"
+            />
+            <StatCard
+              title="Total Attended"
+              value={stats.present + stats.late}
+              icon={<CheckCircle className="h-5 w-5" />}
+              tone="primary"
+            />
+            <StatCard
+              title="Overall %"
+              value={`${stats.percentage.toFixed(1)}%`}
+              icon={<Percent className="h-5 w-5" />}
+              tone="corporate"
+            />
+            <StatCard
+              title="Last Updated"
+              value={lastUpdated ? format(lastUpdated, 'HH:mm:ss') : '--:--'}
+              icon={<Clock className="h-5 w-5" />}
+            />
         </div>
 
         {stats.classSummary.length > 0 && (
-            <Card className="bg-slate-900/50 border-slate-800">
+            <Card>
                 <CardContent className="p-4 overflow-x-auto">
                     <table className="w-full text-sm text-left">
                         <thead>
-                            <tr className="text-slate-400 border-b border-slate-800">
+                            <tr className="text-[var(--ds-text-secondary,#5B6B61)] border-b border-[var(--ds-border,#DDE5DF)]">
                                 <th className="pb-2 font-medium">Class Name</th>
                                 <th className="pb-2 font-medium text-center">Records</th>
                                 <th className="pb-2 font-medium text-center">Present/Late</th>
@@ -107,12 +90,12 @@ const AttendanceReportSummary = ({ records, loading, lastUpdated }) => {
                         </thead>
                         <tbody>
                             {stats.classSummary.map((c, idx) => (
-                                <tr key={idx} className="border-b border-slate-800/50 last:border-0">
-                                    <td className="py-3 text-slate-200 font-medium">{c.className}</td>
-                                    <td className="py-3 text-slate-400 text-center">{c.total}</td>
-                                    <td className="py-3 text-green-400 text-center">{c.present + c.late}</td>
-                                    <td className="py-3 text-red-400 text-center">{c.absent}</td>
-                                    <td className={`py-3 text-right font-bold ${c.percentage >= 80 ? 'text-green-400' : c.percentage >= 60 ? 'text-yellow-400' : 'text-red-400'}`}>
+                                <tr key={idx} className="border-b border-[var(--ds-border,#DDE5DF)] last:border-0">
+                                    <td className="py-3 font-medium">{c.className}</td>
+                                    <td className="py-3 text-[var(--ds-text-secondary,#5B6B61)] text-center">{c.total}</td>
+                                    <td className="py-3 text-[var(--ds-accent,#1F8A5B)] text-center">{c.present + c.late}</td>
+                                    <td className="py-3 text-[var(--ds-danger,#DC2626)] text-center">{c.absent}</td>
+                                    <td className={`py-3 text-right font-bold ${c.percentage >= 80 ? 'text-[var(--ds-accent,#1F8A5B)]' : c.percentage >= 60 ? 'text-[var(--ds-warning,#C2410C)]' : 'text-[var(--ds-danger,#DC2626)]'}`}>
                                         {c.percentage.toFixed(1)}%
                                     </td>
                                 </tr>

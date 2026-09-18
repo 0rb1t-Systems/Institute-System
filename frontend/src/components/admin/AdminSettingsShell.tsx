@@ -74,12 +74,12 @@ export function AdminSettingsGroupNav({ active }: { active: SettingsGroupId }) {
             data-state={isActive ? 'active' : 'inactive'}
             aria-current={isActive ? 'page' : undefined}
           >
-            <Icon className="h-5 w-5 shrink-0 text-[var(--tenant-muted)] group-data-[state=active]:text-[var(--brand-on-primary,#fff)]" />
+            <Icon className="h-5 w-5 shrink-0 text-[var(--ds-text-secondary,var(--tenant-muted))] group-data-[state=active]:text-[var(--ds-primary,#1F8A5B)]" />
             <span className="min-w-0 text-left">
-              <span className="block text-sm font-semibold leading-tight text-[var(--tenant-text)] group-data-[state=active]:text-[var(--brand-on-primary,#fff)]">
+              <span className="block text-sm font-semibold leading-tight text-[var(--ds-text-primary,var(--tenant-text))] group-data-[state=active]:text-[var(--ds-primary,#1F8A5B)]">
                 {title}
               </span>
-              <span className="mt-0.5 block text-[11px] font-normal leading-snug text-[var(--tenant-muted)] group-data-[state=active]:text-[var(--brand-on-primary,#fff)]/80">
+              <span className="mt-0.5 block text-[11px] font-normal leading-snug text-[var(--ds-text-secondary,var(--tenant-muted))] group-data-[state=active]:text-[var(--ds-primary,#1F8A5B)]/80">
                 {hint}
               </span>
             </span>
@@ -102,7 +102,7 @@ export function AdminSettingsShell({
       <div className="p-1.5 sm:p-2">
         <AdminSettingsGroupNav active={active} />
       </div>
-      <div className="border-t border-[var(--tenant-line)]">{children}</div>
+      <div className="border-t border-[var(--ds-border,var(--tenant-line))]">{children}</div>
     </div>
   )
 }
