@@ -1111,7 +1111,7 @@ const TranscriptView = ({ studentId, onClose, initialClassId }: any) => {
                                                 <TableCell className="py-2.5 px-2.5 border-r border-black align-middle">
                                                     <div className="font-bold text-black text-xs uppercase leading-snug">{row.name}</div>
                                                     {row.courseProject ? (
-                                                        <div className="text-[9px] italic text-black/80 leading-snug mt-1">
+                                                        <div className="text-[11px] font-bold text-black leading-snug mt-1">
                                                             Course Project: {row.courseProject}
                                                         </div>
                                                     ) : null}

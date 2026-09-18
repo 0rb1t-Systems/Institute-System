@@ -152,7 +152,7 @@ const GradebookPage = () => {
           <SelectTrigger className="w-full sm:w-[300px]">
             <SelectValue placeholder="Select a Class" />
           </SelectTrigger>
-          <SelectContent>
+          <SelectContent className="max-h-60">
             {availableClasses.map((c) => (
               <SelectItem key={c.id} value={c.id}>
                 {c.name}

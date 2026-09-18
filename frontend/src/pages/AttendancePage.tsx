@@ -179,7 +179,7 @@ const AttendancePage = () => {
                       <Label>Select Class</Label>
                       <Select value={selectedClassId} onValueChange={setSelectedClassId}>
                           <SelectTrigger><SelectValue placeholder="Choose Class" /></SelectTrigger>
-                          <SelectContent>
+                          <SelectContent className="max-h-60">
                               {availableClasses.map(c => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
                           </SelectContent>
                       </Select>

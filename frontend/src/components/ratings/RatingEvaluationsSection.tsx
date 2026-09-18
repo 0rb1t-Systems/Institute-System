@@ -327,8 +327,8 @@ export default function RatingEvaluationsSection({ createOpenerRef }: Props) {
     <>
       {ratingEvaluations.length > 0 && (
         <div className="mt-10 space-y-4">
-          <h2 className="text-lg font-medium text-slate-200 flex items-center gap-2">
-            <Star className="h-4 w-4 text-amber-400" />
+          <h2 className="flex items-center gap-2 text-lg font-medium text-[var(--ds-text-primary,#122018)]">
+            <Star className="h-4 w-4 text-amber-500" />
             Rating Evaluations
           </h2>
           <div className="grid grid-cols-1 gap-5 md:grid-cols-2 xl:grid-cols-3">
@@ -337,17 +337,17 @@ export default function RatingEvaluationsSection({ createOpenerRef }: Props) {
               const cls = classes.find((c) => c.id === ev.class_id);
               const courseName = courses.find((c) => c.id === ev.course_id)?.name;
               return (
-                <Card key={ev.id} className="flex min-h-[280px] min-w-0 flex-col overflow-hidden bg-slate-900/50 border-slate-800">
+                <Card key={ev.id} className="flex min-h-[280px] min-w-0 flex-col overflow-hidden">
                   <CardHeader className="space-y-0 pb-3">
                     <div className="flex justify-between items-start gap-3">
                       <div className="min-w-0 flex-1">
-                        <CardTitle className="text-base text-slate-100 line-clamp-2 leading-snug" title={ev.title}>
+                        <CardTitle className="text-base line-clamp-2 leading-snug" title={ev.title}>
                           {ev.title}
                         </CardTitle>
                         <CardDescription className="mt-1.5 line-clamp-1">
                           {courseName ? (
                             <>
-                              <span className="text-indigo-300">{courseName}</span>
+                              <span className="text-[var(--ds-accent,#1F8A5B)]">{courseName}</span>
                               {cls?.name ? <span> · {cls.name}</span> : null}
                             </>
                           ) : (
@@ -359,40 +359,40 @@ export default function RatingEvaluationsSection({ createOpenerRef }: Props) {
                         <span
                           className={`text-[10px] px-2 py-0.5 rounded border whitespace-nowrap ${
                             ev.is_active !== false
-                              ? 'border-emerald-700/50 text-emerald-300 bg-emerald-950/30'
-                              : 'border-slate-600 text-slate-400 bg-slate-800/50'
+                              ? 'border-[var(--ds-accent,#1F8A5B)]/40 text-[var(--ds-accent,#1F8A5B)] bg-[var(--ds-primary-soft,#ECFDF5)]'
+                              : 'border-[var(--ds-border,#DDE5DF)] text-[var(--ds-text-secondary,#5B6B61)] bg-[var(--ds-surface-muted,#F7FAF8)]'
                           }`}
                         >
                           {ev.is_active !== false ? 'Open' : 'Closed'}
                         </span>
-                        <div className="p-2 bg-slate-800 rounded-full">
-                          <Star className="h-4 w-4 text-amber-400" />
+                        <div className="rounded-full bg-[var(--ds-primary-soft,#ECFDF5)] p-2">
+                          <Star className="h-4 w-4 text-amber-500" />
                         </div>
                       </div>
                     </div>
                   </CardHeader>
                   <CardContent className="flex-1 space-y-3 pt-0">
                     {ev.due_date && (
-                      <div className="flex items-center text-sm text-slate-400 gap-2 min-w-0">
+                      <div className="flex min-w-0 items-center gap-2 text-sm text-[var(--ds-text-secondary,#5B6B61)]">
                         <Calendar className="h-4 w-4 shrink-0" />
                         <span className="truncate">Due: {formatDateTime(ev.due_date)}</span>
                       </div>
                     )}
-                    <div className="flex items-center text-sm text-slate-400 gap-2">
+                    <div className="flex items-center gap-2 text-sm text-[var(--ds-text-secondary,#5B6B61)]">
                       <ClipboardList className="h-4 w-4 shrink-0" />
                       <span>
                         {stats.questions} question{stats.questions === 1 ? '' : 's'}
                       </span>
                     </div>
-                    <div className="flex justify-between items-center pt-2 border-t border-slate-800/50">
-                      <div className="text-xs text-slate-500">
+                    <div className="flex items-center justify-between border-t border-[var(--ds-border,#DDE5DF)] pt-2">
+                      <div className="text-xs text-[var(--ds-text-tertiary,#8A978E)]">
                         Submitted:{' '}
-                        <span className="text-slate-300 font-medium">{stats.responses}</span>
+                        <span className="font-medium text-[var(--ds-text-primary,#122018)]">{stats.responses}</span>
                       </div>
                     </div>
                     {ev.public_token && ev.is_active !== false ? (
-                      <div className="mt-auto space-y-2 rounded-lg border border-slate-800/80 bg-slate-950/50 p-2.5 min-w-0">
-                        <p className="text-[11px] text-slate-400 flex items-center gap-1.5">
+                      <div className="mt-auto min-w-0 space-y-2 rounded-lg border border-[var(--ds-border,#DDE5DF)] bg-[var(--ds-surface-muted,#F7FAF8)] p-2.5">
+                        <p className="flex items-center gap-1.5 text-[11px] text-[var(--ds-text-secondary,#5B6B61)]">
                           <LinkIcon className="h-3.5 w-3.5 shrink-0" />
                           Public feedback link (no login)
                         </p>
@@ -400,7 +400,7 @@ export default function RatingEvaluationsSection({ createOpenerRef }: Props) {
                           <Input
                             readOnly
                             value={publicLinkFor(ev)}
-                            className="h-8 min-w-0 flex-1 bg-slate-950 border-slate-700 text-[11px] font-mono text-slate-300"
+                            className="h-8 min-w-0 flex-1 font-mono text-[11px]"
                             onFocus={(e) => e.target.select()}
                           />
                           <Button
@@ -416,7 +416,7 @@ export default function RatingEvaluationsSection({ createOpenerRef }: Props) {
                             type="button"
                             size="sm"
                             variant="outline"
-                            className="h-8 shrink-0 border-slate-700"
+                            className="h-8 shrink-0"
                             disabled={rotatingId === ev.id}
                             title="Invalidate old link and create a new one"
                             onClick={() => rotateLink(ev)}
@@ -445,7 +445,7 @@ export default function RatingEvaluationsSection({ createOpenerRef }: Props) {
                         <Button
                           variant="ghost"
                           size="icon"
-                          className="shrink-0 hover:bg-red-900/20 hover:text-red-400"
+                          className="shrink-0 text-[var(--ds-danger,#DC2626)] hover:bg-[var(--ds-danger-bg,#FEF2F2)] hover:text-[var(--ds-danger,#DC2626)]"
                         >
                           <Trash2 className="h-4 w-4" />
                         </Button>

@@ -39,6 +39,14 @@ import {
   LabelList,
 } from 'recharts';
 
+const LATEST_RESULT_AVATAR_COLORS = [
+  { bg: '#0F6B4C', text: '#FFFFFF' },
+  { bg: '#2563EB', text: '#FFFFFF' },
+  { bg: '#7C3AED', text: '#FFFFFF' },
+  { bg: '#C2410C', text: '#FFFFFF' },
+  { bg: '#0F766E', text: '#FFFFFF' },
+] as const;
+
 /**
  * Administrator / Staff overview — visual layout from design-system.pen Admin Dashboard.
  * Data fetching and business logic unchanged.
@@ -424,13 +432,19 @@ const DashboardPage = () => {
             {loading ? (
               <p className="py-8 text-center text-sm text-slate-500">Loading results…</p>
             ) : latestResults.length > 0 ? (
-              latestResults.map((item) => (
+              latestResults.map((item, index) => {
+                const avatarColor =
+                  LATEST_RESULT_AVATAR_COLORS[index % LATEST_RESULT_AVATAR_COLORS.length];
+                return (
                 <div
                   key={item.id}
                   className="flex items-center gap-3 border-b border-transparent py-2.5 last:border-0 [.tenant-shell_&]:border-[var(--ds-border,#DDE5DF)]/0"
                 >
-                  <Avatar className="h-9 w-9 border border-slate-700 [.tenant-shell_&]:border-transparent">
-                    <AvatarFallback className="bg-slate-800 text-sm text-white [.tenant-shell_&]:bg-[var(--ds-primary-soft,#ECFDF5)] [.tenant-shell_&]:text-[12px] [.tenant-shell_&]:font-bold [.tenant-shell_&]:text-[var(--ds-primary,#1F8A5B)]">
+                  <Avatar className="h-9 w-9 border-0">
+                    <AvatarFallback
+                      className="text-[12px] font-bold"
+                      style={{ backgroundColor: avatarColor.bg, color: avatarColor.text }}
+                    >
                       {item.initial}
                     </AvatarFallback>
                   </Avatar>
@@ -442,16 +456,17 @@ const DashboardPage = () => {
                       {item.subtitle}
                     </p>
                   </div>
-                  <div className="shrink-0 text-right">
-                    <p className="font-data text-[13px] font-bold tabular-nums text-emerald-400 [.tenant-shell_&]:text-[var(--ds-primary,#1F8A5B)]">
+                  <div className="flex shrink-0 items-center gap-2">
+                    <span className="font-data text-[13px] font-bold tabular-nums text-emerald-400 [.tenant-shell_&]:text-[var(--ds-primary,#1F8A5B)]">
                       {item.scoreLabel}
-                    </p>
-                    <p className="text-[11px] font-semibold text-emerald-400/80 [.tenant-shell_&]:text-[var(--ds-accent,#1F8A5B)]">
+                    </span>
+                    <span className="inline-flex min-w-[1.5rem] items-center justify-center rounded-md bg-slate-800 px-1.5 py-0.5 text-[11px] font-bold text-sky-300 [.tenant-shell_&]:bg-[var(--ds-primary-soft,#ECFDF5)] [.tenant-shell_&]:text-[var(--ds-accent,#0F766E)]">
                       {item.letter}
-                    </p>
+                    </span>
                   </div>
                 </div>
-              ))
+                );
+              })
             ) : (
               <p className="py-8 text-center text-sm text-slate-500 [.tenant-shell_&]:text-[var(--ds-text-tertiary,#8A978E)]">
                 No gradebook results yet. Marks appear here after exams and assignments are graded.

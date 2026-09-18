@@ -47,7 +47,11 @@ export function parseBulkQuestions(raw: string): RatingQuestionDraft[] {
 }
 
 export function likertToneClass(tone?: string) {
-  if (tone === 'positive') return 'text-emerald-400 border-emerald-700/40 bg-emerald-950/20';
-  if (tone === 'negative') return 'text-rose-400 border-rose-700/40 bg-rose-950/20';
-  return 'text-slate-300 border-slate-600/50 bg-slate-800/40';
+  if (tone === 'positive') {
+    return 'text-emerald-700 border-emerald-200 bg-emerald-50';
+  }
+  if (tone === 'negative') {
+    return 'text-rose-700 border-rose-200 bg-rose-50';
+  }
+  return 'text-[var(--ds-text-secondary,#5B6B61)] border-[var(--ds-border,#DDE5DF)] bg-[var(--ds-surface-muted,#F7FAF8)]';
 }

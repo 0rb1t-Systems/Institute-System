@@ -8,9 +8,9 @@ import { useData } from '@/contexts/DataContext';
 import { ArrowLeft } from 'lucide-react';
 
 const TONE_META: Record<string, { label: string; color: string }> = {
-  positive: { label: 'Agree', color: '#22c55e' },
+  positive: { label: 'Agree', color: '#16a34a' },
   neutral: { label: 'Neutral', color: '#6b7280' },
-  negative: { label: 'Disagree', color: '#fb7185' },
+  negative: { label: 'Disagree', color: '#e11d48' },
 };
 
 function toneForValue(value?: string) {
@@ -55,7 +55,7 @@ function buildChoiceSlices(
       .filter((s) => s.count > 0);
   }
 
-  const palette = ['#22c55e', '#38bdf8', '#a78bfa', '#fbbf24', '#fb7185', '#6b7280'];
+  const palette = ['#16a34a', '#2563eb', '#7c3aed', '#d97706', '#e11d48', '#6b7280'];
   return options
     .map((opt, i) => {
       const count = counts[opt.value] || 0;
@@ -74,7 +74,7 @@ function DonutChart({ slices, total }: { slices: Slice[]; total: number }) {
   const data =
     total > 0 && slices.length
       ? slices
-      : [{ key: 'empty', label: 'Empty', count: 1, pct: 0, color: '#1e293b' }];
+      : [{ key: 'empty', label: 'Empty', count: 1, pct: 0, color: '#E5E7EB' }];
 
   return (
     <div className="relative mx-auto h-36 w-36 shrink-0 overflow-hidden">
@@ -101,8 +101,10 @@ function DonutChart({ slices, total }: { slices: Slice[]; total: number }) {
         </PieChart>
       </ResponsiveContainer>
       <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center">
-        <span className="text-xl font-semibold tabular-nums leading-none text-white">{total}</span>
-        <span className="mt-1 text-[10px] font-medium uppercase tracking-[0.14em] text-slate-400">
+        <span className="text-xl font-semibold tabular-nums leading-none text-[var(--ds-text-primary,#122018)]">
+          {total}
+        </span>
+        <span className="mt-1 text-[10px] font-medium uppercase tracking-[0.14em] text-[var(--ds-text-tertiary,#8A978E)]">
           Votes
         </span>
       </div>
@@ -172,7 +174,7 @@ const RatingFeedbackPage = () => {
   if (!evaluation) {
     return (
       <AnimatedPage>
-        <div className="py-16 text-center text-slate-400">
+        <div className="py-16 text-center text-[var(--ds-text-secondary,#5B6B61)]">
           <p>Rating evaluation not found.</p>
           <Button className="mt-4" variant="outline" onClick={() => navigate('/assignments')}>
             Back to Assignments
@@ -192,16 +194,18 @@ const RatingFeedbackPage = () => {
         <Button
           variant="ghost"
           size="sm"
-          className="mb-2 -ml-2 h-8 text-slate-400 hover:text-slate-100"
+          className="mb-2 -ml-2 h-8 text-[var(--ds-text-secondary,#5B6B61)] hover:text-[var(--ds-text-primary,#122018)]"
           onClick={() => navigate('/assignments')}
         >
           <ArrowLeft className="mr-2 h-4 w-4" /> Back
         </Button>
-        <h1 className="text-2xl font-semibold tracking-tight text-slate-100">{evaluation.title}</h1>
-        <p className="mt-1 text-sm text-slate-400">
+        <h1 className="text-2xl font-semibold tracking-tight text-[var(--ds-text-primary,#122018)]">
+          {evaluation.title}
+        </h1>
+        <p className="mt-1 text-sm text-[var(--ds-text-secondary,#5B6B61)]">
           {courseName ? (
             <>
-              <span className="text-emerald-300/90">{courseName}</span>
+              <span className="font-medium text-[var(--ds-accent,#1F8A5B)]">{courseName}</span>
               {className ? <span> · {className}</span> : null}
             </>
           ) : (
@@ -213,15 +217,17 @@ const RatingFeedbackPage = () => {
       </div>
 
       <section>
-        <h2 className="mb-5 text-sm font-medium text-slate-300">Summary by question</h2>
+        <h2 className="mb-5 text-sm font-medium text-[var(--ds-text-primary,#122018)]">
+          Summary by question
+        </h2>
         <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
           {aggregates.map((agg) => (
             <article
               key={agg.question.id}
-              className="flex min-w-0 flex-col rounded-2xl border border-slate-800 bg-[#12171f] p-6"
+              className="flex min-w-0 flex-col rounded-2xl border border-[var(--ds-border,#DDE5DF)] bg-[var(--ds-surface,#fff)] p-6 shadow-[var(--ds-shadow-card,0_1px_2px_#1F8A5B14,0_8px_24px_#1F8A5B0A)]"
             >
-              <p className="mb-6 text-[15px] font-medium leading-relaxed text-slate-100">
-                <span className="mr-1.5 text-slate-500">{agg.qIndex + 1}.</span>
+              <p className="mb-6 text-[15px] font-medium leading-relaxed text-[var(--ds-text-primary,#122018)]">
+                <span className="mr-1.5 text-[var(--ds-text-tertiary,#8A978E)]">{agg.qIndex + 1}.</span>
                 {agg.question.text}
               </p>
 
@@ -240,14 +246,16 @@ const RatingFeedbackPage = () => {
                             style={{ backgroundColor: slice.color }}
                             aria-hidden
                           />
-                          <span className="truncate text-sm text-slate-300">{slice.label}</span>
-                          <span className="whitespace-nowrap text-sm tabular-nums text-slate-400">
+                          <span className="truncate text-sm text-[var(--ds-text-secondary,#5B6B61)]">
+                            {slice.label}
+                          </span>
+                          <span className="whitespace-nowrap text-sm tabular-nums text-[var(--ds-text-tertiary,#8A978E)]">
                             {slice.count} · {slice.pct}%
                           </span>
                         </li>
                       ))
                     ) : (
-                      <li className="text-sm text-slate-500">No votes yet</li>
+                      <li className="text-sm text-[var(--ds-text-tertiary,#8A978E)]">No votes yet</li>
                     )}
                   </ul>
                 </div>
@@ -257,13 +265,13 @@ const RatingFeedbackPage = () => {
                     agg.texts.map((text, i) => (
                       <p
                         key={`${agg.question.id}-t-${i}`}
-                        className="rounded-xl bg-slate-900/80 px-3.5 py-2.5 text-sm leading-relaxed text-slate-300"
+                        className="rounded-xl bg-[var(--ds-surface-muted,#F7FAF8)] px-3.5 py-2.5 text-sm leading-relaxed text-[var(--ds-text-secondary,#5B6B61)]"
                       >
                         “{text}”
                       </p>
                     ))
                   ) : (
-                    <p className="text-sm text-slate-500">No written answers</p>
+                    <p className="text-sm text-[var(--ds-text-tertiary,#8A978E)]">No written answers</p>
                   )}
                 </div>
               )}
@@ -271,7 +279,7 @@ const RatingFeedbackPage = () => {
           ))}
 
           {aggregates.length === 0 && (
-            <p className="col-span-full rounded-2xl border border-dashed border-slate-800 py-14 text-center text-sm text-slate-500">
+            <p className="col-span-full rounded-2xl border border-dashed border-[var(--ds-border,#DDE5DF)] py-14 text-center text-sm text-[var(--ds-text-tertiary,#8A978E)]">
               No questions.
             </p>
           )}

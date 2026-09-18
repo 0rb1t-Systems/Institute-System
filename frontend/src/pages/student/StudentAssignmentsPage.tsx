@@ -332,24 +332,24 @@ const StudentAssignmentsPage = () => {
 
             {myEvaluations.length > 0 && (
               <div className="mt-10 space-y-4">
-                <h2 className="text-lg font-medium text-slate-200 flex items-center gap-2">
-                  <Star className="h-4 w-4 text-amber-400" />
+                <h2 className="flex items-center gap-2 text-lg font-medium text-[var(--ds-text-primary,#122018)]">
+                  <Star className="h-4 w-4 text-amber-500" />
                   Rating Evaluations
                 </h2>
                 <div className="grid gap-6">
                   {myEvaluations.map((ev) => (
-                    <Card key={ev.id} className="bg-slate-900/50 border-slate-800">
+                    <Card key={ev.id}>
                       <CardHeader>
                         <div className="flex justify-between items-start gap-3">
                           <div>
                             <CardTitle className="flex items-center gap-2">
-                              <Star className="h-4 w-4 text-amber-400" />
+                              <Star className="h-4 w-4 text-amber-500" />
                               {ev.title}
                             </CardTitle>
                             <CardDescription className="mt-1">
                               {ev.courseName ? (
                                 <>
-                                  <span className="font-medium text-indigo-300">{ev.courseName}</span>
+                                  <span className="font-medium text-[var(--ds-accent,#1F8A5B)]">{ev.courseName}</span>
                                   {ev.className ? <span> · {ev.className}</span> : null}
                                 </>
                               ) : (
@@ -358,18 +358,18 @@ const StudentAssignmentsPage = () => {
                             </CardDescription>
                           </div>
                           {ev.isSubmitted ? (
-                            <Badge className="bg-green-600/80">
+                            <Badge className="bg-[var(--ds-accent,#1F8A5B)] text-white hover:bg-[var(--ds-accent,#1F8A5B)]">
                               <CheckCircle2 className="mr-1 h-3 w-3" /> Submitted
                             </Badge>
                           ) : (
-                            <Badge variant="outline" className="text-amber-400 border-amber-500/50">
+                            <Badge variant="outline" className="border-amber-500/50 text-amber-600">
                               Pending
                             </Badge>
                           )}
                         </div>
                       </CardHeader>
                       <CardContent className="flex flex-wrap items-center justify-between gap-3">
-                        <div className="text-xs text-slate-400 space-y-1">
+                        <div className="space-y-1 text-xs text-[var(--ds-text-secondary,#5B6B61)]">
                           <p>{ev.questions.length} question{ev.questions.length === 1 ? '' : 's'}</p>
                           {ev.due_date && (
                             <p className="flex items-center gap-1">
@@ -401,7 +401,7 @@ const StudentAssignmentsPage = () => {
                     const options = Array.isArray(q.options) ? q.options : [];
                     return (
                       <div key={q.id} className="space-y-3">
-                        <Label className="text-slate-200 leading-snug">
+                        <Label className="leading-snug text-[var(--ds-text-primary,#122018)]">
                           {idx + 1}. {q.text}
                         </Label>
                         {q.type === 'text' ? (
@@ -422,10 +422,10 @@ const StudentAssignmentsPage = () => {
                                   onClick={() =>
                                     setAnswers((prev) => ({ ...prev, [q.id]: opt.value }))
                                   }
-                                  className={`w-full text-left rounded-lg border px-3 py-2.5 text-sm transition-colors ${
+                                  className={`w-full rounded-lg border px-3 py-2.5 text-left text-sm transition-colors ${
                                     selected
-                                      ? 'border-indigo-500 bg-indigo-950/40 text-slate-100'
-                                      : `border-slate-800 hover:border-slate-600 ${likertToneClass(opt.tone)}`
+                                      ? 'border-[var(--ds-accent,#1F8A5B)] bg-[var(--ds-primary-soft,#ECFDF5)] text-[var(--ds-text-primary,#122018)]'
+                                      : `border-[var(--ds-border,#DDE5DF)] hover:border-[var(--ds-accent,#1F8A5B)]/50 ${likertToneClass(opt.tone)}`
                                   }`}
                                 >
                                   {opt.label}

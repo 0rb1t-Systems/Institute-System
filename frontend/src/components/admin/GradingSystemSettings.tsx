@@ -191,7 +191,7 @@ const GradingSystemSettings = ({ onUpdated }: { onUpdated?: (inst: unknown) => v
     <Card className="bg-[var(--tenant-bg-2)] border-[var(--tenant-line)] shadow-none">
       <CardHeader>
         <div className="flex items-center gap-2">
-          <GraduationCap className="h-5 w-5 text-indigo-400" />
+          <GraduationCap className="h-5 w-5 text-[var(--ds-accent,#1F8A5B)]" />
           <div>
             <CardTitle className="text-[var(--tenant-text)] text-base">Grading System</CardTitle>
             <CardDescription>
@@ -205,16 +205,22 @@ const GradingSystemSettings = ({ onUpdated }: { onUpdated?: (inst: unknown) => v
         <Alert
           className={
             isCustom
-              ? 'bg-emerald-950/40 border-emerald-800 text-emerald-100'
+              ? 'border-[var(--ds-accent,#1F8A5B)]/30 bg-[var(--ds-primary-soft,#ECFDF5)] text-[var(--ds-primary,#0F6B4C)]'
               : 'bg-[var(--tenant-bg)] border-[var(--tenant-line)] text-[var(--tenant-text)]'
           }
         >
           {isCustom ? (
-            <CheckCircle2 className="h-4 w-4" />
+            <CheckCircle2 className="h-4 w-4 text-[var(--ds-accent,#1F8A5B)]" />
           ) : (
-            <GraduationCap className="h-4 w-4" />
+            <GraduationCap className="h-4 w-4 text-[var(--ds-accent,#1F8A5B)]" />
           )}
-          <AlertDescription>
+          <AlertDescription
+            className={
+              isCustom
+                ? 'font-medium text-[var(--ds-primary,#0F6B4C)]'
+                : 'text-[var(--tenant-text)]'
+            }
+          >
             {isCustom
               ? 'Using your custom institution grading scale.'
               : 'Using default BRCE scale (A–F / 4.0). Upload or edit below to customize.'}
@@ -254,7 +260,7 @@ const GradingSystemSettings = ({ onUpdated }: { onUpdated?: (inst: unknown) => v
               href={scale.source_file_url}
               target="_blank"
               rel="noreferrer"
-              className="text-xs text-indigo-400 hover:underline"
+              className="text-xs font-medium text-[var(--ds-accent,#1F8A5B)] hover:underline"
             >
               View uploaded grading document
             </a>
