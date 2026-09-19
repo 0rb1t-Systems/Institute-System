@@ -28,10 +28,18 @@ const StatCard = ({
   title,
   value,
   icon,
-  description,
+  description = null,
   tone = 'default',
   descriptionTone = 'muted',
   trendIcon = null,
+}: {
+  title: React.ReactNode
+  value: React.ReactNode
+  icon?: React.ReactNode
+  description?: React.ReactNode
+  tone?: keyof typeof TONE_WRAP | string
+  descriptionTone?: keyof typeof TONE_DESC | string
+  trendIcon?: React.ReactNode
 }) => (
   <Card
     className={cn(
