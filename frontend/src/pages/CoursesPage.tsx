@@ -10,12 +10,13 @@ import {
   GraduationCap,
   MonitorPlay,
   Building2,
-  Edit,
+  Pencil,
   GripVertical,
   Save,
   X,
   Loader2,
 } from 'lucide-react';
+import { DsIconButton, DS_ICON_STROKE } from '@/components/ui/ds-actions';
 import { useData } from '@/contexts/DataContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -770,24 +771,20 @@ const CoursesPage = () => {
                                                     </span>
                                                     {canManagePrograms && (
                                                         <>
-                                                            <Button
-                                                              variant="ghost"
-                                                              size="icon"
-                                                              className="h-8 w-8 text-[var(--ds-text-secondary,#5B6B61)] hover:bg-[var(--ds-surface-muted,#F7FAF8)] hover:text-[var(--ds-text-primary,#122018)]"
+                                                            <DsIconButton
+                                                              tone="info"
                                                               onClick={() => handleEditDiploma(diploma)}
                                                               title="Edit diploma"
                                                             >
-                                                              <Edit className="h-4 w-4" />
-                                                            </Button>
-                                                            <Button
-                                                              variant="ghost"
-                                                              size="icon"
-                                                              className="h-8 w-8 text-[var(--ds-danger,#DC2626)] hover:bg-[var(--ds-danger-bg,#FEF2F2)] hover:text-[var(--ds-danger,#DC2626)]"
+                                                              <Pencil className="h-4 w-4" strokeWidth={DS_ICON_STROKE} />
+                                                            </DsIconButton>
+                                                            <DsIconButton
+                                                              tone="danger"
                                                               onClick={() => handleDeleteClick('diploma', diploma.id)}
                                                               title="Delete diploma"
                                                             >
-                                                              <Trash2 className="h-4 w-4" />
-                                                            </Button>
+                                                              <Trash2 className="h-4 w-4" strokeWidth={DS_ICON_STROKE} />
+                                                            </DsIconButton>
                                                         </>
                                                     )}
                                                 </div>
@@ -851,24 +848,20 @@ const CoursesPage = () => {
                                             </CardTitle>
                                             {canManagePrograms && (
                                                 <div className="inline-flex shrink-0 items-center gap-0.5">
-                                                    <Button
-                                                        variant="ghost"
-                                                        size="icon"
-                                                        className="h-8 w-8 text-[var(--ds-text-secondary,#5B6B61)] hover:bg-[var(--ds-surface-muted,#F7FAF8)] hover:text-[var(--ds-text-primary,#122018)]"
+                                                    <DsIconButton
+                                                        tone="info"
                                                         onClick={() => handleEditCourse(course)}
                                                         title="Edit course"
                                                     >
-                                                        <Edit className="h-4 w-4" />
-                                                    </Button>
-                                                    <Button
-                                                        variant="ghost"
-                                                        size="icon"
-                                                        className="h-8 w-8 text-[var(--ds-danger,#DC2626)] hover:bg-[var(--ds-danger-bg,#FEF2F2)] hover:text-[var(--ds-danger,#DC2626)]"
+                                                        <Pencil className="h-4 w-4" strokeWidth={DS_ICON_STROKE} />
+                                                    </DsIconButton>
+                                                    <DsIconButton
+                                                        tone="danger"
                                                         onClick={() => handleDeleteClick('course', course.id)}
                                                         title="Delete course"
                                                     >
-                                                        <Trash2 className="h-4 w-4" />
-                                                    </Button>
+                                                        <Trash2 className="h-4 w-4" strokeWidth={DS_ICON_STROKE} />
+                                                    </DsIconButton>
                                                 </div>
                                             )}
                                         </div>

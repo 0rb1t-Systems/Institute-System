@@ -605,7 +605,7 @@ const StudentsPage = () => {
                                                           <ArrowLeftRight className="h-4 w-4" strokeWidth={DS_ICON_STROKE} />
                                                         </DsIconButton>
                                                         <DsIconButton
-                                                          tone="muted"
+                                                          tone="info"
                                                           onClick={() => handleEdit(s)}
                                                           title="Edit Student"
                                                           disabled={isDeleting}

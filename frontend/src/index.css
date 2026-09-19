@@ -1219,14 +1219,42 @@ html[data-platform-theme='light'][data-tenant-chrome='1'] .hover\:text-slate-100
   color: var(--tenant-text);
 }
 
-html[data-platform-theme='light'][data-tenant-chrome='1'] button:has(.lucide-trash-2),
-html[data-platform-theme='light'][data-tenant-chrome='1'] button:has(.lucide-trash),
-html[data-platform-theme='light'][data-tenant-chrome='1'] button:has(.lucide-log-out),
-html[data-platform-theme='light'][data-tenant-chrome='1'] .lucide-trash-2,
-html[data-platform-theme='light'][data-tenant-chrome='1'] .lucide-trash,
-html[data-platform-theme='light'][data-tenant-chrome='1'] .lucide-log-out {
-  color: #dc2626 !important;
-  stroke: #dc2626 !important;
+/* Admin row icons: edit = info blue, delete = danger red (light + dark) */
+html[data-tenant-chrome='1'] button[data-ds-tone='danger'],
+html[data-tenant-chrome='1'] button[data-ds-tone='danger'] .lucide,
+html[data-tenant-chrome='1'] button:has(.lucide-log-out),
+html[data-tenant-chrome='1'] button:has(.lucide-log-out) .lucide-log-out,
+html[data-tenant-chrome='1'] .lucide-trash-2,
+html[data-tenant-chrome='1'] .lucide-trash,
+html[data-tenant-chrome='1'] button:has(.lucide-trash-2) .lucide,
+html[data-tenant-chrome='1'] button:has(.lucide-trash) .lucide,
+html[data-tenant-chrome='1'] button:has(.lucide-trash-2),
+html[data-tenant-chrome='1'] button:has(.lucide-trash) {
+  color: var(--ds-danger, #DC2626) !important;
+  stroke: var(--ds-danger, #DC2626) !important;
+}
+
+html[data-tenant-chrome='1'] button[data-ds-tone='info'],
+html[data-tenant-chrome='1'] button[data-ds-tone='info'] .lucide,
+html[data-tenant-chrome='1'] .lucide-pencil,
+html[data-tenant-chrome='1'] .lucide-pen-square,
+html[data-tenant-chrome='1'] .lucide-square-pen,
+html[data-tenant-chrome='1'] .lucide-pen-line,
+html[data-tenant-chrome='1'] .lucide-edit,
+html[data-tenant-chrome='1'] .lucide-edit-2,
+html[data-tenant-chrome='1'] .lucide-edit-3,
+html[data-tenant-chrome='1'] button:has(.lucide-pencil) .lucide,
+html[data-tenant-chrome='1'] button:has(.lucide-pen-square) .lucide,
+html[data-tenant-chrome='1'] button:has(.lucide-square-pen) .lucide,
+html[data-tenant-chrome='1'] button:has(.lucide-edit) .lucide,
+html[data-tenant-chrome='1'] button:has(.lucide-edit-2) .lucide,
+html[data-tenant-chrome='1'] button:has(.lucide-pencil),
+html[data-tenant-chrome='1'] button:has(.lucide-pen-square),
+html[data-tenant-chrome='1'] button:has(.lucide-square-pen),
+html[data-tenant-chrome='1'] button:has(.lucide-edit),
+html[data-tenant-chrome='1'] button:has(.lucide-edit-2) {
+  color: var(--ds-info, #2563EB) !important;
+  stroke: var(--ds-info, #2563EB) !important;
 }
 
 html[data-platform-theme='light'][data-tenant-chrome='1'] .text-yellow-500,
@@ -1234,13 +1262,9 @@ html[data-platform-theme='light'][data-tenant-chrome='1'] .text-yellow-400 {
   color: #b45309 !important;
 }
 
-html[data-platform-theme='light'][data-tenant-chrome='1'] button:has(.lucide-circle-x),
-html[data-platform-theme='light'][data-tenant-chrome='1'] button:has(.lucide-x-circle) {
-  color: #c2410c !important;
-}
-
-html[data-platform-theme='light'][data-tenant-chrome='1'] button:has(.lucide-circle-x) .lucide-circle-x,
-html[data-platform-theme='light'][data-tenant-chrome='1'] button:has(.lucide-x-circle) .lucide-x-circle {
+html[data-platform-theme='light'][data-tenant-chrome='1'] button[data-ds-tone='warning'],
+html[data-platform-theme='light'][data-tenant-chrome='1'] button[data-ds-tone='warning'] .lucide-x-circle,
+html[data-platform-theme='light'][data-tenant-chrome='1'] button[data-ds-tone='warning'] .lucide-circle-x {
   color: #c2410c !important;
   stroke: #c2410c !important;
 }

@@ -35,6 +35,7 @@ export const DsIconButton = React.forwardRef<HTMLButtonElement, DsIconButtonProp
         type="button"
         variant={isOutline ? 'outline' : 'ghost'}
         size="icon"
+        data-ds-tone={tone}
         className={cn(
           isOutline
             ? 'h-[34px] w-[34px] shrink-0 rounded-[var(--ds-radius-md,8px)] border-[var(--ds-border,#DDE5DF)] bg-[var(--ds-surface,#fff)] p-0 hover:bg-[var(--ds-surface-muted,#F7FAF8)]'
@@ -63,6 +64,7 @@ export const DsOutlineAction = React.forwardRef<HTMLButtonElement, DsOutlineActi
       type="button"
       variant="outline"
       size="sm"
+      data-ds-tone={tone}
       className={cn(
         'h-8 gap-1.5 rounded-[var(--ds-radius-md,8px)] border-[var(--ds-border,#DDE5DF)] bg-[var(--ds-surface,#fff)] px-3 text-[12px] font-semibold',
         tone === 'warning' && 'text-[var(--ds-warning,#C2410C)] hover:bg-[var(--ds-warning-bg,#FFF7ED)] hover:text-[var(--ds-warning,#C2410C)]',

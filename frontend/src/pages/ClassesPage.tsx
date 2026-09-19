@@ -867,7 +867,7 @@ const ClassesPage = () => {
                                         {(user.role === 'admin' || user.role === 'staff') && (
                                             <>
                                                 <DsOutlineAction
-                                                  tone={c.is_active ? 'warning' : 'primary'}
+                                                  tone="secondary"
                                                   onClick={() => toggleStatus(c)}
                                                 >
                                                     {c.is_active
@@ -876,28 +876,25 @@ const ClassesPage = () => {
                                                     {c.is_active ? 'Deactivate' : 'Activate'}
                                                 </DsOutlineAction>
                                                 <DsIconButton
-                                                  chrome="outline"
-                                                  tone="info"
+                                                  tone="secondary"
                                                   onClick={() => handleManageCourses(c)}
                                                   title="Manage Courses"
                                                 >
-                                                  <BookOpen className="h-[15px] w-[15px]" strokeWidth={DS_ICON_STROKE} />
+                                                  <BookOpen className="h-4 w-4" strokeWidth={DS_ICON_STROKE} />
                                                 </DsIconButton>
                                                 <DsIconButton
-                                                  chrome="outline"
-                                                  tone="secondary"
+                                                  tone="info"
                                                   onClick={() => handleEdit(c)}
                                                   title="Edit Class"
                                                 >
-                                                  <Pencil className="h-[15px] w-[15px]" strokeWidth={DS_ICON_STROKE} />
+                                                  <Pencil className="h-4 w-4" strokeWidth={DS_ICON_STROKE} />
                                                 </DsIconButton>
                                                 <DsIconButton
-                                                  chrome="outline"
                                                   tone="danger"
                                                   onClick={() => handleDeleteClick(c)}
                                                   title="Delete Class"
                                                 >
-                                                  <Trash2 className="h-[15px] w-[15px]" strokeWidth={DS_ICON_STROKE} />
+                                                  <Trash2 className="h-4 w-4" strokeWidth={DS_ICON_STROKE} />
                                                 </DsIconButton>
                                             </>
                                         )}

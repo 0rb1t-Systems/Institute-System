@@ -850,20 +850,18 @@ const InstructorsPage = () => {
                                   {user.status === 'suspended' ? 'Activate' : 'Deactivate'}
                                 </Button>
                                 <DsIconButton
-                                  chrome="outline"
                                   tone="info"
                                   onClick={() => setEditUser(user)}
                                   title="Edit Instructor"
                                 >
-                                  <Pencil className="h-3.5 w-3.5" strokeWidth={DS_ICON_STROKE} />
+                                  <Pencil className="h-4 w-4" strokeWidth={DS_ICON_STROKE} />
                                 </DsIconButton>
                                 <DsIconButton
-                                  chrome="outline"
                                   tone="danger"
                                   onClick={() => handleDeleteClick(user.id)}
                                   title="Delete Account"
                                 >
-                                  <Trash2 className="h-3.5 w-3.5" strokeWidth={DS_ICON_STROKE} />
+                                  <Trash2 className="h-4 w-4" strokeWidth={DS_ICON_STROKE} />
                                 </DsIconButton>
                               </>
                             )}

@@ -135,7 +135,7 @@ const StudentFinanceList = ({ students, financials, onRecordPayment, onChargeBal
                                     <Dialog>
                                         <DialogTrigger asChild>
                                             <DsIconButton
-                                              tone="muted"
+                                              tone="info"
                                               onClick={() => setSelectedStudent(item)}
                                               title="Edit / View History"
                                             >

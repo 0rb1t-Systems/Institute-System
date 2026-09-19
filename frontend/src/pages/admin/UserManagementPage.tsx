@@ -699,7 +699,7 @@ const UserManagementPage = () => {
                                 {user.status === 'suspended' ? 'Activate' : 'Deactivate'}
                               </Button>
                               <DsIconButton
-                                tone="muted"
+                                tone="info"
                                 onClick={() => setEditUser(user)}
                                 title="Edit User"
                               >
