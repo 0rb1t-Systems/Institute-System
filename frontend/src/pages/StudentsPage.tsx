@@ -5,6 +5,7 @@ import AnimatedPage from '@/components/AnimatedPage';
 import PageHeader from '@/components/PageHeader';
 import StatCard from '@/components/StatCard';
 import { Button } from '@/components/ui/button';
+import { DsIconButton, DS_ICON_STROKE } from '@/components/ui/ds-actions';
 import { 
   Pencil, 
   Trash2, 
@@ -35,7 +36,7 @@ import { notify, MESSAGES } from '@/lib/notify';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Label } from '@/components/ui/label';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
-import { formatDate, cn } from '@/lib/utils';
+import { formatDate } from '@/lib/utils';
 import StudentIdCard from '@/components/StudentIdCard';
 import StudentRegistrationModal from '@/components/student/StudentRegistrationModal';
 import BulkImportStudentsModal from '@/components/student/BulkImportStudentsModal';
@@ -584,64 +585,44 @@ const StudentsPage = () => {
                                             </TableCell>
                                             <TableCell className="px-5 text-[13px] tabular-nums text-[var(--ds-text-secondary,#5B6B61)]">{formatDate(s.registration_date)}</TableCell>
                                             <TableCell className="px-5 text-right">
-                                                <div className="inline-flex items-center gap-0.5 rounded-[var(--ds-radius-lg,12px)] border border-[var(--ds-border,#DDE5DF)] bg-[var(--ds-surface-muted,#F7FAF8)] p-0.5">
-                                                    <Button
-                                                      variant="ghost"
-                                                      size="icon"
-                                                      className={cn(
-                                                        'h-8 w-8 rounded-[var(--ds-radius-md,8px)] text-[var(--ds-text-secondary,#5B6B61)]',
-                                                        'hover:bg-[var(--ds-surface,#fff)] hover:text-[var(--ds-text-primary,#122018)]',
-                                                      )}
+                                                <div className="inline-flex items-center justify-end gap-2.5">
+                                                    <DsIconButton
+                                                      tone="muted"
                                                       onClick={() => handlePrintClick(s)}
                                                       title="Print ID"
                                                       disabled={isDeleting}
                                                     >
-                                                      <Printer className="h-4 w-4" />
-                                                    </Button>
+                                                      <Printer className="h-4 w-4" strokeWidth={DS_ICON_STROKE} />
+                                                    </DsIconButton>
                                                     {canManageStudents && (
                                                       <>
-                                                        <Button
-                                                          variant="ghost"
-                                                          size="icon"
-                                                          className={cn(
-                                                            'h-8 w-8 rounded-[var(--ds-radius-md,8px)] text-[var(--ds-text-secondary,#5B6B61)]',
-                                                            'hover:bg-[var(--ds-surface,#fff)] hover:text-[var(--ds-text-primary,#122018)]',
-                                                          )}
+                                                        <DsIconButton
+                                                          tone="muted"
                                                           onClick={() => setTransferDialogStudent(s)}
                                                           title="Transfer/Enroll"
                                                           disabled={isDeleting}
                                                         >
-                                                          <ArrowLeftRight className="h-3.5 w-3.5" />
-                                                        </Button>
-                                                        <Button
-                                                          variant="ghost"
-                                                          size="icon"
-                                                          className={cn(
-                                                            'h-8 w-8 rounded-[var(--ds-radius-md,8px)] text-[var(--ds-text-secondary,#5B6B61)]',
-                                                            'hover:bg-[var(--ds-surface,#fff)] hover:text-[var(--ds-text-primary,#122018)]',
-                                                          )}
+                                                          <ArrowLeftRight className="h-4 w-4" strokeWidth={DS_ICON_STROKE} />
+                                                        </DsIconButton>
+                                                        <DsIconButton
+                                                          tone="muted"
                                                           onClick={() => handleEdit(s)}
                                                           title="Edit Student"
                                                           disabled={isDeleting}
                                                         >
-                                                          <Pencil className="h-4 w-4" />
-                                                        </Button>
+                                                          <Pencil className="h-4 w-4" strokeWidth={DS_ICON_STROKE} />
+                                                        </DsIconButton>
                                                       </>
                                                     )}
                                                     {canDeleteStudents && (
-                                                      <Button
-                                                        variant="ghost"
-                                                        size="icon"
-                                                        className={cn(
-                                                          'h-8 w-8 rounded-[var(--ds-radius-md,8px)] text-[var(--ds-danger,#DC2626)]',
-                                                          'hover:bg-[var(--ds-danger-bg,#FEF2F2)] hover:text-[var(--ds-danger,#DC2626)]',
-                                                        )}
+                                                      <DsIconButton
+                                                        tone="danger"
                                                         onClick={() => handleDeleteClick(s)}
                                                         title="Delete Student"
                                                         disabled={isDeleting}
                                                       >
-                                                        <Trash2 className="h-4 w-4" />
-                                                      </Button>
+                                                        <Trash2 className="h-4 w-4" strokeWidth={DS_ICON_STROKE} />
+                                                      </DsIconButton>
                                                     )}
                                                 </div>
                                             </TableCell>

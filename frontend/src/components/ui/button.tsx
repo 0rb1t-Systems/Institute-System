@@ -10,16 +10,16 @@ const buttonVariants = cva(
     variants: {
       variant: {
         default:
-          "bg-primary text-primary-foreground hover:bg-primary/90 [.tenant-shell_&]:bg-[var(--ds-primary,#1F8A5B)] [.tenant-shell_&]:text-[var(--ds-text-on-primary,#fff)] [.tenant-shell_&]:hover:bg-[var(--ds-primary-hover,#187A50)]",
+          "bg-primary text-primary-foreground hover:bg-primary/90 [.tenant-shell_&]:bg-[var(--ds-primary,#0B3D2E)] [.tenant-shell_&]:text-[var(--ds-text-on-primary,#fff)] [.tenant-shell_&]:hover:bg-[var(--ds-primary-hover,#082E22)]",
         destructive:
           "bg-destructive text-destructive-foreground hover:bg-destructive/90 [.tenant-shell_&]:bg-[var(--ds-danger,#DC2626)] [.tenant-shell_&]:hover:bg-[var(--ds-danger-hover,#B91C1C)]",
         outline:
           "border border-input bg-background hover:bg-slate-800 hover:text-slate-100 [.tenant-shell_&]:border-[var(--ds-border,#DDE5DF)] [.tenant-shell_&]:bg-[var(--ds-surface,#fff)] [.tenant-shell_&]:text-[var(--ds-text-primary,#122018)] [.tenant-shell_&]:hover:bg-[var(--ds-surface-muted,#F7FAF8)] [.tenant-shell_&]:hover:text-[var(--ds-text-primary,#122018)]",
         secondary:
-          "bg-secondary text-secondary-foreground hover:bg-secondary/80 [.tenant-shell_&]:bg-[var(--ds-primary-soft,#ECFDF5)] [.tenant-shell_&]:text-[var(--ds-primary,#1F8A5B)] [.tenant-shell_&]:hover:bg-[var(--ds-primary-muted,#D1FAE5)]",
+          "bg-secondary text-secondary-foreground hover:bg-secondary/80 [.tenant-shell_&]:bg-[var(--ds-primary-soft,#ECFDF5)] [.tenant-shell_&]:text-[var(--ds-primary,#0B3D2E)] [.tenant-shell_&]:hover:bg-[var(--ds-primary-muted,#D1FAE5)]",
         ghost:
           "hover:bg-slate-800 hover:text-slate-100 [.tenant-shell_&]:text-[var(--ds-text-secondary,#5B6B61)] [.tenant-shell_&]:hover:bg-[var(--ds-surface-muted,#F7FAF8)] [.tenant-shell_&]:hover:text-[var(--ds-text-primary,#122018)]",
-        link: "text-primary underline-offset-4 hover:underline [.tenant-shell_&]:text-[var(--ds-primary,#1F8A5B)]",
+        link: "text-primary underline-offset-4 hover:underline [.tenant-shell_&]:text-[var(--ds-primary,#0B3D2E)]",
       },
       size: {
         default: "h-10 px-4 py-2",

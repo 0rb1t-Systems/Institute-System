@@ -53,6 +53,7 @@ import {
   Mail,
   GraduationCap,
 } from 'lucide-react';
+import { DsIconButton, DS_ICON_STROKE } from '@/components/ui/ds-actions';
 import { useUsers } from '@/hooks/useUsers';
 import { Skeleton } from '@/components/ui/skeleton';
 import { formatCurrency, isValidEmail } from '@/lib/utils';
@@ -841,31 +842,29 @@ const InstructorsPage = () => {
                                   variant="ghost"
                                   size="sm"
                                   onClick={() => handleStatusToggle(user)}
-                                  className="h-8 text-xs"
+                                  className="h-8 px-2 text-xs font-medium text-[var(--ds-text-secondary,#5B6B61)] hover:bg-[var(--ds-surface-muted,#F7FAF8)] hover:text-[var(--ds-text-primary,#122018)]"
                                   title={
                                     user.status === 'suspended' ? 'Activate' : 'Deactivate'
                                   }
                                 >
                                   {user.status === 'suspended' ? 'Activate' : 'Deactivate'}
                                 </Button>
-                                <Button
-                                  variant="ghost"
-                                  size="icon"
+                                <DsIconButton
+                                  chrome="outline"
+                                  tone="info"
                                   onClick={() => setEditUser(user)}
-                                  className="h-8 w-8"
                                   title="Edit Instructor"
                                 >
-                                  <Pencil className="h-4 w-4" />
-                                </Button>
-                                <Button
-                                  variant="ghost"
-                                  size="icon"
+                                  <Pencil className="h-3.5 w-3.5" strokeWidth={DS_ICON_STROKE} />
+                                </DsIconButton>
+                                <DsIconButton
+                                  chrome="outline"
+                                  tone="danger"
                                   onClick={() => handleDeleteClick(user.id)}
-                                  className="h-8 w-8 text-[var(--ds-danger,#DC2626)] hover:bg-[var(--ds-danger-bg,#FEF2F2)] hover:text-[var(--ds-danger,#DC2626)]"
                                   title="Delete Account"
                                 >
-                                  <Trash2 className="h-4 w-4" />
-                                </Button>
+                                  <Trash2 className="h-3.5 w-3.5" strokeWidth={DS_ICON_STROKE} />
+                                </DsIconButton>
                               </>
                             )}
                           </div>

@@ -5,6 +5,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Search, DollarSign, CreditCard, Pencil, ChevronLeft, ChevronRight } from 'lucide-react';
+import { DsIconButton, DsOutlineAction, DS_ICON_STROKE } from '@/components/ui/ds-actions';
 import { formatCurrency } from '@/lib/utils';
 import { Dialog, DialogContent, DialogTrigger } from '@/components/ui/dialog';
 import InvoiceView from './InvoiceView';
@@ -118,20 +119,28 @@ const StudentFinanceList = ({ students, financials, onRecordPayment, onChargeBal
                             <TableCell className="px-5 py-3 text-right">
                                 <div className="flex justify-end gap-2">
                                     {item.balance > 0 && (
-                                        <Button size="sm" variant="outline" className="h-8 border-[var(--ds-warning,#C2410C)]/40 text-[var(--ds-warning,#C2410C)] hover:bg-[var(--ds-warning-bg,#FFF7ED)]" onClick={() => onChargeBalance(item.student.id)} title="Create Charge/Invoice">
-                                            <CreditCard className="h-3.5 w-3.5" />
-                                        </Button>
+                                        <DsOutlineAction
+                                          className="h-8 w-8 px-0"
+                                          onClick={() => onChargeBalance(item.student.id)}
+                                          title="Create Charge/Invoice"
+                                        >
+                                            <CreditCard className="h-3.5 w-3.5" strokeWidth={DS_ICON_STROKE} />
+                                        </DsOutlineAction>
                                     )}
-                                    <Button size="sm" variant="outline" className="h-8" onClick={() => onRecordPayment(item.student.id)}>
-                                        <DollarSign className="h-3.5 w-3.5 md:mr-1" />
+                                    <DsOutlineAction onClick={() => onRecordPayment(item.student.id)}>
+                                        <DollarSign className="h-3.5 w-3.5" strokeWidth={DS_ICON_STROKE} />
                                         <span className="hidden md:inline">Pay</span>
-                                    </Button>
+                                    </DsOutlineAction>
                                     
                                     <Dialog>
                                         <DialogTrigger asChild>
-                                            <Button size="sm" variant="ghost" className="h-8 w-8 p-0 text-[var(--ds-primary,#1F8A5B)] hover:bg-[var(--ds-primary-soft,#ECFDF5)] hover:text-[var(--ds-primary,#1F8A5B)]" onClick={() => setSelectedStudent(item)} title="Edit / View History">
-                                                <Pencil className="h-3.5 w-3.5" />
-                                            </Button>
+                                            <DsIconButton
+                                              tone="muted"
+                                              onClick={() => setSelectedStudent(item)}
+                                              title="Edit / View History"
+                                            >
+                                                <Pencil className="h-4 w-4" strokeWidth={DS_ICON_STROKE} />
+                                            </DsIconButton>
                                         </DialogTrigger>
                                         <DialogContent className="max-w-4xl border-none bg-transparent p-0 shadow-none">
                                             {selectedStudent && (

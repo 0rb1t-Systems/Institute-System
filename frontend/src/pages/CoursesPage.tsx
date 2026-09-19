@@ -770,8 +770,24 @@ const CoursesPage = () => {
                                                     </span>
                                                     {canManagePrograms && (
                                                         <>
-                                                            <Button variant="ghost" size="icon" className="h-6 w-6 text-[var(--ds-primary,#1F8A5B)] hover:text-[var(--ds-primary-hover,#187A50)]" onClick={() => handleEditDiploma(diploma)}><Edit className="h-3 w-3" /></Button>
-                                                            <Button variant="ghost" size="icon" className="h-6 w-6 text-[var(--ds-danger,#DC2626)] hover:bg-[var(--ds-danger-bg,#FEF2F2)]" onClick={() => handleDeleteClick('diploma', diploma.id)}><Trash2 className="h-3 w-3" /></Button>
+                                                            <Button
+                                                              variant="ghost"
+                                                              size="icon"
+                                                              className="h-8 w-8 text-[var(--ds-text-secondary,#5B6B61)] hover:bg-[var(--ds-surface-muted,#F7FAF8)] hover:text-[var(--ds-text-primary,#122018)]"
+                                                              onClick={() => handleEditDiploma(diploma)}
+                                                              title="Edit diploma"
+                                                            >
+                                                              <Edit className="h-4 w-4" />
+                                                            </Button>
+                                                            <Button
+                                                              variant="ghost"
+                                                              size="icon"
+                                                              className="h-8 w-8 text-[var(--ds-danger,#DC2626)] hover:bg-[var(--ds-danger-bg,#FEF2F2)] hover:text-[var(--ds-danger,#DC2626)]"
+                                                              onClick={() => handleDeleteClick('diploma', diploma.id)}
+                                                              title="Delete diploma"
+                                                            >
+                                                              <Trash2 className="h-4 w-4" />
+                                                            </Button>
                                                         </>
                                                     )}
                                                 </div>
@@ -834,22 +850,24 @@ const CoursesPage = () => {
                                                 {course.name}
                                             </CardTitle>
                                             {canManagePrograms && (
-                                                <div className="flex shrink-0 gap-1.5">
+                                                <div className="inline-flex shrink-0 items-center gap-0.5">
                                                     <Button
-                                                        variant="outline"
+                                                        variant="ghost"
                                                         size="icon"
-                                                        className="h-8 w-8 rounded-lg border-[var(--ds-primary,#1F8A5B)]/40 bg-transparent text-[var(--ds-primary,#1F8A5B)] hover:bg-[var(--ds-primary-soft,#ECFDF5)] hover:text-[var(--ds-primary-hover,#187A50)]"
+                                                        className="h-8 w-8 text-[var(--ds-text-secondary,#5B6B61)] hover:bg-[var(--ds-surface-muted,#F7FAF8)] hover:text-[var(--ds-text-primary,#122018)]"
                                                         onClick={() => handleEditCourse(course)}
+                                                        title="Edit course"
                                                     >
-                                                        <Edit className="h-3.5 w-3.5" />
+                                                        <Edit className="h-4 w-4" />
                                                     </Button>
                                                     <Button
-                                                        variant="outline"
+                                                        variant="ghost"
                                                         size="icon"
-                                                        className="h-8 w-8 rounded-lg border-[var(--ds-danger,#DC2626)]/40 bg-transparent text-[var(--ds-danger,#DC2626)] hover:bg-[var(--ds-danger-bg,#FEF2F2)] hover:text-[var(--ds-danger,#DC2626)]"
+                                                        className="h-8 w-8 text-[var(--ds-danger,#DC2626)] hover:bg-[var(--ds-danger-bg,#FEF2F2)] hover:text-[var(--ds-danger,#DC2626)]"
                                                         onClick={() => handleDeleteClick('course', course.id)}
+                                                        title="Delete course"
                                                     >
-                                                        <Trash2 className="h-3.5 w-3.5" />
+                                                        <Trash2 className="h-4 w-4" />
                                                     </Button>
                                                 </div>
                                             )}

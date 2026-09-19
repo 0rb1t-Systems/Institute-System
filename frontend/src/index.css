@@ -730,12 +730,12 @@ html[data-platform-theme='light'] {
   --input: 214 22% 88%;
   --ring: 154 63% 33%;
 
-  /* light mode — clear green primary + product UI tokens */
-  --ds-primary: #1F8A5B;
-  --ds-primary-hover: #187A50;
+  /* light mode — Amanah Design System tokens (design-system.pen) */
+  --ds-primary: #0B3D2E;
+  --ds-primary-hover: #082E22;
   --ds-primary-soft: #ECFDF5;
   --ds-primary-muted: #D1FAE5;
-  --ds-accent: #15803D;
+  --ds-accent: #1F8A5B;
   --ds-accent-soft: #D1FAE5;
   --ds-bg: #F2F5F3;
   --ds-surface: #FFFFFF;
@@ -758,8 +758,8 @@ html[data-platform-theme='light'] {
   --ds-badge-corporate: #7C3AED;
   --ds-badge-corporate-bg: #F5F3FF;
   --ds-focus-ring: #1F8A5B;
-  --ds-shadow-soft: 0 1px 2px #1F8A5B14;
-  --ds-shadow-card: 0 1px 2px #1F8A5B14, 0 8px 24px #1F8A5B0A;
+  --ds-shadow-soft: 0 1px 2px #0B3D2E14;
+  --ds-shadow-card: 0 1px 2px #0B3D2E14, 0 8px 24px #0B3D2E0A;
   --ds-radius-xs: 4px;
   --ds-radius-sm: 6px;
   --ds-radius-md: 8px;
@@ -1230,9 +1230,19 @@ html[data-platform-theme='light'][data-tenant-chrome='1'] .lucide-log-out {
 }
 
 html[data-platform-theme='light'][data-tenant-chrome='1'] .text-yellow-500,
-html[data-platform-theme='light'][data-tenant-chrome='1'] .text-yellow-400,
-html[data-platform-theme='light'][data-tenant-chrome='1'] button:has(.lucide-circle-x) {
+html[data-platform-theme='light'][data-tenant-chrome='1'] .text-yellow-400 {
   color: #b45309 !important;
+}
+
+html[data-platform-theme='light'][data-tenant-chrome='1'] button:has(.lucide-circle-x),
+html[data-platform-theme='light'][data-tenant-chrome='1'] button:has(.lucide-x-circle) {
+  color: #c2410c !important;
+}
+
+html[data-platform-theme='light'][data-tenant-chrome='1'] button:has(.lucide-circle-x) .lucide-circle-x,
+html[data-platform-theme='light'][data-tenant-chrome='1'] button:has(.lucide-x-circle) .lucide-x-circle {
+  color: #c2410c !important;
+  stroke: #c2410c !important;
 }
 
 html[data-platform-theme='light'][data-tenant-chrome='1'] .text-amber-400,

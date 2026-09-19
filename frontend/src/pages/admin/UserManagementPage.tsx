@@ -43,6 +43,7 @@ import AnimatedPage from '@/components/AnimatedPage';
 import PageHeader from '@/components/PageHeader';
 import { updateProfile, deleteUser, updateUser, createNewUser } from '@/lib/api';
 import { Loader2, Search, RefreshCw, Trash2, Pencil, AlertCircle, UserPlus, Copy, CheckCircle2, Mail, Users } from 'lucide-react';
+import { DsIconButton, DS_ICON_STROKE } from '@/components/ui/ds-actions';
 import { useUsers } from '@/hooks/useUsers';
 import { Skeleton } from '@/components/ui/skeleton';
 import { isValidEmail } from '@/lib/utils';
@@ -692,29 +693,25 @@ const UserManagementPage = () => {
                                 variant="ghost"
                                 size="sm"
                                 onClick={() => handleStatusToggle(user)}
-                                className="h-8 text-xs"
+                                className="h-8 px-2 text-xs font-medium text-[var(--ds-text-secondary,#5B6B61)] hover:bg-[var(--ds-surface-muted,#F7FAF8)] hover:text-[var(--ds-text-primary,#122018)]"
                                 title={user.status === 'suspended' ? 'Activate' : 'Deactivate'}
                               >
                                 {user.status === 'suspended' ? 'Activate' : 'Deactivate'}
                               </Button>
-                              <Button
-                                variant="ghost"
-                                size="icon"
+                              <DsIconButton
+                                tone="muted"
                                 onClick={() => setEditUser(user)}
-                                className="h-8 w-8 text-[var(--ds-accent,#1F8A5B)] hover:bg-[var(--ds-primary-soft,#ECFDF5)]"
                                 title="Edit User"
                               >
-                                <Pencil className="h-4 w-4" />
-                              </Button>
-                              <Button
-                                variant="ghost"
-                                size="icon"
+                                <Pencil className="h-4 w-4" strokeWidth={DS_ICON_STROKE} />
+                              </DsIconButton>
+                              <DsIconButton
+                                tone="danger"
                                 onClick={() => handleDeleteClick(user.id)}
-                                className="h-8 w-8 text-[var(--ds-danger,#DC2626)] hover:bg-[var(--ds-danger-bg,#FEF2F2)]"
                                 title="Delete Account"
                               >
-                                <Trash2 className="h-4 w-4" />
-                              </Button>
+                                <Trash2 className="h-4 w-4" strokeWidth={DS_ICON_STROKE} />
+                              </DsIconButton>
                             </div>
                           </TableCell>
                         </TableRow>

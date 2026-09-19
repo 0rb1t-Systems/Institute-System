@@ -4,6 +4,7 @@ import AnimatedPage from '@/components/AnimatedPage';
 import PageHeader from '@/components/PageHeader';
 import { Button } from '@/components/ui/button';
 import { PlusCircle, Users, X, Search, ArrowRightLeft, Eye, FileSpreadsheet, Printer, Pencil, Trash2, CheckCircle2, XCircle, BookOpen, DollarSign, Clock, Percent, AlertTriangle, History, Loader2 } from 'lucide-react';
+import { DsIconButton, DsOutlineAction, DsPrimaryAction, DS_ICON_STROKE } from '@/components/ui/ds-actions';
 import { useData } from '@/contexts/DataContext';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -865,16 +866,44 @@ const ClassesPage = () => {
                                     <div className="mt-2 flex items-center gap-2">
                                         {(user.role === 'admin' || user.role === 'staff') && (
                                             <>
-                                                <Button variant="outline" size="sm" onClick={() => toggleStatus(c)} className={c.is_active ? "text-[var(--ds-warning,#C2410C)] hover:bg-[var(--ds-warning,#C2410C)]/10" : "text-[var(--ds-primary,#1F8A5B)] hover:bg-[var(--ds-primary-soft,#ECFDF5)]"}>
-                                                    {c.is_active ? <XCircle className="mr-1 h-4 w-4" /> : <CheckCircle2 className="mr-1 h-4 w-4" />}
-                                                    {c.is_active ? "Deactivate" : "Activate"}
-                                                </Button>
-                                                <Button variant="ghost" size="icon" onClick={() => handleManageCourses(c)} title="Manage Courses" className="text-[var(--ds-primary,#1F8A5B)]"><BookOpen className="h-4 w-4" /></Button>
-                                                <Button variant="ghost" size="icon" onClick={() => handleEdit(c)}><Pencil className="h-4 w-4" /></Button>
-                                                <Button variant="ghost" size="icon" onClick={() => handleDeleteClick(c)} className="text-[var(--ds-danger,#DC2626)] hover:bg-[var(--ds-danger-bg,#FEF2F2)]"><Trash2 className="h-4 w-4" /></Button>
+                                                <DsOutlineAction
+                                                  tone={c.is_active ? 'warning' : 'primary'}
+                                                  onClick={() => toggleStatus(c)}
+                                                >
+                                                    {c.is_active
+                                                      ? <XCircle className="h-3.5 w-3.5" strokeWidth={DS_ICON_STROKE} />
+                                                      : <CheckCircle2 className="h-3.5 w-3.5" strokeWidth={DS_ICON_STROKE} />}
+                                                    {c.is_active ? 'Deactivate' : 'Activate'}
+                                                </DsOutlineAction>
+                                                <DsIconButton
+                                                  chrome="outline"
+                                                  tone="info"
+                                                  onClick={() => handleManageCourses(c)}
+                                                  title="Manage Courses"
+                                                >
+                                                  <BookOpen className="h-[15px] w-[15px]" strokeWidth={DS_ICON_STROKE} />
+                                                </DsIconButton>
+                                                <DsIconButton
+                                                  chrome="outline"
+                                                  tone="secondary"
+                                                  onClick={() => handleEdit(c)}
+                                                  title="Edit Class"
+                                                >
+                                                  <Pencil className="h-[15px] w-[15px]" strokeWidth={DS_ICON_STROKE} />
+                                                </DsIconButton>
+                                                <DsIconButton
+                                                  chrome="outline"
+                                                  tone="danger"
+                                                  onClick={() => handleDeleteClick(c)}
+                                                  title="Delete Class"
+                                                >
+                                                  <Trash2 className="h-[15px] w-[15px]" strokeWidth={DS_ICON_STROKE} />
+                                                </DsIconButton>
                                             </>
                                         )}
-                                        <Button size="sm" onClick={() => openRosterDialog(c)}><Eye className="mr-1 h-4 w-4" /> Roster</Button>
+                                        <DsPrimaryAction onClick={() => openRosterDialog(c)}>
+                                          <Eye className="h-3.5 w-3.5" strokeWidth={DS_ICON_STROKE} /> Roster
+                                        </DsPrimaryAction>
                                     </div>
                                 </div>
                             </div>
