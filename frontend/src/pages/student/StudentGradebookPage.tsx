@@ -3,7 +3,6 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { useData } from '@/contexts/DataContext';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
@@ -12,13 +11,10 @@ import {
   AlertCircle,
   TrendingUp,
   CheckCircle,
-  Printer,
-  Percent,
   ChevronRight,
 } from 'lucide-react';
 import { ResponsiveContainer, PieChart, Pie, Cell, Tooltip, Legend } from 'recharts';
 import AnimatedPage from '@/components/AnimatedPage';
-import { cn } from '@/lib/utils';
 import {
   getExamScorePercent,
   getExamTotalMarks,
@@ -28,38 +24,29 @@ import {
 } from '@/lib/examPass';
 import { getCombinedExamWithBonus } from '@/lib/assignmentBonus';
 import { getInstitutionGradeScale } from '@/lib/gradingScale';
-import { coursesForDiploma } from '@/lib/diplomaCourses';
-
-const gradeTone = (grade: string) => {
-  switch (grade) {
-    case 'A':
-      return 'text-emerald-400 bg-emerald-500/10 border-emerald-500/25';
-    case 'B':
-      return 'text-sky-400 bg-sky-500/10 border-sky-500/25';
-    case 'C':
-      return 'text-amber-400 bg-amber-500/10 border-amber-500/25';
-    case 'D':
-      return 'text-orange-400 bg-orange-500/10 border-orange-500/25';
-    case 'F':
-      return 'text-rose-400 bg-rose-500/10 border-rose-500/25';
-    default:
-      return 'text-slate-500 bg-slate-800/60 border-slate-700';
-  }
-};
-
-const scoreBarColor = (pct: number, pending: boolean) => {
-  if (pending) return 'bg-slate-700';
-  if (pct >= 90) return 'bg-emerald-500';
-  if (pct >= 80) return 'bg-sky-500';
-  if (pct >= 70) return 'bg-amber-500';
-  if (pct >= 60) return 'bg-orange-500';
-  return 'bg-rose-500';
-};
+import {
+  coursesForDiploma,
+  semestersForDiploma,
+} from '@/lib/diplomaCourses';
 
 const StudentGradebookPage = () => {
   const { user, institution } = useAuth();
   const navigate = useNavigate();
-  const { results, exams, courses, classCourses, diplomaCourses = [], enrollments, classes, students, gradebookEntries, assignments, assignmentSubmissions } = useData();
+  const {
+    results,
+    exams,
+    courses,
+    classCourses,
+    diplomaCourses = [],
+    diplomaSemesters = [],
+    diplomas = [],
+    enrollments,
+    classes,
+    students,
+    gradebookEntries,
+    assignments,
+    assignmentSubmissions,
+  } = useData();
   const gradeScale = useMemo(() => getInstitutionGradeScale(institution), [institution]);
 
   const studentData = useMemo(() => {
@@ -84,14 +71,43 @@ const StudentGradebookPage = () => {
        const classData = classes.find(c => c.id === classId);
        if(!classData) return;
 
+       const diplomaId = classData.diploma_id || null;
+       const diplomaName = diplomaId
+         ? diplomas.find((d) => d.id === diplomaId)?.name || null
+         : null;
+       const semesterLookup = diplomaId
+         ? Object.fromEntries(
+             semestersForDiploma(diplomaSemesters, diplomaId).map((s) => [s.id, s]),
+           )
+         : {};
+
        if(classData.course_id) {
          const c = courses.find(co => co.id === classData.course_id);
-         if(c) allCourses.push({ ...c, classId: classId, className: classData.name });
+         if(c) {
+           allCourses.push({
+             ...c,
+             classId,
+             className: classData.name,
+             diplomaId,
+             diplomaName,
+             semesterName: null,
+             semesterSort: 9999,
+           });
+         }
        }
 
-       if (classData.diploma_id) {
-         coursesForDiploma(courses, diplomaCourses, classData.diploma_id).forEach((c) => {
-           allCourses.push({ ...c, classId: classId, className: classData.name });
+       if (diplomaId) {
+         coursesForDiploma(courses, diplomaCourses, diplomaId).forEach((c) => {
+           const sem = c.semester_id ? semesterLookup[c.semester_id] : null;
+           allCourses.push({
+             ...c,
+             classId,
+             className: classData.name,
+             diplomaId,
+             diplomaName,
+             semesterName: sem?.name || null,
+             semesterSort: sem ? Number(sem.sort_order ?? 0) : 9999,
+           });
          });
        }
        
@@ -99,33 +115,67 @@ const StudentGradebookPage = () => {
          .filter(cc => cc.class_id === classId)
          .map(cc => {
             const c = courses.find(co => co.id === cc.course_id);
-            return c ? { ...c, classId: classId, className: classData.name } : null;
+            if (!c) return null;
+            const link = (diplomaCourses || []).find(
+              (dc) => dc.diploma_id === diplomaId && dc.course_id === c.id,
+            );
+            const sem = link?.semester_id ? semesterLookup[link.semester_id] : null;
+            return {
+              ...c,
+              classId,
+              className: classData.name,
+              diplomaId,
+              diplomaName,
+              semesterName: sem?.name || null,
+              semesterSort: sem ? Number(sem.sort_order ?? 0) : 9999,
+            };
          })
          .filter(Boolean);
          
        allCourses.push(...linked);
     });
 
-    const unique = allCourses.filter(
-      (c, i, arr) => arr.findIndex((x) => x.id === c.id && x.classId === c.classId) === i
-    );
+    // Diploma: one row per course across the program (not per class card).
+    // Short courses: keep course+class uniqueness.
+    const unique = allCourses.filter((c, i, arr) => {
+      if (c.diplomaId) {
+        return arr.findIndex((x) => x.id === c.id && x.diplomaId === c.diplomaId) === i;
+      }
+      return arr.findIndex((x) => x.id === c.id && x.classId === c.classId) === i;
+    });
 
     return unique.map(course => {
-      const gb = (gradebookEntries || []).find(
-        (g) =>
-          g.student_id === studentData.id &&
-          g.course_id === course.id &&
-          g.class_id === course.classId
-      );
+      const gb =
+        (gradebookEntries || []).find(
+          (g) =>
+            g.student_id === studentData.id &&
+            g.course_id === course.id &&
+            g.class_id === course.classId,
+        ) ||
+        (course.diplomaId
+          ? (gradebookEntries || []).find(
+              (g) => g.student_id === studentData.id && g.course_id === course.id,
+            )
+          : null);
 
-      const courseExams = exams.filter(e => e.course_id === course.id && e.class_id === course.classId);
+      // Prefer the class that actually has gradebook/exam data (diploma may span enrollments).
+      const resolveClassId = gb?.class_id || course.classId;
+      const enrolledIds = new Set(enrolledClassIds);
+
+      const courseExams = exams.filter(
+        (e) =>
+          e.course_id === course.id &&
+          (e.class_id === resolveClassId ||
+            (course.diplomaId && enrolledIds.has(e.class_id))),
+      );
       const relevantExams =
         courseExams.length > 0
           ? courseExams
           : exams.filter(
               (e) =>
-                e.class_id === course.classId &&
-                (!e.course_id || e.course_id === course.id)
+                (e.class_id === resolveClassId ||
+                  (course.diplomaId && enrolledIds.has(e.class_id))) &&
+                (!e.course_id || e.course_id === course.id),
             );
 
       const rankedResults = results
@@ -159,10 +209,10 @@ const StudentGradebookPage = () => {
         const examTotal = getExamTotalMarks(examDetails);
         const examScore = Number(bestResult.score ?? bestResult.final_score ?? 0);
         const classPrimaryCourseId =
-          classes.find((c) => c.id === course.classId)?.course_id || null;
+          classes.find((c) => c.id === resolveClassId)?.course_id || null;
         const combined = getCombinedExamWithBonus({
           studentId: studentData.id,
-          classId: course.classId,
+          classId: resolveClassId,
           courseId: course.id,
           examScore,
           examTotal,
@@ -195,6 +245,10 @@ const StudentGradebookPage = () => {
         courseName: course.name,
         className: course.className,
         classId: course.classId,
+        diplomaId: course.diplomaId || null,
+        diplomaName: course.diplomaName || null,
+        semesterName: course.semesterName || null,
+        semesterSort: course.semesterSort ?? 9999,
         score: scoreDisplay,
         total: totalDisplay,
         grade,
@@ -205,19 +259,76 @@ const StudentGradebookPage = () => {
       };
     });
 
-  }, [studentData, enrollments, classes, courses, classCourses, diplomaCourses, exams, results, gradebookEntries, assignments, assignmentSubmissions, gradeScale]);
+  }, [studentData, enrollments, classes, courses, classCourses, diplomaCourses, diplomaSemesters, diplomas, exams, results, gradebookEntries, assignments, assignmentSubmissions, gradeScale]);
 
-  const gradesByClass = useMemo(() => {
-    const map = new Map<string, { className: string; courses: typeof studentGrades }>();
-    studentGrades.forEach((g) => {
-      const key = g.classId || g.className || 'other';
-      if (!map.has(key)) {
-        map.set(key, { className: g.className || 'Courses', courses: [] });
+  /** One summary row per diploma program or short course — detail opens on View. */
+  const programSummaries = useMemo(() => {
+    type ProgramSummary = {
+      key: string;
+      title: string;
+      kind: 'diploma' | 'course';
+      courses: typeof studentGrades;
+    };
+
+    const diplomaGroups = new Map<string, ProgramSummary>();
+    const courseRows: ProgramSummary[] = [];
+
+    for (const g of studentGrades) {
+      if (g.diplomaId) {
+        if (!diplomaGroups.has(g.diplomaId)) {
+          diplomaGroups.set(g.diplomaId, {
+            key: g.diplomaId,
+            title: g.diplomaName || g.className || 'Diploma program',
+            kind: 'diploma',
+            courses: [],
+          });
+        }
+        diplomaGroups.get(g.diplomaId)!.courses.push(g);
+      } else {
+        courseRows.push({
+          key: `course-${g.classId || 'x'}-${g.courseCode || g.courseName || courseRows.length}`,
+          title: g.courseName || g.className || 'Course',
+          kind: 'course',
+          courses: [g],
+        });
       }
-      map.get(key)!.courses.push(g);
-    });
-    return Array.from(map.values());
+    }
+
+    const diplomasList = Array.from(diplomaGroups.values()).map((group) => ({
+      ...group,
+      courses: [...group.courses].sort((a, b) => {
+        if (a.semesterSort !== b.semesterSort) return a.semesterSort - b.semesterSort;
+        return String(a.courseName || '').localeCompare(String(b.courseName || ''));
+      }),
+    }));
+
+    return [...diplomasList, ...courseRows];
   }, [studentGrades]);
+
+  const openProgramGradebook = (program: (typeof programSummaries)[number]) => {
+    navigate(`/portal/exam-result/program-${program.key}`, {
+      state: {
+        programGradebook: {
+          programId: program.key,
+          title: program.title,
+          kind: program.kind,
+          courses: program.courses.map((c) => ({
+            courseName: c.courseName,
+            courseCode: c.courseCode,
+            className: c.className,
+            semesterName: c.semesterName,
+            score: c.score,
+            total: c.total,
+            percentage: c.percentage,
+            grade: c.grade,
+            points: c.points,
+            status: c.status,
+            resultId: c.resultId,
+          })),
+        },
+      },
+    });
+  };
 
   const stats = useMemo(() => {
     const gradedCourses = studentGrades.filter(g => g.score !== '-');
@@ -254,14 +365,6 @@ const StudentGradebookPage = () => {
     F: '#ef4444',
   };
 
-  const formatScore = (item: (typeof studentGrades)[number]) => {
-    if (item.score === '-') return '—';
-    if (item.total !== '-' && item.score !== '-') {
-      return `${item.score} / ${item.total}`;
-    }
-    return String(item.score);
-  };
-
   if (!studentData) return <div className="p-8 text-center text-slate-400">Loading academic records...</div>;
 
   return (
@@ -272,12 +375,7 @@ const StudentGradebookPage = () => {
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
           <div>
             <h1 className="text-3xl font-bold text-white tracking-tight">Academic Gradebook</h1>
-            <p className="text-slate-400">Course marks, letter grades, and GPA</p>
-          </div>
-          <div className="flex flex-wrap gap-2 print:hidden">
-            <Button variant="outline" onClick={() => window.print()} className="gap-2 border-slate-700 bg-slate-900/50 hover:bg-slate-800 hover:text-slate-100">
-              <Printer className="h-4 w-4" /> Print
-            </Button>
+            <p className="text-slate-400">Select a program to view marks</p>
           </div>
         </div>
 
@@ -333,164 +431,66 @@ const StudentGradebookPage = () => {
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            {/* Course marks tables — grouped by class */}
-            <div className="lg:col-span-2 space-y-5">
-              {gradesByClass.length > 0 ? (
-                gradesByClass.map((group) => (
-                  <Card
-                    key={group.className}
-                    className="bg-slate-900/50 border-slate-800 overflow-hidden shadow-sm"
-                  >
-                    <CardHeader className="border-b border-slate-800/80 bg-slate-900/40 py-4">
-                      <div className="flex items-center justify-between gap-3">
-                        <div className="flex items-center gap-3 min-w-0">
-                          <div className="h-9 w-9 rounded-lg bg-blue-500/15 border border-blue-500/25 flex items-center justify-center shrink-0">
-                            <BookOpen className="h-4 w-4 text-blue-400" />
-                          </div>
-                          <div className="min-w-0">
-                            <CardTitle className="text-base text-white truncate">{group.className}</CardTitle>
-                            <CardDescription className="text-slate-500">
-                              {group.courses.length} course{group.courses.length !== 1 ? 's' : ''} · marks overview
-                            </CardDescription>
-                          </div>
-                        </div>
-                        <Badge variant="secondary" className="bg-slate-800 text-slate-300 border-slate-700 shrink-0">
-                          {group.courses.filter((c) => c.score !== '-').length}/{group.courses.length} graded
-                        </Badge>
-                      </div>
-                    </CardHeader>
-                    <CardContent className="p-0">
-                      <div className="overflow-x-auto">
-                        <Table>
-                          <TableHeader>
-                            <TableRow className="border-slate-800 hover:bg-transparent bg-slate-950/50">
-                              <TableHead className="text-slate-500 font-semibold text-[11px] uppercase tracking-wider pl-5">Course</TableHead>
-                              <TableHead className="text-slate-500 font-semibold text-[11px] uppercase tracking-wider text-center">Score</TableHead>
-                              <TableHead className="text-slate-500 font-semibold text-[11px] uppercase tracking-wider text-center w-[130px]">
-                                <span className="inline-flex items-center gap-1"><Percent className="h-3 w-3" /> Mark</span>
-                              </TableHead>
-                              <TableHead className="text-slate-500 font-semibold text-[11px] uppercase tracking-wider text-center">Grade</TableHead>
-                              <TableHead className="text-slate-500 font-semibold text-[11px] uppercase tracking-wider text-center hidden sm:table-cell">Points</TableHead>
-                              <TableHead className="text-slate-500 font-semibold text-[11px] uppercase tracking-wider text-right">Status</TableHead>
-                              <TableHead className="text-slate-500 font-semibold text-[11px] uppercase tracking-wider text-right pr-5 print:hidden w-[90px]">View</TableHead>
-                            </TableRow>
-                          </TableHeader>
-                          <TableBody>
-                            {group.courses.map((item, i) => {
-                              const pending = item.score === '-';
-                              const barWidth = pending ? 0 : Math.min(100, Math.max(0, item.percentage));
-                              return (
-                                <TableRow
-                                  key={`${item.courseCode}-${i}`}
-                                  className="border-slate-800/80 hover:bg-slate-800/40 transition-colors"
+            {/* Programs list — detail opens only after View */}
+            <div className="lg:col-span-2 space-y-3">
+              {programSummaries.length > 0 ? (
+                programSummaries.map((program) => {
+                  const gradedCount = program.courses.filter((c) => c.score !== '-').length;
+                  return (
+                    <Card
+                      key={program.key}
+                      className="bg-slate-900/50 border-slate-800 overflow-hidden shadow-sm"
+                    >
+                      <CardContent className="p-4 sm:p-5">
+                        <div className="flex items-center justify-between gap-3">
+                          <div className="flex items-center gap-3 min-w-0">
+                            <div className="h-10 w-10 rounded-lg bg-[var(--ds-primary-soft,#ECFDF5)]/15 border border-[var(--ds-accent,#1F8A5B)]/25 flex items-center justify-center shrink-0">
+                              {program.kind === 'diploma' ? (
+                                <GraduationCap className="h-5 w-5 text-[var(--ds-accent,#1F8A5B)]" />
+                              ) : (
+                                <BookOpen className="h-5 w-5 text-[var(--ds-accent,#1F8A5B)]" />
+                              )}
+                            </div>
+                            <div className="min-w-0">
+                              <div className="flex items-center gap-2 flex-wrap">
+                                <h3 className="text-base font-semibold text-white truncate">{program.title}</h3>
+                                <Badge
+                                  variant="secondary"
+                                  className="bg-slate-800 text-slate-300 border-slate-700 text-[10px] uppercase tracking-wide"
                                 >
-                                  <TableCell className="pl-5 py-4">
-                                    <div className="font-medium text-white leading-snug">{item.courseName}</div>
-                                    {item.courseCode && (
-                                      <div className="text-[11px] text-slate-500 font-mono mt-0.5 tracking-wide">
-                                        {item.courseCode}
-                                      </div>
-                                    )}
-                                  </TableCell>
-                                  <TableCell className="text-center py-4">
-                                    <span className={cn(
-                                      'text-sm font-semibold tabular-nums',
-                                      pending ? 'text-slate-500' : 'text-slate-100'
-                                    )}>
-                                      {formatScore(item)}
-                                    </span>
-                                  </TableCell>
-                                  <TableCell className="py-4">
-                                    <div className="flex flex-col items-center gap-1.5 min-w-[90px]">
-                                      <span className={cn(
-                                        'text-sm font-semibold tabular-nums',
-                                        pending ? 'text-slate-500' : 'text-slate-100'
-                                      )}>
-                                        {pending ? '—' : `${Math.round(item.percentage)}%`}
-                                      </span>
-                                      <div className="w-full h-1.5 rounded-full bg-muted overflow-hidden">
-                                        <div
-                                          className={cn('h-full rounded-full transition-all duration-500', scoreBarColor(item.percentage, pending))}
-                                          style={{ width: `${barWidth}%` }}
-                                        />
-                                      </div>
-                                    </div>
-                                  </TableCell>
-                                  <TableCell className="text-center py-4">
-                                    <span
-                                      className={cn(
-                                        'inline-flex h-8 w-8 items-center justify-center rounded-md border text-sm font-bold',
-                                        gradeTone(item.grade)
-                                      )}
-                                    >
-                                      {item.grade}
-                                    </span>
-                                  </TableCell>
-                                  <TableCell className="text-center hidden sm:table-cell py-4">
-                                    <span className="font-mono text-sm text-slate-300 tabular-nums">
-                                      {pending ? '—' : item.points.toFixed(1)}
-                                    </span>
-                                  </TableCell>
-                                  <TableCell className="text-right py-4">
-                                    <Badge
-                                      variant={item.status === 'Pass' ? 'default' : item.status === 'Fail' ? 'destructive' : 'secondary'}
-                                      className={cn(
-                                        'font-medium',
-                                        item.status === 'Pass' && 'bg-emerald-500/10 text-emerald-400 hover:bg-emerald-500/20 border border-emerald-500/20',
-                                        item.status === 'Fail' && 'bg-rose-500/10 text-rose-400 hover:bg-rose-500/20 border border-rose-500/20',
-                                        item.status === 'Pending' && 'bg-slate-800/60 text-slate-500 border border-slate-700'
-                                      )}
-                                    >
-                                      {item.status}
-                                    </Badge>
-                                  </TableCell>
-                                  <TableCell className="text-right pr-5 print:hidden py-4">
-                                    {item.resultId ? (
-                                      <Button
-                                        variant="ghost"
-                                        size="sm"
-                                        className="text-indigo-400 hover:text-indigo-300 hover:bg-indigo-500/10 gap-0.5 h-8 px-2"
-                                        onClick={() =>
-                                          navigate(`/portal/exam-result/${item.resultId}`, {
-                                            state: {
-                                              gradeRow: {
-                                                courseName: item.courseName,
-                                                courseCode: item.courseCode,
-                                                className: item.className,
-                                                score: item.score,
-                                                total: item.total,
-                                                percentage: item.percentage,
-                                                grade: item.grade,
-                                                points: item.points,
-                                                status: item.status,
-                                              },
-                                            },
-                                          })
-                                        }
-                                      >
-                                        View
-                                        <ChevronRight className="h-3.5 w-3.5" />
-                                      </Button>
-                                    ) : (
-                                      <span className="text-slate-600 text-xs">—</span>
-                                    )}
-                                  </TableCell>
-                                </TableRow>
-                              );
-                            })}
-                          </TableBody>
-                        </Table>
-                      </div>
-                    </CardContent>
-                  </Card>
-                ))
+                                  {program.kind === 'diploma' ? 'Diploma' : 'Course'}
+                                </Badge>
+                              </div>
+                              <p className="text-sm text-slate-500 mt-0.5">
+                                {program.kind === 'diploma'
+                                  ? `${program.courses.length} course${program.courses.length !== 1 ? 's' : ''}`
+                                  : program.courses[0]?.className || 'Short course'}
+                                {' · '}
+                                {gradedCount}/{program.courses.length} graded
+                              </p>
+                            </div>
+                          </div>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="text-[var(--ds-accent,#1F8A5B)] hover:text-[var(--ds-primary,#1F8A5B)] hover:bg-[var(--ds-primary-soft,#ECFDF5)]/20 gap-0.5 h-9 px-3 shrink-0"
+                            onClick={() => openProgramGradebook(program)}
+                          >
+                            View
+                            <ChevronRight className="h-3.5 w-3.5" />
+                          </Button>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  );
+                })
               ) : (
                 <Card className="bg-slate-900/50 border-slate-800">
                   <CardContent className="py-16">
                     <div className="flex flex-col items-center gap-3 text-slate-500">
                       <AlertCircle className="h-10 w-10 opacity-40" />
-                      <p className="font-medium text-slate-400">No graded courses found yet</p>
-                      <p className="text-sm text-slate-600">Marks will appear here once your instructor posts results.</p>
+                      <p className="font-medium text-slate-400">No programs found yet</p>
+                      <p className="text-sm text-slate-600">Marks will appear here once you are enrolled and graded.</p>
                     </div>
                   </CardContent>
                 </Card>

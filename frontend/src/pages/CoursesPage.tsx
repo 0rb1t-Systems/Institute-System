@@ -741,13 +741,13 @@ const CoursesPage = () => {
                 <TabsList className="h-auto border border-[var(--ds-border,#DDE5DF)] bg-[var(--ds-surface-muted,#F7FAF8)] p-1">
                     <TabsTrigger
                         value="diplomas"
-                        className="text-[var(--ds-text-secondary,#5B6B61)] data-[state=active]:bg-[var(--ds-surface,#fff)] data-[state=active]:text-[var(--ds-text-primary,#122018)]"
+                        className="text-[var(--ds-text-secondary,#5B6B61)] data-[state=active]:bg-[var(--ds-primary-soft,#ECFDF5)] data-[state=active]:text-[var(--ds-primary,#1F8A5B)] data-[state=active]:shadow-none"
                     >
                         Diplomas
                     </TabsTrigger>
                     <TabsTrigger
                         value="courses"
-                        className="text-[var(--ds-text-secondary,#5B6B61)] data-[state=active]:bg-[var(--ds-surface,#fff)] data-[state=active]:text-[var(--ds-text-primary,#122018)]"
+                        className="text-[var(--ds-text-secondary,#5B6B61)] data-[state=active]:bg-[var(--ds-primary-soft,#ECFDF5)] data-[state=active]:text-[var(--ds-primary,#1F8A5B)] data-[state=active]:shadow-none"
                     >
                         All Courses
                     </TabsTrigger>
@@ -763,10 +763,13 @@ const CoursesPage = () => {
                                 <motion.div key={diploma.id} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: index * 0.05 }}>
                                     <Card className="flex h-full flex-col transition-colors hover:border-[var(--ds-primary,#1F8A5B)]/50">
                                         <CardHeader>
-                                            <CardTitle className="flex items-start justify-between gap-2">
+                                            <CardTitle className="flex items-start justify-between gap-2 text-[var(--ds-text-primary,#122018)]">
                                                 <span className="leading-snug">{diploma.name}</span>
                                                 <div className="flex shrink-0 items-center gap-1">
-                                                    <span className="inline-flex h-6 min-w-6 items-center justify-center rounded-full bg-[var(--ds-primary,#1F8A5B)] px-1.5 text-[11px] font-bold text-white">
+                                                    <span
+                                                      className="inline-flex h-6 min-w-6 items-center justify-center rounded-full border border-[var(--ds-primary,#1F8A5B)]/30 bg-[var(--ds-primary-soft,#ECFDF5)] px-1.5 text-[11px] font-bold text-[var(--ds-primary,#1F8A5B)]"
+                                                      title={`${diplomaCourseList.length} course${diplomaCourseList.length !== 1 ? 's' : ''}`}
+                                                    >
                                                         {diplomaCourseList.length}
                                                     </span>
                                                     {canManagePrograms && (

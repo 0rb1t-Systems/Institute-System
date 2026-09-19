@@ -25,7 +25,7 @@ import { getInstitutionGradeScale } from '@/lib/gradingScale';
 
 /**
  * Student grading detail — opened from Gradebook "View".
- * Shows a grading table (not question cards).
+ * Program gradebook: one table for diploma or course. Legacy single-result view still supported.
  */
 const StudentExamResultPage = () => {
   const params = useParams();
@@ -33,11 +33,22 @@ const StudentExamResultPage = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const gradeRowFromNav = location.state?.gradeRow || null;
+  const programGradebook =
+    location.state?.programGradebook ||
+    (location.state?.diplomaGradebook
+      ? {
+          ...location.state.diplomaGradebook,
+          kind: 'diploma',
+          programId: location.state.diplomaGradebook.diplomaId,
+        }
+      : null);
   const { institution } = useAuth();
   const gradeScale = useMemo(() => getInstitutionGradeScale(institution), [institution]);
   const { results, exams, courses, classes, assignments, assignmentSubmissions } = useData();
   const [fetchedResult, setFetchedResult] = useState(() => location.state?.result || null);
-  const [loading, setLoading] = useState(!location.state?.result && !gradeRowFromNav);
+  const [loading, setLoading] = useState(
+    !location.state?.result && !gradeRowFromNav && !programGradebook
+  );
   const [fetchError, setFetchError] = useState(null);
 
   const contextResult = useMemo(() => {
@@ -52,13 +63,18 @@ const StudentExamResultPage = () => {
   const result = contextResult || fetchedResult;
 
   useEffect(() => {
+    if (programGradebook?.courses?.length) {
+      setLoading(false);
+      setFetchError(null);
+      return;
+    }
     if (contextResult) {
       setFetchedResult(contextResult);
       setLoading(false);
       setFetchError(null);
       return;
     }
-    if (!resultId) {
+    if (!resultId || String(resultId).startsWith('diploma-') || String(resultId).startsWith('program-')) {
       setLoading(false);
       return;
     }
@@ -86,7 +102,7 @@ const StudentExamResultPage = () => {
     return () => {
       cancelled = true;
     };
-  }, [resultId, contextResult]);
+  }, [resultId, contextResult, programGradebook]);
 
   const exam = useMemo(() => {
     if (!result) return null;
@@ -218,6 +234,178 @@ const StudentExamResultPage = () => {
       <div className="p-8 text-center flex items-center justify-center gap-2 text-slate-400">
         <Loader2 className="h-5 w-5 animate-spin" /> Loading grading…
       </div>
+    );
+  }
+
+  // Program gradebook: one unified table (diploma or course) after View from list.
+  if (programGradebook?.courses?.length) {
+    const programCourses = programGradebook.courses;
+    const showSemester = programCourses.some((c) => c.semesterName);
+    const graded = programCourses.filter((c) => c.score !== '-' && c.status !== 'Pending');
+    const passedCount = graded.filter((c) => c.status === 'Pass').length;
+    const failedCount = graded.filter((c) => c.status === 'Fail').length;
+    const totalPoints = graded.reduce((sum, c) => sum + (Number(c.points) || 0), 0);
+    const gpa = graded.length > 0 ? (totalPoints / graded.length).toFixed(2) : '0.00';
+    const isDiploma = programGradebook.kind === 'diploma';
+    const formatProgramScore = (row) => {
+      if (row.score === '-' || row.score == null) return '—';
+      if (row.total !== '-' && row.total != null) return `${row.score} / ${row.total}`;
+      return String(row.score);
+    };
+
+    return (
+      <AnimatedPage>
+        <Helmet>
+          <title>Gradebook - {programGradebook.title || 'Program'}</title>
+        </Helmet>
+
+        <div className="max-w-5xl mx-auto pb-20 print:max-w-none print:pb-0 space-y-6">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 print:hidden">
+            <Button variant="ghost" onClick={() => navigate('/portal/gradebook')} className="justify-start w-full sm:w-auto">
+              <ArrowLeft className="mr-2 h-4 w-4" /> Back to Gradebook
+            </Button>
+            <Button variant="outline" onClick={() => window.print()} className="w-full sm:w-auto">
+              <Printer className="mr-2 h-4 w-4" /> Print
+            </Button>
+          </div>
+
+          <div>
+            <h1 className="text-2xl font-bold text-white">{programGradebook.title || 'Program'}</h1>
+            <p className="text-slate-400 mt-1">
+              {isDiploma
+                ? `${programCourses.length} course${programCourses.length !== 1 ? 's' : ''} in one gradebook`
+                : 'Course gradebook'}
+            </p>
+          </div>
+
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+            <Card className="bg-slate-900/60 border-slate-800">
+              <CardContent className="p-4 text-center">
+                <div className="text-xs uppercase text-slate-500 font-semibold">GPA</div>
+                <div className="text-2xl font-bold text-white mt-1 tabular-nums">{gpa}</div>
+              </CardContent>
+            </Card>
+            <Card className="bg-slate-900/60 border-slate-800">
+              <CardContent className="p-4 text-center">
+                <div className="text-xs uppercase text-slate-500 font-semibold">Graded</div>
+                <div className="text-2xl font-bold text-white mt-1 tabular-nums">
+                  {graded.length}
+                  <span className="text-sm text-slate-500 font-normal"> / {programCourses.length}</span>
+                </div>
+              </CardContent>
+            </Card>
+            <Card className="bg-slate-900/60 border-slate-800">
+              <CardContent className="p-4 text-center">
+                <div className="text-xs uppercase text-slate-500 font-semibold">Passed</div>
+                <div className="text-2xl font-bold text-emerald-400 mt-1 tabular-nums">{passedCount}</div>
+              </CardContent>
+            </Card>
+            <Card className="bg-slate-900/60 border-slate-800">
+              <CardContent className="p-4 text-center">
+                <div className="text-xs uppercase text-slate-500 font-semibold">Failed</div>
+                <div className="text-2xl font-bold text-rose-400 mt-1 tabular-nums">{failedCount}</div>
+              </CardContent>
+            </Card>
+          </div>
+
+          <Card className="bg-slate-900/60 border-slate-800 overflow-hidden print:bg-white print:border">
+            <CardHeader className="border-b border-slate-800 print:border-slate-200">
+              <CardTitle className="text-base text-slate-100 print:text-black">
+                {isDiploma ? 'Program Gradebook' : 'Course Gradebook'}
+              </CardTitle>
+              <CardDescription>
+                {isDiploma ? 'All diploma courses in one table' : 'Marks for this course'}
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="p-0">
+              <div className="overflow-x-auto">
+                <Table>
+                  <TableHeader>
+                    <TableRow className="border-slate-800 hover:bg-transparent bg-slate-950/50 print:bg-slate-100">
+                      {showSemester ? (
+                        <TableHead className="text-slate-500 font-semibold text-[11px] uppercase tracking-wider pl-5">
+                          Semester
+                        </TableHead>
+                      ) : null}
+                      <TableHead
+                        className={cn(
+                          'text-slate-500 font-semibold text-[11px] uppercase tracking-wider',
+                          !showSemester && 'pl-5',
+                        )}
+                      >
+                        Course
+                      </TableHead>
+                      <TableHead className="text-slate-500 font-semibold text-[11px] uppercase tracking-wider text-center">
+                        Score
+                      </TableHead>
+                      <TableHead className="text-slate-500 font-semibold text-[11px] uppercase tracking-wider text-center">
+                        Mark %
+                      </TableHead>
+                      <TableHead className="text-slate-500 font-semibold text-[11px] uppercase tracking-wider text-center">
+                        Grade
+                      </TableHead>
+                      <TableHead className="text-slate-500 font-semibold text-[11px] uppercase tracking-wider text-center hidden sm:table-cell">
+                        Points
+                      </TableHead>
+                      <TableHead className="text-slate-500 font-semibold text-[11px] uppercase tracking-wider text-right pr-5">
+                        Status
+                      </TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {programCourses.map((row, i) => {
+                      const pending = row.score === '-' || row.status === 'Pending';
+                      return (
+                        <TableRow
+                          key={`${row.courseCode || row.courseName}-${i}`}
+                          className="border-slate-800/80 print:border-slate-200"
+                        >
+                          {showSemester ? (
+                            <TableCell className="pl-5 py-3 text-slate-400 text-sm print:text-black">
+                              {row.semesterName || '—'}
+                            </TableCell>
+                          ) : null}
+                          <TableCell className={cn('py-3', !showSemester && 'pl-5')}>
+                            <div className="font-medium text-white print:text-black">{row.courseName}</div>
+                            {row.courseCode ? (
+                              <div className="text-[11px] text-slate-500 font-mono mt-0.5">{row.courseCode}</div>
+                            ) : null}
+                          </TableCell>
+                          <TableCell className="text-center py-3 font-semibold tabular-nums text-slate-100 print:text-black">
+                            {formatProgramScore(row)}
+                          </TableCell>
+                          <TableCell className="text-center py-3 tabular-nums text-slate-200 print:text-black">
+                            {pending ? '—' : `${Math.round(Number(row.percentage) || 0)}%`}
+                          </TableCell>
+                          <TableCell className="text-center py-3 font-bold text-white print:text-black">
+                            {row.grade || '—'}
+                          </TableCell>
+                          <TableCell className="text-center py-3 hidden sm:table-cell font-mono text-sm text-slate-300 print:text-black">
+                            {pending ? '—' : Number(row.points || 0).toFixed(1)}
+                          </TableCell>
+                          <TableCell className="text-right pr-5 py-3">
+                            <Badge
+                              variant="secondary"
+                              className={cn(
+                                'font-medium border',
+                                row.status === 'Pass' && 'bg-emerald-500/10 text-emerald-400 border-emerald-500/25',
+                                row.status === 'Fail' && 'bg-rose-500/10 text-rose-400 border-rose-500/25',
+                                row.status === 'Pending' && 'bg-slate-800/60 text-slate-500 border-slate-700',
+                              )}
+                            >
+                              {row.status || 'Pending'}
+                            </Badge>
+                          </TableCell>
+                        </TableRow>
+                      );
+                    })}
+                  </TableBody>
+                </Table>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      </AnimatedPage>
     );
   }
 
