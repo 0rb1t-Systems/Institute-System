@@ -3,6 +3,7 @@ import { Helmet } from 'react-helmet';
 import { useNavigate, useParams } from 'react-router-dom';
 import { Cell, Pie, PieChart, ResponsiveContainer } from 'recharts';
 import AnimatedPage from '@/components/AnimatedPage';
+import PageHeader from '@/components/PageHeader';
 import { Button } from '@/components/ui/button';
 import { useData } from '@/contexts/DataContext';
 import { ArrowLeft } from 'lucide-react';
@@ -190,31 +191,33 @@ const RatingFeedbackPage = () => {
         <title>Rating Feedback - Portal</title>
       </Helmet>
 
-      <div className="mb-8">
-        <Button
-          variant="ghost"
-          size="sm"
-          className="mb-2 -ml-2 h-8 text-[var(--ds-text-secondary,#5B6B61)] hover:text-[var(--ds-text-primary,#122018)]"
-          onClick={() => navigate('/assignments')}
-        >
-          <ArrowLeft className="mr-2 h-4 w-4" /> Back
-        </Button>
-        <h1 className="text-2xl font-semibold tracking-tight text-[var(--ds-text-primary,#122018)]">
-          {evaluation.title}
-        </h1>
-        <p className="mt-1 text-sm text-[var(--ds-text-secondary,#5B6B61)]">
-          {courseName ? (
-            <>
-              <span className="font-medium text-[var(--ds-accent,#1F8A5B)]">{courseName}</span>
-              {className ? <span> · {className}</span> : null}
-            </>
-          ) : (
-            className
-          )}
-          {' · '}
-          {responses.length} response{responses.length === 1 ? '' : 's'}
-        </p>
-      </div>
+      <PageHeader
+        title={evaluation.title}
+        subtitle={
+          <>
+            {courseName ? (
+              <>
+                <span className="font-medium text-[var(--ds-accent,#1F8A5B)]">{courseName}</span>
+                {className ? <span> · {className}</span> : null}
+              </>
+            ) : (
+              className
+            )}
+            {' · '}
+            {responses.length} response{responses.length === 1 ? '' : 's'}
+          </>
+        }
+        action={
+          <Button
+            variant="outline"
+            size="sm"
+            className="h-9"
+            onClick={() => navigate('/assignments')}
+          >
+            <ArrowLeft className="mr-2 h-4 w-4" /> Back
+          </Button>
+        }
+      />
 
       <section>
         <h2 className="mb-5 text-sm font-medium text-[var(--ds-text-primary,#122018)]">

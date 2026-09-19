@@ -15,7 +15,9 @@ const DocumentDesignPanel = ({ hint, templates, builder, upload }: Props) => {
   return (
     <Tabs defaultValue="templates" className="w-full">
       <div className="space-y-2 px-2 sm:px-3">
-        {hint ? <p className="text-xs text-slate-500">{hint}</p> : null}
+        {hint ? (
+          <p className="text-xs text-[var(--ds-text-tertiary,#8A978E)]">{hint}</p>
+        ) : null}
         <TabsList className={settingsSubListClass}>
           <TabsTrigger value="templates" className={settingsSubTriggerClass}>
             <Award className="h-3.5 w-3.5" />

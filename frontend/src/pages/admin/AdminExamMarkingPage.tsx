@@ -151,14 +151,14 @@ const AdminExamMarkingPageContent = () => {
     return (
         <div className="grid gap-6">
             {/* Filters & Actions */}
-            <Card className="bg-slate-900 border-slate-800">
+            <Card>
                 <CardContent className="pt-6">
                     <div className="flex flex-col md:flex-row justify-between gap-4 items-end">
                         <div className="flex gap-4 w-full md:w-2/3">
                             <div className="w-1/2 space-y-2">
-                                <label className="text-sm font-medium text-slate-400">Select Examination</label>
+                                <label className="text-sm font-medium text-[var(--ds-text-secondary,#5B6B61)]">Select Examination</label>
                                 <Select value={selectedExamId} onValueChange={setSelectedExamId}>
-                                    <SelectTrigger className="bg-slate-950 border-slate-800">
+                                    <SelectTrigger>
                                         <SelectValue placeholder="Select Exam" />
                                     </SelectTrigger>
                                     <SelectContent>
@@ -172,24 +172,24 @@ const AdminExamMarkingPageContent = () => {
                             </div>
 
                             <div className="w-1/2 space-y-2">
-                                <label className="text-sm font-medium text-slate-400">Search Student</label>
+                                <label className="text-sm font-medium text-[var(--ds-text-secondary,#5B6B61)]">Search Student</label>
                                 <div className="relative">
-                                    <Search className="absolute left-2 top-2.5 h-4 w-4 text-slate-500" />
+                                    <Search className="absolute left-2 top-2.5 h-4 w-4 text-[var(--ds-text-tertiary,#8A978E)]" />
                                     <Input 
                                         placeholder="Name or ID..." 
                                         value={searchTerm}
                                         onChange={e => setSearchTerm(e.target.value)}
-                                        className="pl-8 bg-slate-950 border-slate-800"
+                                        className="pl-8"
                                     />
                                 </div>
                             </div>
                         </div>
                         
                         <div className="flex gap-2">
-                            <Button variant="outline" onClick={loadSubmissions} className="border-slate-800" title="Refresh Results">
+                            <Button variant="outline" onClick={loadSubmissions} title="Refresh Results">
                                 <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
                             </Button>
-                            <Button onClick={handleOpenCreate} disabled={!selectedExamId} className="bg-blue-600 hover:bg-blue-700">
+                            <Button onClick={handleOpenCreate} disabled={!selectedExamId}>
                                 <Plus className="h-4 w-4 mr-2" /> Add Result
                             </Button>
                         </div>
@@ -198,24 +198,24 @@ const AdminExamMarkingPageContent = () => {
             </Card>
 
             {/* Results Table */}
-            <Card className="bg-slate-900 border-slate-800">
+            <Card>
                 <CardHeader>
                     <CardTitle className="flex items-center justify-between">
                         <span>Recorded Results</span>
-                        <Badge variant="outline" className="text-slate-400">{filteredSubmissions.length} Records</Badge>
+                        <Badge variant="outline" className="text-[var(--ds-text-secondary,#5B6B61)]">{filteredSubmissions.length} Records</Badge>
                     </CardTitle>
                 </CardHeader>
                 <CardContent>
-                    <div className="rounded-md border border-slate-800 overflow-hidden">
+                    <div className="overflow-hidden rounded-md border border-[var(--ds-border,#DDE5DF)]">
                         <Table>
-                            <TableHeader className="bg-slate-950">
-                                <TableRow className="border-slate-800 hover:bg-slate-950">
-                                    <TableHead className="text-slate-400">Student</TableHead>
-                                    <TableHead className="text-slate-400">Score</TableHead>
-                                    <TableHead className="text-slate-400 hidden md:table-cell">Attendance</TableHead>
-                                    <TableHead className="text-slate-400">Final</TableHead>
-                                    <TableHead className="text-slate-400">Status</TableHead>
-                                    <TableHead className="text-right text-slate-400">Actions</TableHead>
+                            <TableHeader>
+                                <TableRow>
+                                    <TableHead className="px-5 py-3 text-[11px] font-semibold uppercase tracking-wide text-[var(--ds-text-tertiary,#8A978E)]">Student</TableHead>
+                                    <TableHead className="px-5 py-3 text-[11px] font-semibold uppercase tracking-wide text-[var(--ds-text-tertiary,#8A978E)]">Score</TableHead>
+                                    <TableHead className="hidden px-5 py-3 text-[11px] font-semibold uppercase tracking-wide text-[var(--ds-text-tertiary,#8A978E)] md:table-cell">Attendance</TableHead>
+                                    <TableHead className="px-5 py-3 text-[11px] font-semibold uppercase tracking-wide text-[var(--ds-text-tertiary,#8A978E)]">Final</TableHead>
+                                    <TableHead className="px-5 py-3 text-[11px] font-semibold uppercase tracking-wide text-[var(--ds-text-tertiary,#8A978E)]">Status</TableHead>
+                                    <TableHead className="px-5 py-3 text-right text-[11px] font-semibold uppercase tracking-wide text-[var(--ds-text-tertiary,#8A978E)]">Actions</TableHead>
                                 </TableRow>
                             </TableHeader>
                             <TableBody>
@@ -228,10 +228,10 @@ const AdminExamMarkingPageContent = () => {
                                 ) : filteredSubmissions.length === 0 ? (
                                     <TableRow>
                                         <TableCell colSpan={6} className="h-32 text-center">
-                                            <div className="flex flex-col items-center justify-center text-slate-500">
+                                            <div className="flex flex-col items-center justify-center text-[var(--ds-text-tertiary,#8A978E)]">
                                                 <AlertCircle className="h-8 w-8 mb-2 opacity-50" />
                                                 <p>No results recorded for this examination.</p>
-                                                <Button variant="link" onClick={handleOpenCreate} className="mt-2 text-blue-400">
+                                                <Button variant="link" onClick={handleOpenCreate} className="mt-2">
                                                     Add the first result
                                                 </Button>
                                             </div>
@@ -239,33 +239,38 @@ const AdminExamMarkingPageContent = () => {
                                     </TableRow>
                                 ) : (
                                     filteredSubmissions.map((sub) => (
-                                        <TableRow key={sub.id} className="border-slate-800 hover:bg-slate-800/50">
-                                            <TableCell>
+                                        <TableRow key={sub.id}>
+                                            <TableCell className="px-5">
                                                 <div>
-                                                    <div className="font-medium text-slate-200">{sub.student_name}</div>
-                                                    <div className="text-xs text-slate-500">{sub.student_code}</div>
+                                                    <div className="font-medium text-[var(--ds-text-primary,#122018)]">{sub.student_name}</div>
+                                                    <div className="text-xs text-[var(--ds-text-tertiary,#8A978E)]">{sub.student_code}</div>
                                                 </div>
                                             </TableCell>
-                                            <TableCell className="text-slate-300">
-                                                <span className="font-mono">{sub.score}</span> <span className="text-slate-500 text-xs">/ {sub.total_marks}</span>
+                                            <TableCell className="px-5 text-[var(--ds-text-secondary,#5B6B61)]">
+                                                <span className="font-mono">{sub.score}</span>{' '}
+                                                <span className="text-xs text-[var(--ds-text-tertiary,#8A978E)]">/ {sub.total_marks}</span>
                                             </TableCell>
-                                            <TableCell className="text-slate-400 hidden md:table-cell">
+                                            <TableCell className="hidden px-5 text-[var(--ds-text-secondary,#5B6B61)] md:table-cell">
                                                 {sub.attendance_score || 0}
                                             </TableCell>
-                                            <TableCell className="font-semibold text-white">
+                                            <TableCell className="px-5 font-semibold text-[var(--ds-text-primary,#122018)]">
                                                 {sub.final_score || sub.score}
                                             </TableCell>
-                                            <TableCell>
-                                                {sub.status === 'PASS' && <Badge className="bg-green-900/50 text-green-400 border-green-800">PASS</Badge>}
-                                                {sub.status === 'FAIL' && <Badge className="bg-red-900/50 text-red-400 border-red-800">FAIL</Badge>}
+                                            <TableCell className="px-5">
+                                                {sub.status === 'PASS' && (
+                                                  <Badge className="border-0 bg-[var(--ds-success-bg,#ECFDF5)] text-[var(--ds-success,#059669)]">PASS</Badge>
+                                                )}
+                                                {sub.status === 'FAIL' && (
+                                                  <Badge className="border-0 bg-[var(--ds-danger-bg,#FEF2F2)] text-[var(--ds-danger,#DC2626)]">FAIL</Badge>
+                                                )}
                                             </TableCell>
-                                            <TableCell className="text-right">
+                                            <TableCell className="px-5 text-right">
                                                 <div className="flex justify-end gap-2">
                                                     <Button 
                                                         size="sm" 
                                                         variant="ghost" 
                                                         onClick={() => handleOpenEdit(sub)}
-                                                        className="h-8 w-8 p-0 text-blue-400 hover:text-blue-300 hover:bg-blue-900/20"
+                                                        className="h-8 w-8 p-0 text-[var(--ds-accent,#1F8A5B)] hover:bg-[var(--ds-surface-muted,#F7FAF8)] hover:text-[var(--ds-accent,#1F8A5B)]"
                                                     >
                                                         <FileEdit className="h-4 w-4" />
                                                     </Button>
@@ -273,7 +278,7 @@ const AdminExamMarkingPageContent = () => {
                                                         size="sm" 
                                                         variant="ghost" 
                                                         onClick={() => handleDeleteClick(sub)}
-                                                        className="h-8 w-8 p-0 text-red-400 hover:text-red-300 hover:bg-red-900/20"
+                                                        className="h-8 w-8 p-0 text-[var(--ds-danger,#DC2626)] hover:bg-[var(--ds-danger-bg,#FEF2F2)] hover:text-[var(--ds-danger,#DC2626)]"
                                                     >
                                                         <Trash2 className="h-4 w-4" />
                                                     </Button>
@@ -303,20 +308,24 @@ const AdminExamMarkingPageContent = () => {
 
             {/* Delete Confirmation */}
             <AlertDialog open={deleteConfirmOpen} onOpenChange={setDeleteConfirmOpen}>
-                <AlertDialogContent className="bg-slate-900 border-slate-800">
+                <AlertDialogContent>
                     <AlertDialogHeader>
-                        <AlertDialogTitle className="text-red-500 flex items-center gap-2">
+                        <AlertDialogTitle className="flex items-center gap-2 text-[var(--ds-danger,#DC2626)]">
                             <AlertCircle className="h-5 w-5" />
                             Delete Result
                         </AlertDialogTitle>
-                        <AlertDialogDescription className="text-slate-400">
-                            Are you sure you want to delete the result for <strong className="text-white">{resultToDelete?.student_name}</strong>? 
+                        <AlertDialogDescription>
+                            Are you sure you want to delete the result for{' '}
+                            <strong className="text-[var(--ds-text-primary,#122018)]">{resultToDelete?.student_name}</strong>?
                             This action cannot be undone.
                         </AlertDialogDescription>
                     </AlertDialogHeader>
                     <AlertDialogFooter>
-                        <AlertDialogCancel className="bg-slate-800 border-slate-700 hover:bg-slate-700 text-white">Cancel</AlertDialogCancel>
-                        <AlertDialogAction onClick={confirmDelete} className="bg-red-600 hover:bg-red-700 text-white">
+                        <AlertDialogCancel>Cancel</AlertDialogCancel>
+                        <AlertDialogAction
+                            onClick={confirmDelete}
+                            className="bg-[var(--ds-danger,#DC2626)] text-[var(--ds-text-on-primary,#fff)] hover:bg-[var(--ds-danger-hover,#B91C1C)]"
+                        >
                             Delete Result
                         </AlertDialogAction>
                     </AlertDialogFooter>

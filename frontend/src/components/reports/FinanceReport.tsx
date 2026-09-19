@@ -60,9 +60,9 @@ const coveredTuitionMonth = (p, monthKeyFn) => {
 const paymentKindLabel = (kind) => PAYMENT_KIND_LABEL[kind] || PAYMENT_KIND_LABEL.other;
 
 const kindBadgeClass = (kind) => {
-  if (kind === PAYMENT_KIND.registration) return 'bg-amber-500/15 text-amber-300 border-amber-500/30';
-  if (kind === PAYMENT_KIND.tuition) return 'bg-sky-500/15 text-sky-300 border-sky-500/30';
-  return 'bg-slate-500/15 text-slate-300 border-slate-500/30';
+  if (kind === PAYMENT_KIND.registration) return 'bg-[var(--ds-warning-bg,#FFF7ED)] text-[var(--ds-warning,#C2410C)] border-[var(--ds-warning,#C2410C)]/30';
+  if (kind === PAYMENT_KIND.tuition) return 'bg-[var(--ds-info-bg,#EFF6FF)] text-[var(--ds-info,#2563EB)] border-[var(--ds-info,#2563EB)]/30';
+  return 'bg-[var(--ds-surface-muted,#F7FAF8)] text-[var(--ds-text-secondary,#5B6B61)] border-[var(--ds-border,#DDE5DF)]';
 };
 
 const FinanceReport = () => {
@@ -311,15 +311,15 @@ const FinanceReport = () => {
 
     return (
         <div className="space-y-6">
-            <div className="flex flex-col md:flex-row gap-4 bg-slate-900/50 p-4 rounded-lg border border-slate-800 items-stretch md:items-end">
+            <div className="flex flex-col md:flex-row gap-4 bg-[var(--ds-surface-muted,#F7FAF8)] p-4 rounded-lg border border-[var(--ds-border,#DDE5DF)] items-stretch md:items-end">
                 <div className="grid gap-2 w-full md:w-auto">
-                    <Label className="text-white">Reference Date</Label>
-                    <Input type="date" value={selectedDate} onChange={e => setSelectedDate(e.target.value)} className="bg-slate-950 border-slate-700 text-white w-full md:w-[160px]" />
+                    <Label>Reference Date</Label>
+                    <Input type="date" value={selectedDate} onChange={e => setSelectedDate(e.target.value)} className="w-full md:w-[160px]" />
                 </div>
                  <div className="grid gap-2 w-full md:min-w-[200px] min-w-0">
-                    <Label className="text-white">Class Filter</Label>
+                    <Label>Class Filter</Label>
                     <Select value={classFilter} onValueChange={setClassFilter}>
-                        <SelectTrigger className="bg-slate-950 border-slate-700 text-white"><SelectValue placeholder="All Classes" /></SelectTrigger>
+                        <SelectTrigger><SelectValue placeholder="All Classes" /></SelectTrigger>
                         <SelectContent>
                             <SelectItem value="all">All Classes</SelectItem>
                             {classes.map(c => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
@@ -327,9 +327,9 @@ const FinanceReport = () => {
                     </Select>
                 </div>
                 <div className="grid gap-2 w-full md:min-w-[160px] min-w-0">
-                    <Label className="text-white">Status</Label>
+                    <Label>Status</Label>
                     <Select value={statusFilter} onValueChange={setStatusFilter}>
-                        <SelectTrigger className="bg-slate-950 border-slate-700 text-white"><SelectValue /></SelectTrigger>
+                        <SelectTrigger><SelectValue /></SelectTrigger>
                         <SelectContent>
                             <SelectItem value="all">All</SelectItem>
                             <SelectItem value="paid">Paid</SelectItem>
@@ -338,14 +338,14 @@ const FinanceReport = () => {
                     </Select>
                 </div>
                 <div className="grid gap-2 flex-1">
-                    <Label className="text-white">Search Student</Label>
+                    <Label>Search Student</Label>
                     <div className="relative">
-                        <Search className="absolute left-2 top-2.5 h-4 w-4 text-slate-500" />
+                        <Search className="absolute left-2 top-2.5 h-4 w-4 text-[var(--ds-text-tertiary,#8A978E)]" />
                         <Input 
                             placeholder="Name or Code..." 
                             value={searchTerm} 
                             onChange={e => setSearchTerm(e.target.value)} 
-                            className="pl-8 bg-slate-950 border-slate-700 text-white" 
+                            className="pl-8" 
                         />
                     </div>
                 </div>
@@ -355,42 +355,42 @@ const FinanceReport = () => {
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                <Card className="bg-slate-900/50 border-slate-800">
+                <Card>
                     <CardHeader className="pb-2">
-                        <CardTitle className="text-sm font-medium text-slate-400">Collected ({monthLabel})</CardTitle>
+                        <CardTitle className="text-sm font-medium text-[var(--ds-text-secondary,#5B6B61)]">Collected ({monthLabel})</CardTitle>
                     </CardHeader>
                     <CardContent className="space-y-3">
-                        <div className="text-2xl font-bold text-blue-400 bg-blue-500/10 inline-block px-2 py-1 rounded">
+                        <div className="text-2xl font-bold text-[var(--ds-text-primary,#122018)] bg-[var(--ds-info-bg,#EFF6FF)] inline-block px-2 py-1 rounded">
                             {formatCurrency(collectedBreakdown.total)}
                         </div>
-                        <p className="text-[11px] text-slate-500">
+                        <p className="text-[11px] text-[var(--ds-text-tertiary,#8A978E)]">
                             Cash received this month (all completed payments)
                         </p>
-                        <div className="grid grid-cols-1 gap-1.5 text-xs text-slate-400">
+                        <div className="grid grid-cols-1 gap-1.5 text-xs text-[var(--ds-text-secondary,#5B6B61)]">
                             <div className="flex justify-between gap-3">
                                 <span>Tuition / Class Fee</span>
-                                <span className="text-sky-300 font-medium">{formatCurrency(collectedBreakdown.tuition)}</span>
+                                <span className="text-[var(--ds-info,#2563EB)] font-medium">{formatCurrency(collectedBreakdown.tuition)}</span>
                             </div>
                             <div className="flex justify-between gap-3">
                                 <span>Registration</span>
-                                <span className="text-amber-300 font-medium">{formatCurrency(collectedBreakdown.registration)}</span>
+                                <span className="text-[var(--ds-warning,#C2410C)] font-medium">{formatCurrency(collectedBreakdown.registration)}</span>
                             </div>
                             <div className="flex justify-between gap-3">
                                 <span>Other</span>
-                                <span className="text-slate-300 font-medium">{formatCurrency(collectedBreakdown.other)}</span>
+                                <span className="text-[var(--ds-text-primary,#122018)] font-medium">{formatCurrency(collectedBreakdown.other)}</span>
                             </div>
                         </div>
                     </CardContent>
                 </Card>
-                <Card className="bg-slate-900/50 border-slate-800">
-                    <CardHeader className="pb-2"><CardTitle className="text-sm font-medium text-slate-400">Unpaid Amount</CardTitle></CardHeader>
-                    <CardContent><div className="text-2xl font-bold text-red-400">{formatCurrency(totalUnpaid)}</div></CardContent>
+                <Card>
+                    <CardHeader className="pb-2"><CardTitle className="text-sm font-medium text-[var(--ds-text-secondary,#5B6B61)]">Unpaid Amount</CardTitle></CardHeader>
+                    <CardContent><div className="text-2xl font-bold text-[var(--ds-danger,#DC2626)]">{formatCurrency(totalUnpaid)}</div></CardContent>
                 </Card>
-                <Card className="bg-slate-900/50 border-slate-800">
-                    <CardHeader className="pb-2"><CardTitle className="text-sm font-medium text-slate-400">Payment Rate</CardTitle></CardHeader>
+                <Card>
+                    <CardHeader className="pb-2"><CardTitle className="text-sm font-medium text-[var(--ds-text-secondary,#5B6B61)]">Payment Rate</CardTitle></CardHeader>
                     <CardContent>
-                        <div className="text-2xl font-bold text-blue-400">{paymentRate}%</div>
-                        <p className="text-xs text-slate-500 mt-1">
+                        <div className="text-2xl font-bold text-[var(--ds-text-primary,#122018)]">{paymentRate}%</div>
+                        <p className="text-xs text-[var(--ds-text-tertiary,#8A978E)] mt-1">
                             {paidEnrollmentCount} paid / {dueCount} due this month (tuition)
                         </p>
                     </CardContent>
@@ -398,7 +398,7 @@ const FinanceReport = () => {
             </div>
 
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                <Card className="bg-slate-900/50 border-slate-800">
+                <Card>
                     <CardHeader><CardTitle>Revenue Trend (6 Months)</CardTitle></CardHeader>
                     <CardContent className="h-[300px]">
                         <ResponsiveContainer width="100%" height="100%">
@@ -412,7 +412,7 @@ const FinanceReport = () => {
                         </ResponsiveContainer>
                     </CardContent>
                 </Card>
-                <Card className="bg-slate-900/50 border-slate-800">
+                <Card>
                     <CardHeader><CardTitle>Payment Methods</CardTitle></CardHeader>
                     <CardContent className="h-[300px]">
                         <ResponsiveContainer width="100%" height="100%">
@@ -438,20 +438,20 @@ const FinanceReport = () => {
                 </Card>
             </div>
 
-            <Card className="bg-slate-900/50 border-slate-800">
+            <Card>
                 <CardHeader><CardTitle>Student Payment Status</CardTitle></CardHeader>
                 <CardContent>
-                     <div className="rounded-md border border-slate-800 overflow-hidden">
+                     <div className="rounded-md border border-[var(--ds-border,#DDE5DF)] overflow-hidden">
                         <Table>
                             <TableHeader>
-                                <TableRow className="border-slate-800 hover:bg-transparent">
-                                    <TableHead className="text-slate-400">Date</TableHead>
-                                    <TableHead className="text-slate-400">Student Name</TableHead>
-                                    <TableHead className="text-slate-400">Class</TableHead>
-                                    <TableHead className="text-slate-400">Type</TableHead>
-                                    <TableHead className="text-slate-400">Status</TableHead>
-                                    <TableHead className="text-slate-400">Method</TableHead>
-                                    <TableHead className="text-slate-400 text-right">Amount</TableHead>
+                                <TableRow className="border-[var(--ds-border,#DDE5DF)] bg-[var(--ds-surface-muted,#F7FAF8)] hover:bg-[var(--ds-surface-muted,#F7FAF8)]">
+                                    <TableHead className="text-[11px] font-semibold uppercase tracking-wide text-[var(--ds-text-tertiary,#8A978E)]">Date</TableHead>
+                                    <TableHead className="text-[11px] font-semibold uppercase tracking-wide text-[var(--ds-text-tertiary,#8A978E)]">Student Name</TableHead>
+                                    <TableHead className="text-[11px] font-semibold uppercase tracking-wide text-[var(--ds-text-tertiary,#8A978E)]">Class</TableHead>
+                                    <TableHead className="text-[11px] font-semibold uppercase tracking-wide text-[var(--ds-text-tertiary,#8A978E)]">Type</TableHead>
+                                    <TableHead className="text-[11px] font-semibold uppercase tracking-wide text-[var(--ds-text-tertiary,#8A978E)]">Status</TableHead>
+                                    <TableHead className="text-[11px] font-semibold uppercase tracking-wide text-[var(--ds-text-tertiary,#8A978E)]">Method</TableHead>
+                                    <TableHead className="text-right text-[11px] font-semibold uppercase tracking-wide text-[var(--ds-text-tertiary,#8A978E)]">Amount</TableHead>
                                 </TableRow>
                             </TableHeader>
                             <TableBody>
@@ -465,49 +465,49 @@ const FinanceReport = () => {
                                             const kind = item.paymentKind;
                                             
                                             return (
-                                                <TableRow key={`p-${item.data.id}`} className="border-slate-800">
-                                                    <TableCell className="text-slate-400">{formatDate(item.data.payment_date)}</TableCell>
-                  <TableCell className="font-medium">{s?.name || 'Unknown'}</TableCell>
-                                                    <TableCell className="text-slate-200">{displayClass}</TableCell>
+                                                <TableRow key={`p-${item.data.id}`} className="border-[var(--ds-border,#DDE5DF)] hover:bg-[var(--ds-surface-muted,#F7FAF8)]">
+                                                    <TableCell className="text-[var(--ds-text-secondary,#5B6B61)]">{formatDate(item.data.payment_date)}</TableCell>
+                  <TableCell className="font-medium text-[var(--ds-text-primary,#122018)]">{s?.name || 'Unknown'}</TableCell>
+                                                    <TableCell className="text-[var(--ds-text-primary,#122018)]">{displayClass}</TableCell>
                                                     <TableCell>
                                                         <span className={`inline-flex items-center rounded-md border px-2 py-0.5 text-[11px] font-semibold ${kindBadgeClass(kind)}`}>
                                                             {paymentKindLabel(kind)}
                                                         </span>
                                                     </TableCell>
                                                     <TableCell>
-                                                        <span className="text-emerald-300 bg-emerald-500/15 border border-emerald-500/30 px-2 py-1 rounded text-xs font-bold">
+                                                        <span className="text-emerald-800 bg-emerald-50 border border-emerald-200 px-2 py-1 rounded text-xs font-bold">
                                                             PAID
                                                         </span>
                                                     </TableCell>
-                                                    <TableCell className="text-slate-400 capitalize">{item.data.method || '-'}</TableCell>
+                                                    <TableCell className="text-[var(--ds-text-secondary,#5B6B61)] capitalize">{item.data.method || '-'}</TableCell>
                                                     <TableCell className="text-right font-mono">{formatCurrency(item.data.amount)}</TableCell>
                                                 </TableRow>
                                             );
                                         }
 
                                         return (
-                                            <TableRow key={`u-${item.data.student.id}-${item.data.class.id}`} className="border-slate-800">
-                                                <TableCell className="text-slate-600">-</TableCell>
-                                                <TableCell className="font-medium">{item.data.student.name}</TableCell>
-                                                <TableCell className="text-slate-200">{item.data.class.name}</TableCell>
+                                            <TableRow key={`u-${item.data.student.id}-${item.data.class.id}`} className="border-[var(--ds-border,#DDE5DF)] hover:bg-[var(--ds-surface-muted,#F7FAF8)]">
+                                                <TableCell className="text-[var(--ds-text-tertiary,#8A978E)]">-</TableCell>
+                                                <TableCell className="font-medium text-[var(--ds-text-primary,#122018)]">{item.data.student.name}</TableCell>
+                                                <TableCell className="text-[var(--ds-text-primary,#122018)]">{item.data.class.name}</TableCell>
                                                 <TableCell>
                                                     <span className={`inline-flex items-center rounded-md border px-2 py-0.5 text-[11px] font-semibold ${kindBadgeClass(item.paymentKind)}`}>
                                                         {paymentKindLabel(item.paymentKind)}
                                                     </span>
                                                 </TableCell>
                                                 <TableCell>
-                                                    <span className="text-red-300 bg-red-500/15 border border-red-500/30 px-2 py-1 rounded text-xs font-bold">
+                                                    <span className="text-red-800 bg-red-50 border border-red-200 px-2 py-1 rounded text-xs font-bold">
                                                         UNPAID
                                                     </span>
                                                 </TableCell>
-                                                <TableCell className="text-slate-600">-</TableCell>
-                                                <TableCell className="text-right font-mono text-slate-500">{formatCurrency(item.data.amount)}</TableCell>
+                                                <TableCell className="text-[var(--ds-text-tertiary,#8A978E)]">-</TableCell>
+                                                <TableCell className="text-right font-mono text-[var(--ds-text-secondary,#5B6B61)]">{formatCurrency(item.data.amount)}</TableCell>
                                             </TableRow>
                                         );
                                     })
                                 ) : (
                                     <TableRow>
-                                        <TableCell colSpan={7} className="text-center py-4 text-slate-500">No records found.</TableCell>
+                                        <TableCell colSpan={7} className="text-center py-4 text-[var(--ds-text-tertiary,#8A978E)]">No records found.</TableCell>
                                     </TableRow>
                                 )}
                             </TableBody>

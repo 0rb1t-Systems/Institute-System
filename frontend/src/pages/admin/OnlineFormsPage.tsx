@@ -1,5 +1,7 @@
 import React, { useState } from 'react';
 import { Helmet } from 'react-helmet';
+import AnimatedPage from '@/components/AnimatedPage';
+import PageHeader from '@/components/PageHeader';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/components/ui/use-toast';
@@ -29,34 +31,37 @@ const OnlineFormsPage = () => {
     };
 
     return (
-        <div className="space-y-8 p-6">
+        <AnimatedPage>
             <Helmet><title>Online Forms | Portal</title></Helmet>
-            
-            <div className="flex flex-col gap-2">
-                <h1 className="text-3xl font-bold tracking-tight text-white">Online Registration</h1>
-                <p className="text-slate-400">Manage public registration links and approve student submissions.</p>
-            </div>
+
+            <div className="space-y-8">
+            <PageHeader
+                title="Online Registration"
+                subtitle="Manage public registration links and approve student submissions."
+            />
 
             <div className="grid gap-6 md:grid-cols-2">
-                <Card className="bg-slate-900 border-slate-800 md:col-span-2">
+                <Card className="md:col-span-2">
                     <CardHeader>
                         <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
                             <div className="flex items-center gap-3">
-                                <div className="h-10 w-10 rounded-lg bg-indigo-500/10 flex items-center justify-center border border-indigo-500/20">
-                                    <Globe className="h-5 w-5 text-indigo-400" />
+                                <div className="flex h-10 w-10 items-center justify-center rounded-lg border border-[var(--ds-border,#DDE5DF)] bg-[var(--ds-surface-muted,#F7FAF8)]">
+                                    <Globe className="h-5 w-5 text-[var(--ds-accent,#1F8A5B)]" />
                                 </div>
                                 <div>
                                     <CardTitle>General Registration Portal</CardTitle>
                                     <CardDescription>
-                                        Share this link so students can register <span className="text-white">without an affiliate</span>.
-                                        Affiliate Referral Links add <code className="text-purple-400">?ref=…</code> only when you want commission attribution.
+                                        Share this link so students can register{' '}
+                                        <span className="font-medium text-[var(--ds-text-primary,#122018)]">without an affiliate</span>.
+                                        Affiliate Referral Links add{' '}
+                                        <code className="font-mono text-[var(--ds-accent,#1F8A5B)]">?ref=…</code> only when you want commission attribution.
                                     </CardDescription>
                                 </div>
                             </div>
                             <Button
                                 type="button"
                                 variant="outline"
-                                className="shrink-0 border-slate-700"
+                                className="shrink-0"
                                 onClick={() => setManageOpen(true)}
                             >
                                 <ListChecks className="mr-2 h-4 w-4" />
@@ -66,14 +71,14 @@ const OnlineFormsPage = () => {
                     </CardHeader>
                     <CardContent className="space-y-6">
                         <div className="space-y-2">
-                            <Label className="text-slate-300">Shareable Link (no affiliate)</Label>
+                            <Label>Shareable Link (no affiliate)</Label>
                             <div className="flex gap-2">
                                 <div className="relative flex-1">
-                                    <LinkIcon className="absolute left-3 top-3 h-4 w-4 text-slate-500" />
-                                    <Input 
-                                        readOnly 
-                                        value={generalLink} 
-                                        className="pl-9 bg-slate-950 border-slate-700 text-slate-300 font-mono text-sm"
+                                    <LinkIcon className="absolute left-3 top-3 h-4 w-4 text-[var(--ds-text-tertiary,#8A978E)]" />
+                                    <Input
+                                        readOnly
+                                        value={generalLink}
+                                        className="pl-9 font-mono text-sm"
                                     />
                                 </div>
                                 <Button onClick={copyLink} className="shrink-0">
@@ -83,8 +88,10 @@ const OnlineFormsPage = () => {
                                     <ExternalLink className="h-4 w-4" /> Open
                                 </Button>
                             </div>
-                            <p className="text-xs text-slate-500">
-                                Use <span className="text-slate-300">Manage Programs</span> to choose which courses and diplomas appear in the student’s Preferred Class dropdown.
+                            <p className="text-xs text-[var(--ds-text-tertiary,#8A978E)]">
+                                Use{' '}
+                                <span className="font-medium text-[var(--ds-text-secondary,#5B6B61)]">Manage Programs</span>{' '}
+                                to choose which courses and diplomas appear in the student’s Preferred Class dropdown.
                                 Submissions create a pending registration request. Admin or Staff must approve before a student account is created and enrolled.
                             </p>
                         </div>
@@ -98,7 +105,8 @@ const OnlineFormsPage = () => {
                 open={manageOpen}
                 onOpenChange={setManageOpen}
             />
-        </div>
+            </div>
+        </AnimatedPage>
     );
 };
 

@@ -21,8 +21,8 @@ const TONE_DESC = {
 };
 
 /**
- * KPI metric card — tenant light styles follow design-system.pen Metric.
- * Platform / dark shells keep existing contrast treatment.
+ * KPI metric card — tenant styles follow design-system.pen Metric (light + dark --ds-*).
+ * Platform shells keep existing contrast treatment.
  */
 const StatCard = ({
   title,

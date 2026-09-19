@@ -10,12 +10,12 @@ import { FileText, Search } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import TranscriptView from '@/components/TranscriptView';
 
+const thClass = 'text-[11px] font-semibold uppercase tracking-wide text-[var(--ds-text-tertiary,#8A978E)]';
+
 const TranscriptReport = () => {
     const { classes, students, enrollments } = useData();
     const [selectedClassId, setSelectedClassId] = useState('all');
     const [searchQuery, setSearchQuery] = useState('');
-    const [viewStudentId, setViewStudentId] = useState(null);
-
     const filteredStudents = useMemo(() => {
         let list = students;
 
@@ -43,14 +43,14 @@ const TranscriptReport = () => {
 
     return (
         <div className="space-y-6">
-            <Card className="bg-slate-900/50 border-slate-800">
+            <Card>
                 <CardHeader><CardTitle>Academic Transcripts Report</CardTitle></CardHeader>
                 <CardContent>
-                    <div className="flex flex-col md:flex-row gap-4 mb-6">
+                    <div className="flex flex-col md:flex-row gap-4 mb-6 p-4 rounded-lg bg-[var(--ds-surface-muted,#F7FAF8)] border border-[var(--ds-border,#DDE5DF)]">
                         <div className="w-full md:w-1/3 space-y-2">
                             <Label>Filter by Class</Label>
                             <Select value={selectedClassId} onValueChange={setSelectedClassId}>
-                                <SelectTrigger className="bg-slate-950 border-slate-700"><SelectValue placeholder="Select Class" /></SelectTrigger>
+                                <SelectTrigger><SelectValue placeholder="Select Class" /></SelectTrigger>
                                 <SelectContent>
                                     <SelectItem value="all">All Students</SelectItem>
                                     {classes.map(c => (
@@ -62,38 +62,38 @@ const TranscriptReport = () => {
                         <div className="w-full md:w-1/3 space-y-2">
                             <Label>Search Student</Label>
                             <div className="relative">
-                                <Search className="absolute left-2 top-2.5 h-4 w-4 text-slate-500" />
+                                <Search className="absolute left-2 top-2.5 h-4 w-4 text-[var(--ds-text-tertiary,#8A978E)]" />
                                 <Input 
                                     placeholder="Name or Student Code" 
                                     value={searchQuery} 
                                     onChange={e => setSearchQuery(e.target.value)}
-                                    className="pl-8 bg-slate-950 border-slate-700"
+                                    className="pl-8"
                                 />
                             </div>
                         </div>
                     </div>
 
-                    <div className="rounded-md border border-slate-800 overflow-hidden">
+                    <div className="rounded-md border border-[var(--ds-border,#DDE5DF)] overflow-hidden">
                         <Table>
                             <TableHeader>
-                                <TableRow className="bg-slate-950 hover:bg-slate-950">
-                                    <TableHead>Student Name</TableHead>
-                                    <TableHead>Student ID</TableHead>
-                                    <TableHead>University / Org</TableHead>
-                                    <TableHead className="text-right">Action</TableHead>
+                                <TableRow className="border-[var(--ds-border,#DDE5DF)] bg-[var(--ds-surface-muted,#F7FAF8)] hover:bg-[var(--ds-surface-muted,#F7FAF8)]">
+                                    <TableHead className={thClass}>Student Name</TableHead>
+                                    <TableHead className={thClass}>Student ID</TableHead>
+                                    <TableHead className={thClass}>University / Org</TableHead>
+                                    <TableHead className={`text-right ${thClass}`}>Action</TableHead>
                                 </TableRow>
                             </TableHeader>
                             <TableBody>
                                 {filteredStudents.map(student => (
-                                    <TableRow key={student.id}>
-                                        <TableCell className="font-medium text-slate-200">{student.name}</TableCell>
-                                        <TableCell>{student.student_code}</TableCell>
-                                        <TableCell>{student.university_name || '-'}</TableCell>
+                                    <TableRow key={student.id} className="border-[var(--ds-border,#DDE5DF)] hover:bg-[var(--ds-surface-muted,#F7FAF8)]">
+                                        <TableCell className="font-medium text-[var(--ds-text-primary,#122018)]">{student.name}</TableCell>
+                                        <TableCell className="text-[var(--ds-text-secondary,#5B6B61)]">{student.student_code}</TableCell>
+                                        <TableCell className="text-[var(--ds-text-secondary,#5B6B61)]">{student.university_name || '-'}</TableCell>
                                         <TableCell className="text-right">
                                             <Dialog>
                                                 <DialogTrigger asChild>
-                                                    <Button variant="outline" size="sm" className="border-slate-700 hover:bg-slate-800">
-                                                        <FileText className="mr-2 h-4 w-4 text-blue-400" /> View Transcript
+                                                    <Button variant="outline" size="sm" className="hover:bg-[var(--ds-surface-muted,#F7FAF8)]">
+                                                        <FileText className="mr-2 h-4 w-4 text-[var(--ds-info,#2563EB)]" /> View Transcript
                                                     </Button>
                                                 </DialogTrigger>
                                                 <DialogContent className="max-w-4xl h-[90vh] overflow-y-auto p-0 bg-white">
@@ -107,7 +107,7 @@ const TranscriptReport = () => {
                                     </TableRow>
                                 ))}
                                 {filteredStudents.length === 0 && (
-                                    <TableRow><TableCell colSpan={4} className="text-center py-8 text-slate-500">No students found matching filters.</TableCell></TableRow>
+                                    <TableRow><TableCell colSpan={4} className="text-center py-8 text-[var(--ds-text-tertiary,#8A978E)]">No students found matching filters.</TableCell></TableRow>
                                 )}
                             </TableBody>
                         </Table>

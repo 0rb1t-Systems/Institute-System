@@ -370,46 +370,46 @@ const CertificateUploadOwn = ({
 
   if (loading) {
     return (
-      <div className="flex justify-center rounded-2xl border border-emerald-900/40 bg-gradient-to-b from-slate-950 to-slate-900 py-14">
-        <Loader2 className="h-6 w-6 animate-spin text-emerald-400/80" />
+      <div className="flex justify-center rounded-[var(--ds-radius-xl,16px)] border border-[var(--ds-border,#DDE5DF)] bg-[var(--ds-surface-muted,#F7FAF8)] py-14">
+        <Loader2 className="h-6 w-6 animate-spin text-[var(--ds-accent,#1F8A5B)]" />
       </div>
     )
   }
 
   return (
     <div className="space-y-4">
-      <div className="overflow-hidden rounded-2xl border border-emerald-900/50 bg-gradient-to-br from-emerald-950/40 via-slate-950 to-slate-900">
-        <div className="border-b border-emerald-900/40 px-4 py-3 sm:px-5">
+      <div className="overflow-hidden rounded-[var(--ds-radius-xl,16px)] border border-[var(--ds-border,#DDE5DF)] bg-[var(--ds-surface,#fff)]">
+        <div className="border-b border-[var(--ds-border,#DDE5DF)] px-4 py-3 sm:px-5">
           <div className="flex flex-wrap items-start justify-between gap-2">
             <div className="min-w-0">
-              <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-emerald-400/90">
+              <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-[var(--ds-primary,#1F8A5B)]">
                 Upload own
               </p>
-              <p className="mt-1 text-sm font-semibold text-white">
+              <p className="mt-1 text-sm font-semibold text-[var(--ds-text-primary,#122018)]">
                 Generate a {docLabel.toLowerCase()} template from your file
               </p>
-              <p className="mt-1 max-w-xl text-xs leading-relaxed text-slate-400">
+              <p className="mt-1 max-w-xl text-xs leading-relaxed text-[var(--ds-text-secondary,#5B6B61)]">
                 Upload a sample PDF or PNG. Generate builds a ready template that matches that design.
                 Your file is not opened as an editable document — Page Builder stays separate.
               </p>
             </div>
             {active && hasTemplate ? (
-              <Badge className="border-emerald-700/40 bg-emerald-600/20 text-emerald-300">
-                Live template
-              </Badge>
+              <Badge variant="success">Live template</Badge>
             ) : hasTemplate ? (
-              <Badge className="border-amber-700/40 bg-amber-600/15 text-amber-200">Ready</Badge>
+              <Badge variant="outline" className="text-[var(--ds-warning,#C2410C)]">
+                Ready
+              </Badge>
             ) : null}
           </div>
         </div>
 
         <div className="flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:gap-4 sm:p-5">
-          <div className="min-w-0 flex-1 rounded-xl border border-dashed border-emerald-800/50 bg-slate-950/70 px-4 py-4 text-center sm:text-left">
-            <p className="truncate text-sm text-slate-200">{meta?.file_name || 'No file yet'}</p>
+          <div className="min-w-0 flex-1 rounded-xl border border-dashed border-[var(--ds-border,#DDE5DF)] bg-[var(--ds-surface-muted,#F7FAF8)] px-4 py-4 text-center sm:text-left">
+            <p className="truncate text-sm text-[var(--ds-text-primary,#122018)]">{meta?.file_name || 'No file yet'}</p>
             {busy && progress ? (
-              <p className="mt-1 text-xs text-emerald-300">{progress}</p>
+              <p className="mt-1 text-xs text-[var(--ds-primary,#1F8A5B)]">{progress}</p>
             ) : (
-              <p className="mt-1 text-xs text-slate-500">PDF · PNG · JPG · WebP</p>
+              <p className="mt-1 text-xs text-[var(--ds-text-tertiary,#8A978E)]">PDF · PNG · JPG · WebP</p>
             )}
           </div>
           <div className="flex flex-wrap gap-2">
@@ -424,13 +424,7 @@ const CertificateUploadOwn = ({
                   e.target.value = ''
                 }}
               />
-              <Button
-                type="button"
-                disabled={busy}
-                variant="outline"
-                className="border-emerald-800/60 bg-slate-950/50 text-slate-100 hover:bg-emerald-950/40"
-                asChild
-              >
+              <Button type="button" disabled={busy} variant="outline" asChild>
                 <span>
                   {busy && !progress ? (
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -444,7 +438,6 @@ const CertificateUploadOwn = ({
             <Button
               type="button"
               disabled={busy || !meta?.storage_path}
-              className="bg-emerald-600 text-white hover:bg-emerald-500"
               onClick={() => void handleGenerate()}
             >
               {busy ? (
@@ -459,25 +452,21 @@ const CertificateUploadOwn = ({
       </div>
 
       {hasTemplate && previewDesign ? (
-        <div className="overflow-hidden rounded-2xl border border-emerald-900/40 bg-slate-950">
-          <div className="flex flex-wrap items-center justify-between gap-2 border-b border-emerald-900/30 px-4 py-3">
-            <div className="flex items-center gap-2 min-w-0">
-              <CheckCircle2 className="h-4 w-4 shrink-0 text-emerald-400" />
+        <div className="overflow-hidden rounded-[var(--ds-radius-xl,16px)] border border-[var(--ds-border,#DDE5DF)] bg-[var(--ds-surface,#fff)]">
+          <div className="flex flex-wrap items-center justify-between gap-2 border-b border-[var(--ds-border,#DDE5DF)] px-4 py-3">
+            <div className="flex min-w-0 items-center gap-2">
+              <CheckCircle2 className="h-4 w-4 shrink-0 text-[var(--ds-accent,#1F8A5B)]" />
               <div className="min-w-0">
-                <p className="text-sm font-medium text-white">Generated template preview</p>
-                <p className="text-xs text-slate-500">
+                <p className="text-sm font-medium text-[var(--ds-text-primary,#122018)]">Generated template preview</p>
+                <p className="text-xs text-[var(--ds-text-tertiary,#8A978E)]">
                   Sample student data shown. Live {docLabel.toLowerCase()}s use real student data.
                 </p>
               </div>
             </div>
-            {active ? (
-              <Badge className="border-emerald-700/40 bg-emerald-600/20 text-emerald-300">
-                In use
-              </Badge>
-            ) : null}
+            {active ? <Badge variant="success">In use</Badge> : null}
           </div>
-          <div className="bg-slate-900/50 p-3 sm:p-5">
-            <div className="mx-auto max-w-3xl overflow-hidden rounded-lg border border-slate-800 bg-white shadow-lg">
+          <div className="bg-[var(--ds-surface-muted,#F7FAF8)] p-3 sm:p-5">
+            <div className="mx-auto max-w-3xl overflow-hidden rounded-lg border border-[var(--ds-border,#DDE5DF)] bg-white shadow-lg">
               <CertificateCanvas data={sampleData} compact />
             </div>
           </div>

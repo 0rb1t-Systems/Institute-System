@@ -582,7 +582,7 @@ export default function RatingEvaluationsSection({ createOpenerRef }: Props) {
               />
             </div>
 
-            <div className="space-y-3 border-t border-slate-800 pt-4">
+            <div className="space-y-3 border-t border-[var(--ds-border,#DDE5DF)] pt-4">
               <div className="flex flex-wrap items-center justify-between gap-2">
                 <Label className="text-base">Questions</Label>
                 <div className="flex gap-2">
@@ -613,7 +613,7 @@ export default function RatingEvaluationsSection({ createOpenerRef }: Props) {
                     rows={8}
                     placeholder={`Paste one question per line, e.g.\n1. The instructor explained topics clearly.\n2. The course content was well organized.`}
                   />
-                  <p className="text-[10px] text-slate-500">
+                  <p className="text-[10px] text-[var(--ds-text-tertiary,#8A978E)]">
                     Each line becomes a Likert question (Strongly Agree → Strongly Disagree).
                   </p>
                   <Button type="button" variant="secondary" onClick={applyBulkPaste}>
@@ -625,10 +625,10 @@ export default function RatingEvaluationsSection({ createOpenerRef }: Props) {
                   {questions.map((q, idx) => (
                     <div
                       key={q.key}
-                      className="rounded-lg border border-slate-800 bg-slate-950/40 p-3 space-y-2"
+                      className="space-y-2 rounded-[var(--ds-radius-md,8px)] border border-[var(--ds-border,#DDE5DF)] bg-[var(--ds-surface-muted,#F7FAF8)] p-3"
                     >
                       <div className="flex items-start gap-2">
-                        <span className="text-xs text-slate-500 mt-2 w-5 shrink-0">{idx + 1}.</span>
+                        <span className="mt-2 w-5 shrink-0 text-xs text-[var(--ds-text-tertiary,#8A978E)]">{idx + 1}.</span>
                         <div className="flex-1 space-y-2">
                           <Input
                             value={q.text}
@@ -680,7 +680,7 @@ export default function RatingEvaluationsSection({ createOpenerRef }: Props) {
                             />
                           )}
                           {q.type === 'likert' && (
-                            <p className="text-[10px] text-slate-500">
+                            <p className="text-[10px] text-[var(--ds-text-tertiary,#8A978E)]">
                               Strongly Agree · Agree · Neutral · Disagree · Strongly Disagree
                             </p>
                           )}
@@ -689,7 +689,7 @@ export default function RatingEvaluationsSection({ createOpenerRef }: Props) {
                           type="button"
                           variant="ghost"
                           size="icon"
-                          className="shrink-0 hover:text-red-400"
+                          className="shrink-0 text-[var(--ds-danger,#DC2626)] hover:bg-[var(--ds-danger-bg,#FEF2F2)] hover:text-[var(--ds-danger,#DC2626)]"
                           onClick={() => removeQuestion(q.key)}
                           disabled={questions.length <= 1}
                         >

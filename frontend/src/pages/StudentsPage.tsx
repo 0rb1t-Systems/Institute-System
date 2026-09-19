@@ -35,13 +35,14 @@ import { notify, MESSAGES } from '@/lib/notify';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Label } from '@/components/ui/label';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
-import { formatDate } from '@/lib/utils';
+import { formatDate, cn } from '@/lib/utils';
 import StudentIdCard from '@/components/StudentIdCard';
 import StudentRegistrationModal from '@/components/student/StudentRegistrationModal';
 import BulkImportStudentsModal from '@/components/student/BulkImportStudentsModal';
 import AlumniImportModal from '@/components/student/AlumniImportModal';
 import EditStudentModal from '@/components/student/EditStudentModal';
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { getPersonInitials, getStudentAvatarColor } from '@/lib/studentAvatar';
 import {
   AlertDialog,
   AlertDialogCancel,
@@ -531,9 +532,8 @@ const StudentsPage = () => {
                         <Table>
                             <TableHeader>
                                 <TableRow className="border-[var(--ds-border,#DDE5DF)] bg-[var(--ds-surface-muted,#F7FAF8)] hover:bg-[var(--ds-surface-muted,#F7FAF8)]">
-                                    <TableHead className="w-[80px] px-5 py-3 text-[11px] font-semibold uppercase tracking-wide text-[var(--ds-text-tertiary,#8A978E)]">Avatar</TableHead>
+                                    <TableHead className="min-w-[240px] px-5 py-3 text-[11px] font-semibold uppercase tracking-wide text-[var(--ds-text-tertiary,#8A978E)]">Student</TableHead>
                                     <TableHead className="px-5 py-3 text-[11px] font-semibold uppercase tracking-wide text-[var(--ds-text-tertiary,#8A978E)]">Code</TableHead>
-                                    <TableHead className="px-5 py-3 text-[11px] font-semibold uppercase tracking-wide text-[var(--ds-text-tertiary,#8A978E)]">Name</TableHead>
                                     <TableHead className="px-5 py-3 text-[11px] font-semibold uppercase tracking-wide text-[var(--ds-text-tertiary,#8A978E)]">Affiliate</TableHead>
                                     <TableHead className="px-5 py-3 text-[11px] font-semibold uppercase tracking-wide text-[var(--ds-text-tertiary,#8A978E)]">Registration</TableHead>
                                     <TableHead className="px-5 py-3 text-right text-[11px] font-semibold uppercase tracking-wide text-[var(--ds-text-tertiary,#8A978E)]">Actions</TableHead>
@@ -541,52 +541,116 @@ const StudentsPage = () => {
                             </TableHeader>
                             <TableBody>
                                 {currentStudents.length > 0 ? (
-                                    currentStudents.map(s => (
+                                    currentStudents.map(s => {
+                                        const avatarColor = getStudentAvatarColor(s.id || s.student_code || s.email || s.name)
+                                        const initials = getPersonInitials(s.name)
+                                        const affiliate = users.find((u) => u.id === s.affiliate_id)
+                                        const affiliateLabel = affiliate?.name || affiliate?.full_name
+                                        return (
                                         <TableRow 
                                             key={s.id} 
                                             className={`border-[var(--ds-border,#DDE5DF)] transition-colors hover:bg-[var(--ds-surface-muted,#F7FAF8)] ${deletingRowId === s.id ? 'pointer-events-none opacity-50' : ''}`}
                                         >
-                                            <TableCell className="px-5 py-3">
-                                                <Avatar className="h-10 w-10 border-0">
-                                                    <AvatarImage src={s.avatar_url} alt={s.name} className="object-cover" />
-                                                    <AvatarFallback className="bg-[var(--ds-primary-soft,#ECFDF5)] text-xs font-bold text-[var(--ds-primary,#1F8A5B)]">
-                                                        {s.name?.substring(0, 2).toUpperCase() || 'ST'}
-                                                    </AvatarFallback>
-                                                </Avatar>
+                                            <TableCell className="px-5 py-3.5">
+                                                <div className="flex min-w-0 items-center gap-3">
+                                                    <Avatar className="h-11 w-11 shrink-0 shadow-sm ring-2 ring-[var(--ds-surface,#fff)] ring-offset-1 ring-offset-[var(--ds-border,#DDE5DF)]">
+                                                        <AvatarImage src={s.avatar_url} alt={s.name} className="object-cover" />
+                                                        <AvatarFallback
+                                                          className="text-[12px] font-semibold tracking-wide"
+                                                          style={{ backgroundColor: avatarColor.bg, color: avatarColor.text }}
+                                                        >
+                                                            {initials}
+                                                        </AvatarFallback>
+                                                    </Avatar>
+                                                    <div className="min-w-0">
+                                                        <div className="truncate text-[14px] font-semibold leading-snug text-[var(--ds-text-primary,#122018)]">
+                                                            {s.name}
+                                                        </div>
+                                                        <div className="mt-0.5 truncate text-[12px] text-[var(--ds-text-secondary,#5B6B61)]">
+                                                            {s.email || 'No email on file'}
+                                                        </div>
+                                                    </div>
+                                                </div>
                                             </TableCell>
-                                            <TableCell className="px-5 font-semibold text-[var(--ds-primary,#1F8A5B)]">{s.student_code}</TableCell>
                                             <TableCell className="px-5">
-                                                <div className="font-semibold text-[var(--ds-text-primary,#122018)]">{s.name}</div>
-                                                <div className="text-xs text-[var(--ds-text-secondary,#5B6B61)]">{s.email}</div>
+                                                <span className="inline-flex rounded-[var(--ds-radius-md,8px)] bg-[var(--ds-primary-soft,#ECFDF5)] px-2 py-1 font-mono text-[12px] font-semibold text-[var(--ds-primary,#1F8A5B)]">
+                                                    {s.student_code || '—'}
+                                                </span>
                                             </TableCell>
                                             <TableCell className="px-5">
-                                              {(() => {
-                                                const aff = users.find((u) => u.id === s.affiliate_id);
-                                                return aff?.name || aff?.full_name
-                                                  ? <span className="text-[13px] text-[var(--ds-text-secondary,#5B6B61)]">{aff.name || aff.full_name}</span>
-                                                  : <span className="text-[var(--ds-text-tertiary,#8A978E)]">—</span>;
-                                              })()}
+                                              {affiliateLabel
+                                                ? <span className="text-[13px] text-[var(--ds-text-secondary,#5B6B61)]">{affiliateLabel}</span>
+                                                : <span className="text-[var(--ds-text-tertiary,#8A978E)]">—</span>}
                                             </TableCell>
-                                            <TableCell className="px-5 text-[13px] text-[var(--ds-text-secondary,#5B6B61)]">{formatDate(s.registration_date)}</TableCell>
+                                            <TableCell className="px-5 text-[13px] tabular-nums text-[var(--ds-text-secondary,#5B6B61)]">{formatDate(s.registration_date)}</TableCell>
                                             <TableCell className="px-5 text-right">
-                                                <div className="flex justify-end gap-1">
-                                                    <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => handlePrintClick(s)} title="Print ID" disabled={isDeleting}><Printer className="h-4 w-4" /></Button>
+                                                <div className="inline-flex items-center gap-0.5 rounded-[var(--ds-radius-lg,12px)] border border-[var(--ds-border,#DDE5DF)] bg-[var(--ds-surface-muted,#F7FAF8)] p-0.5">
+                                                    <Button
+                                                      variant="ghost"
+                                                      size="icon"
+                                                      className={cn(
+                                                        'h-8 w-8 rounded-[var(--ds-radius-md,8px)] text-[var(--ds-text-secondary,#5B6B61)]',
+                                                        'hover:bg-[var(--ds-surface,#fff)] hover:text-[var(--ds-text-primary,#122018)]',
+                                                      )}
+                                                      onClick={() => handlePrintClick(s)}
+                                                      title="Print ID"
+                                                      disabled={isDeleting}
+                                                    >
+                                                      <Printer className="h-4 w-4" />
+                                                    </Button>
                                                     {canManageStudents && (
                                                       <>
-                                                        <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setTransferDialogStudent(s)} title="Transfer/Enroll" disabled={isDeleting}><ArrowLeftRight className="h-3.5 w-3.5" /></Button>
-                                                        <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => handleEdit(s)} title="Edit Student" disabled={isDeleting}><Pencil className="h-4 w-4" /></Button>
+                                                        <Button
+                                                          variant="ghost"
+                                                          size="icon"
+                                                          className={cn(
+                                                            'h-8 w-8 rounded-[var(--ds-radius-md,8px)] text-[var(--ds-text-secondary,#5B6B61)]',
+                                                            'hover:bg-[var(--ds-surface,#fff)] hover:text-[var(--ds-text-primary,#122018)]',
+                                                          )}
+                                                          onClick={() => setTransferDialogStudent(s)}
+                                                          title="Transfer/Enroll"
+                                                          disabled={isDeleting}
+                                                        >
+                                                          <ArrowLeftRight className="h-3.5 w-3.5" />
+                                                        </Button>
+                                                        <Button
+                                                          variant="ghost"
+                                                          size="icon"
+                                                          className={cn(
+                                                            'h-8 w-8 rounded-[var(--ds-radius-md,8px)] text-[var(--ds-text-secondary,#5B6B61)]',
+                                                            'hover:bg-[var(--ds-surface,#fff)] hover:text-[var(--ds-text-primary,#122018)]',
+                                                          )}
+                                                          onClick={() => handleEdit(s)}
+                                                          title="Edit Student"
+                                                          disabled={isDeleting}
+                                                        >
+                                                          <Pencil className="h-4 w-4" />
+                                                        </Button>
                                                       </>
                                                     )}
                                                     {canDeleteStudents && (
-                                                      <Button variant="ghost" size="icon" className="h-8 w-8 text-[var(--ds-danger,#DC2626)] hover:bg-[var(--ds-danger-bg,#FEF2F2)] hover:text-[var(--ds-danger,#DC2626)]" onClick={() => handleDeleteClick(s)} title="Delete Student" disabled={isDeleting}><Trash2 className="h-4 w-4" /></Button>
+                                                      <Button
+                                                        variant="ghost"
+                                                        size="icon"
+                                                        className={cn(
+                                                          'h-8 w-8 rounded-[var(--ds-radius-md,8px)] text-[var(--ds-danger,#DC2626)]',
+                                                          'hover:bg-[var(--ds-danger-bg,#FEF2F2)] hover:text-[var(--ds-danger,#DC2626)]',
+                                                        )}
+                                                        onClick={() => handleDeleteClick(s)}
+                                                        title="Delete Student"
+                                                        disabled={isDeleting}
+                                                      >
+                                                        <Trash2 className="h-4 w-4" />
+                                                      </Button>
                                                     )}
                                                 </div>
                                             </TableCell>
                                         </TableRow>
-                                    ))
+                                        )
+                                    })
                                 ) : (
                                     <TableRow>
-                                        <TableCell colSpan={6} className="py-12 text-center text-[var(--ds-text-tertiary,#8A978E)]">
+                                        <TableCell colSpan={5} className="py-12 text-center text-[var(--ds-text-tertiary,#8A978E)]">
                                             No active/approved students found. Check the "Forms" section for pending approvals.
                                         </TableCell>
                                     </TableRow>

@@ -84,7 +84,19 @@ const empty = {
   student_id_sample: '',
 }
 
-const Field = ({ label, htmlFor, hint, className, children }) => (
+const Field = ({
+  label,
+  htmlFor,
+  hint = undefined,
+  className = undefined,
+  children,
+}: {
+  label?: React.ReactNode
+  htmlFor?: string
+  hint?: React.ReactNode
+  className?: string
+  children: React.ReactNode
+}) => (
   <div className={cn('space-y-1.5', className)}>
     {label ? (
       <Label htmlFor={htmlFor} className="text-[var(--tenant-text)] text-[13px]">
@@ -157,7 +169,13 @@ const SectionBlock = ({ id, icon: Icon, title, children }) => (
   </section>
 )
 
-const InstitutionSettingsForm = ({ onUpdated, section: controlledSection }) => {
+const InstitutionSettingsForm = ({
+  onUpdated,
+  section: controlledSection = undefined,
+}: {
+  onUpdated?: (saved?: unknown) => void
+  section?: 'grading' | 'finance' | string
+}) => {
   const { institution, refreshUser } = useAuth()
   const { toast } = useToast()
   const [form, setForm] = useState(empty)

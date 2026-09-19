@@ -205,20 +205,20 @@ const GeneralRegistrationsList = () => {
     <div className="space-y-8">
         {/* Credentials Modal */}
         <Dialog open={!!createdCreds} onOpenChange={(open) => !open && setCreatedCreds(null)}>
-            <DialogContent className="bg-slate-900 border-slate-700 text-slate-100">
+            <DialogContent>
                 <DialogHeader>
-                    <DialogTitle className="text-green-400 flex items-center gap-2"><CheckCircle2 /> Approval Successful</DialogTitle>
+                    <DialogTitle className="flex items-center gap-2 text-[var(--ds-success,#059669)]"><CheckCircle2 /> Approval Successful</DialogTitle>
                 </DialogHeader>
                 <div className="space-y-4 py-4">
-                    <p className="text-sm text-slate-300">The student account has been created. Please share these credentials with the student:</p>
-                    <div className="bg-slate-950 p-4 rounded-md border border-slate-800 space-y-2 font-mono text-sm">
-                        <div className="flex justify-between"><span className="text-slate-500">Name:</span> <span className="text-white">{createdCreds?.name}</span></div>
-                        <div className="flex justify-between"><span className="text-slate-500">Email:</span> <span className="text-white">{createdCreds?.email}</span></div>
-                        <div className="flex justify-between"><span className="text-slate-500">Student ID:</span> <span className="text-yellow-400 font-bold">{createdCreds?.username}</span></div>
-                        <p className="text-xs text-slate-500 pt-1">First password is the Student ID. The student can change it after login.</p>
-                        <div className="flex justify-between"><span className="text-slate-500">First password (same as ID):</span> <span className="text-green-400 font-bold">{createdCreds?.password}</span></div>
+                    <p className="text-sm text-[var(--ds-text-secondary,#5B6B61)]">The student account has been created. Please share these credentials with the student:</p>
+                    <div className="space-y-2 rounded-md border border-[var(--ds-border,#DDE5DF)] bg-[var(--ds-surface-muted,#F7FAF8)] p-4 font-mono text-sm">
+                        <div className="flex justify-between"><span className="text-[var(--ds-text-tertiary,#8A978E)]">Name:</span> <span className="text-[var(--ds-text-primary,#122018)]">{createdCreds?.name}</span></div>
+                        <div className="flex justify-between"><span className="text-[var(--ds-text-tertiary,#8A978E)]">Email:</span> <span className="text-[var(--ds-text-primary,#122018)]">{createdCreds?.email}</span></div>
+                        <div className="flex justify-between"><span className="text-[var(--ds-text-tertiary,#8A978E)]">Student ID:</span> <span className="font-bold text-[var(--ds-warning,#C2410C)]">{createdCreds?.username}</span></div>
+                        <p className="pt-1 text-xs text-[var(--ds-text-tertiary,#8A978E)]">First password is the Student ID. The student can change it after login.</p>
+                        <div className="flex justify-between"><span className="text-[var(--ds-text-tertiary,#8A978E)]">First password (same as ID):</span> <span className="font-bold text-[var(--ds-success,#059669)]">{createdCreds?.password}</span></div>
                     </div>
-                    <p className="text-xs text-slate-500 italic">Usually the password is the same as the Student Code.</p>
+                    <p className="text-xs italic text-[var(--ds-text-tertiary,#8A978E)]">Usually the password is the same as the Student Code.</p>
                 </div>
                 <DialogFooter>
                     <Button onClick={() => setCreatedCreds(null)}>Close</Button>
@@ -228,15 +228,14 @@ const GeneralRegistrationsList = () => {
 
         {/* Rejection Modal */}
         <Dialog open={!!rejectDialog} onOpenChange={(open) => !open && setRejectDialog(null)}>
-            <DialogContent className="bg-slate-900 border-slate-700 text-slate-100">
+            <DialogContent>
                 <DialogHeader><DialogTitle>Reject Application</DialogTitle></DialogHeader>
                 <div className="py-4 space-y-2">
-                    <p className="text-sm text-slate-400">Reason for rejection (optional):</p>
+                    <p className="text-sm text-[var(--ds-text-secondary,#5B6B61)]">Reason for rejection (optional):</p>
                     <Textarea 
                         value={rejectReason} 
                         onChange={e => setRejectReason(e.target.value)} 
                         placeholder="e.g. Missing documents, Duplicate application..."
-                        className="bg-slate-950 border-slate-800"
                     />
                 </div>
                 <DialogFooter>
@@ -248,10 +247,10 @@ const GeneralRegistrationsList = () => {
 
         <div className="flex items-center justify-between gap-4">
             <div className="relative flex-1 max-w-md">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+                <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[var(--ds-text-tertiary,#8A978E)]" />
                 <Input 
                     placeholder="Search registrations..." 
-                    className="pl-9 bg-slate-900/50 border-slate-700" 
+                    className="pl-9" 
                     value={searchTerm}
                     onChange={e => {
                       setSearchTerm(e.target.value);
@@ -263,65 +262,65 @@ const GeneralRegistrationsList = () => {
         </div>
 
         {/* SECTION 1: APPROVED HISTORY (MOVED TO TOP AS REQUESTED) */}
-        <Card className="bg-slate-900/50 border-slate-800">
+        <Card>
             <CardHeader>
                 <div className="flex items-center justify-between">
                     <div>
-                        <CardTitle className="flex items-center gap-2 text-green-500">
+                        <CardTitle className="flex items-center gap-2 text-[var(--ds-success,#059669)]">
                             <UserCheck className="h-5 w-5" /> Approved Students History
                         </CardTitle>
                         <CardDescription>Students who have been successfully registered via online forms.</CardDescription>
                     </div>
-                    <Badge variant="outline" className="text-green-500 border-green-500/50">{approved.length} Total</Badge>
+                    <Badge variant="outline" className="border-[var(--ds-success,#059669)] text-[var(--ds-success,#059669)]">{approved.length} Total</Badge>
                 </div>
             </CardHeader>
             <CardContent>
                 <Table>
                     <TableHeader>
-                        <TableRow className="border-slate-800 hover:bg-slate-800/50">
-                            <TableHead className="text-slate-400">Student</TableHead>
-                            <TableHead className="text-slate-400">Program</TableHead>
-                            <TableHead className="text-slate-400">Affiliate</TableHead>
-                            <TableHead className="text-slate-400">Date</TableHead>
-                            <TableHead className="text-slate-400 text-right">Status</TableHead>
+                        <TableRow>
+                            <TableHead className="px-5 py-3 text-[11px] font-semibold uppercase tracking-wide text-[var(--ds-text-tertiary,#8A978E)]">Student</TableHead>
+                            <TableHead className="px-5 py-3 text-[11px] font-semibold uppercase tracking-wide text-[var(--ds-text-tertiary,#8A978E)]">Program</TableHead>
+                            <TableHead className="px-5 py-3 text-[11px] font-semibold uppercase tracking-wide text-[var(--ds-text-tertiary,#8A978E)]">Affiliate</TableHead>
+                            <TableHead className="px-5 py-3 text-[11px] font-semibold uppercase tracking-wide text-[var(--ds-text-tertiary,#8A978E)]">Date</TableHead>
+                            <TableHead className="px-5 py-3 text-right text-[11px] font-semibold uppercase tracking-wide text-[var(--ds-text-tertiary,#8A978E)]">Status</TableHead>
                         </TableRow>
                     </TableHeader>
                     <TableBody>
                         {currentApproved.length > 0 ? (
                             currentApproved.map(reg => (
-                                <TableRow key={reg.id} className="border-slate-800 hover:bg-slate-800/50">
-                                    <TableCell>
-                                        <div className="font-medium text-slate-200">{reg.student_name}</div>
-                                        <div className="text-xs text-slate-500">{reg.student_email}</div>
+                                <TableRow key={reg.id}>
+                                    <TableCell className="px-5">
+                                        <div className="font-medium text-[var(--ds-text-primary,#122018)]">{reg.student_name}</div>
+                                        <div className="text-xs text-[var(--ds-text-tertiary,#8A978E)]">{reg.student_email}</div>
                                     </TableCell>
-                                    <TableCell className="text-slate-300">
+                                    <TableCell className="px-5 text-[var(--ds-text-secondary,#5B6B61)]">
                                       {(() => {
                                         const program = resolveProgramLabel(reg);
                                         if (!program) {
-                                          return <span className="text-slate-500 italic">No program selected</span>;
+                                          return <span className="italic text-[var(--ds-text-tertiary,#8A978E)]">No program selected</span>;
                                         }
                                         return (
                                           <div>
-                                            <div className="font-medium">{program.name}</div>
+                                            <div className="font-medium text-[var(--ds-text-primary,#122018)]">{program.name}</div>
                                             {program.typeLabel ? (
-                                              <div className="text-[11px] text-slate-500">{program.typeLabel}</div>
+                                              <div className="text-[11px] text-[var(--ds-text-tertiary,#8A978E)]">{program.typeLabel}</div>
                                             ) : null}
                                           </div>
                                         );
                                       })()}
                                     </TableCell>
-                                    <TableCell className="text-purple-300 text-sm">
+                                    <TableCell className="px-5 text-sm text-[var(--ds-accent,#1F8A5B)]">
                                         {resolveAffiliateName(reg.affiliate_id) || '—'}
                                     </TableCell>
-                                    <TableCell className="text-slate-400 text-xs">{formatDate(reg.submitted_at)}</TableCell>
-                                    <TableCell className="text-right">
-                                        <Badge className="bg-green-500/20 text-green-400 border-0">Approved</Badge>
+                                    <TableCell className="px-5 text-xs text-[var(--ds-text-secondary,#5B6B61)]">{formatDate(reg.submitted_at)}</TableCell>
+                                    <TableCell className="px-5 text-right">
+                                        <Badge className="border-0 bg-[var(--ds-success-bg,#ECFDF5)] text-[var(--ds-success,#059669)]">Approved</Badge>
                                     </TableCell>
                                 </TableRow>
                             ))
                         ) : (
                             <TableRow>
-                                <TableCell colSpan={5} className="text-center py-8 text-slate-500">No approved registrations found.</TableCell>
+                                <TableCell colSpan={5} className="py-8 text-center text-[var(--ds-text-tertiary,#8A978E)]">No approved registrations found.</TableCell>
                             </TableRow>
                         )}
                     </TableBody>
@@ -333,7 +332,7 @@ const GeneralRegistrationsList = () => {
                         <Button variant="outline" size="sm" onClick={() => setApprovedPage(p => Math.max(1, p - 1))} disabled={safeApprovedPage === 1}>
                             <ChevronLeft className="h-4 w-4" />
                         </Button>
-                        <span className="text-xs text-slate-400">Page {safeApprovedPage} of {totalApprovedPages}</span>
+                        <span className="text-xs text-[var(--ds-text-secondary,#5B6B61)]">Page {safeApprovedPage} of {totalApprovedPages}</span>
                         <Button variant="outline" size="sm" onClick={() => setApprovedPage(p => Math.min(totalApprovedPages, p + 1))} disabled={safeApprovedPage === totalApprovedPages}>
                             <ChevronRight className="h-4 w-4" />
                         </Button>
@@ -343,70 +342,70 @@ const GeneralRegistrationsList = () => {
         </Card>
 
         {/* SECTION 2: PENDING REGISTRATIONS */}
-        <Card className="bg-slate-900/50 border-slate-800 border-l-4 border-l-orange-500">
+        <Card className="border-l-4 border-l-[var(--ds-warning,#C2410C)]">
             <CardHeader>
                 <div className="flex items-center justify-between">
                     <div>
-                        <CardTitle className="text-orange-400">Pending Applications</CardTitle>
+                        <CardTitle className="text-[var(--ds-warning,#C2410C)]">Pending Applications</CardTitle>
                         <CardDescription>New registrations waiting for review and approval.</CardDescription>
                     </div>
-                    <Badge className="bg-orange-500 text-white">{pending.length} Pending</Badge>
+                    <Badge className="bg-[var(--ds-warning,#C2410C)] text-[var(--ds-text-on-primary,#fff)]">{pending.length} Pending</Badge>
                 </div>
             </CardHeader>
             <CardContent>
                 <Table>
                     <TableHeader>
-                        <TableRow className="border-slate-800 hover:bg-slate-800/50">
-                            <TableHead className="text-slate-400">Applicant</TableHead>
-                            <TableHead className="text-slate-400">Details</TableHead>
-                            <TableHead className="text-slate-400">Program</TableHead>
-                            <TableHead className="text-slate-400">Affiliate</TableHead>
-                            <TableHead className="text-slate-400">Date</TableHead>
-                            <TableHead className="text-right text-slate-400">Actions</TableHead>
+                        <TableRow>
+                            <TableHead className="px-5 py-3 text-[11px] font-semibold uppercase tracking-wide text-[var(--ds-text-tertiary,#8A978E)]">Applicant</TableHead>
+                            <TableHead className="px-5 py-3 text-[11px] font-semibold uppercase tracking-wide text-[var(--ds-text-tertiary,#8A978E)]">Details</TableHead>
+                            <TableHead className="px-5 py-3 text-[11px] font-semibold uppercase tracking-wide text-[var(--ds-text-tertiary,#8A978E)]">Program</TableHead>
+                            <TableHead className="px-5 py-3 text-[11px] font-semibold uppercase tracking-wide text-[var(--ds-text-tertiary,#8A978E)]">Affiliate</TableHead>
+                            <TableHead className="px-5 py-3 text-[11px] font-semibold uppercase tracking-wide text-[var(--ds-text-tertiary,#8A978E)]">Date</TableHead>
+                            <TableHead className="px-5 py-3 text-right text-[11px] font-semibold uppercase tracking-wide text-[var(--ds-text-tertiary,#8A978E)]">Actions</TableHead>
                         </TableRow>
                     </TableHeader>
                     <TableBody>
                         {currentPending.length > 0 ? (
                             currentPending.map(reg => (
-                                <TableRow key={reg.id} className="border-slate-800 hover:bg-slate-800/50">
-                                    <TableCell>
-                                        <div className="font-medium text-slate-200">{reg.student_name}</div>
-                                        <div className="text-xs text-slate-500">{reg.student_email}</div>
-                                        <div className="text-xs text-slate-500">{reg.student_phone}</div>
+                                <TableRow key={reg.id}>
+                                    <TableCell className="px-5">
+                                        <div className="font-medium text-[var(--ds-text-primary,#122018)]">{reg.student_name}</div>
+                                        <div className="text-xs text-[var(--ds-text-tertiary,#8A978E)]">{reg.student_email}</div>
+                                        <div className="text-xs text-[var(--ds-text-tertiary,#8A978E)]">{reg.student_phone}</div>
                                     </TableCell>
-                                    <TableCell className="text-xs text-slate-400">
+                                    <TableCell className="px-5 text-xs text-[var(--ds-text-secondary,#5B6B61)]">
                                         <div>{reg.university}</div>
                                         <div>{reg.faculty}</div>
                                         <div>Year: {reg.year}</div>
                                     </TableCell>
-                                    <TableCell className="text-slate-300 font-medium">
+                                    <TableCell className="px-5 font-medium text-[var(--ds-text-primary,#122018)]">
                                       {(() => {
                                         const program = resolveProgramLabel(reg);
                                         if (!program) {
-                                          return <span className="text-slate-500 italic">No program selected</span>;
+                                          return <span className="italic text-[var(--ds-text-tertiary,#8A978E)]">No program selected</span>;
                                         }
                                         return (
                                           <div>
                                             <div>{program.name}</div>
                                             {program.typeLabel ? (
-                                              <div className="text-[11px] font-normal text-slate-500">{program.typeLabel}</div>
+                                              <div className="text-[11px] font-normal text-[var(--ds-text-tertiary,#8A978E)]">{program.typeLabel}</div>
                                             ) : null}
                                           </div>
                                         );
                                       })()}
                                     </TableCell>
-                                    <TableCell className="text-purple-300 text-sm">
+                                    <TableCell className="px-5 text-sm text-[var(--ds-accent,#1F8A5B)]">
                                         {resolveAffiliateName(reg.affiliate_id) || '—'}
                                     </TableCell>
-                                    <TableCell className="text-slate-400 text-xs">{formatDate(reg.submitted_at)}</TableCell>
-                                    <TableCell className="text-right">
+                                    <TableCell className="px-5 text-xs text-[var(--ds-text-secondary,#5B6B61)]">{formatDate(reg.submitted_at)}</TableCell>
+                                    <TableCell className="px-5 text-right">
                                         <div className="flex justify-end gap-2">
-                                            <Button size="sm" variant="ghost" className="text-red-400 hover:text-red-300 hover:bg-red-900/20" onClick={() => handleRejectClick(reg)}>
+                                            <Button size="sm" variant="ghost" className="text-[var(--ds-danger,#DC2626)] hover:bg-[var(--ds-danger-bg,#FEF2F2)] hover:text-[var(--ds-danger,#DC2626)]" onClick={() => handleRejectClick(reg)}>
                                                 <XCircle className="h-4 w-4 mr-1" /> Reject
                                             </Button>
                                             <Button 
                                                 size="sm" 
-                                                className="bg-green-600 hover:bg-green-700 text-white" 
+                                                className="bg-[var(--ds-success,#059669)] text-[var(--ds-text-on-primary,#fff)] hover:opacity-90" 
                                                 onClick={() => handleApprove(reg)}
                                                 disabled={loadingId === reg.id}
                                             >
@@ -419,9 +418,9 @@ const GeneralRegistrationsList = () => {
                             ))
                         ) : (
                             <TableRow>
-                                <TableCell colSpan={6} className="text-center py-12 text-slate-500">
+                                <TableCell colSpan={6} className="py-12 text-center text-[var(--ds-text-tertiary,#8A978E)]">
                                     <div className="flex flex-col items-center gap-2">
-                                        <CheckCircle2 className="h-8 w-8 text-slate-600" />
+                                        <CheckCircle2 className="h-8 w-8 opacity-40" />
                                         <span>No pending applications. You're all caught up!</span>
                                     </div>
                                 </TableCell>
@@ -433,7 +432,7 @@ const GeneralRegistrationsList = () => {
                 {/* Pending Pagination */}
                 {pending.length > ITEMS_PER_PAGE && (
                     <div className="flex items-center justify-between gap-2 mt-4">
-                        <span className="text-xs text-slate-500">
+                        <span className="text-xs text-[var(--ds-text-tertiary,#8A978E)]">
                             Showing {(safePendingPage - 1) * ITEMS_PER_PAGE + 1}–
                             {Math.min(safePendingPage * ITEMS_PER_PAGE, pending.length)} of {pending.length}
                         </span>
@@ -441,7 +440,7 @@ const GeneralRegistrationsList = () => {
                             <Button variant="outline" size="sm" onClick={() => setPendingPage(p => Math.max(1, p - 1))} disabled={safePendingPage === 1}>
                                 <ChevronLeft className="h-4 w-4" />
                             </Button>
-                            <span className="text-xs text-slate-400">Page {safePendingPage} of {totalPendingPages}</span>
+                            <span className="text-xs text-[var(--ds-text-secondary,#5B6B61)]">Page {safePendingPage} of {totalPendingPages}</span>
                             <Button variant="outline" size="sm" onClick={() => setPendingPage(p => Math.min(totalPendingPages, p + 1))} disabled={safePendingPage === totalPendingPages}>
                                 <ChevronRight className="h-4 w-4" />
                             </Button>
@@ -453,18 +452,24 @@ const GeneralRegistrationsList = () => {
 
         {/* SECTION 3: REJECTED HISTORY (Collapsed or at bottom) */}
         {rejected.length > 0 && (
-             <Card className="bg-slate-900/30 border-slate-800">
-                <CardHeader><CardTitle className="text-sm text-slate-500">Rejected Applications History</CardTitle></CardHeader>
+             <Card>
+                <CardHeader><CardTitle className="text-sm text-[var(--ds-text-tertiary,#8A978E)]">Rejected Applications History</CardTitle></CardHeader>
                 <CardContent>
                     <Table>
-                        <TableHeader><TableRow className="border-slate-800"><TableHead className="text-slate-500 h-8">Name</TableHead><TableHead className="text-slate-500 h-8">Reason</TableHead><TableHead className="text-right text-slate-500 h-8">Action</TableHead></TableRow></TableHeader>
+                        <TableHeader>
+                          <TableRow>
+                            <TableHead className="h-8 px-5 text-[11px] font-semibold uppercase tracking-wide text-[var(--ds-text-tertiary,#8A978E)]">Name</TableHead>
+                            <TableHead className="h-8 px-5 text-[11px] font-semibold uppercase tracking-wide text-[var(--ds-text-tertiary,#8A978E)]">Reason</TableHead>
+                            <TableHead className="h-8 px-5 text-right text-[11px] font-semibold uppercase tracking-wide text-[var(--ds-text-tertiary,#8A978E)]">Action</TableHead>
+                          </TableRow>
+                        </TableHeader>
                         <TableBody>
                             {rejected.slice(0, 5).map(reg => (
-                                <TableRow key={reg.id} className="border-slate-800 hover:bg-slate-800/30">
-                                    <TableCell className="text-slate-500 py-2">{reg.student_name}</TableCell>
-                                    <TableCell className="text-slate-500 py-2 text-xs italic">{reg.rejection_reason || 'No reason provided'}</TableCell>
-                                    <TableCell className="text-right py-2">
-                                        <Button variant="ghost" size="sm" className="h-6 text-red-900 hover:text-red-700" onClick={() => handleDelete(reg.id)}>Delete</Button>
+                                <TableRow key={reg.id}>
+                                    <TableCell className="px-5 py-2 text-[var(--ds-text-secondary,#5B6B61)]">{reg.student_name}</TableCell>
+                                    <TableCell className="px-5 py-2 text-xs italic text-[var(--ds-text-tertiary,#8A978E)]">{reg.rejection_reason || 'No reason provided'}</TableCell>
+                                    <TableCell className="px-5 py-2 text-right">
+                                        <Button variant="ghost" size="sm" className="h-6 text-[var(--ds-danger,#DC2626)] hover:bg-[var(--ds-danger-bg,#FEF2F2)]" onClick={() => handleDelete(reg.id)}>Delete</Button>
                                     </TableCell>
                                 </TableRow>
                             ))}

@@ -209,15 +209,15 @@ const AttendanceReport = () => {
 
     const getAttendanceStatusBadge = (rate) => {
         const numRate = parseFloat(rate);
-        if (numRate >= 80) return <Badge className="bg-green-900/50 text-green-400 border-green-700">Good ({rate}%)</Badge>;
-        if (numRate >= 60) return <Badge className="bg-yellow-900/50 text-yellow-400 border-yellow-700">Warning ({rate}%)</Badge>;
-        return <Badge className="bg-red-900/50 text-red-400 border-red-700">Poor ({rate}%)</Badge>;
+        if (numRate >= 80) return <Badge className="bg-emerald-50 text-emerald-800 border-emerald-200">Good ({rate}%)</Badge>;
+        if (numRate >= 60) return <Badge className="bg-[var(--ds-warning-bg,#FFF7ED)] text-[var(--ds-warning,#C2410C)] border-[var(--ds-warning,#C2410C)]/30">Warning ({rate}%)</Badge>;
+        return <Badge className="bg-red-50 text-red-800 border-red-200">Poor ({rate}%)</Badge>;
     };
 
     return (
         <div className="space-y-6">
             {/* Advanced Filtering */}
-            <Card className="bg-slate-900/50 border-slate-800">
+            <Card>
                 <CardHeader>
                     <CardTitle className="text-lg">Report Configuration</CardTitle>
                 </CardHeader>
@@ -225,17 +225,17 @@ const AttendanceReport = () => {
                     <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-4 items-end">
                         <div className="space-y-2">
                             <Label>Date Range (Start)</Label>
-                            <Input type="date" value={dateRange.start} onChange={e => setDateRange(prev => ({...prev, start: e.target.value}))} className="bg-slate-950 border-slate-700" />
+                            <Input type="date" value={dateRange.start} onChange={e => setDateRange(prev => ({...prev, start: e.target.value}))} />
                         </div>
                         <div className="space-y-2">
                             <Label>Date Range (End)</Label>
-                            <Input type="date" value={dateRange.end} onChange={e => setDateRange(prev => ({...prev, end: e.target.value}))} className="bg-slate-950 border-slate-700" />
+                            <Input type="date" value={dateRange.end} onChange={e => setDateRange(prev => ({...prev, end: e.target.value}))} />
                         </div>
                         <div className="space-y-2">
                             <Label>Filter by Class</Label>
                             <Select value={classFilter} onValueChange={setClassFilter}>
-                                <SelectTrigger className="bg-slate-950 border-slate-700"><SelectValue placeholder="All Classes" /></SelectTrigger>
-                                <SelectContent className="bg-slate-900 border-slate-800 text-white max-h-[300px]">
+                                <SelectTrigger><SelectValue placeholder="All Classes" /></SelectTrigger>
+                                <SelectContent className="max-h-[300px]">
                                     <SelectItem value="all">All Classes</SelectItem>
                                     {classes.map(c => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
                                 </SelectContent>
@@ -244,8 +244,8 @@ const AttendanceReport = () => {
                         <div className="space-y-2">
                             <Label>Filter by Instructor</Label>
                             <Select value={instructorFilter} onValueChange={setInstructorFilter}>
-                                <SelectTrigger className="bg-slate-950 border-slate-700"><SelectValue placeholder="All Instructors" /></SelectTrigger>
-                                <SelectContent className="bg-slate-900 border-slate-800 text-white">
+                                <SelectTrigger><SelectValue placeholder="All Instructors" /></SelectTrigger>
+                                <SelectContent>
                                     <SelectItem value="all">All Instructors</SelectItem>
                                     {instructors.map(i => <SelectItem key={i.id} value={i.id}>{i.name}</SelectItem>)}
                                 </SelectContent>
@@ -254,21 +254,21 @@ const AttendanceReport = () => {
                         <div className="space-y-2 col-span-1 md:col-span-2">
                             <Label>Search Student</Label>
                             <div className="relative">
-                                <Search className="absolute left-2 top-2.5 h-4 w-4 text-slate-500" />
+                                <Search className="absolute left-2 top-2.5 h-4 w-4 text-[var(--ds-text-tertiary,#8A978E)]" />
                                 <Input 
                                     placeholder="Search by student name..." 
-                                    className="pl-8 bg-slate-950 border-slate-700"
+                                    className="pl-8"
                                     value={studentSearch}
                                     onChange={e => setStudentSearch(e.target.value)}
                                 />
                             </div>
                         </div>
                          <div className="flex gap-2 col-span-1 md:col-span-2 justify-end">
-                            <Button onClick={exportPDF} variant="outline" className="w-full md:w-auto bg-slate-900 border-slate-700 text-white hover:bg-slate-800">
-                                <FileDown className="mr-2 h-4 w-4 text-red-400" /> Export PDF
+                            <Button onClick={exportPDF} variant="outline" className="w-full md:w-auto">
+                                <FileDown className="mr-2 h-4 w-4 text-red-600" /> Export PDF
                             </Button>
-                            <Button onClick={exportXLS} variant="outline" className="w-full md:w-auto bg-slate-900 border-slate-700 text-white hover:bg-slate-800">
-                                <FileSpreadsheet className="mr-2 h-4 w-4 text-green-400" /> Export XLS
+                            <Button onClick={exportXLS} variant="outline" className="w-full md:w-auto">
+                                <FileSpreadsheet className="mr-2 h-4 w-4 text-[var(--ds-accent,#1F8A5B)]" /> Export XLS
                             </Button>
                         </div>
                     </div>
@@ -277,35 +277,35 @@ const AttendanceReport = () => {
 
             {/* KPI Summary */}
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                <Card className="bg-slate-900/50 border-slate-800">
+                <Card>
                     <CardContent className="pt-6">
-                        <div className="text-3xl font-bold text-white">{kpi.total}</div>
-                        <div className="text-xs text-slate-400 uppercase tracking-wider mt-1">Total Logs</div>
+                        <div className="text-3xl font-bold text-[var(--ds-text-primary,#122018)]">{kpi.total}</div>
+                        <div className="text-xs text-[var(--ds-text-secondary,#5B6B61)] uppercase tracking-wider mt-1">Total Logs</div>
                     </CardContent>
                 </Card>
-                <Card className="bg-green-950/20 border-green-900/30">
+                <Card className="bg-emerald-50/80 border-emerald-200">
                     <CardContent className="pt-6">
-                        <div className="text-3xl font-bold text-green-400">{kpi.present}</div>
-                        <div className="text-xs text-green-400/60 uppercase tracking-wider mt-1">Total Present</div>
+                        <div className="text-3xl font-bold text-emerald-700">{kpi.present}</div>
+                        <div className="text-xs text-emerald-700/80 uppercase tracking-wider mt-1">Total Present</div>
                     </CardContent>
                 </Card>
-                <Card className="bg-red-950/20 border-red-900/30">
+                <Card className="bg-red-50/80 border-red-200">
                     <CardContent className="pt-6">
-                        <div className="text-3xl font-bold text-red-400">{kpi.absent}</div>
-                        <div className="text-xs text-red-400/60 uppercase tracking-wider mt-1">Total Absent</div>
+                        <div className="text-3xl font-bold text-red-700">{kpi.absent}</div>
+                        <div className="text-xs text-red-700/80 uppercase tracking-wider mt-1">Total Absent</div>
                     </CardContent>
                 </Card>
-                 <Card className="bg-blue-950/20 border-blue-900/30">
+                 <Card className="bg-[var(--ds-info-bg,#EFF6FF)] border-[var(--ds-info,#2563EB)]/20">
                     <CardContent className="pt-6">
-                        <div className="text-3xl font-bold text-blue-400">{kpi.rate}%</div>
-                        <div className="text-xs text-blue-400/60 uppercase tracking-wider mt-1">Avg. Attendance Rate</div>
+                        <div className="text-3xl font-bold text-[var(--ds-info,#2563EB)]">{kpi.rate}%</div>
+                        <div className="text-xs text-[var(--ds-text-secondary,#5B6B61)] uppercase tracking-wider mt-1">Avg. Attendance Rate</div>
                     </CardContent>
                 </Card>
             </div>
 
             {/* Charts & Table */}
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                <Card className="lg:col-span-3 xl:col-span-1 bg-slate-900/50 border-slate-800">
+                <Card className="lg:col-span-3 xl:col-span-1">
                     <CardHeader>
                         <CardTitle>Daily Trends</CardTitle>
                     </CardHeader>
@@ -326,42 +326,42 @@ const AttendanceReport = () => {
                     </CardContent>
                 </Card>
 
-                <Card className="lg:col-span-3 xl:col-span-2 bg-slate-900/50 border-slate-800">
+                <Card className="lg:col-span-3 xl:col-span-2">
                     <CardHeader>
                         <CardTitle>Aggregated Student Attendance</CardTitle>
                         <CardDescription>Summary of attendance performance by student.</CardDescription>
                     </CardHeader>
                     <CardContent>
-                        <div className="max-h-[300px] overflow-y-auto rounded-md border border-slate-800">
+                        <div className="max-h-[300px] overflow-y-auto rounded-md border border-[var(--ds-border,#DDE5DF)]">
                             <Table>
-                                <TableHeader className="bg-slate-950 sticky top-0 z-10">
-                                    <TableRow className="border-slate-800 hover:bg-transparent">
-                                        <TableHead className="text-slate-300">Student Name</TableHead>
-                                        <TableHead className="text-center text-slate-300">Total Classes</TableHead>
-                                        <TableHead className="text-center text-slate-300 text-green-400">Present</TableHead>
-                                        <TableHead className="text-center text-slate-300 text-red-400">Absent</TableHead>
-                                        <TableHead className="text-center text-slate-300 text-blue-400">Excused</TableHead>
-                                        <TableHead className="text-right text-slate-300">Attendance Rate</TableHead>
+                                <TableHeader className="bg-[var(--ds-surface-muted,#F7FAF8)] sticky top-0 z-10">
+                                    <TableRow className="border-[var(--ds-border,#DDE5DF)] hover:bg-[var(--ds-surface-muted,#F7FAF8)]">
+                                        <TableHead className="text-[11px] font-semibold uppercase tracking-wide text-[var(--ds-text-tertiary,#8A978E)]">Student Name</TableHead>
+                                        <TableHead className="text-center text-[11px] font-semibold uppercase tracking-wide text-[var(--ds-text-tertiary,#8A978E)]">Total Classes</TableHead>
+                                        <TableHead className="text-center text-[11px] font-semibold uppercase tracking-wide text-emerald-700">Present</TableHead>
+                                        <TableHead className="text-center text-[11px] font-semibold uppercase tracking-wide text-red-700">Absent</TableHead>
+                                        <TableHead className="text-center text-[11px] font-semibold uppercase tracking-wide text-[var(--ds-info,#2563EB)]">Excused</TableHead>
+                                        <TableHead className="text-right text-[11px] font-semibold uppercase tracking-wide text-[var(--ds-text-tertiary,#8A978E)]">Attendance Rate</TableHead>
                                     </TableRow>
                                 </TableHeader>
                                 <TableBody>
                                     {aggregatedStudentData.length > 0 ? aggregatedStudentData.map((stat) => (
-                                        <TableRow key={stat.id} className="border-slate-800 hover:bg-slate-800/30">
-                                            <TableCell className="text-slate-200 font-medium">
+                                        <TableRow key={stat.id} className="border-[var(--ds-border,#DDE5DF)] hover:bg-[var(--ds-surface-muted,#F7FAF8)]">
+                                            <TableCell className="text-[var(--ds-text-primary,#122018)] font-medium">
                                                 {stat.name}
-                                                <div className="text-xs text-slate-500">{stat.code}</div>
+                                                <div className="text-xs text-[var(--ds-text-tertiary,#8A978E)]">{stat.code}</div>
                                             </TableCell>
-                                            <TableCell className="text-center text-slate-300">{stat.totalClasses}</TableCell>
-                                            <TableCell className="text-center text-green-400 font-mono">{stat.present + stat.late}</TableCell>
-                                            <TableCell className="text-center text-red-400 font-mono">{stat.absent}</TableCell>
-                                            <TableCell className="text-center text-blue-400 font-mono">{stat.excused}</TableCell>
+                                            <TableCell className="text-center text-[var(--ds-text-secondary,#5B6B61)]">{stat.totalClasses}</TableCell>
+                                            <TableCell className="text-center text-emerald-700 font-mono">{stat.present + stat.late}</TableCell>
+                                            <TableCell className="text-center text-red-700 font-mono">{stat.absent}</TableCell>
+                                            <TableCell className="text-center text-[var(--ds-info,#2563EB)] font-mono">{stat.excused}</TableCell>
                                             <TableCell className="text-right">
                                                 {getAttendanceStatusBadge(stat.attendanceRate)}
                                             </TableCell>
                                         </TableRow>
                                     )) : (
                                         <TableRow>
-                                            <TableCell colSpan={6} className="text-center py-8 text-slate-500">
+                                            <TableCell colSpan={6} className="text-center py-8 text-[var(--ds-text-tertiary,#8A978E)]">
                                                 No records match the current filters.
                                             </TableCell>
                                         </TableRow>

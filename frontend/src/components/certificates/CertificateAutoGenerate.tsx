@@ -113,7 +113,7 @@ function CertificateThumb({ data }: { data: CertificateRenderData }) {
   const scale = destW / srcW;
   return (
     <div
-      className="relative overflow-hidden rounded border border-slate-700 bg-white shadow-sm"
+      className="relative overflow-hidden rounded border border-[var(--ds-border,#DDE5DF)] bg-white shadow-sm"
       style={{ width: destW, height: srcH * scale }}
     >
       <div
@@ -366,21 +366,21 @@ const CertificateAutoGenerate = ({ onGenerationComplete }) => {
 
   return (
     <>
-      <Card className="bg-gradient-to-br from-blue-900/20 to-purple-900/20 border-blue-800/50">
+      <Card>
         <CardHeader>
-          <CardTitle className="flex items-center gap-2 text-white">
-            <Wand2 className="h-5 w-5 text-blue-400" />
+          <CardTitle className="flex items-center gap-2">
+            <Wand2 className="h-5 w-5 text-[var(--ds-primary,#1F8A5B)]" />
             Certificate Generation
           </CardTitle>
-          <CardDescription className="text-slate-300">
+          <CardDescription>
             Generate certificates for enrollments with complete grades/exams (60+).
             No wait for class end date or payment clearance.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
-          <Alert className="bg-blue-950/30 border-blue-800/50">
-            <Info className="h-4 w-4 text-blue-400" />
-            <AlertDescription className="text-slate-300">
+          <Alert className="border-[var(--ds-info,#2563EB)]/20 bg-[var(--ds-info-bg,#EFF6FF)]">
+            <Info className="h-4 w-4 text-[var(--ds-info,#2563EB)]" />
+            <AlertDescription className="text-[var(--ds-text-secondary,#5B6B61)]">
               Certificates can be issued as soon as required grades are complete (60+ on gradebook courses)
               and a certificate has not already been issued. Activate a template under Institution Settings → Certificate Management first.
             </AlertDescription>
@@ -392,7 +392,6 @@ const CertificateAutoGenerate = ({ onGenerationComplete }) => {
               size="sm"
               variant={mode === 'all' ? 'default' : 'outline'}
               onClick={() => setMode('all')}
-              className={mode !== 'all' ? 'border-slate-700' : ''}
             >
               All eligible enrollments
             </Button>
@@ -401,7 +400,6 @@ const CertificateAutoGenerate = ({ onGenerationComplete }) => {
               size="sm"
               variant={mode === 'selected' ? 'default' : 'outline'}
               onClick={() => setMode('selected')}
-              className={mode !== 'selected' ? 'border-slate-700' : ''}
             >
               Select students
             </Button>
@@ -412,7 +410,7 @@ const CertificateAutoGenerate = ({ onGenerationComplete }) => {
               value={selectedStudent || 'all'}
               onValueChange={(v) => setSelectedStudent(v === 'all' ? '' : v)}
             >
-              <SelectTrigger className="bg-slate-900 border-slate-700 text-white">
+              <SelectTrigger>
                 <SelectValue placeholder="All students" />
               </SelectTrigger>
               <SelectContent>
@@ -425,7 +423,7 @@ const CertificateAutoGenerate = ({ onGenerationComplete }) => {
               </SelectContent>
             </Select>
             <Select value={selectedClass} onValueChange={setSelectedClass}>
-              <SelectTrigger className="bg-slate-900 border-slate-700 text-white">
+              <SelectTrigger>
                 <SelectValue placeholder="All classes" />
               </SelectTrigger>
               <SelectContent>
@@ -440,15 +438,15 @@ const CertificateAutoGenerate = ({ onGenerationComplete }) => {
           </div>
 
           <div className="space-y-1.5">
-            <Label className="text-sm text-slate-300 flex items-center gap-1.5">
-              <Layout className="h-3.5 w-3.5 text-purple-400" />
+            <Label className="flex items-center gap-1.5 text-sm text-[var(--ds-text-secondary,#5B6B61)]">
+              <Layout className="h-3.5 w-3.5 text-[var(--ds-primary,#1F8A5B)]" />
               Certificate template
             </Label>
             <DropdownMenu open={templateMenuOpen} onOpenChange={handleTemplateMenuOpenChange}>
               <DropdownMenuTrigger asChild>
                 <button
                   type="button"
-                  className="flex h-10 w-full items-center justify-between rounded-md border border-slate-700 bg-slate-900 px-3 py-2 text-sm text-white ring-offset-background focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
+                  className="flex h-10 w-full items-center justify-between rounded-md border border-[var(--ds-border,#DDE5DF)] bg-[var(--ds-surface,#fff)] px-3 py-2 text-sm text-[var(--ds-text-primary,#122018)] ring-offset-background focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
                 >
                   <span className="truncate">{previewLayoutLabel(selectedTemplate)}</span>
                   <ChevronDown className="h-4 w-4 shrink-0 opacity-50" />
@@ -459,10 +457,10 @@ const CertificateAutoGenerate = ({ onGenerationComplete }) => {
                 side="bottom"
                 sideOffset={6}
                 collisionPadding={12}
-                className="w-[min(36rem,calc(100vw-2rem))] p-0 bg-slate-950 border-slate-700 text-white"
+                className="w-[min(36rem,calc(100vw-2rem))] border-[var(--ds-border,#DDE5DF)] bg-[var(--ds-surface,#fff)] p-0 text-[var(--ds-text-primary,#122018)]"
               >
                 <div className="grid sm:grid-cols-[13rem_1fr]">
-                  <div className="max-h-72 overflow-y-auto p-1 border-b sm:border-b-0 sm:border-r border-slate-800">
+                  <div className="max-h-72 overflow-y-auto border-b p-1 sm:border-b-0 sm:border-r border-[var(--ds-border,#DDE5DF)]">
                     {TEMPLATE_OPTIONS.map((opt) => {
                       const selected = selectedTemplate === opt.value;
                       const hovered = hoveredTemplate === opt.value;
@@ -474,19 +472,21 @@ const CertificateAutoGenerate = ({ onGenerationComplete }) => {
                           onClick={() => handleSelectTemplate(opt.value)}
                           className={cn(
                             'flex w-full items-center gap-2 rounded-sm px-2 py-1.5 text-left text-sm outline-none transition',
-                            hovered ? 'bg-slate-800 text-white' : 'text-slate-200',
+                            hovered
+                              ? 'bg-[var(--ds-surface-muted,#F7FAF8)] text-[var(--ds-text-primary,#122018)]'
+                              : 'text-[var(--ds-text-secondary,#5B6B61)]',
                           )}
                         >
                           <span className="flex h-4 w-4 shrink-0 items-center justify-center">
-                            {selected ? <Check className="h-4 w-4 text-emerald-400" /> : null}
+                            {selected ? <Check className="h-4 w-4 text-[var(--ds-accent,#1F8A5B)]" /> : null}
                           </span>
                           <span className="truncate">{opt.label}</span>
                         </button>
                       );
                     })}
                   </div>
-                  <div className="p-3 bg-slate-900/80">
-                    <p className="text-xs text-slate-400 mb-2 truncate">
+                  <div className="bg-[var(--ds-surface-muted,#F7FAF8)] p-3">
+                    <p className="mb-2 truncate text-xs text-[var(--ds-text-secondary,#5B6B61)]">
                       {previewLayoutLabel(hoveredTemplate)}
                     </p>
                     <div className="flex justify-center">
@@ -497,25 +497,25 @@ const CertificateAutoGenerate = ({ onGenerationComplete }) => {
               </DropdownMenuContent>
             </DropdownMenu>
             {selectedTemplate !== 'institution_default' && (
-              <p className="text-xs text-purple-300/80">
+              <p className="text-xs text-[var(--ds-text-tertiary,#8A978E)]">
                 This template applies to this generation batch only.
               </p>
             )}
           </div>
 
           {mode === 'selected' && (
-            <div className="space-y-3 rounded-lg border border-slate-800 bg-slate-950/60 p-3">
+            <div className="space-y-3 rounded-lg border border-[var(--ds-border,#DDE5DF)] bg-[var(--ds-surface-muted,#F7FAF8)] p-3">
               <div className="relative">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+                <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[var(--ds-text-tertiary,#8A978E)]" />
                 <Input
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
                   placeholder="Search student or class…"
-                  className="pl-9 bg-slate-900 border-slate-700 text-white"
+                  className="pl-9"
                 />
               </div>
 
-              <div className="flex items-center justify-between text-xs text-slate-400">
+              <div className="flex items-center justify-between text-xs text-[var(--ds-text-secondary,#5B6B61)]">
                 <span>
                   {loadingMeta
                     ? 'Loading enrollments…'
@@ -526,9 +526,9 @@ const CertificateAutoGenerate = ({ onGenerationComplete }) => {
                 </Button>
               </div>
 
-              <div className="max-h-48 overflow-y-auto rounded border border-slate-800 divide-y divide-slate-800">
+              <div className="max-h-48 divide-y divide-[var(--ds-border,#DDE5DF)] overflow-y-auto rounded border border-[var(--ds-border,#DDE5DF)]">
                 {eligibleEnrollments.length === 0 ? (
-                  <p className="text-sm text-slate-500 p-3 text-center">
+                  <p className="p-3 text-center text-sm text-[var(--ds-text-tertiary,#8A978E)]">
                     No eligible enrollments match your filters.
                   </p>
                 ) : (
@@ -539,13 +539,13 @@ const CertificateAutoGenerate = ({ onGenerationComplete }) => {
                     return (
                       <label
                         key={row.enrollment_id}
-                        className="flex items-center gap-3 p-2 text-sm text-slate-200 cursor-pointer hover:bg-slate-900/80"
+                        className="flex cursor-pointer items-center gap-3 p-2 text-sm text-[var(--ds-text-primary,#122018)] hover:bg-[var(--ds-surface,#fff)]"
                       >
                         <input
                           type="checkbox"
                           checked={checked}
                           onChange={() => toggleEnrollment(row.enrollment_id)}
-                          className="rounded border-slate-600"
+                          className="rounded border-[var(--ds-border,#DDE5DF)]"
                         />
                         <span className="flex-1 truncate">
                           {student?.name || 'Student'} — {cls?.name || 'Class'}
@@ -557,7 +557,7 @@ const CertificateAutoGenerate = ({ onGenerationComplete }) => {
               </div>
 
               {ineligibleCount > 0 && (
-                <p className="text-xs text-slate-500">
+                <p className="text-xs text-[var(--ds-text-tertiary,#8A978E)]">
                   {ineligibleCount} enrollment(s) are hidden because they fail eligibility
                   {eligibilityRows
                     .filter((r) => r?.eligible !== true)
@@ -574,7 +574,7 @@ const CertificateAutoGenerate = ({ onGenerationComplete }) => {
           )}
 
           {mode === 'all' && (
-            <p className="text-sm text-slate-400">
+            <p className="text-sm text-[var(--ds-text-secondary,#5B6B61)]">
               {loadingMeta
                 ? 'Checking eligibility…'
                 : `${eligibleEnrollments.length} eligible enrollment(s) ready · ${ineligibleCount} not ready`}
@@ -585,7 +585,7 @@ const CertificateAutoGenerate = ({ onGenerationComplete }) => {
             type="button"
             onClick={() => setShowConfirmDialog(true)}
             disabled={generating || loadingMeta || (mode === 'selected' && !selectedEnrollmentIds.length) || (mode === 'all' && !eligibleEnrollments.length)}
-            className="w-full bg-blue-600 hover:bg-blue-700"
+            className="w-full"
           >
             {generating ? (
               <>
@@ -604,16 +604,16 @@ const CertificateAutoGenerate = ({ onGenerationComplete }) => {
             <Alert
               className={
                 result.success
-                  ? 'bg-emerald-950/30 border-emerald-800/50'
-                  : 'bg-red-950/30 border-red-800/50'
+                  ? 'border-[var(--ds-success,#059669)]/20 bg-[var(--ds-success-bg,#ECFDF5)]'
+                  : 'border-[var(--ds-danger,#DC2626)]/20 bg-[var(--ds-danger-bg,#FEF2F2)]'
               }
             >
               {result.success ? (
-                <CheckCircle className="h-4 w-4 text-emerald-400" />
+                <CheckCircle className="h-4 w-4 text-[var(--ds-success,#059669)]" />
               ) : (
-                <AlertCircle className="h-4 w-4 text-red-400" />
+                <AlertCircle className="h-4 w-4 text-[var(--ds-danger,#DC2626)]" />
               )}
-              <AlertDescription className="text-slate-200">
+              <AlertDescription className="text-[var(--ds-text-primary,#122018)]">
                 {result.success
                   ? `Created ${result.total_created}. Skipped ${result.total_skipped}${
                       result.total_ineligible
@@ -628,10 +628,10 @@ const CertificateAutoGenerate = ({ onGenerationComplete }) => {
       </Card>
 
       <Dialog open={showConfirmDialog} onOpenChange={setShowConfirmDialog}>
-        <DialogContent className="bg-slate-950 border-slate-800 text-white">
+        <DialogContent>
           <DialogHeader>
             <DialogTitle>Confirm certificate generation</DialogTitle>
-            <DialogDescription className="text-slate-400">
+            <DialogDescription>
               {mode === 'selected'
                 ? `Issue certificates for ${selectedEnrollmentIds.length} selected enrollment(s)?`
                 : `Issue certificates for all ${eligibleEnrollments.length} eligible enrollment(s)?`}
@@ -641,7 +641,7 @@ const CertificateAutoGenerate = ({ onGenerationComplete }) => {
             <Button variant="outline" onClick={() => setShowConfirmDialog(false)}>
               Cancel
             </Button>
-            <Button onClick={handleGenerate} className="bg-blue-600 hover:bg-blue-700">
+            <Button onClick={handleGenerate}>
               Confirm
             </Button>
           </DialogFooter>

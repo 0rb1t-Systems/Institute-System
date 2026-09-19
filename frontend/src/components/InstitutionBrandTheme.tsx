@@ -7,7 +7,7 @@ import { applyInstitutionBrandCss, clearInstitutionBrandCss } from '@/lib/logoBr
 /**
  * Pushes the tenant's saved brand colors onto CSS variables so the app shell
  * (buttons, rings, nav accents) and branded surfaces stay consistent.
- * Light mode UI chrome uses Amanah design-system.pen greens via applyInstitutionBrandCss.
+ * Light and dark tenant chrome use Amanah design-system.pen greens via applyInstitutionBrandCss.
  */
 export default function InstitutionBrandTheme() {
   const { user, institution } = useAuth()

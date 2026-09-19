@@ -3962,6 +3962,10 @@ export const setRegistrationFormPrograms = async ({
   isRestricted,
   programs = [],
   affiliateId = null,
+}: {
+  isRestricted?: boolean
+  programs?: Array<{ program_type?: string; program_id?: string }>
+  affiliateId?: string | null
 } = {}) => {
   const list = (Array.isArray(programs) ? programs : [])
     .map((p) => ({

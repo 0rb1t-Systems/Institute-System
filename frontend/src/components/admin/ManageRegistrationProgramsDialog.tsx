@@ -34,8 +34,14 @@ const ManageRegistrationProgramsDialog = ({
   open,
   onOpenChange,
   affiliateId = null,
-  title,
-  description,
+  title = undefined,
+  description = undefined,
+}: {
+  open: boolean
+  onOpenChange: (open: boolean) => void
+  affiliateId?: string | null
+  title?: string
+  description?: string
 }) => {
   const { toast } = useToast();
   const [loading, setLoading] = useState(false);
@@ -43,7 +49,7 @@ const ManageRegistrationProgramsDialog = ({
   const [courses, setCourses] = useState([]);
   const [diplomas, setDiplomas] = useState([]);
   const [isRestricted, setIsRestricted] = useState(false);
-  const [selected, setSelected] = useState(() => new Set());
+  const [selected, setSelected] = useState<Set<string>>(() => new Set());
   const [search, setSearch] = useState('');
 
   const dialogTitle = title || (affiliateId ? 'Manage Affiliate Programs' : 'Manage Programs');
@@ -70,7 +76,7 @@ const ManageRegistrationProgramsDialog = ({
         setCourses(courseRows || []);
         setDiplomas(diplomaRows || []);
         setIsRestricted(Boolean(config?.is_restricted));
-        const next = new Set();
+        const next = new Set<string>();
         for (const p of config?.programs || []) {
           if (p?.program_type && p?.program_id) {
             next.add(programKey(p.program_type, p.program_id));
@@ -172,24 +178,24 @@ const ManageRegistrationProgramsDialog = ({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-lg bg-slate-950 border-slate-800 text-slate-100">
+      <DialogContent className="sm:max-w-lg">
         <DialogHeader>
           <DialogTitle>{dialogTitle}</DialogTitle>
-          <DialogDescription className="text-slate-400">{dialogDescription}</DialogDescription>
+          <DialogDescription>{dialogDescription}</DialogDescription>
         </DialogHeader>
 
         {loading ? (
-          <div className="flex items-center justify-center py-12 text-slate-400">
+          <div className="flex items-center justify-center py-12 text-[var(--ds-text-secondary,#5B6B61)]">
             <Loader2 className="h-5 w-5 animate-spin mr-2" /> Loading programs…
           </div>
         ) : (
           <div className="space-y-4">
-            <div className="flex items-center justify-between gap-4 rounded-lg border border-slate-800 bg-slate-900/60 px-3 py-3">
+            <div className="flex items-center justify-between gap-4 rounded-lg border border-[var(--ds-border,#DDE5DF)] bg-[var(--ds-surface-muted,#F7FAF8)] px-3 py-3">
               <div className="space-y-0.5">
-                <Label htmlFor="restrict-programs" className="text-slate-200">
+                <Label htmlFor="restrict-programs">
                   Limit Preferred Class options
                 </Label>
-                <p className="text-xs text-slate-500">
+                <p className="text-xs text-[var(--ds-text-tertiary,#8A978E)]">
                   When on, only checked programs appear in the student dropdown.
                 </p>
               </div>
@@ -203,17 +209,17 @@ const ManageRegistrationProgramsDialog = ({
             {isRestricted ? (
               <>
                 <div className="relative">
-                  <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500" />
+                  <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[var(--ds-text-tertiary,#8A978E)]" />
                   <Input
                     value={search}
                     onChange={(e) => setSearch(e.target.value)}
                     placeholder="Search programs…"
-                    className="pl-9 bg-slate-950 border-slate-700 text-slate-100"
+                    className="pl-9"
                   />
                 </div>
 
                 <div className="flex items-center justify-between gap-2">
-                  <p className="text-xs text-slate-500">{selectedCount} selected</p>
+                  <p className="text-xs text-[var(--ds-text-tertiary,#8A978E)]">{selectedCount} selected</p>
                   <div className="flex gap-2">
                     <Button type="button" variant="ghost" size="sm" onClick={selectAllVisible}>
                       Select all
@@ -224,18 +230,18 @@ const ManageRegistrationProgramsDialog = ({
                   </div>
                 </div>
 
-                <ScrollArea className="h-[320px] rounded-md border border-slate-800">
+                <ScrollArea className="h-[320px] rounded-md border border-[var(--ds-border,#DDE5DF)]">
                   <div className="p-3 space-y-5">
                     <div className="space-y-2">
-                      <div className="flex items-center gap-2 text-sm font-medium text-slate-200">
-                        <GraduationCap className="h-4 w-4 text-indigo-400" />
+                      <div className="flex items-center gap-2 text-sm font-medium text-[var(--ds-text-primary,#122018)]">
+                        <GraduationCap className="h-4 w-4 text-[var(--ds-accent,#1F8A5B)]" />
                         Diplomas
-                        <Badge variant="outline" className="border-slate-700 text-slate-400">
+                        <Badge variant="outline" className="text-[var(--ds-text-secondary,#5B6B61)]">
                           {diplomaList.length}
                         </Badge>
                       </div>
                       {diplomaList.length === 0 ? (
-                        <p className="text-xs text-slate-500 pl-6">
+                        <p className="pl-6 text-xs text-[var(--ds-text-tertiary,#8A978E)]">
                           {query ? 'No diplomas match your search.' : 'No diplomas in this institution.'}
                         </p>
                       ) : (
@@ -244,7 +250,7 @@ const ManageRegistrationProgramsDialog = ({
                             const key = programKey('diploma', d.id);
                             const checked = selected.has(key);
                             return (
-                              <li key={d.id} className="flex items-start gap-3 rounded-md px-2 py-1.5 hover:bg-slate-900">
+                              <li key={d.id} className="flex items-start gap-3 rounded-md px-2 py-1.5 hover:bg-[var(--ds-surface-muted,#F7FAF8)]">
                                 <Checkbox
                                   id={`diploma-${d.id}`}
                                   checked={checked}
@@ -253,7 +259,7 @@ const ManageRegistrationProgramsDialog = ({
                                 />
                                 <Label
                                   htmlFor={`diploma-${d.id}`}
-                                  className="cursor-pointer text-sm text-slate-200 font-normal leading-snug"
+                                  className="cursor-pointer text-sm font-normal leading-snug"
                                 >
                                   {d.name}
                                 </Label>
@@ -265,15 +271,15 @@ const ManageRegistrationProgramsDialog = ({
                     </div>
 
                     <div className="space-y-2">
-                      <div className="flex items-center gap-2 text-sm font-medium text-slate-200">
-                        <BookOpen className="h-4 w-4 text-emerald-400" />
+                      <div className="flex items-center gap-2 text-sm font-medium text-[var(--ds-text-primary,#122018)]">
+                        <BookOpen className="h-4 w-4 text-[var(--ds-accent,#1F8A5B)]" />
                         Courses
-                        <Badge variant="outline" className="border-slate-700 text-slate-400">
+                        <Badge variant="outline" className="text-[var(--ds-text-secondary,#5B6B61)]">
                           {courseList.length}
                         </Badge>
                       </div>
                       {courseList.length === 0 ? (
-                        <p className="text-xs text-slate-500 pl-6">
+                        <p className="pl-6 text-xs text-[var(--ds-text-tertiary,#8A978E)]">
                           {query ? 'No courses match your search.' : 'No courses in this institution.'}
                         </p>
                       ) : (
@@ -282,7 +288,7 @@ const ManageRegistrationProgramsDialog = ({
                             const key = programKey('course', c.id);
                             const checked = selected.has(key);
                             return (
-                              <li key={c.id} className="flex items-start gap-3 rounded-md px-2 py-1.5 hover:bg-slate-900">
+                              <li key={c.id} className="flex items-start gap-3 rounded-md px-2 py-1.5 hover:bg-[var(--ds-surface-muted,#F7FAF8)]">
                                 <Checkbox
                                   id={`course-${c.id}`}
                                   checked={checked}
@@ -291,11 +297,11 @@ const ManageRegistrationProgramsDialog = ({
                                 />
                                 <Label
                                   htmlFor={`course-${c.id}`}
-                                  className="cursor-pointer text-sm text-slate-200 font-normal leading-snug"
+                                  className="cursor-pointer text-sm font-normal leading-snug"
                                 >
                                   {c.name}
                                   {c.code ? (
-                                    <span className="ml-2 text-xs text-slate-500 font-mono">{c.code}</span>
+                                    <span className="ml-2 font-mono text-xs text-[var(--ds-text-tertiary,#8A978E)]">{c.code}</span>
                                   ) : null}
                                 </Label>
                               </li>
@@ -308,7 +314,7 @@ const ManageRegistrationProgramsDialog = ({
                 </ScrollArea>
               </>
             ) : (
-              <p className="text-sm text-slate-400 rounded-lg border border-dashed border-slate-800 px-3 py-4">
+              <p className="rounded-lg border border-dashed border-[var(--ds-border,#DDE5DF)] px-3 py-4 text-sm text-[var(--ds-text-secondary,#5B6B61)]">
                 Restriction is off. Students see every active class for this institution.
                 Turn it on, check the programs you want, then save.
               </p>

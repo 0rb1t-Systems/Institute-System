@@ -286,12 +286,13 @@ export function applyInstitutionBrandCss(
   if (tertiary) root.style.setProperty('--brand-tertiary', tertiary)
   else root.style.removeProperty('--brand-tertiary')
 
-  // Light mode UI chrome follows Amanah / design-system.pen (not institution logo colors).
+  // Tenant UI chrome follows Amanah / design-system.pen (not institution logo colors).
   // Institution brand remains on --brand-* for logo and marketing accents.
-  const isLight = root.getAttribute('data-platform-theme') === 'light'
-  if (isLight) {
-    const dsPrimary = '#1F8A5B'
-    const dsRing = '#1F8A5B'
+  const theme = root.getAttribute('data-platform-theme')
+  const isLight = theme === 'light'
+  const dsPrimary = isLight ? '#1F8A5B' : '#34B87A'
+  const dsRing = isLight ? '#1F8A5B' : '#34B87A'
+  if (isLight || theme === 'dark') {
     root.style.setProperty('--primary', hexToHslChannels(dsPrimary))
     root.style.setProperty('--primary-foreground', hexForegroundChannels(dsPrimary))
     root.style.setProperty('--ring', hexToHslChannels(dsRing))

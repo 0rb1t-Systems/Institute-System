@@ -90,19 +90,21 @@ const ReportsPage = () => {
 
   if (error) {
       return (
-          <div className="p-8 max-w-2xl mx-auto mt-20">
-              <Alert variant="destructive">
-                  <AlertTriangle className="h-5 w-5" />
-                  <AlertTitle className="text-lg ml-2">Data Load Failed</AlertTitle>
-                  <AlertDescription className="mt-2 ml-2">
-                      <p>{getUserMessage(error, { context: 'ReportsPage', fallback: MESSAGES.LOAD_FAILED })}</p>
-                      <Button onClick={handleRetry} disabled={isRetrying} variant="outline" className="mt-4">
-                          {isRetrying && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                          Retry Loading Data
-                      </Button>
-                  </AlertDescription>
-              </Alert>
-          </div>
+          <AnimatedPage>
+              <div className="p-8 max-w-2xl mx-auto mt-12">
+                  <Alert variant="destructive" className="border-[var(--ds-danger,#DC2626)]/30 bg-[var(--ds-surface,#fff)]">
+                      <AlertTriangle className="h-5 w-5" />
+                      <AlertTitle className="text-lg ml-2 text-[var(--ds-text-primary,#122018)]">Data Load Failed</AlertTitle>
+                      <AlertDescription className="mt-2 ml-2 text-[var(--ds-text-secondary,#5B6B61)]">
+                          <p>{getUserMessage(error, { context: 'ReportsPage', fallback: MESSAGES.LOAD_FAILED })}</p>
+                          <Button onClick={handleRetry} disabled={isRetrying} variant="outline" className="mt-4">
+                              {isRetrying && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                              Retry Loading Data
+                          </Button>
+                      </AlertDescription>
+                  </Alert>
+              </div>
+          </AnimatedPage>
       );
   }
 
@@ -131,7 +133,7 @@ const ReportsPage = () => {
 
       {!loading && !error && (
         <Tabs value={activeTab} onValueChange={handleTabChange} className="w-full">
-            <TabsList className="flex flex-wrap w-full h-auto p-1 gap-1 justify-start">
+            <TabsList className="flex h-auto w-full flex-wrap justify-start gap-1 border border-[var(--ds-border,#DDE5DF)] bg-[var(--ds-surface-muted,#F7FAF8)] p-1">
             {showFinance && <TabsTrigger value="finance">Fees / Finance</TabsTrigger>}
             {showRevenue && <TabsTrigger value="revenue">Revenue</TabsTrigger>}
             {showSettlement && <TabsTrigger value="settlement">Settlement</TabsTrigger>}

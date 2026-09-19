@@ -168,10 +168,10 @@ const CertificateReport = () => {
 
   const getStatusColor = (status) => {
     switch (status) {
-      case 'issued': return 'bg-green-500/10 text-green-400 border-green-500/20';
-      case 'generated': return 'bg-blue-500/10 text-blue-400 border-blue-500/20';
-      case 'revoked': return 'bg-red-500/10 text-red-400 border-red-500/20';
-      default: return 'bg-slate-500/10 text-slate-400 border-slate-500/20';
+      case 'issued': return 'bg-emerald-50 text-emerald-800 border-emerald-200';
+      case 'generated': return 'bg-[var(--ds-info-bg,#EFF6FF)] text-[var(--ds-info,#2563EB)] border-[var(--ds-info,#2563EB)]/30';
+      case 'revoked': return 'bg-red-50 text-red-800 border-red-200';
+      default: return 'bg-[var(--ds-surface-muted,#F7FAF8)] text-[var(--ds-text-secondary,#5B6B61)] border-[var(--ds-border,#DDE5DF)]';
     }
   };
 
@@ -183,12 +183,12 @@ const CertificateReport = () => {
 
   if (error) {
     return (
-      <Alert variant="destructive" className="bg-red-950/20 border-red-900/50">
+      <Alert variant="destructive" className="border-[var(--ds-danger,#DC2626)]/30">
         <AlertCircle className="h-4 w-4" />
         <AlertDescription>
           <p className="font-semibold mb-2">Failed to load certificates</p>
           <p className="text-sm">{typeof error === 'string' ? error : getUserMessage(error, { context: 'CertificateReport' })}</p>
-          <Button onClick={fetchData} variant="outline" className="mt-4 border-red-900">
+          <Button onClick={fetchData} variant="outline" className="mt-4">
             <RefreshCw className="h-4 w-4 mr-2" />
             Retry
           </Button>
@@ -203,15 +203,15 @@ const CertificateReport = () => {
       <CertificateAutoGenerate onGenerationComplete={fetchData} />
 
       {/* Certificates List */}
-      <Card className="bg-slate-900/50 border-slate-800">
+      <Card>
         <CardHeader>
           <div className="flex items-center justify-between">
             <div>
-              <CardTitle className="flex items-center gap-2 text-white">
-                <Award className="h-5 w-5 text-yellow-500" />
+              <CardTitle className="flex items-center gap-2 text-[var(--ds-text-primary,#122018)]">
+                <Award className="h-5 w-5 text-[var(--ds-warning,#C2410C)]" />
                 Certificate Management
               </CardTitle>
-              <CardDescription className="text-slate-400">
+              <CardDescription className="text-[var(--ds-text-secondary,#5B6B61)]">
                 View, manage, and track student certificates
               </CardDescription>
             </div>
@@ -224,17 +224,17 @@ const CertificateReport = () => {
           {/* Filters */}
           <div className="grid md:grid-cols-4 gap-4">
             <div className="relative">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-[var(--ds-text-tertiary,#8A978E)]" />
               <Input
                 placeholder="Search certificates..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                className="pl-9 bg-slate-950 border-slate-800 text-white"
+                className="pl-9"
               />
             </div>
 
             <Select value={selectedStudent} onValueChange={setSelectedStudent}>
-              <SelectTrigger className="bg-slate-950 border-slate-800 text-white">
+              <SelectTrigger>
                 <SelectValue placeholder="All Students" />
               </SelectTrigger>
               <SelectContent>
@@ -248,7 +248,7 @@ const CertificateReport = () => {
             </Select>
 
             <Select value={selectedClass} onValueChange={setSelectedClass}>
-              <SelectTrigger className="bg-slate-950 border-slate-800 text-white">
+              <SelectTrigger>
                 <SelectValue placeholder="All Classes" />
               </SelectTrigger>
               <SelectContent>
@@ -262,7 +262,7 @@ const CertificateReport = () => {
             </Select>
 
             <Select value={selectedStatus} onValueChange={setSelectedStatus}>
-              <SelectTrigger className="bg-slate-950 border-slate-800 text-white">
+              <SelectTrigger>
                 <SelectValue placeholder="All Statuses" />
               </SelectTrigger>
               <SelectContent>
@@ -277,58 +277,58 @@ const CertificateReport = () => {
           {/* Table */}
           {loading ? (
             <div className="flex items-center justify-center py-12">
-              <Loader2 className="h-8 w-8 animate-spin text-blue-500" />
-              <span className="ml-3 text-slate-400">Loading certificates...</span>
+              <Loader2 className="h-8 w-8 animate-spin text-[var(--ds-accent,#1F8A5B)]" />
+              <span className="ml-3 text-[var(--ds-text-secondary,#5B6B61)]">Loading certificates...</span>
             </div>
           ) : filteredCertificates.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-12 text-center">
-              <FileCheck className="h-16 w-16 text-slate-600 mb-4" />
-              <h3 className="text-xl font-semibold text-slate-300 mb-2">
+              <FileCheck className="h-16 w-16 text-[var(--ds-text-tertiary,#8A978E)] mb-4" />
+              <h3 className="text-xl font-semibold text-[var(--ds-text-primary,#122018)] mb-2">
                 No Certificates Found
               </h3>
-              <p className="text-slate-500 max-w-md mb-6">
+              <p className="text-[var(--ds-text-secondary,#5B6B61)] max-w-md mb-6">
                 {searchTerm || selectedStudent !== 'all' || selectedClass !== 'all' || selectedStatus !== 'all'
                   ? 'No certificates match your filters. Try adjusting your search.'
                   : 'No certificates have been generated yet. Use the batch generation tool above to create certificates for all students.'}
               </p>
             </div>
           ) : (
-            <div className="border border-slate-800 rounded-lg overflow-hidden">
+            <div className="border border-[var(--ds-border,#DDE5DF)] rounded-lg overflow-hidden">
               <Table>
                 <TableHeader>
-                  <TableRow className="border-slate-800 hover:bg-slate-900">
-                    <TableHead className="text-slate-400">Student</TableHead>
-                    <TableHead className="text-slate-400">Program</TableHead>
-                    <TableHead className="text-slate-400">Certificate No.</TableHead>
-                    <TableHead className="text-slate-400">Serial No.</TableHead>
-                    <TableHead className="text-slate-400">Date Issued</TableHead>
-                    <TableHead className="text-slate-400">Status</TableHead>
-                    <TableHead className="text-slate-400 text-right">Actions</TableHead>
+                  <TableRow className="border-[var(--ds-border,#DDE5DF)] bg-[var(--ds-surface-muted,#F7FAF8)] hover:bg-[var(--ds-surface-muted,#F7FAF8)]">
+                    <TableHead className="text-[11px] font-semibold uppercase tracking-wide text-[var(--ds-text-tertiary,#8A978E)]">Student</TableHead>
+                    <TableHead className="text-[11px] font-semibold uppercase tracking-wide text-[var(--ds-text-tertiary,#8A978E)]">Program</TableHead>
+                    <TableHead className="text-[11px] font-semibold uppercase tracking-wide text-[var(--ds-text-tertiary,#8A978E)]">Certificate No.</TableHead>
+                    <TableHead className="text-[11px] font-semibold uppercase tracking-wide text-[var(--ds-text-tertiary,#8A978E)]">Serial No.</TableHead>
+                    <TableHead className="text-[11px] font-semibold uppercase tracking-wide text-[var(--ds-text-tertiary,#8A978E)]">Date Issued</TableHead>
+                    <TableHead className="text-[11px] font-semibold uppercase tracking-wide text-[var(--ds-text-tertiary,#8A978E)]">Status</TableHead>
+                    <TableHead className="text-right text-[11px] font-semibold uppercase tracking-wide text-[var(--ds-text-tertiary,#8A978E)]">Actions</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {filteredCertificates.map(cert => (
-                    <TableRow key={cert.id} className="border-slate-800 hover:bg-slate-900/50">
-                      <TableCell className="text-white">
+                    <TableRow key={cert.id} className="border-[var(--ds-border,#DDE5DF)] hover:bg-[var(--ds-surface-muted,#F7FAF8)]">
+                      <TableCell className="text-[var(--ds-text-primary,#122018)]">
                         <div>
                           <div className="font-medium">{cert.student?.name}</div>
-                          <div className="text-xs text-slate-400">{cert.student?.student_code}</div>
+                          <div className="text-xs text-[var(--ds-text-secondary,#5B6B61)]">{cert.student?.student_code}</div>
                         </div>
                       </TableCell>
-                      <TableCell className="text-slate-300">
+                      <TableCell className="text-[var(--ds-text-primary,#122018)]">
                         {cert.diploma?.name || cert.course?.name || cert.class?.name || '-'}
                       </TableCell>
-                      <TableCell className="font-mono text-sm text-slate-300">
+                      <TableCell className="font-mono text-sm text-[var(--ds-text-secondary,#5B6B61)]">
                         {cert.certificate_number}
                       </TableCell>
-                      <TableCell className="font-mono text-sm text-slate-400">
+                      <TableCell className="font-mono text-sm text-[var(--ds-text-tertiary,#8A978E)]">
                         {cert.serial_number}
                       </TableCell>
-                      <TableCell className="text-slate-300">
+                      <TableCell className="text-[var(--ds-text-primary,#122018)]">
                         <div className="flex items-center gap-2">
                           {formatDate(cert.date_issued)}
                           {isNewCertificate(cert.date_issued) && (
-                            <Badge className="bg-green-500/10 text-green-400 border-green-500/20 text-xs">
+                            <Badge className="bg-emerald-50 text-emerald-800 border-emerald-200 text-xs">
                               New
                             </Badge>
                           )}

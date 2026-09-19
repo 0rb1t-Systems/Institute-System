@@ -26,7 +26,7 @@ import { getRegistrationFeeAmount } from '@/lib/institution';
 import { computeStudentBalance } from '@/lib/finance';
 import { getInstitutionGradeScale } from '@/lib/gradingScale';
 import { getExamScorePercent, getExamTotalMarks, getLetterGrade } from '@/lib/examPass';
-import { usePlatformTheme } from '@/contexts/PlatformThemeContext';
+import { getPersonInitials, getStudentAvatarColor } from '@/lib/studentAvatar';
 import {
   BarChart,
   Bar,
@@ -39,22 +39,12 @@ import {
   LabelList,
 } from 'recharts';
 
-const LATEST_RESULT_AVATAR_COLORS = [
-  { bg: '#0F6B4C', text: '#FFFFFF' },
-  { bg: '#2563EB', text: '#FFFFFF' },
-  { bg: '#7C3AED', text: '#FFFFFF' },
-  { bg: '#C2410C', text: '#FFFFFF' },
-  { bg: '#0F766E', text: '#FFFFFF' },
-] as const;
-
 /**
  * Administrator / Staff overview — visual layout from design-system.pen Admin Dashboard.
  * Data fetching and business logic unchanged.
  */
 const DashboardPage = () => {
   const { user, institution } = useAuth();
-  const { mode } = usePlatformTheme();
-  const isLight = mode === 'light';
   const {
     students,
     classes,
@@ -245,8 +235,8 @@ const DashboardPage = () => {
 
   const v = (n) => (loading ? '…' : n);
   const chartEmpty = !loading && stats.tuition === 0 && stats.registration === 0;
-  const axisColor = isLight ? 'var(--ds-text-secondary, #5B6B61)' : '#94a3b8';
-  const gridColor = isLight ? 'var(--ds-border, #DDE5DF)' : '#1e293b';
+  const axisColor = 'var(--ds-text-secondary, #5B6B61)';
+  const gridColor = 'var(--ds-border, #DDE5DF)';
 
   return (
     <AnimatedPage>
@@ -331,13 +321,13 @@ const DashboardPage = () => {
       </div>
 
       <div className="grid gap-4 lg:grid-cols-5">
-        <Card className="border-slate-800 bg-slate-900/50 lg:col-span-3 [.tenant-shell_&]:rounded-[var(--ds-radius-xl,16px)] [.tenant-shell_&]:border-[var(--ds-border,#DDE5DF)] [.tenant-shell_&]:bg-[var(--ds-surface,#fff)] [.tenant-shell_&]:shadow-[var(--ds-shadow-card,0_1px_2px_#1F8A5B14,0_8px_24px_#1F8A5B0A)]">
+        <Card className="border-slate-800 bg-slate-900/50 lg:col-span-3">
           <CardHeader className="flex flex-row items-start justify-between gap-3 space-y-0 p-6 pb-2">
             <div className="min-w-0 space-y-1">
-              <CardTitle className="text-lg text-white [.tenant-shell_&]:text-[17px] [.tenant-shell_&]:font-bold [.tenant-shell_&]:tracking-[-0.01em] [.tenant-shell_&]:text-[var(--ds-text-primary,#122018)]">
+              <CardTitle className="text-lg text-white">
                 Revenue mix
               </CardTitle>
-              <CardDescription className="text-slate-400 [.tenant-shell_&]:text-[12px] [.tenant-shell_&]:text-[var(--ds-text-secondary,#5B6B61)]">
+              <CardDescription className="text-slate-400 [.tenant-shell_&]:text-[12px]">
                 Tuition vs registration this term
               </CardDescription>
             </div>
@@ -348,7 +338,7 @@ const DashboardPage = () => {
           <CardContent className="h-[300px] px-6 pb-6 pt-2">
             {showFinance ? (
               loading ? (
-                <div className="flex h-full items-center justify-center text-sm text-slate-500">
+                <div className="flex h-full items-center justify-center text-sm text-slate-500 [.tenant-shell_&]:text-[var(--ds-text-tertiary,#8A978E)]">
                   Loading revenue…
                 </div>
               ) : chartEmpty ? (
@@ -369,17 +359,13 @@ const DashboardPage = () => {
                     <YAxis hide />
                     <Tooltip
                       cursor={{
-                        fill: isLight
-                          ? 'color-mix(in srgb, var(--ds-primary, #1F8A5B) 6%, transparent)'
-                          : 'rgba(148, 163, 184, 0.08)',
+                        fill: 'color-mix(in srgb, var(--ds-primary, #1F8A5B) 10%, transparent)',
                       }}
                       contentStyle={{
-                        background: isLight ? 'var(--ds-surface, #fff)' : '#0f172a',
-                        border: isLight
-                          ? '1px solid var(--ds-border, #DDE5DF)'
-                          : '1px solid #1e293b',
+                        background: 'var(--ds-surface, #fff)',
+                        border: '1px solid var(--ds-border, #DDE5DF)',
                         borderRadius: 8,
-                        color: isLight ? 'var(--ds-text-primary, #122018)' : '#f8fafc',
+                        color: 'var(--ds-text-primary, #122018)',
                         fontSize: 13,
                       }}
                       formatter={(value) => [formatCurrency(Number(value)), 'Amount']}
@@ -393,7 +379,7 @@ const DashboardPage = () => {
                         position="top"
                         formatter={(value: number) => formatCurrency(Number(value))}
                         style={{
-                          fill: isLight ? 'var(--ds-text-primary, #122018)' : '#e2e8f0',
+                          fill: 'var(--ds-text-primary, #122018)',
                           fontSize: 12,
                           fontWeight: 600,
                           fontFamily: 'Arial, Helvetica, sans-serif',
@@ -404,20 +390,20 @@ const DashboardPage = () => {
                 </ResponsiveContainer>
               )
             ) : (
-              <div className="flex h-full items-center justify-center text-sm text-slate-500">
+              <div className="flex h-full items-center justify-center text-sm text-slate-500 [.tenant-shell_&]:text-[var(--ds-text-tertiary,#8A978E)]">
                 Finance metrics are available to admin and staff.
               </div>
             )}
           </CardContent>
         </Card>
 
-        <Card className="border-slate-800 bg-slate-900/50 lg:col-span-2 [.tenant-shell_&]:rounded-[var(--ds-radius-xl,16px)] [.tenant-shell_&]:border-[var(--ds-border,#DDE5DF)] [.tenant-shell_&]:bg-[var(--ds-surface,#fff)] [.tenant-shell_&]:shadow-[var(--ds-shadow-card,0_1px_2px_#1F8A5B14,0_8px_24px_#1F8A5B0A)]">
+        <Card className="border-slate-800 bg-slate-900/50 lg:col-span-2">
           <CardHeader className="flex flex-row items-start justify-between gap-3 space-y-0 p-6 pb-2">
             <div className="min-w-0 space-y-1">
-              <CardTitle className="text-lg text-white [.tenant-shell_&]:text-[17px] [.tenant-shell_&]:font-bold [.tenant-shell_&]:tracking-[-0.01em] [.tenant-shell_&]:text-[var(--ds-text-primary,#122018)]">
+              <CardTitle className="text-lg text-white">
                 Latest results
               </CardTitle>
-              <CardDescription className="text-slate-400 [.tenant-shell_&]:text-[12px] [.tenant-shell_&]:text-[var(--ds-text-secondary,#5B6B61)]">
+              <CardDescription className="text-slate-400 [.tenant-shell_&]:text-[12px]">
                 Gradebook updates
               </CardDescription>
             </div>
@@ -430,22 +416,21 @@ const DashboardPage = () => {
           </CardHeader>
           <CardContent className="space-y-0 px-6 pb-4 pt-2">
             {loading ? (
-              <p className="py-8 text-center text-sm text-slate-500">Loading results…</p>
+              <p className="py-8 text-center text-sm text-slate-500 [.tenant-shell_&]:text-[var(--ds-text-tertiary,#8A978E)]">Loading results…</p>
             ) : latestResults.length > 0 ? (
               latestResults.map((item, index) => {
-                const avatarColor =
-                  LATEST_RESULT_AVATAR_COLORS[index % LATEST_RESULT_AVATAR_COLORS.length];
+                const avatarColor = getStudentAvatarColor(item.id || item.name || String(index))
                 return (
                 <div
                   key={item.id}
-                  className="flex items-center gap-3 border-b border-transparent py-2.5 last:border-0 [.tenant-shell_&]:border-[var(--ds-border,#DDE5DF)]/0"
+                  className="flex items-center gap-3 border-b border-slate-800 py-2.5 last:border-0 [.tenant-shell_&]:border-[var(--ds-border,#DDE5DF)]"
                 >
                   <Avatar className="h-9 w-9 border-0">
                     <AvatarFallback
-                      className="text-[12px] font-bold"
+                      className="text-[12px] font-semibold"
                       style={{ backgroundColor: avatarColor.bg, color: avatarColor.text }}
                     >
-                      {item.initial}
+                      {item.initial || getPersonInitials(item.name)}
                     </AvatarFallback>
                   </Avatar>
                   <div className="min-w-0 flex-1">

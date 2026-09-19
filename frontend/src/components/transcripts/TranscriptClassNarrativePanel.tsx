@@ -62,19 +62,19 @@ const TranscriptClassNarrativePanel = () => {
   }
 
   return (
-    <div className="rounded-xl border border-slate-800 bg-slate-900 p-4 space-y-3">
+    <div className="space-y-3 rounded-[var(--ds-radius-xl,16px)] border border-[var(--ds-border,#DDE5DF)] bg-[var(--ds-surface,#fff)] p-4">
       <div>
-        <p className="text-sm font-medium text-white">Optional class paragraph</p>
-        <p className="text-xs text-slate-400 mt-1 leading-relaxed">
+        <p className="text-sm font-medium text-[var(--ds-text-primary,#122018)]">Optional class paragraph</p>
+        <p className="mt-1 text-xs leading-relaxed text-[var(--ds-text-secondary,#5B6B61)]">
           Leave this empty unless you need extra completion text (for example a research-publication
           statement). It is not required. Pick a class, add the paragraph, and only that class&apos;s
           transcripts will show it.
         </p>
       </div>
       <div className="space-y-1.5">
-        <Label className="text-slate-300">Class</Label>
+        <Label>Class</Label>
         <Select value={classId} onValueChange={setClassId}>
-          <SelectTrigger className="bg-slate-950 border-slate-700 text-white">
+          <SelectTrigger>
             <SelectValue placeholder="Select a class (optional)" />
           </SelectTrigger>
           <SelectContent>
@@ -88,16 +88,14 @@ const TranscriptClassNarrativePanel = () => {
         </Select>
       </div>
       <div className="space-y-1.5">
-        <Label htmlFor="class-transcript-narrative" className="text-slate-300">
-          Paragraph
-        </Label>
+        <Label htmlFor="class-transcript-narrative">Paragraph</Label>
         <Textarea
           id="class-transcript-narrative"
           value={text}
           onChange={(e) => setText(e.target.value)}
           disabled={!classId}
           rows={6}
-          className="bg-slate-950 border-slate-700 text-slate-100 min-h-[120px] disabled:opacity-50"
+          className="min-h-[120px] disabled:opacity-50"
           placeholder="Empty = not shown on transcripts."
         />
       </div>
@@ -106,7 +104,6 @@ const TranscriptClassNarrativePanel = () => {
           type="button"
           variant="outline"
           size="sm"
-          className="border-slate-700"
           disabled={!classId}
           onClick={() => setText(DEFAULT_TRANSCRIPT_NARRATIVE)}
         >
@@ -116,14 +113,14 @@ const TranscriptClassNarrativePanel = () => {
           type="button"
           variant="ghost"
           size="sm"
-          className="text-slate-400"
+          className="text-[var(--ds-text-secondary,#5B6B61)]"
           disabled={!classId || !text}
           onClick={() => setText('')}
         >
           Clear
         </Button>
         <Button type="button" size="sm" className="ml-auto" disabled={!classId || saving} onClick={handleSave}>
-          {saving ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
+          {saving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
           Save for this class
         </Button>
       </div>

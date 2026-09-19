@@ -234,26 +234,25 @@ const SettlementReport = () => {
   return (
     <div className="space-y-6">
       {/* Filters & Actions */}
-      <Card className="bg-slate-900/50 border-slate-800">
+      <Card>
         <CardContent className="p-4">
             <div className="flex flex-col md:flex-row gap-4 items-end justify-between">
                 <div className="flex flex-col md:flex-row gap-4 w-full md:w-auto">
                     <div className="space-y-2 w-full md:w-[200px]">
-                        <Label className="text-slate-400 text-xs uppercase tracking-wider font-semibold">Report Month</Label>
+                        <Label className="text-[11px] uppercase tracking-wider font-semibold text-[var(--ds-text-tertiary,#8A978E)]">Report Month</Label>
                         <Input 
                             type="month" 
                             value={selectedMonth} 
                             onChange={e => setSelectedMonth(e.target.value)} 
-                            className="bg-slate-950 border-slate-700 text-white"
                         />
                     </div>
                     <div className="space-y-2 w-full md:w-[250px]">
-                        <Label className="text-slate-400 text-xs uppercase tracking-wider font-semibold">Filter by Class</Label>
+                        <Label className="text-[11px] uppercase tracking-wider font-semibold text-[var(--ds-text-tertiary,#8A978E)]">Filter by Class</Label>
                         <Select value={selectedClassId} onValueChange={setSelectedClassId}>
-                            <SelectTrigger className="bg-slate-950 border-slate-700 text-white">
+                            <SelectTrigger>
                                 <SelectValue placeholder="All Classes" />
                             </SelectTrigger>
-                            <SelectContent className="bg-slate-900 border-slate-800 text-slate-100 max-h-[300px]">
+                            <SelectContent className="max-h-[300px]">
                                 <SelectItem value="all">All Classes</SelectItem>
                                 {classes.map(c => (
                                     <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
@@ -262,7 +261,7 @@ const SettlementReport = () => {
                         </Select>
                     </div>
                 </div>
-                <Button onClick={generatePDF} className="bg-indigo-600 hover:bg-indigo-700 w-full md:w-auto">
+                <Button onClick={generatePDF} className="w-full md:w-auto">
                     <FileDown className="mr-2 h-4 w-4" /> Export Report
                 </Button>
             </div>
@@ -271,71 +270,67 @@ const SettlementReport = () => {
 
       {/* KPI Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-        <Card className="bg-blue-950/20 border-blue-900/50 relative overflow-hidden">
-           <div className="absolute right-0 top-0 h-full w-1/3 bg-gradient-to-l from-blue-900/10 to-transparent" />
+        <Card className="bg-[var(--ds-info-bg,#EFF6FF)] border-[var(--ds-info,#2563EB)]/20">
            <CardHeader className="pb-2">
-               <CardTitle className="text-sm font-medium text-blue-400 flex items-center gap-2">
+               <CardTitle className="text-sm font-medium text-[var(--ds-info,#2563EB)] flex items-center gap-2">
                    <DollarSign className="h-4 w-4" /> Total Gross Collection
                </CardTitle>
            </CardHeader>
            <CardContent>
-               <div className="text-3xl font-bold text-blue-100 tracking-tight">{formatCurrency(reportData.totalCollection)}</div>
-               <p className="text-xs text-blue-400/60 mt-1">From {reportData.payments.length} transactions</p>
+               <div className="text-3xl font-bold text-[var(--ds-text-primary,#122018)] tracking-tight">{formatCurrency(reportData.totalCollection)}</div>
+               <p className="text-xs text-[var(--ds-text-secondary,#5B6B61)] mt-1">From {reportData.payments.length} transactions</p>
            </CardContent>
         </Card>
 
-        <Card className="bg-purple-950/20 border-purple-900/50 relative overflow-hidden">
-            <div className="absolute right-0 top-0 h-full w-1/3 bg-gradient-to-l from-purple-900/10 to-transparent" />
+        <Card className="bg-violet-50 border-violet-200">
            <CardHeader className="pb-2">
-               <CardTitle className="text-sm font-medium text-purple-400 flex items-center gap-2">
+               <CardTitle className="text-sm font-medium text-violet-700 flex items-center gap-2">
                    <UserCheck className="h-4 w-4" /> Instructor Shares
                </CardTitle>
            </CardHeader>
            <CardContent>
-               <div className="text-3xl font-bold text-purple-100 tracking-tight">{formatCurrency(reportData.totalInstructorShare)}</div>
-               <p className="text-xs text-purple-400/60 mt-1">
+               <div className="text-3xl font-bold text-[var(--ds-text-primary,#122018)] tracking-tight">{formatCurrency(reportData.totalInstructorShare)}</div>
+               <p className="text-xs text-[var(--ds-text-secondary,#5B6B61)] mt-1">
                  Instructor commission (default {defaultInstPct}% from settings; per-class rates apply)
                </p>
            </CardContent>
         </Card>
 
-        <Card className="bg-orange-950/20 border-orange-900/50 relative overflow-hidden">
-            <div className="absolute right-0 top-0 h-full w-1/3 bg-gradient-to-l from-orange-900/10 to-transparent" />
+        <Card className="bg-[var(--ds-warning-bg,#FFF7ED)] border-[var(--ds-warning,#C2410C)]/20">
            <CardHeader className="pb-2">
-               <CardTitle className="text-sm font-medium text-orange-400 flex items-center gap-2">
+               <CardTitle className="text-sm font-medium text-[var(--ds-warning,#C2410C)] flex items-center gap-2">
                    <Briefcase className="h-4 w-4" /> Affiliate Commission
                </CardTitle>
            </CardHeader>
            <CardContent>
-               <div className="text-3xl font-bold text-orange-100 tracking-tight">{formatCurrency(reportData.totalCommissions)}</div>
-               <p className="text-xs text-orange-400/60 mt-1">{affiliateRatePct}% of referred tuition (when rate &gt; 0)</p>
+               <div className="text-3xl font-bold text-[var(--ds-text-primary,#122018)] tracking-tight">{formatCurrency(reportData.totalCommissions)}</div>
+               <p className="text-xs text-[var(--ds-text-secondary,#5B6B61)] mt-1">{affiliateRatePct}% of referred tuition (when rate &gt; 0)</p>
            </CardContent>
         </Card>
 
-        <Card className="bg-green-950/20 border-green-900/50 relative overflow-hidden">
-            <div className="absolute right-0 top-0 h-full w-1/3 bg-gradient-to-l from-green-900/10 to-transparent" />
+        <Card className="bg-emerald-50 border-emerald-200">
            <CardHeader className="pb-2">
-               <CardTitle className="text-sm font-bold text-green-400 flex items-center gap-2">
+               <CardTitle className="text-sm font-bold text-emerald-700 flex items-center gap-2">
                    <Building className="h-4 w-4" /> Net School Revenue
                </CardTitle>
            </CardHeader>
            <CardContent>
-               <div className="text-3xl font-bold text-green-100 tracking-tight">{formatCurrency(reportData.schoolRevenue)}</div>
-               <p className="text-xs text-green-400/60 mt-1">After all deductions</p>
+               <div className="text-3xl font-bold text-[var(--ds-text-primary,#122018)] tracking-tight">{formatCurrency(reportData.schoolRevenue)}</div>
+               <p className="text-xs text-[var(--ds-text-secondary,#5B6B61)] mt-1">After all deductions</p>
            </CardContent>
         </Card>
       </div>
       
       {/* Detailed Breakdown Tabs */}
       <Tabs defaultValue="class-summary" className="w-full">
-          <TabsList className="bg-slate-900 border border-slate-800 p-1 w-full justify-start overflow-x-auto">
-              <TabsTrigger value="class-summary" className="data-[state=active]:bg-slate-800">Class Breakdown</TabsTrigger>
-              <TabsTrigger value="instructor-details" className="data-[state=active]:bg-slate-800">Instructor Earnings Detail</TabsTrigger>
-              <TabsTrigger value="affiliate-details" className="data-[state=active]:bg-slate-800">Affiliate Earnings Detail</TabsTrigger>
+          <TabsList className="bg-[var(--ds-surface-muted,#F7FAF8)] border border-[var(--ds-border,#DDE5DF)] p-1 w-full justify-start overflow-x-auto">
+              <TabsTrigger value="class-summary" className="data-[state=active]:bg-[var(--ds-surface,#fff)]">Class Breakdown</TabsTrigger>
+              <TabsTrigger value="instructor-details" className="data-[state=active]:bg-[var(--ds-surface,#fff)]">Instructor Earnings Detail</TabsTrigger>
+              <TabsTrigger value="affiliate-details" className="data-[state=active]:bg-[var(--ds-surface,#fff)]">Affiliate Earnings Detail</TabsTrigger>
           </TabsList>
 
           <TabsContent value="class-summary" className="mt-4">
-              <Card className="bg-slate-900/50 border-slate-800">
+              <Card>
                   <CardHeader>
                       <CardTitle className="text-lg">Earnings by Class</CardTitle>
                       <CardDescription>Breakdown of revenue and payouts grouped by active classes.</CardDescription>
@@ -343,38 +338,38 @@ const SettlementReport = () => {
                   <CardContent>
                       <Table>
                           <TableHeader>
-                              <TableRow className="border-slate-800 hover:bg-transparent">
-                                  <TableHead className="text-slate-400 w-[150px]">Class Name</TableHead>
-                                  <TableHead className="text-slate-400 w-[150px]">Instructor</TableHead>
-                                  <TableHead className="text-slate-400 text-center">Txns</TableHead>
-                                  <TableHead className="text-slate-400 text-blue-400">Tuition</TableHead>
-                                  <TableHead className="text-slate-400 text-blue-400">Reg. Fees</TableHead>
-                                  <TableHead className="text-slate-400 font-semibold">Total Collected</TableHead>
-                                  <TableHead className="text-slate-400 text-red-400">Inst. Share</TableHead>
-                                  <TableHead className="text-slate-400 text-orange-400">Aff. Comm.</TableHead>
-                                  <TableHead className="text-right text-green-400 font-bold">Net Revenue</TableHead>
+                              <TableRow className="border-[var(--ds-border,#DDE5DF)] bg-[var(--ds-surface-muted,#F7FAF8)] hover:bg-[var(--ds-surface-muted,#F7FAF8)]">
+                                  <TableHead className="w-[150px] text-[11px] font-semibold uppercase tracking-wide text-[var(--ds-text-tertiary,#8A978E)]">Class Name</TableHead>
+                                  <TableHead className="w-[150px] text-[11px] font-semibold uppercase tracking-wide text-[var(--ds-text-tertiary,#8A978E)]">Instructor</TableHead>
+                                  <TableHead className="text-center text-[11px] font-semibold uppercase tracking-wide text-[var(--ds-text-tertiary,#8A978E)]">Txns</TableHead>
+                                  <TableHead className="text-[11px] font-semibold uppercase tracking-wide text-[var(--ds-info,#2563EB)]">Tuition</TableHead>
+                                  <TableHead className="text-[11px] font-semibold uppercase tracking-wide text-[var(--ds-info,#2563EB)]">Reg. Fees</TableHead>
+                                  <TableHead className="text-[11px] font-semibold uppercase tracking-wide text-[var(--ds-text-tertiary,#8A978E)]">Total Collected</TableHead>
+                                  <TableHead className="text-[11px] font-semibold uppercase tracking-wide text-red-700">Inst. Share</TableHead>
+                                  <TableHead className="text-[11px] font-semibold uppercase tracking-wide text-[var(--ds-warning,#C2410C)]">Aff. Comm.</TableHead>
+                                  <TableHead className="text-right text-[11px] font-semibold uppercase tracking-wide text-emerald-700">Net Revenue</TableHead>
                               </TableRow>
                           </TableHeader>
                           <TableBody>
                               {reportData.classSummary.length > 0 ? reportData.classSummary.map((item: any) => (
-                                  <TableRow key={item.id} className="border-slate-800 hover:bg-slate-800/30">
-                                      <TableCell className="font-medium text-slate-200">{item.name}</TableCell>
-                                      <TableCell className="text-slate-300 text-sm">{item.instructorName}</TableCell>
-                                      <TableCell className="text-center text-slate-400">{item.transactionCount}</TableCell>
-                                      <TableCell className="text-blue-300/80">{formatCurrency(item.tuitionCollected)}</TableCell>
-                                      <TableCell className="text-blue-300/80">{formatCurrency(item.registrationCollected)}</TableCell>
-                                      <TableCell className="text-slate-200 font-semibold">{formatCurrency(item.totalCollected)}</TableCell>
-                                      <TableCell className="text-red-300">
+                                  <TableRow key={item.id} className="border-[var(--ds-border,#DDE5DF)] hover:bg-[var(--ds-surface-muted,#F7FAF8)]">
+                                      <TableCell className="font-medium text-[var(--ds-text-primary,#122018)]">{item.name}</TableCell>
+                                      <TableCell className="text-[var(--ds-text-secondary,#5B6B61)] text-sm">{item.instructorName}</TableCell>
+                                      <TableCell className="text-center text-[var(--ds-text-secondary,#5B6B61)]">{item.transactionCount}</TableCell>
+                                      <TableCell className="text-[var(--ds-info,#2563EB)]">{formatCurrency(item.tuitionCollected)}</TableCell>
+                                      <TableCell className="text-[var(--ds-info,#2563EB)]">{formatCurrency(item.registrationCollected)}</TableCell>
+                                      <TableCell className="text-[var(--ds-text-primary,#122018)] font-semibold">{formatCurrency(item.totalCollected)}</TableCell>
+                                      <TableCell className="text-red-700">
                                         {item.instructorPay > 0 ? `(${formatCurrency(item.instructorPay)})` : '-'}
                                       </TableCell>
-                                      <TableCell className="text-orange-300">
+                                      <TableCell className="text-[var(--ds-warning,#C2410C)]">
                                         {item.affiliatePay > 0 ? `(${formatCurrency(item.affiliatePay)})` : '-'}
                                       </TableCell>
-                                      <TableCell className="text-right font-bold text-green-400">{formatCurrency(item.netRevenue)}</TableCell>
+                                      <TableCell className="text-right font-bold text-emerald-700">{formatCurrency(item.netRevenue)}</TableCell>
                                   </TableRow>
                               )) : (
                                   <TableRow>
-                                      <TableCell colSpan={9} className="text-center py-8 text-slate-500">No data found for this period.</TableCell>
+                                      <TableCell colSpan={9} className="text-center py-8 text-[var(--ds-text-tertiary,#8A978E)]">No data found for this period.</TableCell>
                                   </TableRow>
                               )}
                           </TableBody>
@@ -384,22 +379,22 @@ const SettlementReport = () => {
           </TabsContent>
 
           <TabsContent value="instructor-details" className="mt-4">
-              <Card className="bg-slate-900/50 border-slate-800">
+              <Card>
                   <CardHeader>
                       <CardTitle className="text-lg">Detailed Instructor Earnings</CardTitle>
                       <CardDescription>Line-by-line record of instructor earnings generated from student payments.</CardDescription>
                   </CardHeader>
                   <CardContent>
-                      <div className="rounded-md border border-slate-800 overflow-hidden">
+                      <div className="rounded-md border border-[var(--ds-border,#DDE5DF)] overflow-hidden">
                         <Table>
                             <TableHeader>
-                                <TableRow className="bg-slate-950 border-slate-800 hover:bg-transparent">
-                                    <TableHead className="text-slate-400">Date</TableHead>
-                                    <TableHead className="text-slate-400">Instructor</TableHead>
-                                    <TableHead className="text-slate-400">Class</TableHead>
-                                    <TableHead className="text-slate-400">Student</TableHead>
-                                    <TableHead className="text-slate-400">Tuition Paid</TableHead>
-                                    <TableHead className="text-right text-purple-400">Earning</TableHead>
+                                <TableRow className="border-[var(--ds-border,#DDE5DF)] bg-[var(--ds-surface-muted,#F7FAF8)] hover:bg-[var(--ds-surface-muted,#F7FAF8)]">
+                                    <TableHead className="text-[11px] font-semibold uppercase tracking-wide text-[var(--ds-text-tertiary,#8A978E)]">Date</TableHead>
+                                    <TableHead className="text-[11px] font-semibold uppercase tracking-wide text-[var(--ds-text-tertiary,#8A978E)]">Instructor</TableHead>
+                                    <TableHead className="text-[11px] font-semibold uppercase tracking-wide text-[var(--ds-text-tertiary,#8A978E)]">Class</TableHead>
+                                    <TableHead className="text-[11px] font-semibold uppercase tracking-wide text-[var(--ds-text-tertiary,#8A978E)]">Student</TableHead>
+                                    <TableHead className="text-[11px] font-semibold uppercase tracking-wide text-[var(--ds-text-tertiary,#8A978E)]">Tuition Paid</TableHead>
+                                    <TableHead className="text-right text-[11px] font-semibold uppercase tracking-wide text-violet-700">Earning</TableHead>
                                 </TableRow>
                             </TableHeader>
                             <TableBody>
@@ -415,20 +410,20 @@ const SettlementReport = () => {
                                     const instructorName = instructor?.name || cls?.instructor?.name || 'Unknown';
                                     
                                     return (
-                                        <TableRow key={earning.id} className="border-slate-800 hover:bg-slate-800/30">
-                                            <TableCell className="text-slate-400">{formatDate(earning.created_at)}</TableCell>
-                                            <TableCell className="font-medium text-slate-200">{instructorName}</TableCell>
-                                            <TableCell className="text-slate-300">{cls?.name || 'Unknown'}</TableCell>
-                                            <TableCell className="text-slate-300">{stu?.name || 'Unknown'}</TableCell>
-                                            <TableCell className="text-slate-500">{formatCurrency(pay?.amount || 0)}</TableCell>
-                                            <TableCell className="text-right font-mono text-purple-400">
+                                        <TableRow key={earning.id} className="border-[var(--ds-border,#DDE5DF)] hover:bg-[var(--ds-surface-muted,#F7FAF8)]">
+                                            <TableCell className="text-[var(--ds-text-secondary,#5B6B61)]">{formatDate(earning.created_at)}</TableCell>
+                                            <TableCell className="font-medium text-[var(--ds-text-primary,#122018)]">{instructorName}</TableCell>
+                                            <TableCell className="text-[var(--ds-text-secondary,#5B6B61)]">{cls?.name || 'Unknown'}</TableCell>
+                                            <TableCell className="text-[var(--ds-text-secondary,#5B6B61)]">{stu?.name || 'Unknown'}</TableCell>
+                                            <TableCell className="text-[var(--ds-text-tertiary,#8A978E)]">{formatCurrency(pay?.amount || 0)}</TableCell>
+                                            <TableCell className="text-right font-mono text-violet-700">
                                                 +{formatCurrency(earning.amount)}
                                             </TableCell>
                                         </TableRow>
                                     );
                                 }) : (
                                     <TableRow>
-                                        <TableCell colSpan={6} className="text-center py-8 text-slate-500">No instructor earnings found.</TableCell>
+                                        <TableCell colSpan={6} className="text-center py-8 text-[var(--ds-text-tertiary,#8A978E)]">No instructor earnings found.</TableCell>
                                     </TableRow>
                                 )}
                             </TableBody>
@@ -439,21 +434,21 @@ const SettlementReport = () => {
           </TabsContent>
 
           <TabsContent value="affiliate-details" className="mt-4">
-              <Card className="bg-slate-900/50 border-slate-800">
+              <Card>
                   <CardHeader>
                       <CardTitle className="text-lg">Detailed Affiliate Commissions</CardTitle>
                       <CardDescription>Line-by-line record of commissions generated from referrals.</CardDescription>
                   </CardHeader>
                   <CardContent>
-                      <div className="rounded-md border border-slate-800 overflow-hidden">
+                      <div className="rounded-md border border-[var(--ds-border,#DDE5DF)] overflow-hidden">
                         <Table>
                             <TableHeader>
-                                <TableRow className="bg-slate-950 border-slate-800 hover:bg-transparent">
-                                    <TableHead className="text-slate-400">Date</TableHead>
-                                    <TableHead className="text-slate-400">Affiliate</TableHead>
-                                    <TableHead className="text-slate-400">Referred Student</TableHead>
-                                    <TableHead className="text-slate-400">Class Source</TableHead>
-                                    <TableHead className="text-right text-orange-400">Commission ({affiliateRatePct}%)</TableHead>
+                                <TableRow className="border-[var(--ds-border,#DDE5DF)] bg-[var(--ds-surface-muted,#F7FAF8)] hover:bg-[var(--ds-surface-muted,#F7FAF8)]">
+                                    <TableHead className="text-[11px] font-semibold uppercase tracking-wide text-[var(--ds-text-tertiary,#8A978E)]">Date</TableHead>
+                                    <TableHead className="text-[11px] font-semibold uppercase tracking-wide text-[var(--ds-text-tertiary,#8A978E)]">Affiliate</TableHead>
+                                    <TableHead className="text-[11px] font-semibold uppercase tracking-wide text-[var(--ds-text-tertiary,#8A978E)]">Referred Student</TableHead>
+                                    <TableHead className="text-[11px] font-semibold uppercase tracking-wide text-[var(--ds-text-tertiary,#8A978E)]">Class Source</TableHead>
+                                    <TableHead className="text-right text-[11px] font-semibold uppercase tracking-wide text-[var(--ds-warning,#C2410C)]">Commission ({affiliateRatePct}%)</TableHead>
                                 </TableRow>
                             </TableHeader>
                             <TableBody>
@@ -463,19 +458,19 @@ const SettlementReport = () => {
                                     const cls = classes.find(c => c.id === comm.class_id);
                                     
                                     return (
-                                        <TableRow key={comm.id} className="border-slate-800 hover:bg-slate-800/30">
-                                            <TableCell className="text-slate-400">{formatDate(comm.created_at)}</TableCell>
-                                            <TableCell className="font-medium text-slate-200">{aff?.name || aff?.full_name || 'Unknown'}</TableCell>
-                                            <TableCell className="text-slate-300">{stu?.name || 'Unknown'}</TableCell>
-                                            <TableCell className="text-slate-500 text-sm">{cls?.name || 'Unknown'}</TableCell>
-                                            <TableCell className="text-right font-mono text-orange-400">
+                                        <TableRow key={comm.id} className="border-[var(--ds-border,#DDE5DF)] hover:bg-[var(--ds-surface-muted,#F7FAF8)]">
+                                            <TableCell className="text-[var(--ds-text-secondary,#5B6B61)]">{formatDate(comm.created_at)}</TableCell>
+                                            <TableCell className="font-medium text-[var(--ds-text-primary,#122018)]">{aff?.name || aff?.full_name || 'Unknown'}</TableCell>
+                                            <TableCell className="text-[var(--ds-text-secondary,#5B6B61)]">{stu?.name || 'Unknown'}</TableCell>
+                                            <TableCell className="text-[var(--ds-text-tertiary,#8A978E)] text-sm">{cls?.name || 'Unknown'}</TableCell>
+                                            <TableCell className="text-right font-mono text-[var(--ds-warning,#C2410C)]">
                                                 +{formatCurrency(comm.amount)}
                                             </TableCell>
                                         </TableRow>
                                     );
                                 }) : (
                                     <TableRow>
-                                        <TableCell colSpan={5} className="text-center py-8 text-slate-500">No affiliate commissions found.</TableCell>
+                                        <TableCell colSpan={5} className="text-center py-8 text-[var(--ds-text-tertiary,#8A978E)]">No affiliate commissions found.</TableCell>
                                     </TableRow>
                                 )}
                             </TableBody>

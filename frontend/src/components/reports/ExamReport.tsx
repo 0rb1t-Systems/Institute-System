@@ -219,11 +219,11 @@ const ExamReport = () => {
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-col md:flex-row gap-4 bg-slate-900/50 p-4 rounded-lg border border-slate-800">
+      <div className="flex flex-col md:flex-row gap-4 bg-[var(--ds-surface-muted,#F7FAF8)] p-4 rounded-lg border border-[var(--ds-border,#DDE5DF)]">
         <div className="grid gap-2 w-full md:min-w-[200px] min-w-0">
-          <Label className="text-white">Filter by Class</Label>
+          <Label>Filter by Class</Label>
           <Select value={classFilter} onValueChange={setClassFilter}>
-            <SelectTrigger className="bg-slate-950 border-slate-700 text-white">
+            <SelectTrigger>
               <SelectValue placeholder="All Classes" />
             </SelectTrigger>
             <SelectContent>
@@ -237,9 +237,9 @@ const ExamReport = () => {
           </Select>
         </div>
         <div className="grid gap-2 w-full md:min-w-[200px] min-w-0">
-          <Label className="text-white">Filter by Course</Label>
+          <Label>Filter by Course</Label>
           <Select value={courseFilter} onValueChange={setCourseFilter}>
-            <SelectTrigger className="bg-slate-950 border-slate-700 text-white">
+            <SelectTrigger>
               <SelectValue placeholder="All Courses" />
             </SelectTrigger>
             <SelectContent>
@@ -253,12 +253,11 @@ const ExamReport = () => {
           </Select>
         </div>
         <div className="grid gap-2 flex-1 min-w-0 w-full">
-          <Label className="text-white">Search Student</Label>
+          <Label>Search Student</Label>
           <Input
             placeholder="Student name or ID…"
             value={studentFilter}
             onChange={(e) => setStudentFilter(e.target.value)}
-            className="bg-slate-950 border-slate-700 text-white"
           />
         </div>
         <div className="flex items-end">
@@ -268,7 +267,7 @@ const ExamReport = () => {
         </div>
       </div>
 
-      <p className="text-xs text-slate-500 -mt-2">
+      <p className="text-xs text-[var(--ds-text-tertiary,#8A978E)] -mt-2">
         {usingGradebook
           ? `Using institution gradebook finals · Pass mark ${gradeScale.pass_mark}% · Scale max ${gradeScale.scale_max}`
           : `Showing exam scores (gradebook empty) · Pass mark ${gradeScale.pass_mark}%`}
@@ -282,7 +281,7 @@ const ExamReport = () => {
           </CardHeader>
           <CardContent className="h-[300px]">
             {filteredRows.length === 0 ? (
-              <div className="h-full flex items-center justify-center text-sm text-slate-500">
+              <div className="h-full flex items-center justify-center text-sm text-[var(--ds-text-tertiary,#8A978E)]">
                 No gradebook results yet.
               </div>
             ) : (
@@ -316,7 +315,7 @@ const ExamReport = () => {
           </CardHeader>
           <CardContent className="h-[300px]">
             {avgScoreData.length === 0 ? (
-              <div className="h-full flex items-center justify-center text-sm text-slate-500">
+              <div className="h-full flex items-center justify-center text-sm text-[var(--ds-text-tertiary,#8A978E)]">
                 No averages to chart.
               </div>
             ) : (
@@ -343,24 +342,24 @@ const ExamReport = () => {
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="rounded-md border max-h-[500px] overflow-y-auto">
+          <div className="rounded-md border border-[var(--ds-border,#DDE5DF)] max-h-[500px] overflow-y-auto">
             <Table>
               <TableHeader>
-                <TableRow>
-                  <TableHead>Date</TableHead>
-                  <TableHead>Student</TableHead>
-                  <TableHead>Course / Exam</TableHead>
-                  <TableHead className="text-center">Score</TableHead>
-                  <TableHead className="text-center">Grade</TableHead>
-                  <TableHead className="text-center">Status</TableHead>
+                <TableRow className="border-[var(--ds-border,#DDE5DF)] bg-[var(--ds-surface-muted,#F7FAF8)] hover:bg-[var(--ds-surface-muted,#F7FAF8)]">
+                  <TableHead className="text-[11px] font-semibold uppercase tracking-wide text-[var(--ds-text-tertiary,#8A978E)]">Date</TableHead>
+                  <TableHead className="text-[11px] font-semibold uppercase tracking-wide text-[var(--ds-text-tertiary,#8A978E)]">Student</TableHead>
+                  <TableHead className="text-[11px] font-semibold uppercase tracking-wide text-[var(--ds-text-tertiary,#8A978E)]">Course / Exam</TableHead>
+                  <TableHead className="text-center text-[11px] font-semibold uppercase tracking-wide text-[var(--ds-text-tertiary,#8A978E)]">Score</TableHead>
+                  <TableHead className="text-center text-[11px] font-semibold uppercase tracking-wide text-[var(--ds-text-tertiary,#8A978E)]">Grade</TableHead>
+                  <TableHead className="text-center text-[11px] font-semibold uppercase tracking-wide text-[var(--ds-text-tertiary,#8A978E)]">Status</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {filteredRows.length > 0 ? (
                   filteredRows.map((r) => (
-                    <TableRow key={r.id}>
-                      <TableCell>{formatDate(r.date)}</TableCell>
-                      <TableCell className="font-medium">{r.studentName}</TableCell>
+                    <TableRow key={r.id} className="border-[var(--ds-border,#DDE5DF)] hover:bg-[var(--ds-surface-muted,#F7FAF8)]">
+                      <TableCell className="text-[var(--ds-text-secondary,#5B6B61)]">{formatDate(r.date)}</TableCell>
+                      <TableCell className="font-medium text-[var(--ds-text-primary,#122018)]">{r.studentName}</TableCell>
                       <TableCell>{r.examTitle}</TableCell>
                       <TableCell className="text-center font-bold tabular-nums">
                         {Math.round(r.percentage)}/100
@@ -381,7 +380,7 @@ const ExamReport = () => {
                   ))
                 ) : (
                   <TableRow>
-                    <TableCell colSpan={6} className="text-center py-6 text-slate-500">
+                    <TableCell colSpan={6} className="text-center py-6 text-[var(--ds-text-tertiary,#8A978E)]">
                       No gradebook results match your filters. Mark exams/assignments so finals
                       sync into the gradebook.
                     </TableCell>

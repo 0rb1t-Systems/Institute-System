@@ -117,15 +117,15 @@ const CertificateTemplateLibrary = () => {
   }
 
   return (
-    <div className="rounded-xl border border-slate-800 bg-slate-900 p-4 space-y-4">
+    <div className="space-y-4 rounded-[var(--ds-radius-xl,16px)] border border-[var(--ds-border,#DDE5DF)] bg-[var(--ds-surface,#fff)] p-4">
       {loading ? (
         <div className="flex justify-center py-10">
-          <Loader2 className="h-6 w-6 animate-spin text-slate-400" />
+          <Loader2 className="h-6 w-6 animate-spin text-[var(--ds-accent,#1F8A5B)]" />
         </div>
       ) : (
         <>
           {!isBuiltInCertificateLayoutKey(activeKey) ? (
-            <p className="text-xs text-emerald-200/90 rounded-lg border border-emerald-700/40 bg-emerald-950/30 px-3 py-2">
+            <p className="rounded-[var(--ds-radius-md,8px)] border border-[var(--ds-warning,#C2410C)]/30 bg-[var(--ds-warning-bg,#FFF7ED)] px-3 py-2 text-xs text-[var(--ds-warning,#C2410C)]">
               Using {activeKey === 'logo_builder' ? 'Page Builder' : 'Upload'} as the live certificate. Choose a library design only if you want to switch.
             </p>
           ) : null}
@@ -138,31 +138,33 @@ const CertificateTemplateLibrary = () => {
                   key={tpl.key}
                   type="button"
                   onClick={() => setPreviewKey(tpl.key)}
-                  className={`text-left rounded-lg border p-2.5 transition ${
+                  className={`rounded-[var(--ds-radius-lg,12px)] border p-2.5 text-left transition ${
                     isPreview
-                      ? 'border-indigo-500 bg-slate-950 ring-1 ring-indigo-500/40'
-                      : 'border-slate-800 bg-slate-950/50 hover:border-slate-600'
+                      ? 'border-[var(--ds-primary,#1F8A5B)] bg-[var(--ds-primary-soft,#ECFDF5)] ring-1 ring-[var(--ds-primary,#1F8A5B)]/30'
+                      : 'border-[var(--ds-border,#DDE5DF)] bg-[var(--ds-surface-muted,#F7FAF8)] hover:border-[var(--ds-border-strong,#C5D0C8)]'
                   }`}
                 >
-                  <div className="flex items-center justify-between gap-2 mb-2">
-                    <p className="text-sm font-medium text-white truncate">{tpl.name}</p>
-                    <div className="flex items-center gap-1.5 shrink-0">
+                  <div className="mb-2 flex items-center justify-between gap-2">
+                    <p className="truncate text-sm font-medium text-[var(--ds-text-primary,#122018)]">{tpl.name}</p>
+                    <div className="flex shrink-0 items-center gap-1.5">
                       {isLandscapeCertificateLayout(tpl.key) ? (
-                        <span className="text-[9px] uppercase tracking-wide text-amber-200/90">Landscape</span>
+                        <span className="text-[9px] uppercase tracking-wide text-[var(--ds-warning,#C2410C)]">
+                          Landscape
+                        </span>
                       ) : null}
                       {isActive ? (
-                        <Badge className="bg-emerald-600/20 text-emerald-300 border-emerald-700/40 text-[10px]">
+                        <Badge className="border-[var(--ds-accent,#1F8A5B)]/30 bg-[var(--ds-primary-soft,#ECFDF5)] text-[10px] text-[var(--ds-accent,#1F8A5B)]">
                           Active
                         </Badge>
                       ) : (
                         <span
-                          className="h-2 w-2 rounded-full shrink-0"
+                          className="h-2 w-2 shrink-0 rounded-full"
                           style={{ backgroundColor: tpl.accentHint }}
                         />
                       )}
                     </div>
                   </div>
-                  <div className="pointer-events-none overflow-hidden rounded border border-slate-800 bg-white">
+                  <div className="pointer-events-none overflow-hidden rounded border border-[var(--ds-border,#DDE5DF)] bg-white">
                     <CertificateCanvas compact data={{ ...sampleData, layoutKey: tpl.key }} />
                   </div>
                 </button>
@@ -170,11 +172,11 @@ const CertificateTemplateLibrary = () => {
             })}
           </div>
 
-          <div className="rounded-lg border border-slate-800 bg-slate-950 p-3">
-            <div className="flex flex-wrap items-center justify-between gap-2 mb-3">
-              <p className="text-sm text-slate-300">
+          <div className="rounded-[var(--ds-radius-lg,12px)] border border-[var(--ds-border,#DDE5DF)] bg-[var(--ds-surface-muted,#F7FAF8)] p-3">
+            <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+              <p className="text-sm text-[var(--ds-text-secondary,#5B6B61)]">
                 Preview:{' '}
-                <span className="text-white font-medium">
+                <span className="font-medium text-[var(--ds-text-primary,#122018)]">
                   {CERTIFICATE_TEMPLATE_LIBRARY.find((t) => t.key === previewKey)?.name}
                 </span>
               </p>
@@ -183,12 +185,11 @@ const CertificateTemplateLibrary = () => {
                 size="sm"
                 disabled={saving || previewKey === activeKey}
                 onClick={() => handleActivate(previewKey)}
-                className="bg-indigo-600 hover:bg-indigo-500"
               >
-                {saving ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
+                {saving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
                 {previewKey === activeKey ? (
                   <>
-                    <CheckCircle2 className="h-4 w-4 mr-1" /> In use
+                    <CheckCircle2 className="mr-1 h-4 w-4" /> In use
                   </>
                 ) : (
                   'Use this design'
@@ -196,7 +197,7 @@ const CertificateTemplateLibrary = () => {
               </Button>
             </div>
             <div
-              className={`mx-auto bg-white rounded overflow-hidden ${
+              className={`mx-auto overflow-hidden rounded bg-white ${
                 isLandscapeCertificateLayout(previewKey) ? 'max-w-2xl' : 'max-w-md'
               }`}
             >
