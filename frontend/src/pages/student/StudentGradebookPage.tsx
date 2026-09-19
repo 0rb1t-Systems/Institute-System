@@ -28,7 +28,10 @@ import {
 } from '@/lib/examPass';
 import { getCombinedExamWithBonus } from '@/lib/assignmentBonus';
 import { getInstitutionGradeScale } from '@/lib/gradingScale';
-import { coursesForDiploma } from '@/lib/diplomaCourses';
+import {
+  coursesForDiploma,
+  semestersForDiploma,
+} from '@/lib/diplomaCourses';
 
 const gradeTone = (grade: string) => {
   switch (grade) {
@@ -59,7 +62,21 @@ const scoreBarColor = (pct: number, pending: boolean) => {
 const StudentGradebookPage = () => {
   const { user, institution } = useAuth();
   const navigate = useNavigate();
-  const { results, exams, courses, classCourses, diplomaCourses = [], enrollments, classes, students, gradebookEntries, assignments, assignmentSubmissions } = useData();
+  const {
+    results,
+    exams,
+    courses,
+    classCourses,
+    diplomaCourses = [],
+    diplomaSemesters = [],
+    diplomas = [],
+    enrollments,
+    classes,
+    students,
+    gradebookEntries,
+    assignments,
+    assignmentSubmissions,
+  } = useData();
   const gradeScale = useMemo(() => getInstitutionGradeScale(institution), [institution]);
 
   const studentData = useMemo(() => {
@@ -84,14 +101,43 @@ const StudentGradebookPage = () => {
        const classData = classes.find(c => c.id === classId);
        if(!classData) return;
 
+       const diplomaId = classData.diploma_id || null;
+       const diplomaName = diplomaId
+         ? diplomas.find((d) => d.id === diplomaId)?.name || null
+         : null;
+       const semesterLookup = diplomaId
+         ? Object.fromEntries(
+             semestersForDiploma(diplomaSemesters, diplomaId).map((s) => [s.id, s]),
+           )
+         : {};
+
        if(classData.course_id) {
          const c = courses.find(co => co.id === classData.course_id);
-         if(c) allCourses.push({ ...c, classId: classId, className: classData.name });
+         if(c) {
+           allCourses.push({
+             ...c,
+             classId,
+             className: classData.name,
+             diplomaId,
+             diplomaName,
+             semesterName: null,
+             semesterSort: 9999,
+           });
+         }
        }
 
-       if (classData.diploma_id) {
-         coursesForDiploma(courses, diplomaCourses, classData.diploma_id).forEach((c) => {
-           allCourses.push({ ...c, classId: classId, className: classData.name });
+       if (diplomaId) {
+         coursesForDiploma(courses, diplomaCourses, diplomaId).forEach((c) => {
+           const sem = c.semester_id ? semesterLookup[c.semester_id] : null;
+           allCourses.push({
+             ...c,
+             classId,
+             className: classData.name,
+             diplomaId,
+             diplomaName,
+             semesterName: sem?.name || null,
+             semesterSort: sem ? Number(sem.sort_order ?? 0) : 9999,
+           });
          });
        }
        
@@ -99,33 +145,67 @@ const StudentGradebookPage = () => {
          .filter(cc => cc.class_id === classId)
          .map(cc => {
             const c = courses.find(co => co.id === cc.course_id);
-            return c ? { ...c, classId: classId, className: classData.name } : null;
+            if (!c) return null;
+            const link = (diplomaCourses || []).find(
+              (dc) => dc.diploma_id === diplomaId && dc.course_id === c.id,
+            );
+            const sem = link?.semester_id ? semesterLookup[link.semester_id] : null;
+            return {
+              ...c,
+              classId,
+              className: classData.name,
+              diplomaId,
+              diplomaName,
+              semesterName: sem?.name || null,
+              semesterSort: sem ? Number(sem.sort_order ?? 0) : 9999,
+            };
          })
          .filter(Boolean);
          
        allCourses.push(...linked);
     });
 
-    const unique = allCourses.filter(
-      (c, i, arr) => arr.findIndex((x) => x.id === c.id && x.classId === c.classId) === i
-    );
+    // Diploma: one row per course across the program (not per class card).
+    // Short courses: keep course+class uniqueness.
+    const unique = allCourses.filter((c, i, arr) => {
+      if (c.diplomaId) {
+        return arr.findIndex((x) => x.id === c.id && x.diplomaId === c.diplomaId) === i;
+      }
+      return arr.findIndex((x) => x.id === c.id && x.classId === c.classId) === i;
+    });
 
     return unique.map(course => {
-      const gb = (gradebookEntries || []).find(
-        (g) =>
-          g.student_id === studentData.id &&
-          g.course_id === course.id &&
-          g.class_id === course.classId
-      );
+      const gb =
+        (gradebookEntries || []).find(
+          (g) =>
+            g.student_id === studentData.id &&
+            g.course_id === course.id &&
+            g.class_id === course.classId,
+        ) ||
+        (course.diplomaId
+          ? (gradebookEntries || []).find(
+              (g) => g.student_id === studentData.id && g.course_id === course.id,
+            )
+          : null);
 
-      const courseExams = exams.filter(e => e.course_id === course.id && e.class_id === course.classId);
+      // Prefer the class that actually has gradebook/exam data (diploma may span enrollments).
+      const resolveClassId = gb?.class_id || course.classId;
+      const enrolledIds = new Set(enrolledClassIds);
+
+      const courseExams = exams.filter(
+        (e) =>
+          e.course_id === course.id &&
+          (e.class_id === resolveClassId ||
+            (course.diplomaId && enrolledIds.has(e.class_id))),
+      );
       const relevantExams =
         courseExams.length > 0
           ? courseExams
           : exams.filter(
               (e) =>
-                e.class_id === course.classId &&
-                (!e.course_id || e.course_id === course.id)
+                (e.class_id === resolveClassId ||
+                  (course.diplomaId && enrolledIds.has(e.class_id))) &&
+                (!e.course_id || e.course_id === course.id),
             );
 
       const rankedResults = results
@@ -159,10 +239,10 @@ const StudentGradebookPage = () => {
         const examTotal = getExamTotalMarks(examDetails);
         const examScore = Number(bestResult.score ?? bestResult.final_score ?? 0);
         const classPrimaryCourseId =
-          classes.find((c) => c.id === course.classId)?.course_id || null;
+          classes.find((c) => c.id === resolveClassId)?.course_id || null;
         const combined = getCombinedExamWithBonus({
           studentId: studentData.id,
-          classId: course.classId,
+          classId: resolveClassId,
           courseId: course.id,
           examScore,
           examTotal,
@@ -195,6 +275,10 @@ const StudentGradebookPage = () => {
         courseName: course.name,
         className: course.className,
         classId: course.classId,
+        diplomaId: course.diplomaId || null,
+        diplomaName: course.diplomaName || null,
+        semesterName: course.semesterName || null,
+        semesterSort: course.semesterSort ?? 9999,
         score: scoreDisplay,
         total: totalDisplay,
         grade,
@@ -205,19 +289,60 @@ const StudentGradebookPage = () => {
       };
     });
 
-  }, [studentData, enrollments, classes, courses, classCourses, diplomaCourses, exams, results, gradebookEntries, assignments, assignmentSubmissions, gradeScale]);
+  }, [studentData, enrollments, classes, courses, classCourses, diplomaCourses, diplomaSemesters, diplomas, exams, results, gradebookEntries, assignments, assignmentSubmissions, gradeScale]);
 
-  const gradesByClass = useMemo(() => {
-    const map = new Map<string, { className: string; courses: typeof studentGrades }>();
-    studentGrades.forEach((g) => {
-      const key = g.classId || g.className || 'other';
-      if (!map.has(key)) {
-        map.set(key, { className: g.className || 'Courses', courses: [] });
+  /** Diploma programs → one unified table; short courses stay class-grouped only when needed. */
+  const gradeTables = useMemo(() => {
+    type GradeTable = {
+      key: string;
+      title: string;
+      isDiploma: boolean;
+      courses: typeof studentGrades;
+    };
+
+    const diplomaGroups = new Map<string, GradeTable>();
+    const shortCourseRows: typeof studentGrades = [];
+
+    for (const g of studentGrades) {
+      if (g.diplomaId) {
+        if (!diplomaGroups.has(g.diplomaId)) {
+          diplomaGroups.set(g.diplomaId, {
+            key: g.diplomaId,
+            title: g.diplomaName || g.className || 'Diploma program',
+            isDiploma: true,
+            courses: [],
+          });
+        }
+        diplomaGroups.get(g.diplomaId)!.courses.push(g);
+      } else {
+        shortCourseRows.push(g);
       }
-      map.get(key)!.courses.push(g);
-    });
-    return Array.from(map.values());
+    }
+
+    const tables: GradeTable[] = Array.from(diplomaGroups.values()).map((group) => ({
+      ...group,
+      courses: [...group.courses].sort((a, b) => {
+        if (a.semesterSort !== b.semesterSort) return a.semesterSort - b.semesterSort;
+        return String(a.courseName || '').localeCompare(String(b.courseName || ''));
+      }),
+    }));
+
+    if (shortCourseRows.length > 0) {
+      tables.push({
+        key: 'short-courses',
+        title: tables.length > 0 ? 'Other courses' : 'Courses',
+        isDiploma: false,
+        courses: shortCourseRows,
+      });
+    }
+
+    return tables;
   }, [studentGrades]);
+
+  const showSemesterColumn = useMemo(
+    () => gradeTables.some((t) => t.isDiploma && t.courses.some((c) => c.semesterName)),
+    [gradeTables],
+  );
 
   const stats = useMemo(() => {
     const gradedCourses = studentGrades.filter(g => g.score !== '-');
@@ -333,12 +458,12 @@ const StudentGradebookPage = () => {
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            {/* Course marks tables — grouped by class */}
+            {/* Course marks — diploma = one table for the whole program */}
             <div className="lg:col-span-2 space-y-5">
-              {gradesByClass.length > 0 ? (
-                gradesByClass.map((group) => (
+              {gradeTables.length > 0 ? (
+                gradeTables.map((group) => (
                   <Card
-                    key={group.className}
+                    key={group.key}
                     className="bg-slate-900/50 border-slate-800 overflow-hidden shadow-sm"
                   >
                     <CardHeader className="border-b border-slate-800/80 bg-slate-900/40 py-4">
@@ -348,9 +473,11 @@ const StudentGradebookPage = () => {
                             <BookOpen className="h-4 w-4 text-blue-400" />
                           </div>
                           <div className="min-w-0">
-                            <CardTitle className="text-base text-white truncate">{group.className}</CardTitle>
+                            <CardTitle className="text-base text-white truncate">{group.title}</CardTitle>
                             <CardDescription className="text-slate-500">
-                              {group.courses.length} course{group.courses.length !== 1 ? 's' : ''} · marks overview
+                              {group.isDiploma
+                                ? `${group.courses.length} course${group.courses.length !== 1 ? 's' : ''} in one gradebook`
+                                : `${group.courses.length} course${group.courses.length !== 1 ? 's' : ''} · marks overview`}
                             </CardDescription>
                           </div>
                         </div>
@@ -364,7 +491,17 @@ const StudentGradebookPage = () => {
                         <Table>
                           <TableHeader>
                             <TableRow className="border-slate-800 hover:bg-transparent bg-slate-950/50">
-                              <TableHead className="text-slate-500 font-semibold text-[11px] uppercase tracking-wider pl-5">Course</TableHead>
+                              {showSemesterColumn && group.isDiploma ? (
+                                <TableHead className="text-slate-500 font-semibold text-[11px] uppercase tracking-wider pl-5">
+                                  Semester
+                                </TableHead>
+                              ) : null}
+                              <TableHead className={cn(
+                                'text-slate-500 font-semibold text-[11px] uppercase tracking-wider',
+                                !(showSemesterColumn && group.isDiploma) && 'pl-5',
+                              )}>
+                                Course
+                              </TableHead>
                               <TableHead className="text-slate-500 font-semibold text-[11px] uppercase tracking-wider text-center">Score</TableHead>
                               <TableHead className="text-slate-500 font-semibold text-[11px] uppercase tracking-wider text-center w-[130px]">
                                 <span className="inline-flex items-center gap-1"><Percent className="h-3 w-3" /> Mark</span>
@@ -381,10 +518,20 @@ const StudentGradebookPage = () => {
                               const barWidth = pending ? 0 : Math.min(100, Math.max(0, item.percentage));
                               return (
                                 <TableRow
-                                  key={`${item.courseCode}-${i}`}
+                                  key={`${item.courseCode || item.courseName}-${i}`}
                                   className="border-slate-800/80 hover:bg-slate-800/40 transition-colors"
                                 >
-                                  <TableCell className="pl-5 py-4">
+                                  {showSemesterColumn && group.isDiploma ? (
+                                    <TableCell className="pl-5 py-4 align-middle">
+                                      <span className="text-[12px] text-slate-400">
+                                        {item.semesterName || '—'}
+                                      </span>
+                                    </TableCell>
+                                  ) : null}
+                                  <TableCell className={cn(
+                                    'py-4',
+                                    !(showSemesterColumn && group.isDiploma) && 'pl-5',
+                                  )}>
                                     <div className="font-medium text-white leading-snug">{item.courseName}</div>
                                     {item.courseCode && (
                                       <div className="text-[11px] text-slate-500 font-mono mt-0.5 tracking-wide">

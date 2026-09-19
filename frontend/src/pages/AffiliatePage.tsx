@@ -4,43 +4,88 @@ import { format } from 'date-fns';
 import { Link } from 'react-router-dom';
 import AnimatedPage from '@/components/AnimatedPage';
 import PageHeader from '@/components/PageHeader';
+import StatCard from '@/components/StatCard';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { DsOutlineAction, DsPrimaryAction, DS_ICON_STROKE } from '@/components/ui/ds-actions';
 import { useAuth } from '@/contexts/AuthContext';
 import { useData } from '@/contexts/DataContext';
 import { formatCurrency, formatDate } from '@/lib/utils';
-import { Users, DollarSign, Share2, Wallet, Copy, CheckCircle2, AlertCircle } from 'lucide-react';
+import {
+  DollarSign,
+  Share2,
+  Copy,
+  CheckCircle2,
+  AlertCircle,
+  TrendingUp,
+  Timer,
+  UserPlus,
+} from 'lucide-react';
 import { getAffiliateCommissionRate, getTenantBaseUrl, rateToPercent } from '@/lib/institution';
 import { useToast } from '@/components/ui/use-toast';
 import MonthYearSelector from '@/components/instructor/MonthYearSelector';
-import { dashboardStyles } from '@/components/instructor/InstructorDashboardStyles';
 import {
   buildAffiliateStudentMonthRows,
   filterSettlementsForMonth,
   formatMonthKey,
   latestBillingMonthDate,
   monthKeyFromDate,
+  paymentMonthKey,
 } from '@/lib/affiliateMonthTracking';
+import {
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  ResponsiveContainer,
+  Cell,
+  LabelList,
+} from 'recharts';
 
 const statusBadge = (status: string) => {
   if (status === 'paid') {
-    return <Badge className="bg-green-500/15 text-green-700 dark:text-green-400 hover:bg-green-500/20">Paid</Badge>;
+    return (
+      <Badge className="border-transparent bg-[var(--ds-primary-soft,#ECFDF5)] text-[var(--ds-accent,#0F766E)]">
+        Paid
+      </Badge>
+    );
   }
   if (status === 'partial') {
-    return <Badge className="bg-amber-500/15 text-amber-700 dark:text-amber-400 hover:bg-amber-500/20">Partial</Badge>;
+    return (
+      <Badge className="border-transparent bg-[var(--ds-warning-bg,#FFF7ED)] text-[var(--ds-warning,#C2410C)]">
+        Partial
+      </Badge>
+    );
   }
   if (status === 'not_due') {
-    return <Badge className="bg-slate-500/15 text-slate-600 dark:text-slate-300 hover:bg-slate-500/20">Not billed</Badge>;
+    return (
+      <Badge
+        variant="outline"
+        className="border-[var(--ds-border,#DDE5DF)] bg-[var(--ds-surface-muted,#F7FAF8)] text-[var(--ds-text-secondary,#5B6B61)]"
+      >
+        Not billed
+      </Badge>
+    );
   }
-  return <Badge className="bg-red-500/15 text-red-700 dark:text-red-400 hover:bg-red-500/20">Unpaid</Badge>;
+  return (
+    <Badge className="border-transparent bg-[var(--ds-danger-bg,#FEF2F2)] text-[var(--ds-danger,#DC2626)]">
+      Unpaid
+    </Badge>
+  );
 };
 
+/**
+ * Affiliate referral + commission overview — visual layout from design-system.pen
+ * (Affiliate Dashboard), matching Admin/Staff/Instructor shell patterns.
+ * Commission calculation, withdrawals, and permissions unchanged.
+ */
 const AffiliatePage = () => {
   const { user, institution } = useAuth();
-  const { students, payments, enrollments, classes, affiliateSettlements = [] } = useData();
+  const { students, payments, enrollments, classes, affiliateSettlements = [], loading } = useData();
   const { toast } = useToast();
   const [selectedDate, setSelectedDate] = useState(() => new Date());
   const [statusTab, setStatusTab] = useState('all');
@@ -50,6 +95,7 @@ const AffiliatePage = () => {
   const referralLink = `${getTenantBaseUrl(institution)}/register${user?.id ? `?ref=${user.id}` : ''}`;
   const monthKey = monthKeyFromDate(selectedDate);
   const monthLabel = format(selectedDate, 'MMMM yyyy');
+  const monthShort = format(selectedDate, 'MMM');
 
   useEffect(() => {
     if (monthInitialized.current || !user?.id) return;
@@ -71,6 +117,14 @@ const AffiliatePage = () => {
     if (!user) return [];
     return students.filter((s) => s.affiliate_id === user.id);
   }, [students, user]);
+
+  const referredThisMonth = useMemo(() => {
+    return myStudents.filter((s) => {
+      const d = new Date(s.registration_date || s.created_at || 0);
+      if (Number.isNaN(d.getTime())) return false;
+      return d.getMonth() === selectedDate.getMonth() && d.getFullYear() === selectedDate.getFullYear();
+    }).length;
+  }, [myStudents, selectedDate]);
 
   const monthRows = useMemo(
     () =>
@@ -112,169 +166,431 @@ const AffiliatePage = () => {
       .reduce((sum: number, s: any) => sum + Number(s.amount || 0), 0);
   }, [affiliateSettlements, user]);
 
+  const commissionTrend = useMemo(() => {
+    if (!user?.id) return [];
+    const buckets = new Map<string, number>();
+    for (const s of affiliateSettlements || []) {
+      if (s.affiliate_id !== user.id) continue;
+      const payment = (payments || []).find((p) => p.id === s.payment_id);
+      const key =
+        (payment ? paymentMonthKey(payment) : null) ||
+        (s.created_at ? String(s.created_at).slice(0, 7) : null);
+      if (!key) continue;
+      buckets.set(key, (buckets.get(key) || 0) + Number(s.amount || 0));
+    }
+
+    // Show up to 4 months ending at selected month (or latest available).
+    const keys = Array.from(buckets.keys()).sort();
+    if (keys.length === 0) {
+      // Empty shell months around selection for empty-state chart labels
+      const base = new Date(selectedDate.getFullYear(), selectedDate.getMonth() - 2, 1);
+      return [0, 1, 2, 3].map((i) => {
+        const d = new Date(base.getFullYear(), base.getMonth() + i, 1);
+        const key = monthKeyFromDate(d);
+        return {
+          name: format(d, 'MMM'),
+          amount: 0,
+          key,
+          fill:
+            key === monthKey
+              ? 'var(--ds-primary, #0B3D2E)'
+              : 'color-mix(in srgb, var(--ds-accent, #1F8A5B) 55%, white)',
+        };
+      });
+    }
+
+    let endIdx = keys.indexOf(monthKey);
+    if (endIdx < 0) endIdx = keys.length - 1;
+    const startIdx = Math.max(0, endIdx - 3);
+    const windowKeys = keys.slice(startIdx, endIdx + 1);
+
+    const fills = [
+      'color-mix(in srgb, var(--ds-primary, #0B3D2E) 55%, white)',
+      'color-mix(in srgb, var(--ds-primary, #0B3D2E) 72%, white)',
+      'color-mix(in srgb, var(--ds-accent, #1F8A5B) 88%, white)',
+      'var(--ds-primary, #0B3D2E)',
+    ];
+
+    return windowKeys.map((key, i) => {
+      const [y, m] = key.split('-');
+      const d = new Date(Number(y), Number(m) - 1, 1);
+      return {
+        name: format(d, 'MMM'),
+        amount: buckets.get(key) || 0,
+        key,
+        fill: key === monthKey ? fills[3] : fills[Math.min(i, 2)],
+      };
+    });
+  }, [affiliateSettlements, payments, user?.id, monthKey, selectedDate]);
+
+  const referralStatusChart = useMemo(
+    () => [
+      {
+        name: 'Paid',
+        amount: paidCount,
+        fill: 'var(--ds-primary, #0B3D2E)',
+      },
+      {
+        name: 'Unpaid',
+        amount: unpaidCount,
+        fill: 'var(--ds-warning, #C2410C)',
+      },
+    ],
+    [paidCount, unpaidCount],
+  );
+
   const copyLink = () => {
     navigator.clipboard.writeText(referralLink);
     toast({ title: 'Copied', description: 'Referral link copied.' });
   };
 
+  const v = (n: React.ReactNode) => (loading ? '…' : n);
+  const axisColor = 'var(--ds-text-secondary, #5B6B61)';
+  const gridColor = 'var(--ds-border, #DDE5DF)';
+  const trendEmpty = !loading && commissionTrend.every((d) => d.amount === 0);
+  const statusEmpty = !loading && paidCount === 0 && unpaidCount === 0;
+
   return (
     <AnimatedPage>
-      <Helmet><title>Affiliate Dashboard - Portal</title></Helmet>
-      <div className="flex flex-col lg:flex-row justify-between items-start lg:items-end gap-4 mb-2">
-        <PageHeader
-          title="Affiliate Dashboard"
-          subtitle="See which months each referred student paid, and the commission you can withdraw."
-        />
-        <div className="flex flex-col items-end gap-2">
-          <span className="text-xs text-[var(--tenant-muted)] font-medium uppercase tracking-wider">
-            Billing month
-          </span>
-          <MonthYearSelector selectedDate={selectedDate} onChange={setSelectedDate} />
-        </div>
-      </div>
+      <Helmet>
+        <title>Affiliate Dashboard | Portal</title>
+      </Helmet>
 
-      <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-4 mb-8">
-        <Card className={dashboardStyles.card}>
-          <CardHeader className="pb-2 p-0">
-            <CardTitle className={dashboardStyles.metricLabel}>Referred Students</CardTitle>
-          </CardHeader>
-          <CardContent className="p-0 pt-2">
-            <div className={`${dashboardStyles.metricValue} flex items-center gap-2`}>
-              <Users className="h-5 w-5 text-blue-500" /> {myStudents.length}
-            </div>
-          </CardContent>
-        </Card>
-        <Card className={dashboardStyles.card}>
-          <CardHeader className="pb-2 p-0">
-            <CardTitle className={dashboardStyles.metricLabel}>Paid in {format(selectedDate, 'MMM')}</CardTitle>
-          </CardHeader>
-          <CardContent className="p-0 pt-2">
-            <div className="text-3xl font-bold text-green-600 dark:text-green-400 flex items-center gap-2">
-              <CheckCircle2 className="h-5 w-5" /> {paidCount}
-            </div>
-            <p className="text-xs text-[var(--tenant-muted)] mt-1">Fully paid for {monthLabel}</p>
-          </CardContent>
-        </Card>
-        <Card className={dashboardStyles.card}>
-          <CardHeader className="pb-2 p-0">
-            <CardTitle className={dashboardStyles.metricLabel}>Unpaid in {format(selectedDate, 'MMM')}</CardTitle>
-          </CardHeader>
-          <CardContent className="p-0 pt-2">
-            <div className="text-3xl font-bold text-red-600 dark:text-red-400 flex items-center gap-2">
-              <AlertCircle className="h-5 w-5" /> {unpaidCount}
-            </div>
-            <p className="text-xs text-[var(--tenant-muted)] mt-1">Unpaid or partial for {monthLabel}</p>
-          </CardContent>
-        </Card>
-        <Card className={dashboardStyles.card}>
-          <CardHeader className="pb-2 p-0">
-            <CardTitle className={dashboardStyles.metricLabel}>Commission ({format(selectedDate, 'MMM')})</CardTitle>
-          </CardHeader>
-          <CardContent className="p-0 pt-2">
-            <div className="text-3xl font-bold text-amber-600 dark:text-amber-400 flex items-center gap-2">
-              <Wallet className="h-5 w-5" /> {formatCurrency(monthCommission)}
-            </div>
-            <p className="text-xs text-[var(--tenant-muted)] mt-1">
-              Lifetime {formatCurrency(lifetimeCommission)} · Rate {ratePct.toFixed(1)}%
-            </p>
-          </CardContent>
-        </Card>
-      </div>
-
-      <Card className={`${dashboardStyles.card} mb-8`}>
-        <CardHeader className="flex flex-row items-start justify-between gap-4 p-0 pb-4">
-          <div>
-            <CardTitle className="flex items-center gap-2 text-[var(--tenant-text)]">
-              <Share2 className="h-4 w-4 text-purple-500" /> Referral Link
-            </CardTitle>
-            <CardDescription>Students who register with this link are attributed to you.</CardDescription>
+      <PageHeader
+        eyebrow="Referrals · Affiliate"
+        title="Affiliate Dashboard"
+        subtitle="See which months each referred student paid, and the commission you can withdraw."
+      >
+        <div className="flex flex-col items-stretch gap-2 sm:flex-row sm:items-center">
+          <div className="flex flex-col items-start gap-1 sm:items-end">
+            <span className="font-data text-[10px] font-semibold uppercase tracking-[0.12em] text-[var(--ds-text-tertiary,#8A978E)]">
+              Billing month
+            </span>
+            <MonthYearSelector selectedDate={selectedDate} onChange={setSelectedDate} />
           </div>
-          <Button type="button" variant="outline" size="sm" onClick={copyLink}>
-            <Copy className="h-4 w-4 mr-2" /> Copy
-          </Button>
+          <DsPrimaryAction asChild>
+            <Link to="/affiliate/earnings">
+              <DollarSign className="h-3.5 w-3.5" strokeWidth={DS_ICON_STROKE} />
+              Withdraw earnings
+            </Link>
+          </DsPrimaryAction>
+        </div>
+      </PageHeader>
+
+      <div className="mb-5 grid grid-cols-2 gap-3 lg:grid-cols-4 lg:gap-4">
+        <StatCard
+          title="Referred students"
+          value={v(myStudents.length)}
+          tone="info"
+          descriptionTone={referredThisMonth > 0 ? 'accent' : 'secondary'}
+          trendIcon={referredThisMonth > 0 ? <TrendingUp className="h-3 w-3 shrink-0" /> : null}
+          icon={<UserPlus className="h-[18px] w-[18px]" />}
+          description={
+            loading
+              ? '…'
+              : referredThisMonth > 0
+                ? `+${referredThisMonth} this month`
+                : 'Total attributed to you'
+          }
+        />
+        <StatCard
+          title={`Paid in ${monthShort}`}
+          value={v(paidCount)}
+          tone="primary"
+          descriptionTone="secondary"
+          icon={<CheckCircle2 className="h-[18px] w-[18px]" />}
+          description={loading ? '…' : 'Settled for selected month'}
+        />
+        <StatCard
+          title={`Unpaid in ${monthShort}`}
+          value={v(unpaidCount)}
+          tone={unpaidCount > 0 ? 'warning' : 'corporate'}
+          descriptionTone={unpaidCount > 0 ? 'warning' : 'secondary'}
+          trendIcon={unpaidCount > 0 ? <Timer className="h-3 w-3 shrink-0" /> : null}
+          icon={<AlertCircle className="h-[18px] w-[18px]" />}
+          description={
+            loading ? '…' : unpaidCount > 0 ? 'Needs follow-up' : 'Nothing outstanding'
+          }
+        />
+        <StatCard
+          title={`Commission (${monthShort})`}
+          value={loading ? '…' : formatCurrency(monthCommission)}
+          tone="primary"
+          descriptionTone={monthCommission > 0 ? 'accent' : 'secondary'}
+          trendIcon={monthCommission > 0 ? <TrendingUp className="h-3 w-3 shrink-0" /> : null}
+          icon={<DollarSign className="h-[18px] w-[18px]" />}
+          description={
+            loading
+              ? '…'
+              : `Lifetime ${formatCurrency(lifetimeCommission)} · ${ratePct.toFixed(1)}%`
+          }
+        />
+      </div>
+
+      <div className="mb-5 grid gap-4 lg:grid-cols-5">
+        <Card className="border-slate-800 bg-slate-900/50 lg:col-span-3">
+          <CardHeader className="flex flex-row items-start justify-between gap-3 space-y-0 p-6 pb-2">
+            <div className="min-w-0 space-y-1">
+              <CardTitle className="text-lg text-white">Commission trend</CardTitle>
+              <CardDescription className="text-slate-400 [.tenant-shell_&]:text-[12px]">
+                Monthly earnings from referrals
+              </CardDescription>
+            </div>
+            <Link
+              to="/affiliate/earnings"
+              className="shrink-0 rounded-sm text-[12px] font-semibold text-[var(--ds-accent,#1F8A5B)] transition-colors hover:text-[var(--ds-primary,#1F8A5B)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ds-focus-ring,#1F8A5B)]/40"
+            >
+              View all
+            </Link>
+          </CardHeader>
+          <CardContent className="h-[280px] px-6 pb-6 pt-2">
+            {loading ? (
+              <div className="flex h-full items-center justify-center text-sm text-slate-500 [.tenant-shell_&]:text-[var(--ds-text-tertiary,#8A978E)]">
+                Loading commissions…
+              </div>
+            ) : trendEmpty ? (
+              <div className="flex h-full items-center justify-center text-sm text-slate-500 [.tenant-shell_&]:text-[var(--ds-text-tertiary,#8A978E)]">
+                No commission recorded yet. Share your referral link to get started.
+              </div>
+            ) : (
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={commissionTrend} margin={{ top: 28, right: 12, left: 0, bottom: 4 }}>
+                  <CartesianGrid strokeDasharray="0" stroke={gridColor} vertical={false} />
+                  <XAxis
+                    dataKey="name"
+                    stroke={axisColor}
+                    tick={{ fill: axisColor, fontSize: 12, fontWeight: 500 }}
+                    axisLine={false}
+                    tickLine={false}
+                  />
+                  <YAxis hide />
+                  <Tooltip
+                    cursor={{
+                      fill: 'color-mix(in srgb, var(--ds-primary, #1F8A5B) 10%, transparent)',
+                    }}
+                    contentStyle={{
+                      background: 'var(--ds-surface, #fff)',
+                      border: '1px solid var(--ds-border, #DDE5DF)',
+                      borderRadius: 8,
+                      color: 'var(--ds-text-primary, #122018)',
+                      fontSize: 13,
+                    }}
+                    formatter={(value) => [formatCurrency(Number(value)), 'Commission']}
+                  />
+                  <Bar dataKey="amount" radius={[10, 10, 10, 10]} maxBarSize={56}>
+                    {commissionTrend.map((entry) => (
+                      <Cell key={entry.key} fill={entry.fill} />
+                    ))}
+                    <LabelList
+                      dataKey="amount"
+                      position="top"
+                      formatter={(value: number) =>
+                        Number(value) > 0 ? formatCurrency(Number(value)) : ''
+                      }
+                      style={{
+                        fill: 'var(--ds-text-primary, #122018)',
+                        fontSize: 11,
+                        fontWeight: 600,
+                        fontFamily: 'Arial, Helvetica, sans-serif',
+                      }}
+                    />
+                  </Bar>
+                </BarChart>
+              </ResponsiveContainer>
+            )}
+          </CardContent>
+        </Card>
+
+        <Card className="border-slate-800 bg-slate-900/50 lg:col-span-2">
+          <CardHeader className="space-y-1 p-6 pb-2">
+            <CardTitle className="text-lg text-white">Referral status</CardTitle>
+            <CardDescription className="text-slate-400 [.tenant-shell_&]:text-[12px]">
+              Paid vs unpaid for {monthLabel}
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="h-[280px] px-6 pb-6 pt-2">
+            {loading ? (
+              <div className="flex h-full items-center justify-center text-sm text-slate-500 [.tenant-shell_&]:text-[var(--ds-text-tertiary,#8A978E)]">
+                Loading status…
+              </div>
+            ) : statusEmpty ? (
+              <div className="flex h-full items-center justify-center text-sm text-slate-500 [.tenant-shell_&]:text-[var(--ds-text-tertiary,#8A978E)]">
+                No referred students billed for this month.
+              </div>
+            ) : (
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={referralStatusChart} margin={{ top: 28, right: 12, left: 0, bottom: 4 }}>
+                  <CartesianGrid strokeDasharray="0" stroke={gridColor} vertical={false} />
+                  <XAxis
+                    dataKey="name"
+                    stroke={axisColor}
+                    tick={{ fill: axisColor, fontSize: 12, fontWeight: 500 }}
+                    axisLine={false}
+                    tickLine={false}
+                  />
+                  <YAxis hide />
+                  <Tooltip
+                    cursor={{
+                      fill: 'color-mix(in srgb, var(--ds-primary, #1F8A5B) 10%, transparent)',
+                    }}
+                    contentStyle={{
+                      background: 'var(--ds-surface, #fff)',
+                      border: '1px solid var(--ds-border, #DDE5DF)',
+                      borderRadius: 8,
+                      color: 'var(--ds-text-primary, #122018)',
+                      fontSize: 13,
+                    }}
+                    formatter={(value) => [Number(value), 'Students']}
+                  />
+                  <Bar dataKey="amount" radius={[10, 10, 10, 10]} maxBarSize={72}>
+                    {referralStatusChart.map((entry) => (
+                      <Cell key={entry.name} fill={entry.fill} />
+                    ))}
+                    <LabelList
+                      dataKey="amount"
+                      position="top"
+                      style={{
+                        fill: 'var(--ds-text-primary, #122018)',
+                        fontSize: 12,
+                        fontWeight: 600,
+                        fontFamily: 'Arial, Helvetica, sans-serif',
+                      }}
+                    />
+                  </Bar>
+                </BarChart>
+              </ResponsiveContainer>
+            )}
+          </CardContent>
+        </Card>
+      </div>
+
+      <Card className="mb-5 border-slate-800 bg-slate-900/50">
+        <CardHeader className="flex flex-col gap-3 space-y-0 p-6 sm:flex-row sm:items-center sm:justify-between">
+          <div className="min-w-0 space-y-1">
+            <CardTitle className="flex items-center gap-2 text-lg text-white">
+              <Share2 className="h-4 w-4 text-[var(--ds-accent,#1F8A5B)]" />
+              Your referral link
+            </CardTitle>
+            <CardDescription className="text-slate-400 [.tenant-shell_&]:text-[12px]">
+              Students who register with this link are attributed to you.
+            </CardDescription>
+          </div>
+          <DsOutlineAction type="button" onClick={copyLink}>
+            <Copy className="h-3.5 w-3.5" strokeWidth={DS_ICON_STROKE} />
+            Copy
+          </DsOutlineAction>
         </CardHeader>
-        <CardContent className="p-0">
-          <p className="text-xs font-mono text-purple-600 dark:text-purple-400 break-all">{referralLink}</p>
+        <CardContent className="px-6 pb-6 pt-0">
+          <p className="break-all font-data text-[12px] text-[var(--ds-accent,#1F8A5B)]">{referralLink}</p>
         </CardContent>
       </Card>
 
       <Tabs value={statusTab} onValueChange={setStatusTab} className="space-y-4">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <TabsList>
             <TabsTrigger value="all">All ({monthRows.length})</TabsTrigger>
             <TabsTrigger value="paid">Paid ({paidCount})</TabsTrigger>
             <TabsTrigger value="unpaid">Unpaid ({unpaidCount})</TabsTrigger>
           </TabsList>
-          <Button asChild variant="outline" size="sm">
-            <Link to="/affiliate/earnings">
-              <DollarSign className="h-4 w-4 mr-2" /> Withdraw earnings
-            </Link>
-          </Button>
         </div>
 
         <TabsContent value={statusTab} className="mt-0">
-          <Card className={dashboardStyles.card}>
-            <CardHeader className="p-0 pb-4">
-              <CardTitle className="text-[var(--tenant-text)]">Students — {monthLabel}</CardTitle>
-              <CardDescription>
-                Status is for the selected billing month. Paid months lists every month this student has already paid.
+          <Card className="border-slate-800 bg-slate-900/50">
+            <CardHeader className="p-6 pb-4">
+              <CardTitle className="text-lg text-white">Students — {monthLabel}</CardTitle>
+              <CardDescription className="text-slate-400 [.tenant-shell_&]:text-[12px]">
+                Status is for the selected billing month. Paid months lists every month this student
+                has already paid.
               </CardDescription>
             </CardHeader>
-            <CardContent className="p-0">
+            <CardContent className="overflow-x-auto px-0 pb-2 sm:px-2">
               <Table>
                 <TableHeader>
-                  <TableRow>
-                    <TableHead>Student</TableHead>
-                    <TableHead>Classes</TableHead>
-                    <TableHead>Paid months</TableHead>
-                    <TableHead className="text-right">Due</TableHead>
-                    <TableHead className="text-right">Paid</TableHead>
-                    <TableHead className="text-right">Your share</TableHead>
-                    <TableHead className="text-right">Status</TableHead>
+                  <TableRow className="hover:bg-transparent">
+                    <TableHead className="pl-6 font-data text-[11px] font-semibold uppercase tracking-wide text-slate-500 [.tenant-shell_&]:text-[var(--ds-text-tertiary,#8A978E)]">
+                      Student
+                    </TableHead>
+                    <TableHead className="font-data text-[11px] font-semibold uppercase tracking-wide text-slate-500 [.tenant-shell_&]:text-[var(--ds-text-tertiary,#8A978E)]">
+                      Class
+                    </TableHead>
+                    <TableHead className="hidden font-data text-[11px] font-semibold uppercase tracking-wide text-slate-500 md:table-cell [.tenant-shell_&]:text-[var(--ds-text-tertiary,#8A978E)]">
+                      Paid months
+                    </TableHead>
+                    <TableHead className="text-right font-data text-[11px] font-semibold uppercase tracking-wide text-slate-500 [.tenant-shell_&]:text-[var(--ds-text-tertiary,#8A978E)]">
+                      Paid
+                    </TableHead>
+                    <TableHead className="text-right font-data text-[11px] font-semibold uppercase tracking-wide text-slate-500 [.tenant-shell_&]:text-[var(--ds-text-tertiary,#8A978E)]">
+                      Commission
+                    </TableHead>
+                    <TableHead className="pr-6 text-right font-data text-[11px] font-semibold uppercase tracking-wide text-slate-500 [.tenant-shell_&]:text-[var(--ds-text-tertiary,#8A978E)]">
+                      Status
+                    </TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {visibleRows.length > 0 ? (
+                  {loading ? (
+                    <TableRow>
+                      <TableCell
+                        colSpan={6}
+                        className="py-10 text-center text-sm text-slate-500 [.tenant-shell_&]:text-[var(--ds-text-tertiary,#8A978E)]"
+                      >
+                        Loading referrals…
+                      </TableCell>
+                    </TableRow>
+                  ) : visibleRows.length > 0 ? (
                     visibleRows.map((s) => (
-                      <TableRow key={s.id}>
-                        <TableCell>
-                          <div className="font-medium text-[var(--tenant-text)]">{s.name}</div>
-                          <div className="text-xs text-[var(--tenant-muted)]">{s.email}</div>
-                          <div className="text-xs text-[var(--tenant-muted)]">{formatDate(s.registration_date)}</div>
+                      <TableRow
+                        key={s.id}
+                        className="transition-colors hover:bg-[var(--ds-surface-muted,#F7FAF8)]/60"
+                      >
+                        <TableCell className="pl-6">
+                          <div className="font-medium text-white [.tenant-shell_&]:text-[13px] [.tenant-shell_&]:font-semibold [.tenant-shell_&]:text-[var(--ds-text-primary,#122018)]">
+                            {s.name}
+                          </div>
+                          <div className="text-[11px] text-slate-500 [.tenant-shell_&]:text-[var(--ds-text-tertiary,#8A978E)]">
+                            {s.email}
+                          </div>
+                          <div className="text-[11px] text-slate-500 [.tenant-shell_&]:text-[var(--ds-text-tertiary,#8A978E)]">
+                            {formatDate(s.registration_date)}
+                          </div>
                         </TableCell>
-                        <TableCell className="text-sm text-[var(--tenant-text)]">{s.classNames}</TableCell>
-                        <TableCell>
+                        <TableCell className="text-sm text-slate-300 [.tenant-shell_&]:text-[12px] [.tenant-shell_&]:text-[var(--ds-text-primary,#122018)]">
+                          {s.classNames}
+                        </TableCell>
+                        <TableCell className="hidden md:table-cell">
                           {s.paidMonths?.length ? (
                             <div className="flex flex-wrap gap-1">
                               {s.paidMonths.map((m) => (
                                 <Badge
                                   key={m}
                                   variant="outline"
-                                  className="text-[10px] font-normal"
+                                  className="border-[var(--ds-border,#DDE5DF)] text-[10px] font-normal text-[var(--ds-text-secondary,#5B6B61)]"
                                 >
                                   {formatMonthKey(m)}
                                 </Badge>
                               ))}
                             </div>
                           ) : (
-                            <span className="text-xs text-[var(--tenant-muted)]">None yet</span>
+                            <span className="text-[11px] text-slate-500 [.tenant-shell_&]:text-[var(--ds-text-tertiary,#8A978E)]">
+                              None yet
+                            </span>
                           )}
                         </TableCell>
-                        <TableCell className="text-right font-mono text-[var(--tenant-text)]">
-                          {formatCurrency(s.dueAmount)}
-                        </TableCell>
-                        <TableCell className="text-right font-mono text-green-600 dark:text-green-400">
+                        <TableCell className="text-right font-data text-sm tabular-nums text-emerald-400 [.tenant-shell_&]:text-[var(--ds-primary,#1F8A5B)]">
                           {formatCurrency(s.paidAmount)}
                         </TableCell>
-                        <TableCell className="text-right font-mono text-amber-600 dark:text-amber-400">
+                        <TableCell className="text-right font-data text-sm font-semibold tabular-nums text-white [.tenant-shell_&]:text-[var(--ds-text-primary,#122018)]">
                           {formatCurrency(s.commission)}
                         </TableCell>
-                        <TableCell className="text-right">{statusBadge(s.status)}</TableCell>
+                        <TableCell className="pr-6 text-right">{statusBadge(s.status)}</TableCell>
                       </TableRow>
                     ))
                   ) : (
                     <TableRow>
-                      <TableCell colSpan={7} className="text-center py-8 text-[var(--tenant-muted)]">
+                      <TableCell
+                        colSpan={6}
+                        className="py-10 text-center text-sm text-slate-500 [.tenant-shell_&]:text-[var(--ds-text-tertiary,#8A978E)]"
+                      >
                         {myStudents.length === 0
                           ? 'No referred students yet. Share your referral link.'
                           : `No students in this list for ${monthLabel}.`}
