@@ -628,6 +628,15 @@ const TranscriptView = ({ studentId, onClose, initialClassId }: any) => {
     const chrome = getTranscriptLayoutChrome(layoutKey, primary);
     const layoutStyles = getTranscriptLayoutStyles(layoutKey, primary);
     const showNarrative = !!transcriptNarrative;
+    const programTitleLen = String(programName || '').length;
+    const programTitleClass =
+      programTitleLen > 70
+        ? 'text-xs tracking-normal'
+        : programTitleLen > 50
+          ? 'text-sm tracking-normal'
+          : programTitleLen > 35
+            ? 'text-base tracking-wide'
+            : 'text-lg tracking-wide';
 
     const transcriptPages = useMemo(() => {
       // firstContinue leaves room for header + narrative + ~9–10 Sem-1 course rows on A4.
@@ -787,7 +796,7 @@ const TranscriptView = ({ studentId, onClose, initialClassId }: any) => {
                                 variant="default" 
                                 onClick={handleDownloadPDF} 
                                 disabled={isDownloading}
-                                className="gap-2 bg-black hover:bg-slate-800 text-white font-bold"
+                                className="gap-2 bg-black hover:bg-[#1a1a1a] text-white font-bold [.tenant-shell_&]:bg-black [.tenant-shell_&]:text-white [.tenant-shell_&]:hover:bg-[#1a1a1a]"
                             >
                                 {isDownloading ? <Loader2 className="h-4 w-4 animate-spin" /> : <FileDown className="h-4 w-4" />}
                                 Download PDF
@@ -947,15 +956,19 @@ const TranscriptView = ({ studentId, onClose, initialClassId }: any) => {
                         </div>
                     </div>
                     
-                    {/* Program Title Bar — line-height === height (no transform; html2canvas-safe) */}
+                    {/* Program Title Bar — padding + wrap so long diploma/course names stay inside */}
                     <div
                       data-transcript-title-bar
-                      className={`mt-3 text-center print:mt-2 ${chrome.titleBar} ${chrome.titleBarText}`}
+                      data-title-bar-light={layoutKey === 'minimal' ? '1' : undefined}
+                      className={`mt-3 text-center print:mt-2 ${chrome.titleBar}`}
                       style={{
-                        height: dense ? '36px' : '40px',
-                        lineHeight: dense ? '36px' : '40px',
+                        minHeight: dense ? '36px' : '40px',
+                        padding: dense ? '6px 18px' : '8px 22px',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
                         backgroundColor: layoutStyles.titleBarBg,
-                        color: layoutStyles.titleBarColor,
+                        color: layoutStyles.titleBarColor || '#ffffff',
                         WebkitPrintColorAdjust: 'exact',
                         printColorAdjust: 'exact',
                         overflow: 'hidden',
@@ -964,13 +977,17 @@ const TranscriptView = ({ studentId, onClose, initialClassId }: any) => {
                     >
                         <span
                           data-transcript-title-label
-                          className={`${dense ? 'text-base' : 'text-lg'} font-black uppercase tracking-wide`}
+                          className={`${programTitleClass} font-black uppercase`}
                           style={{
-                            display: 'inline',
-                            lineHeight: 'inherit',
+                            display: 'block',
+                            width: '100%',
                             margin: 0,
                             padding: 0,
-                            verticalAlign: 'baseline',
+                            lineHeight: 1.25,
+                            textAlign: 'center',
+                            overflowWrap: 'anywhere',
+                            wordBreak: 'break-word',
+                            color: 'inherit',
                           }}
                         >
                           {programName}

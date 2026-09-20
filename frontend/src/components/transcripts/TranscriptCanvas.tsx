@@ -61,15 +61,36 @@ const TranscriptCanvas = ({ data, compact = false }: Props) => {
           </div>
         </div>
         <div
-          className={`mt-1.5 py-1 px-2 text-center ${chrome.titleBar} ${chrome.titleBarText}`}
+          data-transcript-title-bar
+          data-title-bar-light={data.layoutKey === 'minimal' ? '1' : undefined}
+          className={`mt-1.5 text-center ${chrome.titleBar}`}
           style={{
+            minHeight: compact ? '14px' : '22px',
+            padding: compact ? '2px 6px' : '4px 8px',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
             backgroundColor: styles.titleBarBg,
-            color: styles.titleBarColor,
+            color: styles.titleBarColor || '#ffffff',
             WebkitPrintColorAdjust: 'exact',
             printColorAdjust: 'exact',
+            boxSizing: 'border-box',
           }}
         >
-          <p className={`font-bold uppercase tracking-wide ${compact ? 'text-[5px]' : 'text-[9px]'}`}>{data.programName}</p>
+          <p
+            className={`font-bold uppercase tracking-wide leading-tight ${
+              String(data.programName || '').length > 50
+                ? compact
+                  ? 'text-[4px]'
+                  : 'text-[7px]'
+                : compact
+                  ? 'text-[5px]'
+                  : 'text-[9px]'
+            }`}
+            style={{ margin: 0, overflowWrap: 'anywhere', wordBreak: 'break-word', width: '100%' }}
+          >
+            {data.programName}
+          </p>
         </div>
       </div>
 

@@ -113,7 +113,31 @@ async function inlineDomImages(root: HTMLElement): Promise<() => void> {
 /**
  * Bake title bars to canvas so PDF matches on-screen preview.
  * html2canvas misplaces CSS text baselines inside fixed-height colored bars.
+ * Long program names wrap / shrink so they stay inside horizontal padding.
  */
+function wrapTitleBarLines(
+  ctx: CanvasRenderingContext2D,
+  text: string,
+  maxWidth: number,
+): string[] {
+  const words = text.split(/\s+/).filter(Boolean)
+  if (!words.length) return [text]
+  const lines: string[] = []
+  let current = ''
+  for (const word of words) {
+    const test = current ? `${current} ${word}` : word
+    if (ctx.measureText(test).width <= maxWidth) {
+      current = test
+      continue
+    }
+    if (current) lines.push(current)
+    // Single oversized token: keep it on its own line (font may shrink below)
+    current = word
+  }
+  if (current) lines.push(current)
+  return lines
+}
+
 function rasterizeTranscriptTitleBars(root: HTMLElement): () => void {
   const backups: Array<{ node: HTMLElement; html: string; cssText: string }> = []
   const bars = Array.from(root.querySelectorAll<HTMLElement>('[data-transcript-title-bar]'))
@@ -134,9 +158,18 @@ function rasterizeTranscriptTitleBars(root: HTMLElement): () => void {
     const bg = barCs.backgroundColor || '#000000'
     const color = labelCs.color || barCs.color || '#ffffff'
     const fontWeight = labelCs.fontWeight || '800'
-    const fontSize = labelCs.fontSize || '16px'
     const fontFamily = labelCs.fontFamily || 'Arial, sans-serif'
     const letterSpacing = labelCs.letterSpacing || '0px'
+    const padX = Math.max(
+      16,
+      Math.round(Number.parseFloat(barCs.paddingLeft) || 0),
+      Math.round(Number.parseFloat(barCs.paddingRight) || 0),
+    )
+    const maxTextWidth = Math.max(40, w - padX * 2)
+    let fontSizePx = Number.parseFloat(labelCs.fontSize) || 16
+    const minFontPx = 10
+    const lineHeightRatio = 1.25
+    const upper = text.toUpperCase()
 
     const scale = 3
     const canvas = document.createElement('canvas')
@@ -156,15 +189,37 @@ function rasterizeTranscriptTitleBars(root: HTMLElement): () => void {
     ctx.fillStyle = bg
     ctx.fillRect(0, 0, w, h)
     ctx.fillStyle = color
-    ctx.font = `${fontWeight} ${fontSize} ${fontFamily}`
     ctx.textAlign = 'center'
     ctx.textBaseline = 'middle'
     const spacingPx = Number.parseFloat(letterSpacing)
     if (Number.isFinite(spacingPx) && spacingPx !== 0 && 'letterSpacing' in ctx) {
       ;(ctx as CanvasRenderingContext2D & { letterSpacing?: string }).letterSpacing = letterSpacing
     }
-    // Optical middle for uppercase bold caps (true geometric middle sits slightly high)
-    ctx.fillText(text.toUpperCase(), w / 2, h / 2 + 0.5)
+
+    let lines: string[] = []
+    for (let guard = 0; guard < 12; guard += 1) {
+      ctx.font = `${fontWeight} ${fontSizePx}px ${fontFamily}`
+      lines = wrapTitleBarLines(ctx, upper, maxTextWidth)
+      const widest = Math.max(...lines.map((line) => ctx.measureText(line).width), 0)
+      const blockHeight = lines.length * fontSizePx * lineHeightRatio
+      const fitsWidth = widest <= maxTextWidth + 0.5
+      const fitsHeight = blockHeight <= h - 4
+      if ((fitsWidth && fitsHeight) || fontSizePx <= minFontPx) break
+      fontSizePx = Math.max(minFontPx, fontSizePx - 1)
+    }
+
+    // Prefer at most 3 lines; if still overflowing width on min font, clip visually via maxWidth
+    if (lines.length > 3) {
+      lines = [lines[0], lines[1], `${lines.slice(2).join(' ')}`]
+    }
+
+    ctx.font = `${fontWeight} ${fontSizePx}px ${fontFamily}`
+    const blockHeight = lines.length * fontSizePx * lineHeightRatio
+    let y = h / 2 - blockHeight / 2 + (fontSizePx * lineHeightRatio) / 2 + 0.5
+    for (const line of lines) {
+      ctx.fillText(line, w / 2, y, maxTextWidth)
+      y += fontSizePx * lineHeightRatio
+    }
 
     backups.push({ node, html: node.innerHTML, cssText: node.style.cssText })
     node.style.height = `${h}px`

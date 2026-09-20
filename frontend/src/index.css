@@ -903,6 +903,25 @@ html[data-platform-theme='light'][data-tenant-chrome='1'] .text-white {
   color: var(--tenant-text) !important;
 }
 
+/* Keep white text on intentional dark surfaces (transcript title bar, solid black CTAs) */
+html[data-platform-theme='light'][data-tenant-chrome='1'] .bg-black,
+html[data-platform-theme='light'][data-tenant-chrome='1'] .bg-black.text-white,
+html[data-platform-theme='light'][data-tenant-chrome='1'] .bg-black .text-white,
+html[data-platform-theme='light'][data-tenant-chrome='1'] button.bg-black,
+html[data-platform-theme='light'][data-tenant-chrome='1'] button.bg-black:hover,
+html[data-platform-theme='light'][data-tenant-chrome='1'] button.bg-black.text-white,
+html[data-platform-theme='light'][data-tenant-chrome='1'] button.bg-black.text-white:hover,
+html[data-platform-theme='light'][data-tenant-chrome='1'] [data-transcript-title-bar],
+html[data-platform-theme='light'][data-tenant-chrome='1'] [data-transcript-title-bar].text-white,
+html[data-platform-theme='light'][data-tenant-chrome='1'] [data-transcript-title-bar] * {
+  color: #fff !important;
+}
+
+html[data-platform-theme='light'][data-tenant-chrome='1'] [data-transcript-title-bar][data-title-bar-light='1'],
+html[data-platform-theme='light'][data-tenant-chrome='1'] [data-transcript-title-bar][data-title-bar-light='1'] * {
+  color: #0f172a !important;
+}
+
 html[data-platform-theme='light'][data-tenant-chrome='1'] button.bg-primary,
 html[data-platform-theme='light'][data-tenant-chrome='1'] a.bg-primary,
 html[data-platform-theme='light'][data-tenant-chrome='1'] .bg-primary,
