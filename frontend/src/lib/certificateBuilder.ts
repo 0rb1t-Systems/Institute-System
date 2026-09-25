@@ -1541,6 +1541,14 @@ export async function buildTemplateFromUploadedCertificate(opts: {
       aspectRatio: opts.aspectRatio,
       kind: opts.kind,
       uploadImageBlob: opts.uploadImageBlob,
+      institution: {
+        name: opts.institutionName,
+        primary: opts.primary,
+        accent: opts.accent,
+        logoUrl: opts.logoUrl,
+        sealUrl: opts.sealUrl,
+        signatureUrl: opts.signatureUrl,
+      },
       onProgress: opts.onProgress,
     })
   }

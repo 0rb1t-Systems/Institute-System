@@ -1,16 +1,19 @@
-import React from 'react'
+import React, { useEffect, useMemo, useState } from 'react'
 import QRCode from 'react-qr-code'
 import {
   resolveBuilderText,
   resolveBuilderImageSrc,
   isFullPageDecorElement,
+  isPrivateCertStoragePath,
   isStudentPhotoElement,
+  extractCertStoragePath,
   type BuilderElement,
   type LogoBuilderDesign,
   type PaperContentLayer,
   type UploadFieldLayout,
   type UploadFieldSlot,
 } from '@/lib/certificateBuilder'
+import { resolveCertificateDesignImages } from '@/lib/certificateGenerator'
 import type { CertificateRenderData } from '@/lib/certificateTemplates'
 import CertificateAppreciationLayout from '@/components/certificates/CertificateAppreciationLayout'
 
@@ -233,6 +236,42 @@ const CertificateDesignRenderer = ({
   forPdf = false,
   hideInstitutionNameWhenLogo = true,
 }: Props) => {
+  // Resolve private storage paths inside the renderer so preview always shows the
+  // patch even when a parent forgot to hydrate (PDF path already inlines separately).
+  const imageKey = useMemo(() => {
+    return (design?.elements || [])
+      .filter((el) => el.type === 'image' && el.src)
+      .map((el) => `${el.id}:${String(el.src).slice(0, 120)}`)
+      .join('|')
+  }, [design])
+
+  const [liveDesign, setLiveDesign] = useState<LogoBuilderDesign | null | undefined>(design)
+
+  useEffect(() => {
+    let cancelled = false
+    setLiveDesign(design)
+    const needsResolve = (design?.elements || []).some((el) => {
+      if (el.type !== 'image' || !el.src) return false
+      const raw = String(el.src)
+      if (/^(data:|blob:|https?:)/i.test(raw) && !extractCertStoragePath(raw)) return false
+      return Boolean(extractCertStoragePath(raw) || isPrivateCertStoragePath(raw))
+    })
+    if (!needsResolve) return
+    ;(async () => {
+      try {
+        const resolved = await resolveCertificateDesignImages(design)
+        if (!cancelled) setLiveDesign(resolved)
+      } catch {
+        if (!cancelled) setLiveDesign(design)
+      }
+    })()
+    return () => {
+      cancelled = true
+    }
+    // imageKey captures src changes without depending on unstable object identity
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [imageKey])
+
   if (composeUpload) {
     if (backgroundUrl && data.customFieldLayout) {
       return (
@@ -267,10 +306,11 @@ const CertificateDesignRenderer = ({
     return <CertificateAppreciationLayout data={data} compact={compact} />
   }
 
-  const canvasW = design?.canvas?.width || 794
-  const canvasH = design?.canvas?.height || 1123
-  const canvasBg = design?.canvas?.background || '#ffffff'
-  const elements = sortedElements(design?.elements || [])
+  const activeDesign = liveDesign || design
+  const canvasW = activeDesign?.canvas?.width || 794
+  const canvasH = activeDesign?.canvas?.height || 1123
+  const canvasBg = activeDesign?.canvas?.background || '#ffffff'
+  const elements = sortedElements(activeDesign?.elements || [])
 
   return (
     <div
@@ -304,7 +344,6 @@ const CertificateDesignRenderer = ({
             src={backgroundUrl}
             alt=""
             className="absolute inset-0 w-full h-full object-contain"
-            crossOrigin="anonymous"
           />
         ) : null}
 
@@ -369,7 +408,11 @@ const CertificateDesignRenderer = ({
               : el.src || ''
             if (!src) return null
             const isData = String(src).startsWith('data:')
+            const isBlob = String(src).startsWith('blob:')
             const isRemote = /^https?:\/\//i.test(src)
+            // Never paint raw private storage paths — resolve effect will replace them.
+            // Painting them as relative URLs caused a blank hole between signatures.
+            if (!isData && !isBlob && !isRemote) return null
             // Uploaded certificate paper must fill the canvas 100% (no letterboxing)
             const isPaper =
               el.text === '__upload_paper__' ||
@@ -380,6 +423,8 @@ const CertificateDesignRenderer = ({
                 Math.abs(el.width - canvasW) < 2 &&
                 Math.abs(el.height - canvasH) < 2)
             const fillBox = isPaper || isFullPageDecorElement(el)
+            // No crossOrigin on screen preview — private signed URLs break under CORS
+            // and hide the certificate patch. PDF capture already inlines to data URLs.
             return (
               <img
                 key={el.id}
@@ -389,7 +434,6 @@ const CertificateDesignRenderer = ({
                   ...style,
                   objectFit: isStudentPhotoElement(el) ? 'cover' : fillBox ? 'fill' : 'contain',
                 }}
-                {...(!isData && isRemote ? { crossOrigin: 'anonymous' as const } : {})}
               />
             )
           }
@@ -438,13 +482,16 @@ const CertificateDesignRenderer = ({
                 textAlign: el.textAlign || 'center',
                 letterSpacing: el.letterSpacing ? `${el.letterSpacing}px` : undefined,
                 display: 'flex',
-                alignItems: 'center',
+                alignItems:
+                  (el.height || 0) > (el.fontSize || 16) * 1.8 ? 'flex-start' : 'center',
                 justifyContent:
                   el.textAlign === 'left'
                     ? 'flex-start'
                     : el.textAlign === 'right'
                       ? 'flex-end'
                       : 'center',
+                paddingTop:
+                  (el.height || 0) > (el.fontSize || 16) * 1.8 ? 2 : undefined,
                 lineHeight: el.lineHeight || 1.2,
                 overflow: 'hidden',
                 whiteSpace: 'pre-wrap',

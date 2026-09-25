@@ -81,6 +81,7 @@ const CertificatePage = lazy(() => import('@/pages/CertificatePage'));
 const AdminExamMarkingPage = lazy(() => import('@/pages/admin/AdminExamMarkingPage'));
 const LandingCustomizePage = lazy(() => import('@/pages/admin/LandingCustomizePage'));
 const InstitutionSettingsPage = lazy(() => import('@/pages/admin/InstitutionSettingsPage'));
+const CertificateImportPage = lazy(() => import('@/pages/admin/CertificateImportPage'));
 const AdminProfilePage = lazy(() => import('@/pages/admin/AdminProfilePage'));
 const OnlineFormsPage = lazy(() => import('@/pages/admin/OnlineFormsPage'));
 const InstructorIdPage = lazy(() => import('@/pages/instructor/InstructorIdPage'));
@@ -312,6 +313,7 @@ const App = () => {
             <Route path="/admin/instructors" element={<ProtectedRoute roles={['admin', 'staff']}><InstructorsPage /></ProtectedRoute>} />
             <Route path="/admin/profile" element={<ProtectedRoute roles={['admin']}><Lazy><AdminProfilePage /></Lazy></ProtectedRoute>} />
             <Route path="/admin/settings" element={<ProtectedRoute roles={['admin']}><Lazy><InstitutionSettingsPage /></Lazy></ProtectedRoute>} />
+            <Route path="/admin/certificates/upload" element={<ProtectedRoute roles={['admin']}><Lazy><CertificateImportPage /></Lazy></ProtectedRoute>} />
             <Route path="/admin/landing" element={<ProtectedRoute roles={['admin']}><Lazy><LandingCustomizePage /></Lazy></ProtectedRoute>} />
             <Route path="/admin/certificates" element={<ProtectedRoute roles={['admin', 'staff']}><Navigate to="/reports?tab=certificates" replace /></ProtectedRoute>} />
             <Route path="/admin/grading" element={<ProtectedRoute roles={['admin', 'staff']}><Lazy><AdminExamMarkingPage /></Lazy></ProtectedRoute>} />

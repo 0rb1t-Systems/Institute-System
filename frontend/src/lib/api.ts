@@ -1154,7 +1154,16 @@ export const uploadAssignmentFile = async (file, folderHint = 'assignments') => 
   return path
 }
 
-const ALLOWED_ASSET_KINDS = new Set(['logo', 'stamp', 'seal', 'signature', 'hero', 'grading_key', 'program'])
+const ALLOWED_ASSET_KINDS = new Set([
+  'logo',
+  'stamp',
+  'seal',
+  'signature',
+  'hero',
+  'grading_key',
+  'program',
+  'cert_builder',
+])
 const ALLOWED_IMAGE_MIME = new Set(['image/png', 'image/jpeg', 'image/webp', 'image/svg+xml'])
 const MAX_ASSET_BYTES = 5 * 1024 * 1024
 
@@ -1492,6 +1501,33 @@ export const getCertificateTemplateSignedUrl = async (path, expiresIn = 3600) =>
   return data?.signedUrl || null
 }
 
+function blobToDataUrl(blob) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader()
+    reader.onload = () => resolve(String(reader.result || ''))
+    reader.onerror = () => reject(new Error('READ_FAILED'))
+    reader.readAsDataURL(blob)
+  })
+}
+
+/**
+ * Download a private certificate-templates object via the authenticated Storage API
+ * and return a data URL. Avoids browser CORS failures that break <img crossOrigin>
+ * when using short-lived signed URLs during generate / PDF capture.
+ */
+export const downloadCertificateTemplateAsDataUrl = async (path) => {
+  const clean = String(path || '').trim()
+  if (!clean || clean.includes('..')) throw new Error('INVALID_STORAGE_PATH')
+  if (clean.startsWith('data:')) return clean
+  if (clean.startsWith('http://') || clean.startsWith('https://') || clean.startsWith('blob:')) {
+    return clean
+  }
+  const { data, error } = await supabase.storage.from(CERT_TEMPLATE_BUCKET).download(clean)
+  if (error) throw error
+  if (!data) throw new Error('DOWNLOAD_EMPTY')
+  return blobToDataUrl(data)
+}
+
 export type DocumentTemplateType = 'certificate' | 'transcript' | 'invoice'
 
 /** Save logo/page builder design for certificate | transcript | invoice. */
@@ -1540,28 +1576,23 @@ export const saveDocumentUploadBuilder = async (
   return data
 }
 
-/** Upload an image asset used inside the logo page builder (private bucket). */
+/**
+ * Upload an image used inside certificate builders (patch, logo, replace).
+ * Stored on public institution-assets so generate / preview / PDF never depend on
+ * private signed URLs (which break under <img crossOrigin> without Storage CORS).
+ */
 export const uploadCertificateBuilderImage = async (file) => {
   const me = await getMyProfile()
   if (!me?.institution_id || me.role !== 'admin') throw new Error('FORBIDDEN')
   if (!file) throw new Error('MISSING_FILE')
-  if (file.size > MAX_CERT_TEMPLATE_BYTES) throw new Error('CERT_TEMPLATE_TOO_LARGE')
+  if (file.size > MAX_ASSET_BYTES) throw new Error('CERT_TEMPLATE_TOO_LARGE')
   const mime = String(file.type || '').toLowerCase()
   if (!ALLOWED_BUILDER_IMAGE_MIME.has(mime)) throw new Error('INVALID_CERT_TEMPLATE_TYPE')
 
-  const ext = String(file.name || 'png').split('.').pop()?.toLowerCase() || 'png'
-  const safeExt = ['png', 'jpg', 'jpeg', 'webp'].includes(ext) ? ext : 'png'
-  const path = `${me.institution_id}/builder-${crypto.randomUUID()}.${safeExt}`
-
-  const { error } = await supabase.storage.from(CERT_TEMPLATE_BUCKET).upload(path, file, {
-    upsert: false,
-    contentType: mime,
-  })
-  if (error) throw error
-
-  const signedUrl = await getCertificateTemplateSignedUrl(path)
-  // Persist storage path in designs (not the short-lived signed URL)
-  return { path, signedUrl }
+  const publicUrl = await uploadInstitutionAsset(file, 'cert_builder')
+  if (!publicUrl) throw new Error('UPLOAD_FAILED')
+  // Persist durable public HTTPS URL in designs (same pattern as institution logo/seal)
+  return { path: publicUrl, signedUrl: publicUrl }
 }
 
 async function rasterizePdfFirstPage(file) {

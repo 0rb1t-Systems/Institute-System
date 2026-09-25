@@ -8,12 +8,29 @@ type Props = {
   templates: React.ReactNode
   builder?: React.ReactNode
   upload: React.ReactNode
+  /** Controlled tab (e.g. templates | builder | upload) for deep links. */
+  value?: string
+  onValueChange?: (value: string) => void
+  defaultValue?: string
 }
 
 /** Shared layout for certificate / transcript / invoice design tools. */
-const DocumentDesignPanel = ({ hint, templates, builder, upload }: Props) => {
+const DocumentDesignPanel = ({
+  hint,
+  templates,
+  builder,
+  upload,
+  value,
+  onValueChange,
+  defaultValue = 'templates',
+}: Props) => {
+  const tabsProps =
+    value != null && onValueChange
+      ? { value, onValueChange }
+      : { defaultValue: value || defaultValue }
+
   return (
-    <Tabs defaultValue="templates" className="w-full">
+    <Tabs {...tabsProps} className="w-full">
       <div className="space-y-2 px-2 sm:px-3">
         {hint ? (
           <p className="text-xs text-[var(--ds-text-tertiary,#8A978E)]">{hint}</p>

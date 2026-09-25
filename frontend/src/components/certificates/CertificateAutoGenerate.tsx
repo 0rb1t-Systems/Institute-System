@@ -22,6 +22,16 @@ import {
   listCertificateEligibleEnrollments,
 } from '@/lib/api';
 import {
+  customUploadHasGeneratedDesign,
+  type LogoBuilderDesign,
+} from '@/lib/certificateBuilder';
+import {
+  activateImportedCertificateTemplate,
+  listImportedCertificateTemplates,
+  type SavedCertificateImport,
+} from '@/lib/certificateImport/api';
+import { hydrateCertificateRenderData } from '@/lib/certificateGenerator';
+import {
   CERTIFICATE_TEMPLATE_LIBRARY,
   getCertificateTemplateMeta,
   isLandscapeCertificateLayout,
@@ -45,13 +55,29 @@ import { notify, MESSAGES } from '@/lib/notify';
 const TEMPLATE_OPTION_LABELS: Record<string, string> = {
   institution_default: 'Institution default (from Settings)',
   logo_builder: 'Certificate builder',
-  custom_upload: 'Uploaded template',
+  custom_upload: 'Uploaded / imported template (live)',
 };
 
-function previewLayoutLabel(key: string) {
+function importedTemplateValue(id: string) {
+  return `imported:${id}`;
+}
+
+function parseImportedTemplateId(value: string): string | null {
+  return value.startsWith('imported:') ? value.slice('imported:'.length) : null;
+}
+
+function previewLayoutLabel(key: string, imported: SavedCertificateImport[] = []) {
   if (key === 'institution_default') return TEMPLATE_OPTION_LABELS.institution_default;
   if (key === 'logo_builder') return TEMPLATE_OPTION_LABELS.logo_builder;
   if (key === 'custom_upload') return TEMPLATE_OPTION_LABELS.custom_upload;
+  const importedId = parseImportedTemplateId(key);
+  if (importedId) {
+    const row = imported.find((t) => t.id === importedId);
+    if (row) {
+      return row.className ? `${row.name} · ${row.className}` : row.name;
+    }
+    return 'Saved upload template';
+  }
   return getCertificateTemplateMeta(key).name;
 }
 
@@ -59,6 +85,7 @@ function layoutKeyForTemplate(templateValue: string, institutionTemplate: any): 
   if (templateValue === 'institution_default') {
     return normalizeCertificateLayoutKey(institutionTemplate?.layout_key);
   }
+  if (parseImportedTemplateId(templateValue)) return 'custom_upload';
   return normalizeCertificateLayoutKey(templateValue);
 }
 
@@ -67,9 +94,15 @@ function buildPreviewData(
   institution: any,
   institutionTemplate: any,
   customPreviewUrl: string | null,
+  importedDesign?: LogoBuilderDesign | null,
 ): CertificateRenderData {
   const tplConfig = institutionTemplate?.config || {};
   const upload = tplConfig.custom_upload || {};
+  const uploadDesign =
+    importedDesign ||
+    (layoutKey === 'custom_upload' && customUploadHasGeneratedDesign(upload)
+      ? upload.design
+      : null);
   return {
     layoutKey,
     institutionName: getInstitutionDisplayName(institution),
@@ -90,20 +123,20 @@ function buildPreviewData(
     verifyCode: 'preview00000000',
     verificationUrl: 'https://example.com/verify-certificate/preview00000000',
     dateIssued: new Date().toISOString(),
-    logoBuilderDesign: tplConfig.logo_builder || null,
-    customBackgroundUrl: customPreviewUrl,
-    customAspectRatio: upload.width && upload.height ? upload.width / upload.height : null,
-    customFieldLayout: upload.field_layout || null,
-    customPaperLayers: upload.paper_layers || null,
+    logoBuilderDesign:
+      uploadDesign ||
+      (layoutKey === 'logo_builder' ? tplConfig.logo_builder || null : null),
+    customBackgroundUrl: uploadDesign ? null : customPreviewUrl,
+    customAspectRatio:
+      upload.aspect_ratio != null && Number(upload.aspect_ratio) > 0
+        ? Number(upload.aspect_ratio)
+        : upload.width && upload.height
+          ? upload.width / upload.height
+          : null,
+    customFieldLayout: uploadDesign ? null : upload.field_layout || null,
+    customPaperLayers: uploadDesign ? null : upload.paper_layers || null,
   };
 }
-
-const TEMPLATE_OPTIONS = [
-  { value: 'institution_default', label: TEMPLATE_OPTION_LABELS.institution_default },
-  { value: 'logo_builder', label: TEMPLATE_OPTION_LABELS.logo_builder },
-  { value: 'custom_upload', label: TEMPLATE_OPTION_LABELS.custom_upload },
-  ...CERTIFICATE_TEMPLATE_LIBRARY.map((tpl) => ({ value: tpl.key, label: tpl.name })),
-];
 
 function CertificateThumb({ data }: { data: CertificateRenderData }) {
   const landscape = isLandscapeCertificateLayout(data.layoutKey);
@@ -155,8 +188,28 @@ const CertificateAutoGenerate = ({ onGenerationComplete }) => {
   const [templateMenuOpen, setTemplateMenuOpen] = useState(false);
   const [hoveredTemplate, setHoveredTemplate] = useState('institution_default');
   const [institutionTemplate, setInstitutionTemplate] = useState(null);
+  const [importedTemplates, setImportedTemplates] = useState<SavedCertificateImport[]>([]);
   const [customPreviewUrl, setCustomPreviewUrl] = useState(null);
   const [loadingMeta, setLoadingMeta] = useState(true);
+
+  const templateOptions = useMemo(() => {
+    const base = [
+      { value: 'institution_default', label: TEMPLATE_OPTION_LABELS.institution_default },
+      { value: 'logo_builder', label: TEMPLATE_OPTION_LABELS.logo_builder },
+      { value: 'custom_upload', label: TEMPLATE_OPTION_LABELS.custom_upload },
+      ...CERTIFICATE_TEMPLATE_LIBRARY.map((tpl) => ({ value: tpl.key, label: tpl.name })),
+    ];
+    const imported = importedTemplates.map((row) => ({
+      value: importedTemplateValue(row.id),
+      label: row.className ? `${row.name} · ${row.className}` : row.name,
+    }));
+    return [...base.slice(0, 3), ...imported, ...base.slice(3)];
+  }, [importedTemplates]);
+
+  const hoveredImported = useMemo(() => {
+    const id = parseImportedTemplateId(hoveredTemplate);
+    return id ? importedTemplates.find((t) => t.id === id) || null : null;
+  }, [hoveredTemplate, importedTemplates]);
 
   const hoveredLayoutKey: CertificateLayoutKey = useMemo(
     () => layoutKeyForTemplate(hoveredTemplate, institutionTemplate),
@@ -164,25 +217,67 @@ const CertificateAutoGenerate = ({ onGenerationComplete }) => {
   );
 
   const hoverPreviewData = useMemo(
-    () => buildPreviewData(hoveredLayoutKey, institution, institutionTemplate, customPreviewUrl),
-    [hoveredLayoutKey, institution, institutionTemplate, customPreviewUrl],
+    () =>
+      buildPreviewData(
+        hoveredLayoutKey,
+        institution,
+        institutionTemplate,
+        customPreviewUrl,
+        hoveredImported?.design || null,
+      ),
+    [hoveredLayoutKey, institution, institutionTemplate, customPreviewUrl, hoveredImported],
   );
+  const [hydratedPreviewData, setHydratedPreviewData] = useState<CertificateRenderData | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    setHydratedPreviewData(hoverPreviewData);
+    ;(async () => {
+      try {
+        const hydrated = await hydrateCertificateRenderData(hoverPreviewData);
+        if (!cancelled) setHydratedPreviewData(hydrated);
+      } catch {
+        if (!cancelled) setHydratedPreviewData(hoverPreviewData);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [hoverPreviewData]);
 
   useEffect(() => {
     let cancelled = false;
     (async () => {
       try {
-        const tpl = await getDocumentTemplate('certificate');
+        const [tpl, imported] = await Promise.all([
+          getDocumentTemplate('certificate'),
+          listImportedCertificateTemplates().catch(() => [] as SavedCertificateImport[]),
+        ]);
         if (cancelled) return;
         setInstitutionTemplate(tpl || null);
+        setImportedTemplates(imported || []);
       } catch {
-        if (!cancelled) setInstitutionTemplate(null);
+        if (!cancelled) {
+          setInstitutionTemplate(null);
+          setImportedTemplates([]);
+        }
       }
     })();
     return () => {
       cancelled = true;
     };
   }, [institution?.id]);
+
+  // When a class is chosen, prefer its linked uploaded template if one exists
+  useEffect(() => {
+    if (selectedClass === 'all' || !importedTemplates.length) return;
+    const match = importedTemplates.find((t) => t.classId === selectedClass);
+    if (match) {
+      const value = importedTemplateValue(match.id);
+      setSelectedTemplate(value);
+      setHoveredTemplate(value);
+    }
+  }, [selectedClass, importedTemplates]);
 
   useEffect(() => {
     if (!templateMenuOpen) {
@@ -196,10 +291,11 @@ const CertificateAutoGenerate = ({ onGenerationComplete }) => {
       const layoutKey = hoveredLayoutKey;
       const needsUploadPreview =
         layoutKey === 'custom_upload' &&
+        !hoveredImported &&
         (hoveredTemplate === 'custom_upload' ||
           (hoveredTemplate === 'institution_default' && institutionTemplate?.layout_key === 'custom_upload'));
 
-      if (!needsUploadPreview || !upload?.storage_path) {
+      if (!needsUploadPreview || !upload?.storage_path || customUploadHasGeneratedDesign(upload)) {
         setCustomPreviewUrl(null);
         return;
       }
@@ -215,7 +311,7 @@ const CertificateAutoGenerate = ({ onGenerationComplete }) => {
     return () => {
       cancelled = true;
     };
-  }, [templateMenuOpen, hoveredTemplate, hoveredLayoutKey, institutionTemplate]);
+  }, [templateMenuOpen, hoveredTemplate, hoveredLayoutKey, institutionTemplate, hoveredImported]);
 
   const handleTemplateMenuOpenChange = (open: boolean) => {
     setTemplateMenuOpen(open);
@@ -308,7 +404,19 @@ const CertificateAutoGenerate = ({ onGenerationComplete }) => {
     setShowConfirmDialog(false);
 
     try {
-      const layoutOverride = selectedTemplate !== 'institution_default' ? selectedTemplate : null;
+      const importedId = parseImportedTemplateId(selectedTemplate);
+      if (importedId) {
+        const row = importedTemplates.find((t) => t.id === importedId);
+        if (!row) throw new Error('Imported template not found');
+        await activateImportedCertificateTemplate(row);
+      }
+
+      const layoutOverride =
+        selectedTemplate === 'institution_default'
+          ? null
+          : importedId
+            ? 'custom_upload'
+            : selectedTemplate;
       let data;
       if (mode === 'selected') {
         if (!selectedEnrollmentIds.length) {
@@ -448,7 +556,7 @@ const CertificateAutoGenerate = ({ onGenerationComplete }) => {
                   type="button"
                   className="flex h-10 w-full items-center justify-between rounded-md border border-[var(--ds-border,#DDE5DF)] bg-[var(--ds-surface,#fff)] px-3 py-2 text-sm text-[var(--ds-text-primary,#122018)] ring-offset-background focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
                 >
-                  <span className="truncate">{previewLayoutLabel(selectedTemplate)}</span>
+                  <span className="truncate">{previewLayoutLabel(selectedTemplate, importedTemplates)}</span>
                   <ChevronDown className="h-4 w-4 shrink-0 opacity-50" />
                 </button>
               </DropdownMenuTrigger>
@@ -461,7 +569,7 @@ const CertificateAutoGenerate = ({ onGenerationComplete }) => {
               >
                 <div className="grid sm:grid-cols-[13rem_1fr]">
                   <div className="max-h-72 overflow-y-auto border-b p-1 sm:border-b-0 sm:border-r border-[var(--ds-border,#DDE5DF)]">
-                    {TEMPLATE_OPTIONS.map((opt) => {
+                    {templateOptions.map((opt) => {
                       const selected = selectedTemplate === opt.value;
                       const hovered = hoveredTemplate === opt.value;
                       return (
@@ -487,10 +595,10 @@ const CertificateAutoGenerate = ({ onGenerationComplete }) => {
                   </div>
                   <div className="bg-[var(--ds-surface-muted,#F7FAF8)] p-3">
                     <p className="mb-2 truncate text-xs text-[var(--ds-text-secondary,#5B6B61)]">
-                      {previewLayoutLabel(hoveredTemplate)}
+                      {previewLayoutLabel(hoveredTemplate, importedTemplates)}
                     </p>
                     <div className="flex justify-center">
-                      <CertificateThumb data={hoverPreviewData} />
+                      <CertificateThumb data={hydratedPreviewData || hoverPreviewData} />
                     </div>
                   </div>
                 </div>

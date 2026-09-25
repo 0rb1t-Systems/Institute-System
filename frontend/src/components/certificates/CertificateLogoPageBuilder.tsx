@@ -10,7 +10,7 @@ import {
   Download,
   Eye,
   EyeOff,
-  FilePlus,
+  FilePlus2,
   Frame,
   Grid3x3,
   ImagePlus,
@@ -42,16 +42,36 @@ import {
 import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
 import { Badge } from '@/components/ui/badge'
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog'
 import { useToast } from '@/components/ui/use-toast'
 import { useAuth } from '@/contexts/AuthContext'
 import {
+  getClasses,
   getDocumentTemplate,
   saveDocumentLogoBuilder,
   uploadCertificateBuilderImage,
   getCertificateTemplateSignedUrl,
   type DocumentTemplateType,
 } from '@/lib/api'
+import CertificateBuilderGallery from '@/components/certificates/CertificateBuilderGallery'
+import {
+  activateLogoBuilderDesign,
+  deleteLogoBuilderDesign,
+  listSavedLogoBuilderDesigns,
+  logoBuilderLibraryErrorMessage,
+  saveLogoBuilderDesign,
+  updateLogoBuilderDesign,
+  type SavedLogoBuilderDesign,
+} from '@/lib/logoBuilderLibrary/api'
 import {
   BUILDER_BINDINGS,
   BUILDER_FONT_FAMILIES,
@@ -118,6 +138,7 @@ import {
   getSignatoryLeftTitle,
   getSignatoryRightName,
   getSignatoryRightTitle,
+  type InstitutionBrand,
 } from '@/lib/institution'
 import type { CertificateRenderData } from '@/lib/certificateTemplates'
 import {
@@ -231,6 +252,16 @@ const CertificateLogoPageBuilder = ({
   /** True when institution already has a Page Builder design saved (draft or active). */
   const [hasSavedDesign, setHasSavedDesign] = useState(false)
   const [loadingSaved, setLoadingSaved] = useState(false)
+  const [libraryItems, setLibraryItems] = useState<SavedLogoBuilderDesign[]>([])
+  const [libraryLoading, setLibraryLoading] = useState(true)
+  const [libraryEditId, setLibraryEditId] = useState<string | null>(null)
+  const [activeLibraryId, setActiveLibraryId] = useState<string | null>(null)
+  const [activatingId, setActivatingId] = useState<string | null>(null)
+  const [templateName, setTemplateName] = useState('')
+  const [classId, setClassId] = useState('')
+  const [classes, setClasses] = useState<Array<{ id: string; name: string }>>([])
+  const [saveDialogOpen, setSaveDialogOpen] = useState(false)
+  const [saveActivate, setSaveActivate] = useState(true)
   const historyRef = useRef<LogoBuilderDesign[]>([])
   const futureRef = useRef<LogoBuilderDesign[]>([])
   const dragRef = useRef<{
@@ -448,30 +479,68 @@ const CertificateLogoPageBuilder = ({
     let cancelled = false
     ;(async () => {
       setLoading(true)
+      setLibraryLoading(true)
       try {
-        const tpl = await getDocumentTemplate(docType)
+        const [tpl, library, classRows] = await Promise.all([
+          getDocumentTemplate(docType),
+          listSavedLogoBuilderDesigns(docType).catch(() => [] as SavedLogoBuilderDesign[]),
+          getClasses().catch(() => []),
+        ])
         if (cancelled) return
         setActiveLayout(String(tpl?.layout_key || 'classic'))
-        if (tpl?.config?.logo_builder) {
+        const lb = tpl?.config?.logo_builder as
+          | { library_id?: string; elements?: unknown[] }
+          | undefined
+        setActiveLibraryId(lb?.library_id ? String(lb.library_id) : null)
+        if (lb && Array.isArray(lb.elements)) {
           setHasSavedDesign(true)
-          setDesign(normalizeLogoBuilderDesign(tpl.config.logo_builder))
+          setDesign(normalizeLogoBuilderDesign(lb))
         } else {
           setHasSavedDesign(false)
           setDesign(createDefaultBuilderDesign())
         }
+        setLibraryItems(library || [])
+        setClasses(
+          (classRows || []).map((c: { id: string; name?: string }) => ({
+            id: String(c.id),
+            name: String(c.name || 'Class'),
+          })),
+        )
       } catch {
         if (!cancelled) {
           setHasSavedDesign(false)
           setDesign(createDefaultBuilderDesign())
+          setLibraryItems([])
         }
       } finally {
-        if (!cancelled) setLoading(false)
+        if (!cancelled) {
+          setLoading(false)
+          setLibraryLoading(false)
+        }
       }
     })()
     return () => {
       cancelled = true
     }
   }, [institution?.id, docType, remountKey])
+
+  const reloadLibrary = async () => {
+    setLibraryLoading(true)
+    try {
+      const [library, tpl] = await Promise.all([
+        listSavedLogoBuilderDesigns(docType),
+        getDocumentTemplate(docType),
+      ])
+      setLibraryItems(library || [])
+      const lb = tpl?.config?.logo_builder as { library_id?: string } | undefined
+      setActiveLibraryId(lb?.library_id ? String(lb.library_id) : null)
+      setActiveLayout(String(tpl?.layout_key || 'classic'))
+    } catch {
+      /* keep previous */
+    } finally {
+      setLibraryLoading(false)
+    }
+  }
 
   const addElement = (type: BuilderElementType, extras?: Partial<BuilderElement>) => {
     const z = design.elements.reduce((m, e) => Math.max(m, e.zIndex || 0), 0) + 1
@@ -1546,6 +1615,22 @@ const CertificateLogoPageBuilder = ({
     })
   }
 
+  const openSaveDialog = (activate: boolean) => {
+    if (!design.elements.length) {
+      toast({
+        title: 'Empty design',
+        description: 'Add fields or use “Starter layout” before saving.',
+        variant: 'destructive',
+      })
+      return
+    }
+    if (!templateName.trim()) {
+      setTemplateName(`${docLabel} · ${new Date().toLocaleDateString()}`)
+    }
+    setSaveActivate(activate)
+    setSaveDialogOpen(true)
+  }
+
   const handleSave = async (activate: boolean) => {
     setSaving(true)
     try {
@@ -1574,35 +1659,62 @@ const CertificateLogoPageBuilder = ({
 
       const safe = prepareDesignForPersist()
       setDesign(safe)
-      const row = await saveDocumentLogoBuilder(
-        docType,
-        {
-          version: 1,
-          canvas: safe.canvas,
-          elements: safe.elements,
-        },
-        activate,
-      )
+      const selectedClass = classes.find((c) => c.id === classId)
+      const baseName = templateName.trim() || `${docLabel} design`
+      const nameWithClass =
+        selectedClass && !baseName.toLowerCase().includes(selectedClass.name.toLowerCase())
+          ? `${selectedClass.name} — ${baseName}`.slice(0, 120)
+          : baseName
+
+      let row: SavedLogoBuilderDesign
+      if (libraryEditId) {
+        row = await updateLogoBuilderDesign({
+          id: libraryEditId,
+          name: nameWithClass,
+          design: safe,
+          classId: classId || null,
+          activate,
+        })
+      } else {
+        row = await saveLogoBuilderDesign({
+          documentType: docType,
+          name: nameWithClass,
+          design: safe,
+          classId: classId || null,
+          activate,
+        })
+      }
+
+      // Keep legacy draft path in sync even when activate=false
+      if (!activate) {
+        await saveDocumentLogoBuilder(
+          docType,
+          { version: 1, canvas: safe.canvas, elements: safe.elements },
+          false,
+        )
+      }
+
+      setLibraryEditId(row.id)
+      setTemplateName(row.name)
+      setClassId(row.classId || '')
       setHasSavedDesign(true)
       setDraftTick((n) => n + 1)
       if (activate) {
-        setActiveLayout(String(row?.layout_key || 'logo_builder'))
-        toast({
-          title: 'Saved — now in use',
-          description:
-            `Page Builder is the active ${docLabel.toLowerCase()} design. Issued/live documents will use it until you activate a library template.`,
-        })
-      } else {
-        toast({
-          title: 'Draft saved',
-          description:
-            `Saved in ${docLabel} Page Builder. Open it anytime with “Open saved design”.`,
-        })
+        setActiveLayout('logo_builder')
+        setActiveLibraryId(row.id)
       }
+      setSaveDialogOpen(false)
+      await reloadLibrary()
+      toast({
+        title: activate ? 'Saved — now in use' : 'Saved to library',
+        description: selectedClass
+          ? `“${row.name}” saved for class “${selectedClass.name}”.${activate ? ' Students can be generated with this design.' : ''}`
+          : `“${row.name}” is in your Page Builder gallery.${activate ? ' It is the live design for generation.' : ''}`,
+      })
     } catch (err) {
       toast({
         title: 'Error',
-        description: getUserMessage(err, { fallback: MESSAGES.SAVE_FAILED }),
+        description: logoBuilderLibraryErrorMessage(err) || getUserMessage(err, { fallback: MESSAGES.SAVE_FAILED }),
         variant: 'destructive',
       })
     } finally {
@@ -1612,7 +1724,7 @@ const CertificateLogoPageBuilder = ({
 
   const handleNewBlank = () => {
     const ok = window.confirm(
-      `Start a new blank ${docLabel.toLowerCase()} document? Unsaved changes on this canvas will be lost (use Save draft first if needed).`,
+      `Start a new blank ${docLabel.toLowerCase()} document? Unsaved changes on this canvas will be lost (use Save first if needed).`,
     )
     if (!ok) return
     historyRef.current = [...historyRef.current.slice(-(MAX_HISTORY - 1)), cloneDesign(design)]
@@ -1620,10 +1732,75 @@ const CertificateLogoPageBuilder = ({
     const blank = createDefaultBuilderDesign()
     setDesign(blank)
     setSelectedId(null)
+    setLibraryEditId(null)
+    setTemplateName('')
+    setClassId('')
     toast({
       title: 'New blank document',
-      description: 'Empty canvas ready. Add fields, shapes, then Save draft or Save & use.',
+      description: 'Empty canvas ready. Design, name it, pick a class, then Save.',
     })
+  }
+
+  const openLibraryItem = (item: SavedLogoBuilderDesign) => {
+    historyRef.current = [...historyRef.current.slice(-(MAX_HISTORY - 1)), cloneDesign(design)]
+    futureRef.current = []
+    setDesign(normalizeLogoBuilderDesign(item.design))
+    setSelectedId(null)
+    setResolvedImageUrls({})
+    setLibraryEditId(item.id)
+    setTemplateName(item.name)
+    setClassId(item.classId || '')
+    setHasSavedDesign(true)
+    toast({
+      title: 'Opened for edit',
+      description: `“${item.name}” is on the canvas. Save again when you finish editing.`,
+    })
+    window.scrollTo({ top: 0, behavior: 'smooth' })
+  }
+
+  const removeLibraryItem = async (id: string) => {
+    if (!window.confirm('Delete this saved Page Builder design?')) return
+    try {
+      await deleteLogoBuilderDesign(id)
+      if (libraryEditId === id) {
+        setLibraryEditId(null)
+        setTemplateName('')
+        setClassId('')
+      }
+      if (activeLibraryId === id) setActiveLibraryId(null)
+      await reloadLibrary()
+      toast({ title: 'Deleted', description: 'The design was removed from the gallery.' })
+    } catch (err) {
+      toast({
+        title: 'Delete failed',
+        description: logoBuilderLibraryErrorMessage(err),
+        variant: 'destructive',
+      })
+    }
+  }
+
+  const activateLibraryItem = async (item: SavedLogoBuilderDesign) => {
+    setActivatingId(item.id)
+    try {
+      const row = await activateLogoBuilderDesign(item)
+      setActiveLibraryId(row.id)
+      setActiveLayout('logo_builder')
+      await reloadLibrary()
+      toast({
+        title: `Live: ${row.name}`,
+        description: row.className
+          ? `Students in “${row.className}” can use this design when you generate.`
+          : 'This Page Builder design is now active for student generation.',
+      })
+    } catch (err) {
+      toast({
+        title: 'Activate failed',
+        description: logoBuilderLibraryErrorMessage(err),
+        variant: 'destructive',
+      })
+    } finally {
+      setActivatingId(null)
+    }
   }
 
   const previewDesign = useMemo(() => {
@@ -1804,6 +1981,7 @@ const CertificateLogoPageBuilder = ({
   }
 
   return (
+    <>
     <div className="cert-page-builder overflow-hidden rounded-xl border border-slate-800 bg-[var(--builder-chrome)] text-[var(--builder-text)]">
       <input
         ref={fileRef}
@@ -1831,6 +2009,11 @@ const CertificateLogoPageBuilder = ({
           <span className="hidden text-[11px] font-semibold text-[var(--builder-text)] sm:inline">
             {isUploadEdit ? 'Edit upload' : `Page Builder · ${docLabel}`}
           </span>
+          {libraryEditId && templateName ? (
+            <Badge className="max-w-[10rem] truncate border-sky-700/40 bg-sky-600/20 text-[10px] text-sky-100" title={templateName}>
+              {templateName}
+            </Badge>
+          ) : null}
           {activeLayout === 'logo_builder' ? (
             <Badge className="bg-violet-600/20 text-violet-200 border-violet-700/40 text-[10px]">Live builder</Badge>
           ) : hasSavedDesign ? (
@@ -1860,6 +2043,18 @@ const CertificateLogoPageBuilder = ({
             </button>
           ))}
           <div className="ml-auto flex flex-wrap items-center gap-0.5">
+            <Button
+              type="button"
+              size="sm"
+              variant="outline"
+              onClick={handleNewBlank}
+              className="h-7 gap-1.5 border-emerald-700/50 bg-emerald-950/40 px-2.5 text-[10px] font-semibold text-emerald-100 hover:bg-emerald-900/60 hover:text-white"
+              title="Open a new blank document"
+            >
+              <FilePlus2 className="h-3.5 w-3.5" />
+              New blank
+            </Button>
+            <span className="mx-0.5 hidden h-4 w-px bg-slate-700 sm:inline" />
             <ToolBtn title="Undo (Ctrl+Z)" onClick={undo}><Undo2 className="h-3.5 w-3.5" /></ToolBtn>
             <ToolBtn title="Redo (Ctrl+Y)" onClick={redo}><Redo2 className="h-3.5 w-3.5" /></ToolBtn>
             <ToolBtn title="Fit page (Ctrl+0)" active={zoomMode === 'page'} onClick={fitWholePage}><Maximize2 className="h-3.5 w-3.5" /></ToolBtn>
@@ -1869,11 +2064,11 @@ const CertificateLogoPageBuilder = ({
             <Button type="button" size="sm" variant="ghost" className="h-7 px-2 text-[10px]" onClick={() => setPreviewOpen((v) => !v)}>
               <Eye className="h-3.5 w-3.5 mr-1" /> Preview
             </Button>
-            <Button type="button" size="sm" variant="outline" disabled={saving} onClick={() => handleSave(false)} className="h-7 px-2 text-[10px] border-slate-600">
+            <Button type="button" size="sm" variant="outline" disabled={saving} onClick={() => openSaveDialog(false)} className="h-7 px-2 text-[10px] border-slate-600">
               {saving ? <Loader2 className="h-3.5 w-3.5 animate-spin mr-1" /> : <Save className="h-3.5 w-3.5 mr-1" />}
               Save
             </Button>
-            <Button type="button" size="sm" disabled={saving} onClick={() => handleSave(true)} className="h-7 px-2 text-[10px] bg-violet-600 hover:bg-violet-500">
+            <Button type="button" size="sm" disabled={saving} onClick={() => openSaveDialog(true)} className="h-7 px-2 text-[10px] bg-violet-600 hover:bg-violet-500">
               Use
             </Button>
             <Button type="button" size="sm" variant="secondary" className="h-7 px-2 text-[10px]" disabled={downloadingPdf} onClick={() => handleDownloadPdf()}>
@@ -2128,7 +2323,9 @@ const CertificateLogoPageBuilder = ({
                     next.canvas.background = brandAccent
                     pushHistory(next)
                   }} />
-                  <ToolBtn title="New blank" onClick={handleNewBlank}><FilePlus className="h-3.5 w-3.5" /></ToolBtn>
+                  <ToolBtn title="New blank document" onClick={handleNewBlank}>
+                    <FilePlus2 className="h-3.5 w-3.5" /> New
+                  </ToolBtn>
                   <div className="relative z-50">
                     <ToolBtn
                       title="Starter templates"
@@ -2145,11 +2342,18 @@ const CertificateLogoPageBuilder = ({
                         <button type="button" className="w-full rounded px-2 py-1.5 text-left text-xs hover:bg-slate-800" onClick={() => applyStarterLayout('a4-portrait')}>Classic A4 Portrait</button>
                         <button type="button" className="w-full rounded px-2 py-1.5 text-left text-xs hover:bg-slate-800" onClick={() => applyStarterLayout('a4-landscape')}>Classic A4 Landscape</button>
                         <button type="button" className="w-full rounded px-2 py-1.5 text-left text-xs hover:bg-slate-800" onClick={() => applyStarterLayout('letter-portrait')}>Classic Letter</button>
-                        <button type="button" className="w-full rounded px-2 py-1.5 text-left text-xs hover:bg-slate-800" onClick={handleNewBlank}>Blank canvas</button>
+                        <button
+                          type="button"
+                          className="flex w-full items-center gap-2 rounded px-2 py-1.5 text-left text-xs text-emerald-200 hover:bg-slate-800"
+                          onClick={handleNewBlank}
+                        >
+                          <FilePlus2 className="h-3.5 w-3.5" />
+                          Blank document
+                        </button>
                       </div>
                     ) : null}
                   </div>
-                  <ToolBtn title="Open saved design" disabled={loadingSaved || !hasSavedDesign} onClick={() => loadSavedDesignFromServer()}>Saved</ToolBtn>
+                  <ToolBtn title="Open last live draft" disabled={loadingSaved || !hasSavedDesign} onClick={() => loadSavedDesignFromServer()}>Draft</ToolBtn>
                   <div className="relative z-50">
                     <ToolBtn title="Fonts" active={toolbarMenu === 'fonts'} onClick={() => setToolbarMenu((m) => (m === 'fonts' ? 'none' : 'fonts'))}>
                       <Type className="h-3.5 w-3.5" /> Fonts
@@ -2664,6 +2868,86 @@ const CertificateLogoPageBuilder = ({
           </div>
         ) : null}
     </div>
+
+    {!isUploadEdit ? (
+      <section className="mt-6 space-y-4">
+        <div>
+          <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-[var(--ds-accent,#1F8A5B)]">
+            Gallery
+          </p>
+          <h2 className="mt-1 text-base font-semibold text-[var(--ds-text-primary,#122018)]">
+            Saved Page Builder designs
+          </h2>
+          <p className="mt-1 max-w-xl text-sm text-[var(--ds-text-secondary,#5B6B61)]">
+            Name each design, attach a class, then edit or delete anytime. Use for students makes it
+            the live {docLabel.toLowerCase()} for Report Center generation.
+          </p>
+        </div>
+        <CertificateBuilderGallery
+          items={libraryItems}
+          loading={libraryLoading}
+          activeId={activeLibraryId}
+          activatingId={activatingId}
+          institution={(institution || null) as InstitutionBrand | null}
+          onEdit={openLibraryItem}
+          onDelete={(id) => void removeLibraryItem(id)}
+          onActivate={(item) => void activateLibraryItem(item)}
+        />
+      </section>
+    ) : null}
+
+    <Dialog open={saveDialogOpen} onOpenChange={setSaveDialogOpen}>
+      <DialogContent className="sm:max-w-md">
+        <DialogHeader>
+          <DialogTitle>{saveActivate ? 'Save & use for students' : 'Save to gallery'}</DialogTitle>
+          <DialogDescription>
+            Give this {docLabel.toLowerCase()} a name and optionally lock it to one class. You can
+            save many designs and edit them later from the gallery below.
+          </DialogDescription>
+        </DialogHeader>
+        <div className="grid gap-3 py-1">
+          <div className="space-y-1.5">
+            <Label htmlFor="builder-template-name">Design name</Label>
+            <Input
+              id="builder-template-name"
+              value={templateName}
+              maxLength={120}
+              placeholder={`e.g. ${docLabel} Morning Cohort`}
+              onChange={(e) => setTemplateName(e.target.value)}
+            />
+          </div>
+          <div className="space-y-1.5">
+            <Label htmlFor="builder-template-class">Class (optional)</Label>
+            <select
+              id="builder-template-class"
+              className="h-10 w-full rounded-md border border-[var(--ds-border,#DDE5DF)] bg-[var(--ds-surface,#fff)] px-3 text-sm text-[var(--ds-text-primary,#122018)] outline-none focus:border-[var(--ds-accent,#1F8A5B)] focus:ring-1 focus:ring-[var(--ds-focus-ring,#1F8A5B)]"
+              value={classId}
+              onChange={(e) => setClassId(e.target.value)}
+            >
+              <option value="">All classes</option>
+              {classes.map((cls) => (
+                <option key={cls.id} value={cls.id}>
+                  {cls.name}
+                </option>
+              ))}
+            </select>
+            <p className="text-[11px] text-[var(--ds-text-secondary,#5B6B61)]">
+              When you generate that class, student and class names print on this design.
+            </p>
+          </div>
+        </div>
+        <DialogFooter className="gap-2 sm:gap-0">
+          <Button type="button" variant="outline" disabled={saving} onClick={() => setSaveDialogOpen(false)}>
+            Cancel
+          </Button>
+          <Button type="button" disabled={saving || !templateName.trim()} onClick={() => void handleSave(saveActivate)}>
+            {saving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
+            {saveActivate ? 'Save & activate' : 'Save to gallery'}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+    </>
   )
 }
 

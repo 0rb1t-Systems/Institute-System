@@ -1,8 +1,7 @@
 /**
- * Decompose an uploaded certificate into a reusable LogoBuilderDesign.
- * Keeps the uploaded page visually exact (full artwork), then overlays only
- * editable dynamic fields at scanned positions so live student data replaces
- * sample text without redrawing the whole design.
+ * Read an uploaded certificate (size, colors, rules, and text positions) and
+ * rebuild it as a real template. Institution name, logo, seal, and signatories
+ * come from institution settings. The scanned picture is not placed on the page.
  */
 import {
   BUILDER_FONT_FAMILIES,
@@ -1142,24 +1141,322 @@ function ensureRequiredDynamicFields(
   return out
 }
 
+export type ScanInstitutionProfile = {
+  name?: string
+  primary?: string
+  accent?: string
+  logoUrl?: string | null
+  sealUrl?: string | null
+  signatureUrl?: string | null
+  motto?: string | null
+  leftTitle?: string
+  rightTitle?: string
+  leftName?: string
+  rightName?: string
+}
+
+function pushText(
+  out: BuilderElement[],
+  z: number,
+  box: BBox & { fontSize?: number; bold?: boolean; italic?: boolean; align?: 'left' | 'center' | 'right' },
+  patch: Partial<BuilderElement>,
+): number {
+  out.push({
+    id: createElementId(),
+    type: 'text',
+    x: Math.max(0, box.x),
+    y: Math.max(0, box.y),
+    width: Math.max(24, box.w),
+    height: Math.max(18, box.h),
+    rotation: 0,
+    zIndex: z,
+    fontFamily: BUILDER_FONT_FAMILIES[0],
+    fontSize: box.fontSize || 16,
+    fontWeight: box.bold ? 'bold' : 'normal',
+    fontStyle: box.italic ? 'italic' : 'normal',
+    textAlign: box.align || 'center',
+    fill: 'transparent',
+    stroke: 'transparent',
+    strokeWidth: 0,
+    opacity: 1,
+    locked: false,
+    ...patch,
+  })
+  return z + 1
+}
+
 /**
- * Scan uploaded PDF/image → editable LogoBuilderDesign that MATCHES the upload.
- *
- * Strategy (visual fidelity first):
- * 1. Keep the full uploaded page as locked background art (exact design/format).
- * 2. Detect dynamic data slots from PDF text / OCR at their original positions.
- * 3. Overlay only those slots with paper-matched covers + live bindings.
- * Static labels, borders, seals, and typography stay in the artwork — not re-drawn.
+ * Rebuild the scanned page as template elements: same size, colors, rules,
+ * and text positions, with institution records in the identity slots.
+ */
+function composeInstitutionTemplate(args: {
+  texts: RawText[]
+  shapes: RawShape[]
+  canvasW: number
+  canvasH: number
+  paperKey: PaperSizeKey
+  paper: string
+  ink: string
+  kind: DocumentBuilderKind
+  institution?: ScanInstitutionProfile
+}): LogoBuilderDesign {
+  const { texts, shapes, canvasW, canvasH, paperKey, paper, ink, kind, institution } = args
+  const inst = institution || {}
+  const bar = shapes.find((s) => s.shape === 'bar')
+  const rule = shapes.find((s) => s.shape === 'line')
+  const scannedPrimary =
+    (bar && bar.shape === 'bar' ? bar.color : null) ||
+    (rule && rule.shape === 'line' ? rule.color : null) ||
+    ''
+  const primary = scannedPrimary || inst.primary || ink || '#0f172a'
+  const elements: BuilderElement[] = []
+  let z = 1
+  const used = new Set<string>()
+
+  for (const shape of shapes) {
+    if (shape.shape === 'bar') {
+      elements.push({
+        id: createElementId(),
+        type: 'rect',
+        x: shape.x,
+        y: shape.y,
+        width: shape.w,
+        height: shape.h,
+        rotation: 0,
+        zIndex: z++,
+        fill: shape.color || primary,
+        stroke: 'transparent',
+        strokeWidth: 0,
+        opacity: 1,
+        bind: 'none',
+        text: 'accent-bar',
+      })
+      continue
+    }
+    if (shape.shape === 'line') {
+      elements.push({
+        id: createElementId(),
+        type: 'line',
+        x: shape.x,
+        y: shape.y,
+        width: shape.w,
+        height: Math.max(2, shape.h),
+        rotation: 0,
+        zIndex: z++,
+        stroke: shape.color || primary,
+        strokeWidth: shape.strokeWidth || 2,
+        fill: shape.color || primary,
+        opacity: 1,
+        bind: 'none',
+        text: 'rule',
+      })
+      continue
+    }
+    if (shape.kind === 'logo' && inst.logoUrl && !used.has('logo')) {
+      used.add('logo')
+      elements.push({
+        id: createElementId(),
+        type: 'image',
+        x: shape.x,
+        y: shape.y,
+        width: shape.w,
+        height: shape.h,
+        rotation: 0,
+        zIndex: z++,
+        src: inst.logoUrl,
+        opacity: 1,
+        bind: 'none',
+        text: 'logo',
+      })
+      continue
+    }
+    if (shape.kind === 'stamp' && inst.sealUrl && !used.has('seal')) {
+      used.add('seal')
+      elements.push({
+        id: createElementId(),
+        type: 'image',
+        x: shape.x,
+        y: shape.y,
+        width: shape.w,
+        height: shape.h,
+        rotation: 0,
+        zIndex: z++,
+        src: inst.sealUrl,
+        opacity: 1,
+        bind: 'none',
+        text: 'seal',
+      })
+      continue
+    }
+    if (shape.kind === 'signature' && inst.signatureUrl) {
+      elements.push({
+        id: createElementId(),
+        type: 'image',
+        x: shape.x,
+        y: shape.y,
+        width: shape.w,
+        height: shape.h,
+        rotation: 0,
+        zIndex: z++,
+        src: inst.signatureUrl,
+        opacity: 1,
+        bind: 'none',
+        text: 'signature',
+      })
+      continue
+    }
+    if (shape.kind === 'qr' && !used.has('qr')) {
+      used.add('qr')
+      elements.push({
+        ...createVerificationQrElement({ width: canvasW, height: canvasH }),
+        x: shape.x,
+        y: shape.y,
+        width: shape.w,
+        height: shape.h,
+        zIndex: z++,
+      })
+    }
+  }
+
+  if (inst.logoUrl && !used.has('logo')) {
+    const size = Math.round(Math.min(canvasW, canvasH) * 0.12)
+    elements.push({
+      id: createElementId(),
+      type: 'image',
+      x: canvasW * 0.08,
+      y: canvasH * 0.05,
+      width: size,
+      height: size,
+      rotation: 0,
+      zIndex: z++,
+      src: inst.logoUrl,
+      opacity: 1,
+      bind: 'none',
+      text: 'logo',
+    })
+  }
+
+  const header = texts
+    .map((t, index) => ({ t, index }))
+    .filter(({ t }) => t.y < canvasH * 0.26 && t.text.trim().length > 2)
+    .sort((a, b) => a.t.y - b.t.y || b.t.fontSize - a.t.fontSize)
+  const identityLine = header.find(
+    ({ t }) => !/certificate|diploma|transcript|invoice|award/i.test(t.text),
+  )
+
+  const skip = new Set<number>()
+  if (identityLine) {
+    skip.add(identityLine.index)
+    z = pushText(elements, z, { ...identityLine.t, w: Math.max(identityLine.t.w, canvasW * 0.5), bold: true }, {
+      text: inst.name || identityLine.t.text,
+      color: primary,
+      bind: 'institutionName',
+      textAlign: guessTextAlign(identityLine.t, canvasW),
+    })
+    used.add('institutionName')
+  }
+  const mottoLine = header.find(
+    ({ index, t }) =>
+      !skip.has(index) &&
+      !/certificate|diploma|transcript|invoice|this is to certify/i.test(t.text),
+  )
+  if (mottoLine && String(inst.motto || '').trim()) {
+    skip.add(mottoLine.index)
+    z = pushText(elements, z, mottoLine.t, {
+      text: String(inst.motto),
+      color: inst.accent || primary,
+      bind: 'motto',
+      textAlign: guessTextAlign(mottoLine.t, canvasW),
+    })
+    used.add('motto')
+  } else if (mottoLine && mottoLine.t.y < canvasH * 0.18) {
+    skip.add(mottoLine.index)
+  }
+
+  for (let i = 0; i < texts.length; i++) {
+    if (skip.has(i)) continue
+    const t = texts[i]
+    const flat = t.text.replace(/\n/g, ' ').trim()
+    if (flat.length < 2) continue
+
+    let bind = guessBind(flat)
+    if (bind === 'studentName' && t.y > canvasH * 0.62) {
+      bind = t.x + t.w / 2 < canvasW * 0.5 ? 'leftName' : 'rightName'
+    }
+    if (/^academic\s+registrar$/i.test(flat)) bind = 'leftTitle'
+    if (/^principal$/i.test(flat)) bind = 'rightTitle'
+    if (
+      bind === 'none' &&
+      /university|institute|college|academy/i.test(flat) &&
+      t.y < canvasH * 0.32
+    ) {
+      bind = used.has('institutionName') ? 'none' : 'institutionName'
+      if (used.has('institutionName')) continue
+    }
+    if (bind && bind !== 'none' && bind !== 'qr' && used.has(bind)) {
+      continue
+    }
+
+    const align = t.align || guessTextAlign(t, canvasW)
+    if (!bind || bind === 'none') {
+      z = pushText(elements, z, { ...t, align }, {
+        text: t.text,
+        color: t.color || ink,
+        bind: 'none',
+      })
+      continue
+    }
+
+    used.add(bind)
+    z = pushText(
+      elements,
+      z,
+      {
+        ...t,
+        w: Math.max(t.w, bind === 'studentName' || bind === 'programName' ? canvasW * 0.55 : t.w),
+        bold: t.bold || bind === 'studentName' || bind === 'programName' || bind === 'institutionName',
+        italic: t.italic || bind === 'studentName' || bind === 'programName',
+        align:
+          bind === 'studentName' || bind === 'programName' || bind === 'institutionName'
+            ? 'center'
+            : align,
+      },
+      {
+        text: fieldPlaceholder(bind),
+        color: bind === 'institutionName' ? primary : t.color || ink,
+        bind,
+      },
+    )
+  }
+
+  const withFields = ensureRequiredDynamicFields(elements, canvasW, canvasH, kind, 'transparent', ink)
+  return normalizeVerificationQr({
+    version: 1,
+    canvas: {
+      width: canvasW,
+      height: canvasH,
+      background: paper || '#ffffff',
+      paperKey,
+    },
+    elements: withFields.slice(0, 180),
+  })
+}
+
+/**
+ * Scan an uploaded PDF/image and rebuild the same layout as a template.
+ * Size, colors, rules, and wording positions come from the file.
+ * Identity fields use the institution profile. The picture itself is not kept.
  */
 export async function extractCertificateDesign(opts: {
   file: File
   imageUrl: string
   aspectRatio?: number | null
   kind?: DocumentBuilderKind
-  uploadImageBlob: UploadImageBlobFn
+  uploadImageBlob?: UploadImageBlobFn
+  institution?: ScanInstitutionProfile
   onProgress?: ExtractProgress
 }): Promise<LogoBuilderDesign> {
-  const { file, imageUrl, aspectRatio, uploadImageBlob, onProgress } = opts
+  const { file, imageUrl, aspectRatio, onProgress } = opts
   const kind: DocumentBuilderKind = opts.kind || 'certificate'
 
   // Prefer the real image aspect so the template paper matches the upload format
@@ -1176,19 +1473,7 @@ export async function extractCertificateDesign(opts: {
   const mime = String(file.type || '').toLowerCase()
   const isPdf = mime === 'application/pdf' || /\.pdf$/i.test(file.name)
 
-  onProgress?.('Scanning certificate design…', 5)
-
-  // Exact visual clone of the uploaded page (design + formatting preserved)
-  onProgress?.('Locking uploaded artwork…', 15)
-  let paperPath: string | null = null
-  try {
-    paperPath = await uploadExactPaper(imageUrl, canvasW, canvasH, uploadImageBlob)
-  } catch {
-    paperPath = null
-  }
-  if (!paperPath) {
-    throw new Error('UPLOAD_FAILED')
-  }
+  onProgress?.('Reading size, colors, and layout…', 8)
 
   let texts: RawText[] = []
   if (isPdf) {
@@ -1238,29 +1523,7 @@ export async function extractCertificateDesign(opts: {
     }
   }
 
-  onProgress?.('Matching fields to uploaded layout…', 65)
-  const slots = pickDynamicSlots(textBlocks)
-
-  const elements: BuilderElement[] = []
-  let z = 0
-
-  elements.push({
-    id: createElementId(),
-    type: 'image',
-    x: 0,
-    y: 0,
-    width: canvasW,
-    height: canvasH,
-    rotation: 0,
-    zIndex: z++,
-    src: paperPath,
-    opacity: 1,
-    bind: 'none',
-    text: 'background-art',
-    locked: true,
-  })
-
-  // Global paper/ink fallback from center of page
+  onProgress?.('Matching the document to your institution…', 70)
   const pageSample = await samplePaperAndInk(imageUrl, canvasW, canvasH, {
     x: canvasW * 0.35,
     y: canvasH * 0.35,
@@ -1268,112 +1531,30 @@ export async function extractCertificateDesign(opts: {
     h: canvasH * 0.2,
   })
 
-  for (const slot of slots) {
-    const colors = await samplePaperAndInk(imageUrl, canvasW, canvasH, {
-      x: slot.x,
-      y: slot.y,
-      w: slot.w,
-      h: slot.h,
-    })
-    const lineCount = (slot.text.match(/\n/g) || []).length + 1
-    const padX = Math.max(4, slot.fontSize * 0.2)
-    const padY = Math.max(2, slot.fontSize * 0.15)
-    const isName = slot.bind === 'studentName'
-    const isProgram = slot.bind === 'programName'
-
-    elements.push({
-      id: createElementId(),
-      type: 'text',
-      x: Math.max(0, slot.x - padX),
-      y: Math.max(0, slot.y - padY),
-      width: Math.min(canvasW, Math.max(slot.w + padX * 2, isProgram ? canvasW * 0.45 : slot.w + 8)),
-      height: Math.min(canvasH, Math.max(slot.h + padY * 2, slot.fontSize * 1.2 * lineCount)),
-      rotation: 0,
-      zIndex: z++,
-      text: slot.text,
-      fontFamily: BUILDER_FONT_FAMILIES[0],
-      fontSize: slot.fontSize,
-      fontWeight: slot.bold || isName || isProgram ? 'bold' : 'normal',
-      fontStyle: slot.italic || isName || isProgram ? 'italic' : 'normal',
-      textAlign:
-        isName || isProgram
-          ? 'center'
-          : slot.bind === 'dateIssued'
-            ? 'right'
-            : slot.bind === 'certificateNumber'
-              ? 'left'
-              : guessTextAlign(slot, canvasW),
-      color: colors.ink || pageSample.ink,
-      // Cover printed sample text so live student data replaces it cleanly
-      fill: colors.paper || pageSample.paper,
-      stroke: 'transparent',
-      strokeWidth: 0,
-      opacity: 1,
-      bind: slot.bind,
-      locked: false,
-    })
-  }
-
-  // Cover printed sample QR if we can find it, then place a live verification QR
-  onProgress?.('Placing verification QR…', 80)
+  let shapes: RawShape[] = []
   try {
-    const shapes = await detectGraphicElements(
+    shapes = await detectGraphicElements(
       imageUrl,
       canvasW,
       canvasH,
       textBlocks.map((t) => ({ x: t.x, y: t.y, w: t.w, h: t.h })),
     )
-    const qrShape = shapes.find((s) => s.shape === 'image' && s.kind === 'qr')
-    if (qrShape && qrShape.shape === 'image') {
-      const qrColors = await samplePaperAndInk(imageUrl, canvasW, canvasH, qrShape)
-      elements.push({
-        id: createElementId(),
-        type: 'rect',
-        x: qrShape.x - 4,
-        y: qrShape.y - 4,
-        width: qrShape.w + 8,
-        height: qrShape.h + 8,
-        rotation: 0,
-        zIndex: z++,
-        fill: qrColors.paper || pageSample.paper,
-        opacity: 1,
-        bind: 'none',
-        locked: true,
-        text: 'qr-cover',
-      })
-      elements.push({
-        ...createVerificationQrElement({ width: canvasW, height: canvasH }),
-        x: qrShape.x,
-        y: qrShape.y,
-        width: qrShape.w,
-        height: qrShape.h,
-        zIndex: z++,
-        locked: false,
-      })
-    }
   } catch {
-    /* QR optional — ensureRequiredDynamicFields may add a default */
+    shapes = []
   }
 
-  const withFields = ensureRequiredDynamicFields(
-    elements,
+  onProgress?.('Building template…', 90)
+  const design = composeInstitutionTemplate({
+    texts: textBlocks,
+    shapes,
     canvasW,
     canvasH,
+    paperKey,
+    paper: pageSample.paper,
+    ink: pageSample.ink,
     kind,
-    pageSample.paper,
-    pageSample.ink,
-  )
-  const capped = withFields.slice(0, 180)
-  onProgress?.('Template matches your upload', 100)
-
-  return normalizeVerificationQr({
-    version: 1,
-    canvas: {
-      width: canvasW,
-      height: canvasH,
-      background: pageSample.paper || '#ffffff',
-      paperKey,
-    },
-    elements: capped,
+    institution: opts.institution,
   })
+  onProgress?.('Template ready', 100)
+  return design
 }

@@ -6,10 +6,11 @@
  * Upload Own   → config.custom_upload (.design optional) + layout_key custom_upload
  * The two slots never read each other.
  */
-import { getCertificateTemplateSignedUrl } from '@/lib/api'
+import { getCertificateTemplateSignedUrl, downloadCertificateTemplateAsDataUrl } from '@/lib/api'
 import {
   customUploadHasGeneratedDesign,
   extractCertStoragePath,
+  isPrivateCertStoragePath,
   normalizeLogoBuilderDesign,
   normalizePaperLayers,
   normalizeUploadFieldLayout,
@@ -51,8 +52,17 @@ async function resolveBuilderImageSrcs(
   const elements = await Promise.all(
     design.elements.map(async (el) => {
       if (el.type !== 'image' || !el.src) return el
-      const path = extractCertStoragePath(el.src)
+      const raw = String(el.src).trim()
+      if (!raw || /^(data:|blob:)/i.test(raw)) return el
+      const path =
+        extractCertStoragePath(raw) || (isPrivateCertStoragePath(raw) ? raw : null)
       if (!path) return el
+      try {
+        const dataUrl = await downloadCertificateTemplateAsDataUrl(path)
+        if (dataUrl && dataUrl.startsWith('data:')) return { ...el, src: dataUrl }
+      } catch {
+        /* fall through */
+      }
       try {
         const url = await getCertificateTemplateSignedUrl(path)
         return url ? { ...el, src: url } : el

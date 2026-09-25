@@ -29,6 +29,7 @@ import {
   extractCertStoragePath,
   getDesignPdfPageMm,
   isFullPageDecorElement,
+  isPrivateCertStoragePath,
   customUploadHasGeneratedDesign,
   normalizeLogoBuilderDesign,
   normalizePaperLayers,
@@ -37,7 +38,7 @@ import {
   type BuilderElement,
   type LogoBuilderDesign,
 } from '@/lib/certificateBuilder'
-import { getCertificateTemplateSignedUrl, getDocumentTemplate } from '@/lib/api'
+import { getCertificateTemplateSignedUrl, getDocumentTemplate, downloadCertificateTemplateAsDataUrl } from '@/lib/api'
 
 /**
  * Prefer the institution’s currently active certificate template for preview/PDF.
@@ -66,7 +67,11 @@ export async function withLiveActiveCertificateTemplate(
     }
 
     // Custom modes need their payload present; otherwise keep snapshot
-    if (layoutKey === 'custom_upload' && !config?.custom_upload?.storage_path) {
+    if (
+      layoutKey === 'custom_upload' &&
+      !config?.custom_upload?.storage_path &&
+      !customUploadHasGeneratedDesign(config?.custom_upload)
+    ) {
       return certificateData
     }
     if (layoutKey === 'logo_builder' && !config?.logo_builder) {
@@ -134,16 +139,38 @@ export async function withLiveCustomUploadTemplate(
   return withLiveActiveCertificateTemplate(certificateData)
 }
 
-async function resolveBuilderImageSrcs(design: LogoBuilderDesign | null | undefined): Promise<LogoBuilderDesign | null> {
+/**
+ * Resolve private certificate-templates paths to data URLs (authenticated download).
+ * Signed HTTPS URLs fail under <img crossOrigin> when Storage CORS is missing —
+ * that showed as a broken/missing patch on generate preview while PDF still worked.
+ */
+export async function resolveCertificateDesignImages(
+  design: LogoBuilderDesign | null | undefined,
+): Promise<LogoBuilderDesign | null> {
   if (!design?.elements?.length) return design || null
   const elements = await Promise.all(
     design.elements.map(async (el) => {
       if (el.type !== 'image' || !el.src) return el
-      const path = extractCertStoragePath(el.src)
-      if (!path) return el
+      const raw = String(el.src).trim()
+      if (!raw) return el
+      if (/^(data:|blob:)/i.test(raw)) return el
+
+      const path =
+        extractCertStoragePath(raw) ||
+        (isPrivateCertStoragePath(raw) ? raw : null)
+      if (!path) {
+        // Public https (institution-assets logo/seal/patch) — keep as-is
+        return el
+      }
+
+      try {
+        const dataUrl = await downloadCertificateTemplateAsDataUrl(path)
+        if (dataUrl && dataUrl.startsWith('data:')) return { ...el, src: dataUrl }
+      } catch {
+        /* fall through to signed URL (display without crossOrigin) */
+      }
       try {
         const url = await getCertificateTemplateSignedUrl(path)
-        // Keep path in persisted sense for future saves via snapshot; display uses signed URL
         return url ? { ...el, src: url } : el
       } catch {
         return el
@@ -151,6 +178,11 @@ async function resolveBuilderImageSrcs(design: LogoBuilderDesign | null | undefi
     }),
   )
   return { ...design, elements }
+}
+
+/** @deprecated use resolveCertificateDesignImages */
+async function resolveBuilderImageSrcs(design: LogoBuilderDesign | null | undefined): Promise<LogoBuilderDesign | null> {
+  return resolveCertificateDesignImages(design)
 }
 
 /** Normalize any download caller payload into CertificateRenderData. */
@@ -483,8 +515,31 @@ async function rasterizeSvgNodesInHost(root: HTMLElement) {
 /** Fetch a remote image and return a data-URL so html2canvas can paint it (CORS-safe). */
 async function inlineImageSrc(src: string | null | undefined): Promise<string | null> {
   if (!src) return null
-  const s = String(src)
+  let s = String(src).trim()
+  if (!s) return null
   if (s.startsWith('data:')) return s
+  // Storage path or signed certificate-templates URL — download via auth API (no CORS)
+  const storagePath =
+    extractCertStoragePath(s) ||
+    (isPrivateCertStoragePath(s) ? s : null)
+  if (storagePath) {
+    try {
+      const dataUrl = await downloadCertificateTemplateAsDataUrl(storagePath)
+      if (dataUrl?.startsWith('data:')) return dataUrl
+    } catch {
+      /* fall through */
+    }
+  }
+  if (!/^https?:\/\//i.test(s) && !s.startsWith('blob:')) {
+    const path = storagePath || (s.includes('/') && !s.includes('..') ? s : null)
+    if (path) {
+      try {
+        s = (await getCertificateTemplateSignedUrl(path)) || s
+      } catch {
+        /* keep original */
+      }
+    }
+  }
   try {
     const res = await fetch(s, { mode: 'cors', credentials: 'omit', cache: 'no-cache' })
     if (!res.ok) throw new Error(`HTTP ${res.status}`)
@@ -668,7 +723,8 @@ export async function generateCertificatePDF(certificateData: Record<string, any
   try {
     root = createRoot(host)
     root.render(createElement(CertificateCanvas, { data, forPdf: true }))
-    await wait(isUpload || isBuilder ? 1200 : 600)
+    // Builder designs may still resolve private patch images on mount — wait longer
+    await wait(isUpload || isBuilder ? 1600 : 600)
 
     // Ensure every <img> is decoded
     const imgs = Array.from(host.querySelectorAll('img'))
@@ -683,24 +739,24 @@ export async function generateCertificatePDF(certificateData: Record<string, any
             const done = () => resolve()
             img.addEventListener('load', done, { once: true })
             img.addEventListener('error', done, { once: true })
-            window.setTimeout(done, 4000)
+            window.setTimeout(done, 5000)
           }),
       ),
     )
-    // Wait for fonts
+    // Wait for fonts (script/serif families used on imported certificates)
     try {
       await (document as any).fonts?.ready
+      if (document.fonts?.load) {
+        await Promise.allSettled([
+          document.fonts.load('46px "Great Vibes"'),
+          document.fonts.load('30px "Playfair Display"'),
+          document.fonts.load('16px Georgia'),
+        ])
+      }
     } catch {
       /* ignore */
     }
-    await wait(200)
-    if (typeof document !== 'undefined' && document.fonts?.ready) {
-      try {
-        await document.fonts.ready
-      } catch {
-        /* keep going with fallbacks */
-      }
-    }
+    await wait(280)
 
     const el = host.firstElementChild as HTMLElement | null
     if (!el) throw new Error('Certificate canvas failed to mount')

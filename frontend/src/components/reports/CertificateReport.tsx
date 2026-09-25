@@ -32,6 +32,7 @@ const CertificateReport = () => {
   const [selectedStudent, setSelectedStudent] = useState('all');
   const [selectedClass, setSelectedClass] = useState('all');
   const [selectedStatus, setSelectedStatus] = useState('all');
+  const [printingClass, setPrintingClass] = useState(false);
 
   // Modal
   const [selectedCertificate, setSelectedCertificate] = useState(null);
@@ -166,6 +167,44 @@ const CertificateReport = () => {
     }
   };
 
+  const handlePrintClass = async () => {
+    if (selectedClass === 'all') {
+      toast({
+        title: 'Select a class',
+        description: 'Choose one class in the filter, then print all of its certificates.',
+        variant: 'destructive',
+      });
+      return;
+    }
+    const list = filteredCertificates.filter((c) => c.status !== 'revoked');
+    if (!list.length) {
+      toast({
+        title: 'No certificates',
+        description: 'No printable certificates for this class.',
+        variant: 'destructive',
+      });
+      return;
+    }
+    setPrintingClass(true);
+    try {
+      for (const cert of list) {
+        await printCertificatePDF(buildCertificatePdfPayload(cert));
+      }
+      const clsName = classes.find((c) => c.id === selectedClass)?.name || 'class';
+      toast({
+        title: 'Class print ready',
+        description: `Sent ${list.length} certificate(s) for “${clsName}” to print.`,
+      });
+    } catch (error) {
+      notify.error(error, {
+        context: 'CertificateReport - print class',
+        fallback: { title: 'Print failed', description: 'Could not print certificates for this class.' },
+      });
+    } finally {
+      setPrintingClass(false);
+    }
+  };
+
   const getStatusColor = (status) => {
     switch (status) {
       case 'issued': return 'bg-emerald-50 text-emerald-800 border-emerald-200';
@@ -215,9 +254,26 @@ const CertificateReport = () => {
                 View, manage, and track student certificates
               </CardDescription>
             </div>
-            <Button onClick={fetchData} variant="ghost" size="sm" disabled={loading}>
-              <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
-            </Button>
+            <div className="flex items-center gap-2">
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                disabled={printingClass || selectedClass === 'all' || filteredCertificates.length === 0}
+                onClick={handlePrintClass}
+                title="Print all certificates for the selected class"
+              >
+                {printingClass ? (
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                ) : (
+                  <Printer className="h-4 w-4 mr-2" />
+                )}
+                Print class
+              </Button>
+              <Button onClick={fetchData} variant="ghost" size="sm" disabled={loading}>
+                <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
+              </Button>
+            </div>
           </div>
         </CardHeader>
         <CardContent className="space-y-4">
