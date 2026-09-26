@@ -926,7 +926,7 @@ const CoursesPage = () => {
                 </TabsContent>
 
                 <TabsContent value="courses" className="mt-4">
-                     <div className="flex flex-wrap gap-5">
+                     <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
                         {filteredCourses.map((course, index) => {
                             const linkedDiplomas = diplomasForCourse(diplomas, diplomaCourses, course);
                             const diplomaCount = linkedDiplomas.length;
@@ -940,11 +940,11 @@ const CoursesPage = () => {
                               initial={{ opacity: 0, y: 20 }}
                               animate={{ opacity: 1, y: 0 }}
                               transition={{ delay: index * 0.03 }}
-                              className="w-full min-w-[260px] max-w-[300px] flex-[1_1_280px]"
+                              className="min-w-0 w-full"
                             >
                                 <Card className="flex h-full flex-col overflow-hidden rounded-2xl border border-[var(--ds-border,#DDE5DF)] bg-[var(--ds-surface,#fff)] shadow-sm transition-shadow hover:shadow-md">
                                     <CardHeader className="space-y-0 pb-4">
-                                        <div className="flex items-start gap-3">
+                                        <div className="flex items-start justify-between gap-2">
                                             <div
                                               className={cn(
                                                 'flex h-12 w-12 shrink-0 items-center justify-center rounded-xl shadow-sm',
@@ -959,24 +959,6 @@ const CoursesPage = () => {
                                                 stroke="#ffffff"
                                                 color="#ffffff"
                                               />
-                                            </div>
-                                            <div className="min-w-0 flex-1">
-                                                <CardTitle
-                                                  className="line-clamp-2 text-lg font-bold leading-snug text-[var(--ds-text-primary,#122018)]"
-                                                  title={course.name}
-                                                >
-                                                    {course.name}
-                                                </CardTitle>
-                                                <Badge
-                                                    variant="outline"
-                                                    className="mt-1.5 w-fit rounded-full border-[var(--ds-primary,#1F8A5B)]/20 bg-[var(--ds-primary-soft,#ECFDF5)] px-2.5 py-0.5 font-medium text-[var(--ds-primary,#1F8A5B)]"
-                                                >
-                                                    {isElearning ? (
-                                                        <><span className="mr-1.5 inline-block h-1.5 w-1.5 rounded-full bg-[var(--ds-primary,#1F8A5B)]" /><MonitorPlay className="mr-1 h-3 w-3" /> E-Learning</>
-                                                    ) : (
-                                                        <><span className="mr-1.5 inline-block h-1.5 w-1.5 rounded-full bg-[var(--ds-primary,#1F8A5B)]" /> Regular</>
-                                                    )}
-                                                </Badge>
                                             </div>
                                             {canManagePrograms && (
                                                 <div className="inline-flex shrink-0 items-center gap-0.5">
@@ -997,6 +979,29 @@ const CoursesPage = () => {
                                                 </div>
                                             )}
                                         </div>
+                                        <CardTitle
+                                          className={cn(
+                                            'mt-3 font-bold break-words text-[var(--ds-text-primary,#122018)]',
+                                            // Keep full name visible in ≤2 lines inside a 3-col card
+                                            course.name.length > 55
+                                              ? 'text-[12.5px] leading-[1.3]'
+                                              : course.name.length > 36
+                                                ? 'text-[13.5px] leading-snug'
+                                                : 'text-base leading-snug',
+                                          )}
+                                        >
+                                            {course.name}
+                                        </CardTitle>
+                                        <Badge
+                                            variant="outline"
+                                            className="mt-1.5 w-fit rounded-full border-[var(--ds-primary,#1F8A5B)]/20 bg-[var(--ds-primary-soft,#ECFDF5)] px-2.5 py-0.5 font-medium text-[var(--ds-primary,#1F8A5B)]"
+                                        >
+                                            {isElearning ? (
+                                                <><span className="mr-1.5 inline-block h-1.5 w-1.5 rounded-full bg-[var(--ds-primary,#1F8A5B)]" /><MonitorPlay className="mr-1 h-3 w-3" /> E-Learning</>
+                                            ) : (
+                                                <><span className="mr-1.5 inline-block h-1.5 w-1.5 rounded-full bg-[var(--ds-primary,#1F8A5B)]" /> Regular</>
+                                            )}
+                                        </Badge>
                                     </CardHeader>
 
                                     {isExpanded && (
