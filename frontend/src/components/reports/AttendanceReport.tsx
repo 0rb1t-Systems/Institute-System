@@ -218,52 +218,76 @@ const AttendanceReport = () => {
         <div className="space-y-6">
             {/* Advanced Filtering */}
             <Card>
-                <CardHeader>
+                <CardHeader className="pb-3">
                     <CardTitle className="text-lg">Report Configuration</CardTitle>
                 </CardHeader>
                 <CardContent>
-                    <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-4 items-end">
+                    <div className="grid grid-cols-1 items-end gap-4 md:grid-cols-3 lg:grid-cols-4">
                         <div className="space-y-2">
-                            <Label>Date Range (Start)</Label>
-                            <Input type="date" value={dateRange.start} onChange={e => setDateRange(prev => ({...prev, start: e.target.value}))} />
+                            <Label htmlFor="att-date-from">Date Range (Start)</Label>
+                            <Input
+                                id="att-date-from"
+                                type="date"
+                                value={dateRange.start}
+                                max={dateRange.end}
+                                onChange={(e) => setDateRange((prev) => ({ ...prev, start: e.target.value }))}
+                            />
                         </div>
                         <div className="space-y-2">
-                            <Label>Date Range (End)</Label>
-                            <Input type="date" value={dateRange.end} onChange={e => setDateRange(prev => ({...prev, end: e.target.value}))} />
+                            <Label htmlFor="att-date-to">Date Range (End)</Label>
+                            <Input
+                                id="att-date-to"
+                                type="date"
+                                value={dateRange.end}
+                                min={dateRange.start}
+                                onChange={(e) => setDateRange((prev) => ({ ...prev, end: e.target.value }))}
+                            />
                         </div>
                         <div className="space-y-2">
                             <Label>Filter by Class</Label>
                             <Select value={classFilter} onValueChange={setClassFilter}>
-                                <SelectTrigger><SelectValue placeholder="All Classes" /></SelectTrigger>
+                                <SelectTrigger>
+                                    <SelectValue placeholder="All Classes" />
+                                </SelectTrigger>
                                 <SelectContent className="max-h-[300px]">
                                     <SelectItem value="all">All Classes</SelectItem>
-                                    {classes.map(c => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
+                                    {classes.map((c) => (
+                                        <SelectItem key={c.id} value={c.id}>
+                                            {c.name}
+                                        </SelectItem>
+                                    ))}
                                 </SelectContent>
                             </Select>
                         </div>
                         <div className="space-y-2">
                             <Label>Filter by Instructor</Label>
                             <Select value={instructorFilter} onValueChange={setInstructorFilter}>
-                                <SelectTrigger><SelectValue placeholder="All Instructors" /></SelectTrigger>
+                                <SelectTrigger>
+                                    <SelectValue placeholder="All Instructors" />
+                                </SelectTrigger>
                                 <SelectContent>
                                     <SelectItem value="all">All Instructors</SelectItem>
-                                    {instructors.map(i => <SelectItem key={i.id} value={i.id}>{i.name}</SelectItem>)}
+                                    {instructors.map((i) => (
+                                        <SelectItem key={i.id} value={i.id}>
+                                            {i.name}
+                                        </SelectItem>
+                                    ))}
                                 </SelectContent>
                             </Select>
                         </div>
-                        <div className="space-y-2 col-span-1 md:col-span-2">
+                        <div className="space-y-2 md:col-span-2">
                             <Label>Search Student</Label>
                             <div className="relative">
                                 <Search className="absolute left-2 top-2.5 h-4 w-4 text-[var(--ds-text-tertiary,#8A978E)]" />
-                                <Input 
-                                    placeholder="Search by student name..." 
+                                <Input
+                                    placeholder="Search by student name..."
                                     className="pl-8"
                                     value={studentSearch}
-                                    onChange={e => setStudentSearch(e.target.value)}
+                                    onChange={(e) => setStudentSearch(e.target.value)}
                                 />
                             </div>
                         </div>
-                         <div className="flex gap-2 col-span-1 md:col-span-2 justify-end">
+                        <div className="flex flex-wrap gap-2 md:col-span-2 md:justify-end">
                             <Button onClick={exportPDF} variant="outline" className="w-full md:w-auto">
                                 <FileDown className="mr-2 h-4 w-4 text-red-600" /> Export PDF
                             </Button>

@@ -1,5 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import { useData } from '@/contexts/DataContext';
+import { useAuth } from '@/contexts/AuthContext';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Label } from '@/components/ui/label';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -13,9 +14,12 @@ import TranscriptView from '@/components/TranscriptView';
 const thClass = 'text-[11px] font-semibold uppercase tracking-wide text-[var(--ds-text-tertiary,#8A978E)]';
 
 const TranscriptReport = () => {
+    const { institution } = useAuth();
     const { classes, students, enrollments } = useData();
     const [selectedClassId, setSelectedClassId] = useState('all');
     const [searchQuery, setSearchQuery] = useState('');
+    const institutionName = String(institution?.name || '').trim();
+
     const filteredStudents = useMemo(() => {
         let list = students;
 
@@ -46,11 +50,11 @@ const TranscriptReport = () => {
             <Card>
                 <CardHeader><CardTitle>Academic Transcripts Report</CardTitle></CardHeader>
                 <CardContent>
-                    <div className="flex flex-col md:flex-row gap-4 mb-6 p-4 rounded-lg bg-[var(--ds-surface-muted,#F7FAF8)] border border-[var(--ds-border,#DDE5DF)]">
-                        <div className="w-full md:w-1/3 space-y-2">
+                    <div className="mb-6 flex flex-col gap-3 rounded-lg border border-[var(--ds-border,#DDE5DF)] bg-[var(--ds-surface-muted,#F7FAF8)] p-4 md:flex-row md:items-end">
+                        <div className="min-w-0 flex-1 space-y-2">
                             <Label>Filter by Class</Label>
                             <Select value={selectedClassId} onValueChange={setSelectedClassId}>
-                                <SelectTrigger><SelectValue placeholder="Select Class" /></SelectTrigger>
+                                <SelectTrigger className="w-full"><SelectValue placeholder="Select Class" /></SelectTrigger>
                                 <SelectContent>
                                     <SelectItem value="all">All Students</SelectItem>
                                     {classes.map(c => (
@@ -59,15 +63,15 @@ const TranscriptReport = () => {
                                 </SelectContent>
                             </Select>
                         </div>
-                        <div className="w-full md:w-1/3 space-y-2">
+                        <div className="min-w-0 flex-[1.4] space-y-2">
                             <Label>Search Student</Label>
-                            <div className="relative">
+                            <div className="relative min-w-0">
                                 <Search className="absolute left-2 top-2.5 h-4 w-4 text-[var(--ds-text-tertiary,#8A978E)]" />
                                 <Input 
                                     placeholder="Name or Student Code" 
                                     value={searchQuery} 
                                     onChange={e => setSearchQuery(e.target.value)}
-                                    className="pl-8"
+                                    className="w-full pl-8"
                                 />
                             </div>
                         </div>
@@ -88,7 +92,9 @@ const TranscriptReport = () => {
                                     <TableRow key={student.id} className="border-[var(--ds-border,#DDE5DF)] hover:bg-[var(--ds-surface-muted,#F7FAF8)]">
                                         <TableCell className="font-medium text-[var(--ds-text-primary,#122018)]">{student.name}</TableCell>
                                         <TableCell className="text-[var(--ds-text-secondary,#5B6B61)]">{student.student_code}</TableCell>
-                                        <TableCell className="text-[var(--ds-text-secondary,#5B6B61)]">{student.university_name || '-'}</TableCell>
+                                        <TableCell className="text-[var(--ds-text-secondary,#5B6B61)]">
+                                            {String(student.university_name || '').trim() || institutionName || '—'}
+                                        </TableCell>
                                         <TableCell className="text-right">
                                             <Dialog>
                                                 <DialogTrigger asChild>

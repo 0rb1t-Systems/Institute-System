@@ -1,21 +1,27 @@
 import React, { useMemo, useState } from 'react';
 import { useData } from '@/contexts/DataContext';
 import { useAuth } from '@/contexts/AuthContext';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import StatCard from '@/components/StatCard';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { formatCurrency, formatDate } from '@/lib/utils';
-import { FileDown, Share2, Users, DollarSign, Wallet, Copy, ListChecks } from 'lucide-react';
+import { FileDown, Share2, Users, DollarSign, Wallet, Copy, ListChecks, UserPlus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import jsPDF from 'jspdf';
 import 'jspdf-autotable';
 import { getAffiliateCommissionRate, getTenantBaseUrl, rateToPercent } from '@/lib/institution';
 import { useToast } from '@/components/ui/use-toast';
-import { Link } from 'react-router-dom';
 import ManageRegistrationProgramsDialog from '@/components/admin/ManageRegistrationProgramsDialog';
+
+const thClass =
+  'text-[11px] font-semibold uppercase tracking-wide text-[var(--ds-text-tertiary,#8A978E)]';
+
+const kpiIcon = (Icon: React.ComponentType<{ className?: string; strokeWidth?: number }>) => (
+  <Icon className="h-5 w-5" strokeWidth={1.75} />
+);
 
 /**
  * Affiliate attribution + earnings (tenant-scoped via RLS).
- * Affiliates are created from Users → Staff & Affiliates.
  * Admin sees institution-wide directory; staff/affiliates see only their own referrals.
  */
 const AffiliateReport = () => {
@@ -50,7 +56,6 @@ const AffiliateReport = () => {
     return map;
   }, [users]);
 
-  /** Pending public registrations that arrived via a referral link (not yet approved students). */
   const pendingReferredInquiries = useMemo(() => {
     return (generalRegistrations || [])
       .filter((r) => r.status === 'pending' && r.affiliate_id)
@@ -61,7 +66,11 @@ const AffiliateReport = () => {
           affiliateName: aff?.name || aff?.full_name || 'Unknown affiliate',
         };
       })
-      .sort((a, b) => Number(new Date(b.submitted_at || b.created_at)) - Number(new Date(a.submitted_at || a.created_at)));
+      .sort(
+        (a, b) =>
+          Number(new Date(b.submitted_at || b.created_at)) -
+          Number(new Date(a.submitted_at || a.created_at)),
+      );
   }, [generalRegistrations, affiliateById]);
 
   const affiliateDirectory = useMemo(() => {
@@ -100,22 +109,24 @@ const AffiliateReport = () => {
         };
       })
       .sort((a, b) => a.name.localeCompare(b.name));
-  }, [eligibleAffiliates, students, payments, enrollments, affiliateSettlements, institution, generalRegistrations]);
+  }, [
+    eligibleAffiliates,
+    students,
+    payments,
+    enrollments,
+    affiliateSettlements,
+    institution,
+    generalRegistrations,
+  ]);
 
-  const affiliateStats = useMemo(
-    () =>
-      affiliateDirectory
-        .filter((a) => a.studentsCount > 0 || a.earnings > 0)
-        .sort((a, b) => b.earnings - a.earnings || b.paymentTotal - a.paymentTotal),
-    [affiliateDirectory],
-  );
-
-  // Personal referral stats (preserves former Affiliate / My Referrals page)
   const myStudents = useMemo(() => {
     if (!user) return [];
     return students
       .filter((s) => s.affiliate_id === user.id)
-      .sort((a, b) => Number(new Date(b.registration_date)) - Number(new Date(a.registration_date)));
+      .sort(
+        (a, b) =>
+          Number(new Date(b.registration_date)) - Number(new Date(a.registration_date)),
+      );
   }, [students, user]);
 
   const myReferredPaymentTotal = useMemo(() => {
@@ -170,7 +181,7 @@ const AffiliateReport = () => {
 
     doc.autoTable({
       startY: 30,
-      head: [['Affiliate', 'Email', 'Referred Students', 'Referred Payments', 'Commission Earned']],
+      head: [['Affiliate', 'Email', 'Students', 'Payments', 'Commission']],
       body: tableRows,
     });
     doc.save('Affiliate_Report.pdf');
@@ -187,185 +198,195 @@ const AffiliateReport = () => {
 
   return (
     <div className="space-y-6">
-      <div className="flex justify-between items-center gap-4 flex-wrap">
+      <div className="flex flex-wrap items-center justify-between gap-3">
         <p className="text-sm text-[var(--ds-text-secondary,#5B6B61)]">
-          Institution affiliate rate: <span className="text-[var(--ds-text-primary,#122018)] font-mono">{ratePct.toFixed(1)}%</span>
-          {ratePct <= 0 ? ' (set in Institution Settings to enable commission)' : null}
-          {isAdmin ? (
-            <>
-              {' · '}
-              Create affiliates in{' '}
-              <Link to="/admin/users" className="text-[var(--ds-info,#2563EB)] hover:underline">
-                Users → Staff & Affiliates
-              </Link>
-            </>
-          ) : null}
+          Rate:{' '}
+          <span className="font-mono font-semibold text-[var(--ds-text-primary,#122018)]">
+            {ratePct.toFixed(1)}%
+          </span>
         </p>
         {isAdmin ? (
-          <Button onClick={generatePDF} variant="outline">
+          <Button onClick={generatePDF} variant="outline" size="sm">
             <FileDown className="mr-2 h-4 w-4" /> Export PDF
           </Button>
         ) : null}
       </div>
 
       {!isAdmin ? (
-      <div className="grid gap-4 md:grid-cols-4">
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-[var(--ds-text-secondary,#5B6B61)]">My Referred Students</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-[var(--ds-text-primary,#122018)] flex items-center gap-2">
-              <Users className="h-5 w-5 text-[var(--ds-info,#2563EB)]" /> {myStudents.length}
-            </div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-[var(--ds-text-secondary,#5B6B61)]">My Referred Payments</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-[var(--ds-text-primary,#122018)] flex items-center gap-2">
-              <DollarSign className="h-5 w-5 text-[var(--ds-accent,#1F8A5B)]" /> {formatCurrency(myReferredPaymentTotal)}
-            </div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-[var(--ds-text-secondary,#5B6B61)]">My Commission</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-[var(--ds-warning,#C2410C)] flex items-center gap-2">
-              <Wallet className="h-5 w-5" /> {formatCurrency(myEarnings)}
-            </div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-[var(--ds-text-secondary,#5B6B61)]">My Referral Link</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-xs font-mono text-violet-700 break-all flex items-start gap-2">
-              <Share2 className="h-4 w-4 shrink-0 mt-0.5" /> {referralLink}
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-      ) : null}
-
-      {isAdmin ? (
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium text-[var(--ds-text-secondary,#5B6B61)]">All Referred Students</CardTitle>
+        <div className="grid gap-4 md:grid-cols-4">
+          <StatCard
+            title="Students"
+            value={myStudents.length}
+            icon={kpiIcon(Users)}
+            tone="info"
+          />
+          <StatCard
+            title="Payments"
+            value={formatCurrency(myReferredPaymentTotal)}
+            icon={kpiIcon(DollarSign)}
+            tone="primary"
+          />
+          <StatCard
+            title="Commission"
+            value={formatCurrency(myEarnings)}
+            icon={kpiIcon(Wallet)}
+            tone="warning"
+          />
+          <Card className="overflow-hidden rounded-[var(--ds-radius-xl,16px)] border border-[var(--ds-border,#DDE5DF)] bg-[var(--ds-surface,#fff)] shadow-[var(--ds-shadow-card,0_1px_2px_#1F8A5B14,0_8px_24px_#1F8A5B0A)]">
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 p-5 pb-3">
+              <CardTitle className="text-[12px] font-semibold leading-none text-[var(--ds-text-secondary,#5B6B61)]">
+                Referral Link
+              </CardTitle>
+              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-[var(--ds-radius-lg,12px)] bg-[var(--ds-primary-soft,#ECFDF5)] text-[var(--ds-primary,#1F8A5B)]">
+                <Share2 className="h-5 w-5" strokeWidth={1.75} />
+              </div>
             </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold text-purple-500">{totalReferred}</div>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium text-[var(--ds-text-secondary,#5B6B61)]">Referred Payment Volume</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold text-green-500">{formatCurrency(totalPayments)}</div>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium text-[var(--ds-text-secondary,#5B6B61)]">Commission Earned</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold text-amber-500">{formatCurrency(totalEarnings)}</div>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium text-[var(--ds-text-secondary,#5B6B61)]">Active Affiliates</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold text-blue-500">{eligibleAffiliates.length}</div>
+            <CardContent className="px-5 pb-5 pt-0">
+              <div className="flex items-center gap-2">
+                <span className="min-w-0 flex-1 truncate font-mono text-xs text-[var(--ds-text-secondary,#5B6B61)]">
+                  {referralLink}
+                </span>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="icon"
+                  className="h-8 w-8 shrink-0"
+                  onClick={() => copyLink(referralLink)}
+                >
+                  <Copy className="h-3.5 w-3.5" />
+                </Button>
+              </div>
             </CardContent>
           </Card>
         </div>
-      ) : null}
+      ) : (
+        <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
+          <StatCard
+            title="Students"
+            value={totalReferred}
+            icon={kpiIcon(Users)}
+            tone="info"
+            description="Referred students"
+          />
+          <StatCard
+            title="Payments"
+            value={formatCurrency(totalPayments)}
+            icon={kpiIcon(DollarSign)}
+            tone="primary"
+            description="Payment volume"
+            descriptionTone="accent"
+          />
+          <StatCard
+            title="Commission"
+            value={formatCurrency(totalEarnings)}
+            icon={kpiIcon(Wallet)}
+            tone="warning"
+            description="Earned commission"
+            descriptionTone="warning"
+          />
+          <StatCard
+            title="Affiliates"
+            value={eligibleAffiliates.length}
+            icon={kpiIcon(UserPlus)}
+            tone="info"
+            description="Active affiliates"
+          />
+        </div>
+      )}
 
       {!isAdmin ? (
-      <Card>
-        <CardHeader>
-          <CardTitle>My Referred Students</CardTitle>
-          <CardDescription>Students linked to your profile via affiliate attribution.</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <Table>
-            <TableHeader>
-              <TableRow className="border-[var(--ds-border,#DDE5DF)] bg-[var(--ds-surface-muted,#F7FAF8)] hover:bg-[var(--ds-surface-muted,#F7FAF8)]">
-                <TableHead className="text-[11px] font-semibold uppercase tracking-wide text-[var(--ds-text-tertiary,#8A978E)]">Student</TableHead>
-                <TableHead className="text-[11px] font-semibold uppercase tracking-wide text-[var(--ds-text-tertiary,#8A978E)]">Registered</TableHead>
-                <TableHead className="text-[11px] font-semibold uppercase tracking-wide text-[var(--ds-text-tertiary,#8A978E)]">Classes</TableHead>
-                <TableHead className="text-right text-[11px] font-semibold uppercase tracking-wide text-[var(--ds-text-tertiary,#8A978E)]">Payments</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {myStudentRows.length > 0 ? (
-                myStudentRows.map((s) => (
-                  <TableRow key={s.id} className="border-[var(--ds-border,#DDE5DF)] hover:bg-[var(--ds-surface-muted,#F7FAF8)]">
-                    <TableCell>
-                      <div className="font-medium text-[var(--ds-text-primary,#122018)]">{s.name}</div>
-                      <div className="text-xs text-[var(--ds-text-tertiary,#8A978E)]">{s.email}</div>
-                    </TableCell>
-                    <TableCell className="text-[var(--ds-text-secondary,#5B6B61)]">{formatDate(s.registration_date)}</TableCell>
-                    <TableCell className="text-[var(--ds-text-secondary,#5B6B61)] text-sm">{s.classNames || '—'}</TableCell>
-                    <TableCell className="text-right font-mono text-[var(--ds-accent,#1F8A5B)]">
-                      {formatCurrency(s.paid)}
-                    </TableCell>
-                  </TableRow>
-                ))
-              ) : (
-                <TableRow>
-                  <TableCell colSpan={4} className="text-center py-8 text-[var(--ds-text-tertiary,#8A978E)]">
-                    No referred students yet. Share your referral link or attribute referrals when registering students.
-                  </TableCell>
-                </TableRow>
-              )}
-            </TableBody>
-          </Table>
-        </CardContent>
-      </Card>
-      ) : null}
-
-      {isAdmin && pendingReferredInquiries.length > 0 ? (
-        <Card className="border-l-4 border-l-[var(--ds-warning,#C2410C)]">
-          <CardHeader>
-            <CardTitle className="text-[var(--ds-warning,#C2410C)]">Pending Referral Applications</CardTitle>
-            <CardDescription>
-              Older referral applications waiting for approval in Online Forms.
-              New Referral Link registrations create the student account immediately
-              (with affiliate attribution). Commission is earned on completed tuition payments.
-            </CardDescription>
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle>My Referred Students</CardTitle>
           </CardHeader>
           <CardContent>
             <Table>
               <TableHeader>
                 <TableRow className="border-[var(--ds-border,#DDE5DF)] bg-[var(--ds-surface-muted,#F7FAF8)] hover:bg-[var(--ds-surface-muted,#F7FAF8)]">
-                  <TableHead className="text-[11px] font-semibold uppercase tracking-wide text-[var(--ds-text-tertiary,#8A978E)]">Applicant</TableHead>
-                  <TableHead className="text-[11px] font-semibold uppercase tracking-wide text-[var(--ds-text-tertiary,#8A978E)]">Affiliate</TableHead>
-                  <TableHead className="text-[11px] font-semibold uppercase tracking-wide text-[var(--ds-text-tertiary,#8A978E)]">Submitted</TableHead>
-                  <TableHead className="text-right text-[11px] font-semibold uppercase tracking-wide text-[var(--ds-text-tertiary,#8A978E)]">Status</TableHead>
+                  <TableHead className={thClass}>Student</TableHead>
+                  <TableHead className={thClass}>Registered</TableHead>
+                  <TableHead className={thClass}>Classes</TableHead>
+                  <TableHead className={`text-right ${thClass}`}>Payments</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {myStudentRows.length > 0 ? (
+                  myStudentRows.map((s) => (
+                    <TableRow
+                      key={s.id}
+                      className="border-[var(--ds-border,#DDE5DF)] hover:bg-[var(--ds-surface-muted,#F7FAF8)]"
+                    >
+                      <TableCell>
+                        <div className="font-medium text-[var(--ds-text-primary,#122018)]">
+                          {s.name}
+                        </div>
+                        <div className="text-xs text-[var(--ds-text-tertiary,#8A978E)]">
+                          {s.email}
+                        </div>
+                      </TableCell>
+                      <TableCell className="text-[var(--ds-text-secondary,#5B6B61)]">
+                        {formatDate(s.registration_date)}
+                      </TableCell>
+                      <TableCell className="text-sm text-[var(--ds-text-secondary,#5B6B61)]">
+                        {s.classNames || '—'}
+                      </TableCell>
+                      <TableCell className="text-right font-mono text-[var(--ds-accent,#1F8A5B)]">
+                        {formatCurrency(s.paid)}
+                      </TableCell>
+                    </TableRow>
+                  ))
+                ) : (
+                  <TableRow>
+                    <TableCell
+                      colSpan={4}
+                      className="py-8 text-center text-[var(--ds-text-tertiary,#8A978E)]"
+                    >
+                      No referred students yet.
+                    </TableCell>
+                  </TableRow>
+                )}
+              </TableBody>
+            </Table>
+          </CardContent>
+        </Card>
+      ) : null}
+
+      {isAdmin && pendingReferredInquiries.length > 0 ? (
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle>Pending Referrals</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <Table>
+              <TableHeader>
+                <TableRow className="border-[var(--ds-border,#DDE5DF)] bg-[var(--ds-surface-muted,#F7FAF8)] hover:bg-[var(--ds-surface-muted,#F7FAF8)]">
+                  <TableHead className={thClass}>Applicant</TableHead>
+                  <TableHead className={thClass}>Affiliate</TableHead>
+                  <TableHead className={thClass}>Submitted</TableHead>
+                  <TableHead className={`text-right ${thClass}`}>Status</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {pendingReferredInquiries.map((r) => (
-                  <TableRow key={r.id} className="border-[var(--ds-border,#DDE5DF)] hover:bg-[var(--ds-surface-muted,#F7FAF8)]">
+                  <TableRow
+                    key={r.id}
+                    className="border-[var(--ds-border,#DDE5DF)] hover:bg-[var(--ds-surface-muted,#F7FAF8)]"
+                  >
                     <TableCell>
-                      <div className="font-medium text-[var(--ds-text-primary,#122018)]">{r.student_name || r.full_name}</div>
-                      <div className="text-xs text-[var(--ds-text-tertiary,#8A978E)]">{r.student_email || r.email}</div>
+                      <div className="font-medium text-[var(--ds-text-primary,#122018)]">
+                        {r.student_name || r.full_name}
+                      </div>
+                      <div className="text-xs text-[var(--ds-text-tertiary,#8A978E)]">
+                        {r.student_email || r.email}
+                      </div>
                     </TableCell>
                     <TableCell className="text-violet-700">{r.affiliateName}</TableCell>
-                    <TableCell className="text-[var(--ds-text-secondary,#5B6B61)] text-sm">
+                    <TableCell className="text-sm text-[var(--ds-text-secondary,#5B6B61)]">
                       {formatDate(r.submitted_at || r.created_at)}
                     </TableCell>
-                    <TableCell className="text-right text-[var(--ds-warning,#C2410C)] text-sm">Pending approval</TableCell>
+                    <TableCell className="text-right text-sm text-[var(--ds-warning,#C2410C)]">
+                      Pending
+                    </TableCell>
                   </TableRow>
                 ))}
               </TableBody>
@@ -376,41 +397,53 @@ const AffiliateReport = () => {
 
       {canManagePrograms ? (
         <Card>
-          <CardHeader>
-            <div>
-              <CardTitle>Affiliates</CardTitle>
-              <CardDescription>
-                Create affiliates with the button above. They do not appear in System Users.
-                Share each referral link so students register under that affiliate.
-                Use Manage to choose which programs appear on that affiliate’s registration form.
-              </CardDescription>
-            </div>
+          <CardHeader className="pb-3">
+            <CardTitle>Affiliates</CardTitle>
           </CardHeader>
           <CardContent>
             <Table>
               <TableHeader>
                 <TableRow className="border-[var(--ds-border,#DDE5DF)] bg-[var(--ds-surface-muted,#F7FAF8)] hover:bg-[var(--ds-surface-muted,#F7FAF8)]">
-                  <TableHead className="text-[11px] font-semibold uppercase tracking-wide text-[var(--ds-text-tertiary,#8A978E)]">Name</TableHead>
-                  <TableHead className="text-[11px] font-semibold uppercase tracking-wide text-[var(--ds-text-tertiary,#8A978E)]">Email</TableHead>
-                  <TableHead className="text-right text-[11px] font-semibold uppercase tracking-wide text-[var(--ds-text-tertiary,#8A978E)]">Students</TableHead>
-                  <TableHead className="text-right text-[11px] font-semibold uppercase tracking-wide text-[var(--ds-text-tertiary,#8A978E)]">Pending</TableHead>
-                  <TableHead className="text-right text-[11px] font-semibold uppercase tracking-wide text-[var(--ds-text-tertiary,#8A978E)]">Commission</TableHead>
-                  <TableHead className="text-[11px] font-semibold uppercase tracking-wide text-[var(--ds-text-tertiary,#8A978E)]">Referral Link</TableHead>
-                  {canManagePrograms ? <TableHead className="text-right text-[11px] font-semibold uppercase tracking-wide text-[var(--ds-text-tertiary,#8A978E)]">Programs</TableHead> : null}
+                  <TableHead className={thClass}>Name</TableHead>
+                  <TableHead className={thClass}>Email</TableHead>
+                  <TableHead className={`text-right ${thClass}`}>Students</TableHead>
+                  <TableHead className={`text-right ${thClass}`}>Pending</TableHead>
+                  <TableHead className={`text-right ${thClass}`}>Payments</TableHead>
+                  <TableHead className={`text-right ${thClass}`}>Commission</TableHead>
+                  <TableHead className={thClass}>Referral Link</TableHead>
+                  {canManagePrograms ? (
+                    <TableHead className={`text-right ${thClass}`}>Programs</TableHead>
+                  ) : null}
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {affiliateDirectory.length > 0 ? (
                   affiliateDirectory.map((a) => (
-                    <TableRow key={a.id} className="border-[var(--ds-border,#DDE5DF)] hover:bg-[var(--ds-surface-muted,#F7FAF8)]">
-                      <TableCell className="font-medium text-[var(--ds-text-primary,#122018)]">{a.name}</TableCell>
-                      <TableCell className="text-[var(--ds-text-secondary,#5B6B61)] text-sm">{a.email || '—'}</TableCell>
+                    <TableRow
+                      key={a.id}
+                      className="border-[var(--ds-border,#DDE5DF)] hover:bg-[var(--ds-surface-muted,#F7FAF8)]"
+                    >
+                      <TableCell className="font-medium text-[var(--ds-text-primary,#122018)]">
+                        {a.name}
+                      </TableCell>
+                      <TableCell className="text-sm text-[var(--ds-text-secondary,#5B6B61)]">
+                        {a.email || '—'}
+                      </TableCell>
                       <TableCell className="text-right">{a.studentsCount}</TableCell>
-                      <TableCell className="text-right text-[var(--ds-warning,#C2410C)]">{a.pendingCount || 0}</TableCell>
-                      <TableCell className="text-right text-[var(--ds-warning,#C2410C)]">{formatCurrency(a.earnings)}</TableCell>
+                      <TableCell className="text-right text-[var(--ds-warning,#C2410C)]">
+                        {a.pendingCount || 0}
+                      </TableCell>
+                      <TableCell className="text-right text-[var(--ds-accent,#1F8A5B)]">
+                        {formatCurrency(a.paymentTotal)}
+                      </TableCell>
+                      <TableCell className="text-right text-[var(--ds-warning,#C2410C)]">
+                        {formatCurrency(a.earnings)}
+                      </TableCell>
                       <TableCell>
-                        <div className="flex items-center gap-2 max-w-[280px]">
-                          <span className="text-xs font-mono text-violet-700 truncate">{a.link}</span>
+                        <div className="flex max-w-[240px] items-center gap-2">
+                          <span className="truncate font-mono text-xs text-violet-700">
+                            {a.link}
+                          </span>
                           <Button
                             type="button"
                             variant="ghost"
@@ -428,10 +461,9 @@ const AffiliateReport = () => {
                             type="button"
                             variant="outline"
                             size="sm"
-                            className="hover:bg-[var(--ds-surface-muted,#F7FAF8)]"
                             onClick={() => setManageAffiliateId(a.id)}
                           >
-                            <ListChecks className="h-3.5 w-3.5 mr-1.5" />
+                            <ListChecks className="mr-1.5 h-3.5 w-3.5" />
                             Manage
                           </Button>
                         </TableCell>
@@ -440,41 +472,14 @@ const AffiliateReport = () => {
                   ))
                 ) : (
                   <TableRow>
-                    <TableCell colSpan={canManagePrograms ? 7 : 6} className="text-center py-8 text-[var(--ds-text-tertiary,#8A978E)]">
-                      No affiliates yet. Create them from Users → Staff & Affiliates.
+                    <TableCell
+                      colSpan={canManagePrograms ? 8 : 7}
+                      className="py-8 text-center text-[var(--ds-text-tertiary,#8A978E)]"
+                    >
+                      No affiliates yet.
                     </TableCell>
                   </TableRow>
                 )}
-              </TableBody>
-            </Table>
-          </CardContent>
-        </Card>
-      ) : null}
-
-      {isAdmin && affiliateStats.length > 0 ? (
-        <Card>
-          <CardHeader>
-            <CardTitle>Affiliate Performance</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <Table>
-              <TableHeader>
-                <TableRow className="border-[var(--ds-border,#DDE5DF)] bg-[var(--ds-surface-muted,#F7FAF8)] hover:bg-[var(--ds-surface-muted,#F7FAF8)]">
-                  <TableHead className="text-[11px] font-semibold uppercase tracking-wide text-[var(--ds-text-tertiary,#8A978E)]">Affiliate</TableHead>
-                  <TableHead className="text-right text-[11px] font-semibold uppercase tracking-wide text-[var(--ds-text-tertiary,#8A978E)]">Students</TableHead>
-                  <TableHead className="text-right text-[11px] font-semibold uppercase tracking-wide text-[var(--ds-text-tertiary,#8A978E)]">Payments</TableHead>
-                  <TableHead className="text-right text-[11px] font-semibold uppercase tracking-wide text-[var(--ds-text-tertiary,#8A978E)]">Commission</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {affiliateStats.map((a) => (
-                  <TableRow key={a.id} className="border-[var(--ds-border,#DDE5DF)] hover:bg-[var(--ds-surface-muted,#F7FAF8)]">
-                    <TableCell className="font-medium">{a.name}</TableCell>
-                    <TableCell className="text-right">{a.studentsCount}</TableCell>
-                    <TableCell className="text-right">{formatCurrency(a.paymentTotal)}</TableCell>
-                    <TableCell className="text-right text-amber-500">{formatCurrency(a.earnings)}</TableCell>
-                  </TableRow>
-                ))}
               </TableBody>
             </Table>
           </CardContent>
@@ -488,7 +493,7 @@ const AffiliateReport = () => {
         }}
         affiliateId={manageAffiliateId}
         title="Manage Affiliate Programs"
-        description="Choose which courses and diplomas students can pick on this affiliate’s referral registration form."
+        description="Programs on this affiliate’s registration form."
       />
     </div>
   );

@@ -1,12 +1,12 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Wand2, Loader2, CheckCircle, AlertCircle, Info, Search, Layout, ChevronDown, Check } from 'lucide-react';
+import { Wand2, Loader2, CheckCircle, AlertCircle, Search, Layout, ChevronDown, Check } from 'lucide-react';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -157,13 +157,6 @@ function CertificateThumb({ data }: { data: CertificateRenderData }) {
       </div>
     </div>
   );
-}
-
-function eligibilityReasons(row) {
-  const reasons = [];
-  if (row?.already_issued) reasons.push('already issued');
-  if (!row?.grades_complete) reasons.push('grades incomplete');
-  return reasons;
 }
 
 /**
@@ -475,25 +468,13 @@ const CertificateAutoGenerate = ({ onGenerationComplete }) => {
   return (
     <>
       <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
+        <CardHeader className="pb-3">
+          <CardTitle className="flex items-center gap-2 text-lg">
             <Wand2 className="h-5 w-5 text-[var(--ds-primary,#1F8A5B)]" />
             Certificate Generation
           </CardTitle>
-          <CardDescription>
-            Generate certificates for enrollments with complete grades/exams (60+).
-            No wait for class end date or payment clearance.
-          </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
-          <Alert className="border-[var(--ds-info,#2563EB)]/20 bg-[var(--ds-info-bg,#EFF6FF)]">
-            <Info className="h-4 w-4 text-[var(--ds-info,#2563EB)]" />
-            <AlertDescription className="text-[var(--ds-text-secondary,#5B6B61)]">
-              Certificates can be issued as soon as required grades are complete (60+ on gradebook courses)
-              and a certificate has not already been issued. Activate a template under Institution Settings → Certificate Management first.
-            </AlertDescription>
-          </Alert>
-
           <div className="flex flex-wrap gap-2">
             <Button
               type="button"
@@ -501,7 +482,7 @@ const CertificateAutoGenerate = ({ onGenerationComplete }) => {
               variant={mode === 'all' ? 'default' : 'outline'}
               onClick={() => setMode('all')}
             >
-              All eligible enrollments
+              All eligible
             </Button>
             <Button
               type="button"
@@ -548,7 +529,7 @@ const CertificateAutoGenerate = ({ onGenerationComplete }) => {
           <div className="space-y-1.5">
             <Label className="flex items-center gap-1.5 text-sm text-[var(--ds-text-secondary,#5B6B61)]">
               <Layout className="h-3.5 w-3.5 text-[var(--ds-primary,#1F8A5B)]" />
-              Certificate template
+              Template
             </Label>
             <DropdownMenu open={templateMenuOpen} onOpenChange={handleTemplateMenuOpenChange}>
               <DropdownMenuTrigger asChild>
@@ -604,11 +585,6 @@ const CertificateAutoGenerate = ({ onGenerationComplete }) => {
                 </div>
               </DropdownMenuContent>
             </DropdownMenu>
-            {selectedTemplate !== 'institution_default' && (
-              <p className="text-xs text-[var(--ds-text-tertiary,#8A978E)]">
-                This template applies to this generation batch only.
-              </p>
-            )}
           </div>
 
           {mode === 'selected' && (
@@ -626,18 +602,18 @@ const CertificateAutoGenerate = ({ onGenerationComplete }) => {
               <div className="flex items-center justify-between text-xs text-[var(--ds-text-secondary,#5B6B61)]">
                 <span>
                   {loadingMeta
-                    ? 'Loading enrollments…'
-                    : `${eligibleEnrollments.length} eligible · ${ineligibleCount} not ready`}
+                    ? 'Loading…'
+                    : `${eligibleEnrollments.length} ready · ${ineligibleCount} not ready`}
                 </span>
                 <Button type="button" size="sm" variant="ghost" onClick={selectAllVisible}>
-                  Select all visible
+                  Select all
                 </Button>
               </div>
 
               <div className="max-h-48 divide-y divide-[var(--ds-border,#DDE5DF)] overflow-y-auto rounded border border-[var(--ds-border,#DDE5DF)]">
                 {eligibleEnrollments.length === 0 ? (
                   <p className="p-3 text-center text-sm text-[var(--ds-text-tertiary,#8A978E)]">
-                    No eligible enrollments match your filters.
+                    No eligible enrollments.
                   </p>
                 ) : (
                   eligibleEnrollments.map((row) => {
@@ -663,29 +639,14 @@ const CertificateAutoGenerate = ({ onGenerationComplete }) => {
                   })
                 )}
               </div>
-
-              {ineligibleCount > 0 && (
-                <p className="text-xs text-[var(--ds-text-tertiary,#8A978E)]">
-                  {ineligibleCount} enrollment(s) are hidden because they fail eligibility
-                  {eligibilityRows
-                    .filter((r) => r?.eligible !== true)
-                    .slice(0, 3)
-                    .map((r) => {
-                      const name = studentById[r.student_id]?.name || 'Student';
-                      return ` (${name}: ${eligibilityReasons(r).join(', ')})`;
-                    })
-                    .join('')}
-                  {ineligibleCount > 3 ? '…' : ''}.
-                </p>
-              )}
             </div>
           )}
 
           {mode === 'all' && (
             <p className="text-sm text-[var(--ds-text-secondary,#5B6B61)]">
               {loadingMeta
-                ? 'Checking eligibility…'
-                : `${eligibleEnrollments.length} eligible enrollment(s) ready · ${ineligibleCount} not ready`}
+                ? 'Checking…'
+                : `${eligibleEnrollments.length} ready · ${ineligibleCount} not ready`}
             </p>
           )}
 
@@ -703,7 +664,7 @@ const CertificateAutoGenerate = ({ onGenerationComplete }) => {
             ) : (
               <>
                 <Wand2 className="mr-2 h-4 w-4" />
-                Generate certificates
+                Generate
               </>
             )}
           </Button>
@@ -738,11 +699,11 @@ const CertificateAutoGenerate = ({ onGenerationComplete }) => {
       <Dialog open={showConfirmDialog} onOpenChange={setShowConfirmDialog}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Confirm certificate generation</DialogTitle>
+            <DialogTitle>Confirm</DialogTitle>
             <DialogDescription>
               {mode === 'selected'
-                ? `Issue certificates for ${selectedEnrollmentIds.length} selected enrollment(s)?`
-                : `Issue certificates for all ${eligibleEnrollments.length} eligible enrollment(s)?`}
+                ? `Generate for ${selectedEnrollmentIds.length} selected?`
+                : `Generate for ${eligibleEnrollments.length} eligible?`}
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>

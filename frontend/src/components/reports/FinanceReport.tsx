@@ -7,12 +7,25 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { formatCurrency, formatDate } from '@/lib/utils';
-import { FileDown, Search } from 'lucide-react';
+import { FileDown, Search, Wallet, AlertCircle, Gauge, TrendingUp, CreditCard } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
 import jsPDF from 'jspdf';
 import 'jspdf-autotable';
 
-const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884d8', '#82ca9d'];
+const COLORS = ['#1F8A5B', '#3FA876', '#6BBF94', '#A7D9C0', '#5B6B61', '#8A978E'];
+
+const cardShell =
+  'overflow-hidden rounded-[var(--ds-radius-xl,16px)] border border-[var(--ds-border,#DDE5DF)] bg-[var(--ds-surface,#fff)] shadow-[var(--ds-shadow-card,0_1px_2px_#1F8A5B14,0_8px_24px_#1F8A5B0A)] transition-shadow hover:border-[var(--ds-border-strong,#C5D0C8)] hover:shadow-[0_8px_28px_#1F8A5B18]';
+
+const iconBadge =
+  'flex h-11 w-11 shrink-0 items-center justify-center rounded-[14px] border border-[var(--ds-accent,#1F8A5B)]/15 bg-[var(--ds-primary-soft,#ECFDF5)] text-[var(--ds-accent,#1F8A5B)] shadow-[inset_0_1px_0_#ffffff80]';
+
+const chartTooltipStyle = {
+  backgroundColor: 'var(--ds-surface,#fff)',
+  border: '1px solid var(--ds-border,#DDE5DF)',
+  borderRadius: 12,
+  boxShadow: '0 8px 24px #1F8A5B14',
+};
 
 /** Matches FinancePage payment kinds (no DB type column — inferred carefully). */
 const PAYMENT_KIND = {
@@ -311,25 +324,25 @@ const FinanceReport = () => {
 
     return (
         <div className="space-y-6">
-            <div className="flex flex-col md:flex-row gap-4 bg-[var(--ds-surface-muted,#F7FAF8)] p-4 rounded-lg border border-[var(--ds-border,#DDE5DF)] items-stretch md:items-end">
-                <div className="grid gap-2 w-full md:w-auto">
+            <div className="flex flex-col gap-3 rounded-lg border border-[var(--ds-border,#DDE5DF)] bg-[var(--ds-surface-muted,#F7FAF8)] p-4 md:flex-row md:items-end md:gap-3">
+                <div className="min-w-[9.5rem] shrink-0 space-y-2 md:w-[10.5rem]">
                     <Label>Reference Date</Label>
-                    <Input type="date" value={selectedDate} onChange={e => setSelectedDate(e.target.value)} className="w-full md:w-[160px]" />
+                    <Input type="date" value={selectedDate} onChange={e => setSelectedDate(e.target.value)} className="w-full" />
                 </div>
-                 <div className="grid gap-2 w-full md:min-w-[200px] min-w-0">
+                <div className="min-w-0 flex-1 space-y-2">
                     <Label>Class Filter</Label>
                     <Select value={classFilter} onValueChange={setClassFilter}>
-                        <SelectTrigger><SelectValue placeholder="All Classes" /></SelectTrigger>
+                        <SelectTrigger className="w-full"><SelectValue placeholder="All Classes" /></SelectTrigger>
                         <SelectContent>
                             <SelectItem value="all">All Classes</SelectItem>
                             {classes.map(c => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
                         </SelectContent>
                     </Select>
                 </div>
-                <div className="grid gap-2 w-full md:min-w-[160px] min-w-0">
+                <div className="min-w-[7.5rem] shrink-0 space-y-2 md:w-[8.5rem]">
                     <Label>Status</Label>
                     <Select value={statusFilter} onValueChange={setStatusFilter}>
-                        <SelectTrigger><SelectValue /></SelectTrigger>
+                        <SelectTrigger className="w-full"><SelectValue /></SelectTrigger>
                         <SelectContent>
                             <SelectItem value="all">All</SelectItem>
                             <SelectItem value="paid">Paid</SelectItem>
@@ -337,111 +350,192 @@ const FinanceReport = () => {
                         </SelectContent>
                     </Select>
                 </div>
-                <div className="grid gap-2 flex-1">
+                <div className="min-w-0 flex-[1.4] space-y-2">
                     <Label>Search Student</Label>
-                    <div className="relative">
+                    <div className="relative min-w-0">
                         <Search className="absolute left-2 top-2.5 h-4 w-4 text-[var(--ds-text-tertiary,#8A978E)]" />
                         <Input 
                             placeholder="Name or Code..." 
                             value={searchTerm} 
                             onChange={e => setSearchTerm(e.target.value)} 
-                            className="pl-8" 
+                            className="w-full pl-8" 
                         />
                     </div>
                 </div>
-                <div className="flex items-end">
-                     <Button onClick={generatePDF} variant="outline"><FileDown className="mr-2 h-4 w-4" /> PDF</Button>
+                <div className="shrink-0">
+                     <Button onClick={generatePDF} variant="outline" className="w-full whitespace-nowrap md:w-auto">
+                       <FileDown className="mr-2 h-4 w-4" /> PDF
+                     </Button>
                 </div>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                <Card>
-                    <CardHeader className="pb-2">
-                        <CardTitle className="text-sm font-medium text-[var(--ds-text-secondary,#5B6B61)]">Collected ({monthLabel})</CardTitle>
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-3 md:gap-4">
+                <Card className={`${cardShell} flex h-full flex-col`}>
+                    <CardHeader className="flex flex-row items-center justify-between gap-3 space-y-0 px-5 pb-0 pt-5">
+                        <CardTitle className="text-[12px] font-semibold leading-none text-[var(--ds-text-secondary,#5B6B61)]">
+                            Collected ({monthLabel})
+                        </CardTitle>
+                        <div className={iconBadge} aria-hidden>
+                            <Wallet className="h-[22px] w-[22px]" strokeWidth={1.6} />
+                        </div>
                     </CardHeader>
-                    <CardContent className="space-y-3">
-                        <div className="text-2xl font-bold text-[var(--ds-text-primary,#122018)] bg-[var(--ds-info-bg,#EFF6FF)] inline-block px-2 py-1 rounded">
+                    <CardContent className="flex flex-1 flex-col px-5 pb-5 pt-3">
+                        <div className="text-[28px] font-bold leading-none tracking-tight text-[var(--ds-text-primary,#122018)]">
                             {formatCurrency(collectedBreakdown.total)}
                         </div>
-                        <p className="text-[11px] text-[var(--ds-text-tertiary,#8A978E)]">
-                            Cash received this month (all completed payments)
+                        <p className="mt-2 text-[12px] font-medium text-[var(--ds-text-tertiary,#8A978E)]">
+                            Cash received this month
                         </p>
-                        <div className="grid grid-cols-1 gap-1.5 text-xs text-[var(--ds-text-secondary,#5B6B61)]">
-                            <div className="flex justify-between gap-3">
-                                <span>Tuition / Class Fee</span>
-                                <span className="text-[var(--ds-info,#2563EB)] font-medium">{formatCurrency(collectedBreakdown.tuition)}</span>
+                        <div className="mt-auto space-y-1.5 border-t border-[var(--ds-border,#DDE5DF)] pt-3">
+                            <div className="flex items-center justify-between gap-3 px-0.5 py-1 text-xs">
+                                <span className="text-[var(--ds-text-secondary,#5B6B61)]">Tuition / Class Fee</span>
+                                <span className="font-semibold tabular-nums text-[var(--ds-text-primary,#122018)]">{formatCurrency(collectedBreakdown.tuition)}</span>
                             </div>
-                            <div className="flex justify-between gap-3">
-                                <span>Registration</span>
-                                <span className="text-[var(--ds-warning,#C2410C)] font-medium">{formatCurrency(collectedBreakdown.registration)}</span>
+                            <div className="flex items-center justify-between gap-3 px-0.5 py-1 text-xs">
+                                <span className="text-[var(--ds-text-secondary,#5B6B61)]">Registration</span>
+                                <span className="font-semibold tabular-nums text-[var(--ds-text-primary,#122018)]">{formatCurrency(collectedBreakdown.registration)}</span>
                             </div>
-                            <div className="flex justify-between gap-3">
-                                <span>Other</span>
-                                <span className="text-[var(--ds-text-primary,#122018)] font-medium">{formatCurrency(collectedBreakdown.other)}</span>
+                            <div className="flex items-center justify-between gap-3 px-0.5 py-1 text-xs">
+                                <span className="text-[var(--ds-text-secondary,#5B6B61)]">Other</span>
+                                <span className="font-semibold tabular-nums text-[var(--ds-text-primary,#122018)]">{formatCurrency(collectedBreakdown.other)}</span>
                             </div>
                         </div>
                     </CardContent>
                 </Card>
-                <Card>
-                    <CardHeader className="pb-2"><CardTitle className="text-sm font-medium text-[var(--ds-text-secondary,#5B6B61)]">Unpaid Amount</CardTitle></CardHeader>
-                    <CardContent><div className="text-2xl font-bold text-[var(--ds-danger,#DC2626)]">{formatCurrency(totalUnpaid)}</div></CardContent>
-                </Card>
-                <Card>
-                    <CardHeader className="pb-2"><CardTitle className="text-sm font-medium text-[var(--ds-text-secondary,#5B6B61)]">Payment Rate</CardTitle></CardHeader>
-                    <CardContent>
-                        <div className="text-2xl font-bold text-[var(--ds-text-primary,#122018)]">{paymentRate}%</div>
-                        <p className="text-xs text-[var(--ds-text-tertiary,#8A978E)] mt-1">
-                            {paidEnrollmentCount} paid / {dueCount} due this month (tuition)
+
+                <Card className={`${cardShell} flex h-full flex-col`}>
+                    <CardHeader className="flex flex-row items-center justify-between gap-3 space-y-0 px-5 pb-0 pt-5">
+                        <CardTitle className="text-[12px] font-semibold leading-none text-[var(--ds-text-secondary,#5B6B61)]">
+                            Unpaid Amount
+                        </CardTitle>
+                        <div className={iconBadge} aria-hidden>
+                            <AlertCircle className="h-[22px] w-[22px]" strokeWidth={1.6} />
+                        </div>
+                    </CardHeader>
+                    <CardContent className="flex flex-1 flex-col px-5 pb-5 pt-3">
+                        <div className="text-[28px] font-bold leading-none tracking-tight text-[var(--ds-text-primary,#122018)]">
+                            {formatCurrency(totalUnpaid)}
+                        </div>
+                        <p className="mt-2 text-[12px] font-medium text-[var(--ds-text-tertiary,#8A978E)]">
+                            Outstanding tuition balance
                         </p>
+                        <div className="mt-auto border-t border-[var(--ds-border,#DDE5DF)] pt-3">
+                            <p className="text-[12px] font-medium leading-snug text-[var(--ds-text-secondary,#5B6B61)]">
+                                Needs follow-up this month
+                            </p>
+                        </div>
+                    </CardContent>
+                </Card>
+
+                <Card className={`${cardShell} flex h-full flex-col`}>
+                    <CardHeader className="flex flex-row items-center justify-between gap-3 space-y-0 px-5 pb-0 pt-5">
+                        <CardTitle className="text-[12px] font-semibold leading-none text-[var(--ds-text-secondary,#5B6B61)]">
+                            Payment Rate
+                        </CardTitle>
+                        <div className={iconBadge} aria-hidden>
+                            <Gauge className="h-[22px] w-[22px]" strokeWidth={1.6} />
+                        </div>
+                    </CardHeader>
+                    <CardContent className="flex flex-1 flex-col px-5 pb-5 pt-3">
+                        <div className="text-[28px] font-bold leading-none tracking-tight text-[var(--ds-text-primary,#122018)]">
+                            {paymentRate}%
+                        </div>
+                        <p className="mt-2 text-[12px] font-medium text-[var(--ds-text-tertiary,#8A978E)]">
+                            Tuition collection progress
+                        </p>
+                        <div className="mt-auto space-y-2.5 border-t border-[var(--ds-border,#DDE5DF)] pt-3">
+                            <div className="h-2 overflow-hidden rounded-full bg-[var(--ds-surface-muted,#F7FAF8)]">
+                                <div
+                                    className="h-full rounded-full bg-[var(--ds-accent,#1F8A5B)] transition-all duration-500"
+                                    style={{ width: `${Math.min(100, Math.max(0, paymentRate))}%` }}
+                                />
+                            </div>
+                            <p className="text-[12px] font-medium text-[var(--ds-text-secondary,#5B6B61)]">
+                                {paidEnrollmentCount} paid · {dueCount} due this month
+                            </p>
+                        </div>
                     </CardContent>
                 </Card>
             </div>
 
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                <Card>
-                    <CardHeader><CardTitle>Revenue Trend (6 Months)</CardTitle></CardHeader>
-                    <CardContent className="h-[300px]">
+            <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+                <Card className={cardShell}>
+                    <CardHeader className="flex flex-row items-center justify-between gap-3 space-y-0 px-5 pb-0 pt-5">
+                        <div className="min-w-0 space-y-1">
+                            <CardTitle className="text-[15px] font-semibold leading-none text-[var(--ds-text-primary,#122018)]">
+                                Revenue Trend
+                            </CardTitle>
+                            <p className="text-[12px] text-[var(--ds-text-tertiary,#8A978E)]">Last 6 months</p>
+                        </div>
+                        <div className={iconBadge} aria-hidden>
+                            <TrendingUp className="h-[22px] w-[22px]" strokeWidth={1.6} />
+                        </div>
+                    </CardHeader>
+                    <CardContent className="h-[300px] px-3 pb-5 pt-4 sm:px-5">
                         <ResponsiveContainer width="100%" height="100%">
-                            <BarChart data={trendData}>
-                                <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" />
-                                <XAxis dataKey="name" stroke="#94a3b8" />
-                                <YAxis stroke="#94a3b8" />
-                                <Tooltip formatter={(value: any) => formatCurrency(value)} />
-                                <Bar dataKey="revenue" fill="#0066FF" radius={[4, 4, 0, 0]} />
+                            <BarChart data={trendData} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
+                                <CartesianGrid strokeDasharray="3 3" stroke="var(--ds-border,#DDE5DF)" vertical={false} />
+                                <XAxis dataKey="name" stroke="var(--ds-text-tertiary,#8A978E)" tick={{ fontSize: 12 }} axisLine={false} tickLine={false} />
+                                <YAxis stroke="var(--ds-text-tertiary,#8A978E)" tick={{ fontSize: 12 }} axisLine={false} tickLine={false} />
+                                <Tooltip
+                                    formatter={(value: any) => formatCurrency(value)}
+                                    contentStyle={chartTooltipStyle}
+                                    cursor={{ fill: 'var(--ds-primary-soft,#ECFDF5)', opacity: 0.55 }}
+                                />
+                                <Bar dataKey="revenue" fill="var(--ds-accent,#1F8A5B)" radius={[6, 6, 0, 0]} maxBarSize={48} />
                             </BarChart>
                         </ResponsiveContainer>
                     </CardContent>
                 </Card>
-                <Card>
-                    <CardHeader><CardTitle>Payment Methods</CardTitle></CardHeader>
-                    <CardContent className="h-[300px]">
+                <Card className={cardShell}>
+                    <CardHeader className="flex flex-row items-center justify-between gap-3 space-y-0 px-5 pb-0 pt-5">
+                        <div className="min-w-0 space-y-1">
+                            <CardTitle className="text-[15px] font-semibold leading-none text-[var(--ds-text-primary,#122018)]">
+                                Payment Methods
+                            </CardTitle>
+                            <p className="text-[12px] text-[var(--ds-text-tertiary,#8A978E)]">How students paid</p>
+                        </div>
+                        <div className={iconBadge} aria-hidden>
+                            <CreditCard className="h-[22px] w-[22px]" strokeWidth={1.6} />
+                        </div>
+                    </CardHeader>
+                    <CardContent className="h-[300px] px-3 pb-5 pt-4 sm:px-5">
                         <ResponsiveContainer width="100%" height="100%">
                             <PieChart>
                                 <Pie
                                     data={methodData}
                                     cx="50%"
                                     cy="50%"
+                                    innerRadius={58}
+                                    outerRadius={88}
+                                    paddingAngle={3}
                                     labelLine={false}
                                     label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
-                                    outerRadius={80}
-                                    fill="#8884d8"
                                     dataKey="value"
                                 >
                                     {methodData.map((entry, index) => (
-                                        <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                                        <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} stroke="var(--ds-surface,#fff)" strokeWidth={2} />
                                     ))}
                                 </Pie>
-                                <Tooltip formatter={(value: any) => formatCurrency(value)} />
+                                <Tooltip
+                                    formatter={(value: any) => formatCurrency(value)}
+                                    contentStyle={chartTooltipStyle}
+                                />
                             </PieChart>
                         </ResponsiveContainer>
                     </CardContent>
                 </Card>
             </div>
 
-            <Card>
-                <CardHeader><CardTitle>Student Payment Status</CardTitle></CardHeader>
-                <CardContent>
-                     <div className="rounded-md border border-[var(--ds-border,#DDE5DF)] overflow-hidden">
+            <Card className={cardShell}>
+                <CardHeader className="space-y-1 px-5 pb-0 pt-5">
+                    <CardTitle className="text-[15px] font-semibold leading-none text-[var(--ds-text-primary,#122018)]">
+                        Student Payment Status
+                    </CardTitle>
+                    <p className="text-[12px] text-[var(--ds-text-tertiary,#8A978E)]">Filtered list of paid and unpaid records</p>
+                </CardHeader>
+                <CardContent className="px-5 pb-5 pt-4">
+                     <div className="overflow-hidden rounded-xl border border-[var(--ds-border,#DDE5DF)]">
                         <Table>
                             <TableHeader>
                                 <TableRow className="border-[var(--ds-border,#DDE5DF)] bg-[var(--ds-surface-muted,#F7FAF8)] hover:bg-[var(--ds-surface-muted,#F7FAF8)]">

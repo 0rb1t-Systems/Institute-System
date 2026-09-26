@@ -8,7 +8,7 @@ import { Label } from '@/components/ui/label'
 import { Input } from '@/components/ui/input'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { formatDate } from '@/lib/utils'
-import { FileDown } from 'lucide-react'
+import { FileDown, Search } from 'lucide-react'
 import {
   BarChart,
   Bar,
@@ -32,7 +32,7 @@ import {
 } from '@/lib/examPass'
 import { getInstitutionGradeScale } from '@/lib/gradingScale'
 
-const COLORS = ['#00C49F', '#FF8042']
+const COLORS = ['#1F8A5B', '#C2410C']
 
 type ReportRow = {
   id: string
@@ -180,12 +180,15 @@ const ExamReport = () => {
     })
     return Object.values(map)
       .map((e) => ({
-        name: e.name.length > 28 ? `${e.name.slice(0, 26)}…` : e.name,
+        name: e.name.length > 22 ? `${e.name.slice(0, 20)}…` : e.name,
+        fullName: e.name,
         average: Math.round(e.total / e.count),
       }))
       .sort((a, b) => b.average - a.average)
       .slice(0, 10)
   }, [filteredRows])
+
+  const avgChartHeight = Math.max(300, avgScoreData.length * 38 + 56)
 
   const usingGradebook = allRows.some((r) => r.source === 'gradebook')
 
@@ -219,11 +222,11 @@ const ExamReport = () => {
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-col md:flex-row gap-4 bg-[var(--ds-surface-muted,#F7FAF8)] p-4 rounded-lg border border-[var(--ds-border,#DDE5DF)]">
-        <div className="grid gap-2 w-full md:min-w-[200px] min-w-0">
+      <div className="flex flex-col gap-3 rounded-lg border border-[var(--ds-border,#DDE5DF)] bg-[var(--ds-surface-muted,#F7FAF8)] p-4 md:flex-row md:items-end md:gap-3">
+        <div className="min-w-0 flex-1 space-y-2">
           <Label>Filter by Class</Label>
           <Select value={classFilter} onValueChange={setClassFilter}>
-            <SelectTrigger>
+            <SelectTrigger className="w-full bg-[var(--ds-surface,#fff)]">
               <SelectValue placeholder="All Classes" />
             </SelectTrigger>
             <SelectContent>
@@ -236,10 +239,10 @@ const ExamReport = () => {
             </SelectContent>
           </Select>
         </div>
-        <div className="grid gap-2 w-full md:min-w-[200px] min-w-0">
+        <div className="min-w-0 flex-1 space-y-2">
           <Label>Filter by Course</Label>
           <Select value={courseFilter} onValueChange={setCourseFilter}>
-            <SelectTrigger>
+            <SelectTrigger className="w-full bg-[var(--ds-surface,#fff)]">
               <SelectValue placeholder="All Courses" />
             </SelectTrigger>
             <SelectContent>
@@ -252,17 +255,27 @@ const ExamReport = () => {
             </SelectContent>
           </Select>
         </div>
-        <div className="grid gap-2 flex-1 min-w-0 w-full">
-          <Label>Search Student</Label>
-          <Input
-            placeholder="Student name or ID…"
-            value={studentFilter}
-            onChange={(e) => setStudentFilter(e.target.value)}
-          />
+        <div className="min-w-0 flex-[1.4] space-y-2">
+          <Label htmlFor="exam-report-student-search">Search Student</Label>
+          <div className="relative min-w-0">
+            <Search className="pointer-events-none absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-[var(--ds-text-tertiary,#8A978E)]" />
+            <Input
+              id="exam-report-student-search"
+              placeholder="Name or Code…"
+              value={studentFilter}
+              onChange={(e) => setStudentFilter(e.target.value)}
+              className="w-full bg-[var(--ds-surface,#fff)] pl-8"
+            />
+          </div>
         </div>
-        <div className="flex items-end">
-          <Button onClick={generatePDF} variant="outline" disabled={filteredRows.length === 0}>
-            <FileDown className="mr-2 h-4 w-4" /> Export PDF
+        <div className="shrink-0">
+          <Button
+            onClick={generatePDF}
+            variant="outline"
+            disabled={filteredRows.length === 0}
+            className="w-full whitespace-nowrap bg-[var(--ds-surface,#fff)] md:w-auto"
+          >
+            <FileDown className="mr-2 h-4 w-4" /> PDF
           </Button>
         </div>
       </div>
@@ -273,15 +286,15 @@ const ExamReport = () => {
           : `Showing exam scores (gradebook empty) · Pass mark ${gradeScale.pass_mark}%`}
       </p>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <Card>
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+        <Card className="overflow-hidden rounded-[var(--ds-radius-xl,16px)] border-[var(--ds-border,#DDE5DF)] shadow-[var(--ds-shadow-card,0_1px_2px_#1F8A5B14,0_8px_24px_#1F8A5B0A)]">
           <CardHeader>
             <CardTitle>Performance Overview</CardTitle>
             <CardDescription>Pass / fail from institution grading scale</CardDescription>
           </CardHeader>
           <CardContent className="h-[300px]">
             {filteredRows.length === 0 ? (
-              <div className="h-full flex items-center justify-center text-sm text-[var(--ds-text-tertiary,#8A978E)]">
+              <div className="flex h-full items-center justify-center text-sm text-[var(--ds-text-tertiary,#8A978E)]">
                 No gradebook results yet.
               </div>
             ) : (
@@ -308,24 +321,42 @@ const ExamReport = () => {
             )}
           </CardContent>
         </Card>
-        <Card>
+        <Card className="overflow-hidden rounded-[var(--ds-radius-xl,16px)] border-[var(--ds-border,#DDE5DF)] shadow-[var(--ds-shadow-card,0_1px_2px_#1F8A5B14,0_8px_24px_#1F8A5B0A)]">
           <CardHeader>
             <CardTitle>Average Scores by Course</CardTitle>
             <CardDescription>Mean final mark (%) from gradebook</CardDescription>
           </CardHeader>
-          <CardContent className="h-[300px]">
+          <CardContent style={{ height: avgChartHeight }} className="min-h-[300px]">
             {avgScoreData.length === 0 ? (
-              <div className="h-full flex items-center justify-center text-sm text-[var(--ds-text-tertiary,#8A978E)]">
+              <div className="flex h-full items-center justify-center text-sm text-[var(--ds-text-tertiary,#8A978E)]">
                 No averages to chart.
               </div>
             ) : (
               <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={avgScoreData} layout="vertical" margin={{ left: 40 }}>
-                  <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis type="number" domain={[0, 100]} />
-                  <YAxis dataKey="name" type="category" width={100} tick={{ fontSize: 10 }} />
-                  <Tooltip />
-                  <Bar dataKey="average" fill="#8884d8" radius={[0, 4, 4, 0]} barSize={20} />
+                <BarChart
+                  data={avgScoreData}
+                  layout="vertical"
+                  margin={{ top: 4, right: 12, left: 4, bottom: 4 }}
+                  barCategoryGap="28%"
+                >
+                  <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="#DDE5DF" />
+                  <XAxis type="number" domain={[0, 100]} tick={{ fontSize: 11, fill: '#8A978E' }} />
+                  <YAxis
+                    dataKey="name"
+                    type="category"
+                    width={132}
+                    interval={0}
+                    tick={{ fontSize: 11, fill: '#1F8A5B', dy: 2 }}
+                    axisLine={false}
+                    tickLine={false}
+                  />
+                  <Tooltip
+                    formatter={(value: number) => [`${value}%`, 'Average']}
+                    labelFormatter={(_, payload) =>
+                      payload?.[0]?.payload?.fullName || payload?.[0]?.payload?.name || ''
+                    }
+                  />
+                  <Bar dataKey="average" fill="#1F8A5B" radius={[0, 4, 4, 0]} barSize={16} />
                 </BarChart>
               </ResponsiveContainer>
             )}
@@ -333,7 +364,7 @@ const ExamReport = () => {
         </Card>
       </div>
 
-      <Card>
+      <Card className="overflow-hidden rounded-[var(--ds-radius-xl,16px)] border-[var(--ds-border,#DDE5DF)] shadow-[var(--ds-shadow-card,0_1px_2px_#1F8A5B14,0_8px_24px_#1F8A5B0A)]">
         <CardHeader>
           <CardTitle>Detailed Results</CardTitle>
           <CardDescription>
@@ -342,7 +373,7 @@ const ExamReport = () => {
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="rounded-md border border-[var(--ds-border,#DDE5DF)] max-h-[500px] overflow-y-auto">
+          <div className="max-h-[500px] overflow-y-auto rounded-md border border-[var(--ds-border,#DDE5DF)]">
             <Table>
               <TableHeader>
                 <TableRow className="border-[var(--ds-border,#DDE5DF)] bg-[var(--ds-surface-muted,#F7FAF8)] hover:bg-[var(--ds-surface-muted,#F7FAF8)]">
@@ -360,17 +391,19 @@ const ExamReport = () => {
                     <TableRow key={r.id} className="border-[var(--ds-border,#DDE5DF)] hover:bg-[var(--ds-surface-muted,#F7FAF8)]">
                       <TableCell className="text-[var(--ds-text-secondary,#5B6B61)]">{formatDate(r.date)}</TableCell>
                       <TableCell className="font-medium text-[var(--ds-text-primary,#122018)]">{r.studentName}</TableCell>
-                      <TableCell>{r.examTitle}</TableCell>
-                      <TableCell className="text-center font-bold tabular-nums">
+                      <TableCell className="max-w-[280px] truncate text-[var(--ds-text-primary,#122018)]" title={r.examTitle}>
+                        {r.examTitle}
+                      </TableCell>
+                      <TableCell className="text-center font-bold tabular-nums text-[var(--ds-text-primary,#122018)]">
                         {Math.round(r.percentage)}/100
                       </TableCell>
-                      <TableCell className="text-center font-semibold">{r.letter}</TableCell>
+                      <TableCell className="text-center font-semibold text-[var(--ds-text-primary,#122018)]">{r.letter}</TableCell>
                       <TableCell className="text-center">
                         <span
-                          className={`px-2 py-1 rounded text-xs font-bold ${
+                          className={`rounded px-2 py-1 text-xs font-bold ${
                             r.passed
-                              ? 'bg-green-100 text-green-800'
-                              : 'bg-red-100 text-red-800'
+                              ? 'bg-[var(--ds-primary-soft,#ECFDF5)] text-[var(--ds-accent,#1F8A5B)]'
+                              : 'bg-[var(--ds-danger-bg,#FEF2F2)] text-[var(--ds-danger,#DC2626)]'
                           }`}
                         >
                           {r.passed ? 'PASSED' : 'FAILED'}
@@ -380,7 +413,7 @@ const ExamReport = () => {
                   ))
                 ) : (
                   <TableRow>
-                    <TableCell colSpan={6} className="text-center py-6 text-[var(--ds-text-tertiary,#8A978E)]">
+                    <TableCell colSpan={6} className="py-6 text-center text-[var(--ds-text-tertiary,#8A978E)]">
                       No gradebook results match your filters. Mark exams/assignments so finals
                       sync into the gradebook.
                     </TableCell>

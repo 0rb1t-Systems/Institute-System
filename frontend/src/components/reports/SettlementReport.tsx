@@ -7,13 +7,19 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { formatCurrency, formatDate } from '@/lib/utils';
-import { FileDown, DollarSign, Briefcase, UserCheck, Building, Filter, Users, ArrowUpRight } from 'lucide-react';
+import { FileDown, Wallet, GraduationCap, Briefcase, Building2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import jsPDF from 'jspdf';
 import 'jspdf-autotable';
 import { useAuth } from '@/contexts/AuthContext';
 import { getAffiliateCommissionRate, getDefaultInstructorCommissionRate, rateToPercent } from '@/lib/institution';
+
+const cardShell =
+  'overflow-hidden rounded-[var(--ds-radius-xl,16px)] border border-[var(--ds-border,#DDE5DF)] bg-[var(--ds-surface,#fff)] shadow-[var(--ds-shadow-card,0_1px_2px_#1F8A5B14,0_8px_24px_#1F8A5B0A)] transition-shadow hover:border-[var(--ds-border-strong,#C5D0C8)] hover:shadow-[0_8px_28px_#1F8A5B18]';
+
+const iconBadge =
+  'flex h-11 w-11 shrink-0 items-center justify-center rounded-[14px] border border-[var(--ds-accent,#1F8A5B)]/15 bg-[var(--ds-primary-soft,#ECFDF5)] text-[var(--ds-accent,#1F8A5B)] shadow-[inset_0_1px_0_#ffffff80]';
 
 const SettlementReport = () => {
   const { payments, instructorEarnings, classes, students, users, affiliateSettlements = [] } = useData();
@@ -234,90 +240,113 @@ const SettlementReport = () => {
   return (
     <div className="space-y-6">
       {/* Filters & Actions */}
-      <Card>
-        <CardContent className="p-4">
-            <div className="flex flex-col md:flex-row gap-4 items-end justify-between">
-                <div className="flex flex-col md:flex-row gap-4 w-full md:w-auto">
-                    <div className="space-y-2 w-full md:w-[200px]">
-                        <Label className="text-[11px] uppercase tracking-wider font-semibold text-[var(--ds-text-tertiary,#8A978E)]">Report Month</Label>
-                        <Input 
-                            type="month" 
-                            value={selectedMonth} 
-                            onChange={e => setSelectedMonth(e.target.value)} 
-                        />
-                    </div>
-                    <div className="space-y-2 w-full md:w-[250px]">
-                        <Label className="text-[11px] uppercase tracking-wider font-semibold text-[var(--ds-text-tertiary,#8A978E)]">Filter by Class</Label>
-                        <Select value={selectedClassId} onValueChange={setSelectedClassId}>
-                            <SelectTrigger>
-                                <SelectValue placeholder="All Classes" />
-                            </SelectTrigger>
-                            <SelectContent className="max-h-[300px]">
-                                <SelectItem value="all">All Classes</SelectItem>
-                                {classes.map(c => (
-                                    <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
-                                ))}
-                            </SelectContent>
-                        </Select>
-                    </div>
-                </div>
-                <Button onClick={generatePDF} className="w-full md:w-auto">
-                    <FileDown className="mr-2 h-4 w-4" /> Export Report
-                </Button>
-            </div>
-        </CardContent>
-      </Card>
+      <div className="flex flex-col gap-3 rounded-lg border border-[var(--ds-border,#DDE5DF)] bg-[var(--ds-surface-muted,#F7FAF8)] p-4 md:flex-row md:items-end md:gap-3">
+        <div className="min-w-[10rem] shrink-0 space-y-2 md:w-[11rem]">
+          <Label>Report Month</Label>
+          <Input
+            type="month"
+            value={selectedMonth}
+            onChange={(e) => setSelectedMonth(e.target.value)}
+            className="w-full bg-[var(--ds-surface,#fff)]"
+          />
+        </div>
+        <div className="min-w-0 flex-1 space-y-2">
+          <Label>Filter by Class</Label>
+          <Select value={selectedClassId} onValueChange={setSelectedClassId}>
+            <SelectTrigger className="w-full bg-[var(--ds-surface,#fff)]">
+              <SelectValue placeholder="All Classes" />
+            </SelectTrigger>
+            <SelectContent className="max-h-[300px]">
+              <SelectItem value="all">All Classes</SelectItem>
+              {classes.map((c) => (
+                <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+        <div className="shrink-0">
+          <Button onClick={generatePDF} className="w-full whitespace-nowrap md:w-auto">
+            <FileDown className="mr-2 h-4 w-4" /> Export Report
+          </Button>
+        </div>
+      </div>
 
       {/* KPI Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-        <Card className="bg-[var(--ds-info-bg,#EFF6FF)] border-[var(--ds-info,#2563EB)]/20">
-           <CardHeader className="pb-2">
-               <CardTitle className="text-sm font-medium text-[var(--ds-info,#2563EB)] flex items-center gap-2">
-                   <DollarSign className="h-4 w-4" /> Total Gross Collection
-               </CardTitle>
-           </CardHeader>
-           <CardContent>
-               <div className="text-3xl font-bold text-[var(--ds-text-primary,#122018)] tracking-tight">{formatCurrency(reportData.totalCollection)}</div>
-               <p className="text-xs text-[var(--ds-text-secondary,#5B6B61)] mt-1">From {reportData.payments.length} transactions</p>
-           </CardContent>
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <Card className={`${cardShell} flex h-full flex-col`}>
+          <CardHeader className="flex flex-row items-center justify-between gap-3 space-y-0 px-5 pb-0 pt-5">
+            <CardTitle className="text-[12px] font-semibold leading-none text-[var(--ds-text-secondary,#5B6B61)]">
+              Total Gross Collection
+            </CardTitle>
+            <div className={iconBadge} aria-hidden>
+              <Wallet className="h-[22px] w-[22px]" strokeWidth={1.6} />
+            </div>
+          </CardHeader>
+          <CardContent className="flex flex-1 flex-col px-5 pb-5 pt-3">
+            <div className="text-[28px] font-bold leading-none tracking-tight text-[var(--ds-text-primary,#122018)]">
+              {formatCurrency(reportData.totalCollection)}
+            </div>
+            <p className="mt-auto border-t border-[var(--ds-border,#DDE5DF)] pt-3 text-[12px] font-medium text-[var(--ds-text-tertiary,#8A978E)]">
+              From {reportData.payments.length} transactions
+            </p>
+          </CardContent>
         </Card>
 
-        <Card className="bg-violet-50 border-violet-200">
-           <CardHeader className="pb-2">
-               <CardTitle className="text-sm font-medium text-violet-700 flex items-center gap-2">
-                   <UserCheck className="h-4 w-4" /> Instructor Shares
-               </CardTitle>
-           </CardHeader>
-           <CardContent>
-               <div className="text-3xl font-bold text-[var(--ds-text-primary,#122018)] tracking-tight">{formatCurrency(reportData.totalInstructorShare)}</div>
-               <p className="text-xs text-[var(--ds-text-secondary,#5B6B61)] mt-1">
-                 Instructor commission (default {defaultInstPct}% from settings; per-class rates apply)
-               </p>
-           </CardContent>
+        <Card className={`${cardShell} flex h-full flex-col`}>
+          <CardHeader className="flex flex-row items-center justify-between gap-3 space-y-0 px-5 pb-0 pt-5">
+            <CardTitle className="text-[12px] font-semibold leading-none text-[var(--ds-text-secondary,#5B6B61)]">
+              Instructor Shares
+            </CardTitle>
+            <div className={iconBadge} aria-hidden>
+              <GraduationCap className="h-[22px] w-[22px]" strokeWidth={1.6} />
+            </div>
+          </CardHeader>
+          <CardContent className="flex flex-1 flex-col px-5 pb-5 pt-3">
+            <div className="text-[28px] font-bold leading-none tracking-tight text-[var(--ds-text-primary,#122018)]">
+              {formatCurrency(reportData.totalInstructorShare)}
+            </div>
+            <p className="mt-auto border-t border-[var(--ds-border,#DDE5DF)] pt-3 text-[12px] font-medium text-[var(--ds-text-tertiary,#8A978E)]">
+              Default {defaultInstPct}% · class rates may vary
+            </p>
+          </CardContent>
         </Card>
 
-        <Card className="bg-[var(--ds-warning-bg,#FFF7ED)] border-[var(--ds-warning,#C2410C)]/20">
-           <CardHeader className="pb-2">
-               <CardTitle className="text-sm font-medium text-[var(--ds-warning,#C2410C)] flex items-center gap-2">
-                   <Briefcase className="h-4 w-4" /> Affiliate Commission
-               </CardTitle>
-           </CardHeader>
-           <CardContent>
-               <div className="text-3xl font-bold text-[var(--ds-text-primary,#122018)] tracking-tight">{formatCurrency(reportData.totalCommissions)}</div>
-               <p className="text-xs text-[var(--ds-text-secondary,#5B6B61)] mt-1">{affiliateRatePct}% of referred tuition (when rate &gt; 0)</p>
-           </CardContent>
+        <Card className={`${cardShell} flex h-full flex-col`}>
+          <CardHeader className="flex flex-row items-center justify-between gap-3 space-y-0 px-5 pb-0 pt-5">
+            <CardTitle className="text-[12px] font-semibold leading-none text-[var(--ds-text-secondary,#5B6B61)]">
+              Affiliate Commission
+            </CardTitle>
+            <div className={iconBadge} aria-hidden>
+              <Briefcase className="h-[22px] w-[22px]" strokeWidth={1.6} />
+            </div>
+          </CardHeader>
+          <CardContent className="flex flex-1 flex-col px-5 pb-5 pt-3">
+            <div className="text-[28px] font-bold leading-none tracking-tight text-[var(--ds-text-primary,#122018)]">
+              {formatCurrency(reportData.totalCommissions)}
+            </div>
+            <p className="mt-auto border-t border-[var(--ds-border,#DDE5DF)] pt-3 text-[12px] font-medium text-[var(--ds-text-tertiary,#8A978E)]">
+              {affiliateRatePct}% of referred tuition
+            </p>
+          </CardContent>
         </Card>
 
-        <Card className="bg-emerald-50 border-emerald-200">
-           <CardHeader className="pb-2">
-               <CardTitle className="text-sm font-bold text-emerald-700 flex items-center gap-2">
-                   <Building className="h-4 w-4" /> Net School Revenue
-               </CardTitle>
-           </CardHeader>
-           <CardContent>
-               <div className="text-3xl font-bold text-[var(--ds-text-primary,#122018)] tracking-tight">{formatCurrency(reportData.schoolRevenue)}</div>
-               <p className="text-xs text-[var(--ds-text-secondary,#5B6B61)] mt-1">After all deductions</p>
-           </CardContent>
+        <Card className={`${cardShell} flex h-full flex-col`}>
+          <CardHeader className="flex flex-row items-center justify-between gap-3 space-y-0 px-5 pb-0 pt-5">
+            <CardTitle className="text-[12px] font-semibold leading-none text-[var(--ds-text-secondary,#5B6B61)]">
+              Net School Revenue
+            </CardTitle>
+            <div className={iconBadge} aria-hidden>
+              <Building2 className="h-[22px] w-[22px]" strokeWidth={1.6} />
+            </div>
+          </CardHeader>
+          <CardContent className="flex flex-1 flex-col px-5 pb-5 pt-3">
+            <div className="text-[28px] font-bold leading-none tracking-tight text-[var(--ds-text-primary,#122018)]">
+              {formatCurrency(reportData.schoolRevenue)}
+            </div>
+            <p className="mt-auto border-t border-[var(--ds-border,#DDE5DF)] pt-3 text-[12px] font-medium text-[var(--ds-text-tertiary,#8A978E)]">
+              After all deductions
+            </p>
+          </CardContent>
         </Card>
       </div>
       

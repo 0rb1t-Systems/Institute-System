@@ -114,9 +114,10 @@ const ReportsPage = () => {
         <title>Reports & Analytics - Portal</title>
       </Helmet>
 
-      <PageHeader 
-        title="Reports Center" 
-        subtitle="Comprehensive analytics for finance, attendance, and performance."
+      <PageHeader
+        eyebrow="Analytics"
+        title="Reports Center"
+        subtitle="One place for finance, revenue, attendance, exams, transcripts, certificates, and affiliates."
         action={
             <Button variant="ghost" size="sm" onClick={handleRetry} disabled={loading || isRetrying}>
                 <RefreshCw className={`h-4 w-4 mr-2 ${loading || isRetrying ? 'animate-spin' : ''}`} /> Refresh
@@ -133,20 +134,20 @@ const ReportsPage = () => {
 
       {!loading && !error && (
         <Tabs value={activeTab} onValueChange={handleTabChange} className="w-full">
-            <TabsList className="flex h-auto w-full flex-wrap justify-start gap-1 border border-[var(--ds-border,#DDE5DF)] bg-[var(--ds-surface-muted,#F7FAF8)] p-1">
-            {showFinance && <TabsTrigger value="finance">Fees / Finance</TabsTrigger>}
-            {showRevenue && <TabsTrigger value="revenue">Revenue</TabsTrigger>}
-            {showSettlement && <TabsTrigger value="settlement">Settlement</TabsTrigger>}
-            {showAttendance && <TabsTrigger value="attendance">Attendance</TabsTrigger>}
-            {showExams && <TabsTrigger value="exams">Exams</TabsTrigger>}
-            {showTranscripts && <TabsTrigger value="transcripts">Academic / Transcripts</TabsTrigger>}
+            <TabsList className="flex h-auto w-full flex-wrap justify-start gap-1 rounded-[var(--ds-radius-xl,16px)] border border-[var(--ds-border,#DDE5DF)] bg-[var(--ds-surface-muted,#F7FAF8)] p-1.5">
+            {showFinance && <TabsTrigger value="finance" className="data-[state=active]:bg-[var(--ds-surface,#fff)] data-[state=active]:shadow-sm">Fees / Finance</TabsTrigger>}
+            {showRevenue && <TabsTrigger value="revenue" className="data-[state=active]:bg-[var(--ds-surface,#fff)] data-[state=active]:shadow-sm">Revenue</TabsTrigger>}
+            {showSettlement && <TabsTrigger value="settlement" className="data-[state=active]:bg-[var(--ds-surface,#fff)] data-[state=active]:shadow-sm">Settlement</TabsTrigger>}
+            {showAttendance && <TabsTrigger value="attendance" className="data-[state=active]:bg-[var(--ds-surface,#fff)] data-[state=active]:shadow-sm">Attendance</TabsTrigger>}
+            {showExams && <TabsTrigger value="exams" className="data-[state=active]:bg-[var(--ds-surface,#fff)] data-[state=active]:shadow-sm">Exams</TabsTrigger>}
+            {showTranscripts && <TabsTrigger value="transcripts" className="data-[state=active]:bg-[var(--ds-surface,#fff)] data-[state=active]:shadow-sm">Academic / Transcripts</TabsTrigger>}
             {showCertificates && (
-              <TabsTrigger value="certificates" className="gap-2">
+              <TabsTrigger value="certificates" className="gap-2 data-[state=active]:bg-[var(--ds-surface,#fff)] data-[state=active]:shadow-sm">
                 <Award className="h-4 w-4" />
                 Certificates
               </TabsTrigger>
             )}
-            {showAffiliates && <TabsTrigger value="affiliates">Affiliate System</TabsTrigger>}
+            {showAffiliates && <TabsTrigger value="affiliates" className="data-[state=active]:bg-[var(--ds-surface,#fff)] data-[state=active]:shadow-sm">Affiliate System</TabsTrigger>}
             </TabsList>
             
             <div className="mt-6">
