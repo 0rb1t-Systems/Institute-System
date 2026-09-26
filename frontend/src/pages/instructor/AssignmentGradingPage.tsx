@@ -210,12 +210,21 @@ const AssignmentGradingPage = () => {
                                     <TableCell>
                                         {item.submission ? (
                                             <Badge
-                                                className={isGraded ? 'bg-green-900 text-green-400' : 'bg-blue-900 text-blue-400'}
+                                                className={
+                                                  isGraded
+                                                    ? 'border border-[var(--ds-accent,#1F8A5B)]/30 bg-[var(--ds-primary-soft,#ECFDF5)] text-[var(--ds-accent,#1F8A5B)] hover:bg-[var(--ds-primary-soft,#ECFDF5)]'
+                                                    : 'border border-[var(--ds-info,#2563EB)]/30 bg-[var(--ds-info-bg,#EFF6FF)] text-[var(--ds-info,#2563EB)] hover:bg-[var(--ds-info-bg,#EFF6FF)]'
+                                                }
                                             >
                                                 {isGraded ? 'Graded' : 'Submitted'}
                                             </Badge>
                                         ) : (
-                                            <Badge variant="outline" className="text-slate-500 border-slate-700">Not Submitted</Badge>
+                                            <Badge
+                                              variant="outline"
+                                              className="border-[var(--ds-border,#DDE5DF)] bg-[var(--ds-surface-muted,#F7FAF8)] text-[var(--ds-text-secondary,#5B6B61)]"
+                                            >
+                                              Not Submitted
+                                            </Badge>
                                         )}
                                     </TableCell>
                                     <TableCell>
@@ -241,9 +250,9 @@ const AssignmentGradingPage = () => {
                                     </TableCell>
                                     <TableCell>
                                         {item.submission?.score != null || item.submission?.grade != null ? (
-                                            <span className="font-bold text-white">
+                                            <span className="font-bold text-[var(--ds-text-primary,#122018)]">
                                               {item.submission.score ?? item.submission.grade}{' '}
-                                              <span className="text-slate-500 text-xs">/ {assignment.total_marks}</span>
+                                              <span className="text-[var(--ds-text-tertiary,#8A978E)] text-xs">/ {assignment.total_marks}</span>
                                             </span>
                                         ) : '-'}
                                     </TableCell>

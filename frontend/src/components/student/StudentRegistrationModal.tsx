@@ -207,7 +207,7 @@ const StudentRegistrationModal = ({ isOpen, onClose, onSuccess, classes, users }
 
     return (
         <Dialog open={isOpen} onOpenChange={(open) => !open && handleClose()}>
-            <DialogContent className="sm:max-w-[500px] bg-slate-900 border-slate-800 text-slate-100">
+            <DialogContent className="sm:max-w-[500px] bg-slate-900 border-slate-800 text-slate-100 overflow-hidden">
                 <form onSubmit={handleSubmit}>
                     <DialogHeader>
                         <DialogTitle className="flex items-center gap-2">
@@ -218,7 +218,7 @@ const StudentRegistrationModal = ({ isOpen, onClose, onSuccess, classes, users }
                         </DialogDescription>
                     </DialogHeader>
 
-                    <div className="grid gap-4 py-4 max-h-[60vh] overflow-y-auto px-1 pr-2">
+                    <div className="grid gap-4 py-4 max-h-[min(60vh,calc(90vh-12rem))] overflow-y-auto px-1 pr-2">
                         <div className="space-y-1">
                             <Label htmlFor="name" className="text-slate-300">Full Name *</Label>
                             <Input id="name" value={formData.name} onChange={handleChange} className="bg-slate-950 border-slate-800 text-white" required />

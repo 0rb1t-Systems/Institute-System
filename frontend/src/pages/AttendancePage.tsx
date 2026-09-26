@@ -256,12 +256,14 @@ const AttendancePage = () => {
                               <TableBody>
                                   {enrolledStudents.map(student => (
                                       <TableRow key={student.id}>
-                                          <TableCell>
-                                              <div className="flex items-center gap-3">
-                                                  <div className="relative">
-                                                      {!attendanceState[student.id] && <AlertCircle className="h-4 w-4 text-[var(--ds-warning,#C2410C)] absolute -left-5 top-1" />}
-                                                  </div>
-                                                  <div>
+                                          <TableCell className="pl-4 sm:pl-5">
+                                              <div className="flex items-center gap-2.5">
+                                                  {!attendanceState[student.id] ? (
+                                                    <AlertCircle className="h-4 w-4 shrink-0 text-[var(--ds-warning,#C2410C)]" />
+                                                  ) : (
+                                                    <span className="h-4 w-4 shrink-0" aria-hidden />
+                                                  )}
+                                                  <div className="min-w-0">
                                                       <div className="font-medium flex items-center gap-2">
                                                           {student.name}
                                                       </div>

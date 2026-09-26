@@ -3,7 +3,7 @@ import { Helmet } from 'react-helmet';
 import AnimatedPage from '@/components/AnimatedPage';
 import PageHeader from '@/components/PageHeader';
 import { Button } from '@/components/ui/button';
-import { PlusCircle, Users, X, Search, ArrowRightLeft, Eye, FileSpreadsheet, Printer, Pencil, Trash2, CheckCircle2, XCircle, BookOpen, DollarSign, Clock, Percent, AlertTriangle, History, Loader2 } from 'lucide-react';
+import { PlusCircle, Users, X, Search, ArrowRightLeft, Eye, FileSpreadsheet, Printer, Pencil, Trash2, CheckCircle2, XCircle, BookOpen, DollarSign, Clock, Percent, AlertTriangle, History, Loader2, ChevronLeft, ChevronRight } from 'lucide-react';
 import { DsIconButton, DsOutlineAction, DsPrimaryAction, DS_ICON_STROKE } from '@/components/ui/ds-actions';
 import { useData } from '@/contexts/DataContext';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -738,6 +738,9 @@ const ClassesPage = () => {
     const [coursesDialogOpen, setCoursesDialogOpen] = useState(false);
     const [detailsDialogOpen, setDetailsDialogOpen] = useState(false);
     const [deleteAlertOpen, setDeleteAlertOpen] = useState(false);
+    const [searchTerm, setSearchTerm] = useState('');
+    const [currentPage, setCurrentPage] = useState(1);
+    const ITEMS_PER_PAGE = 10;
     
     const [selectedClass, setSelectedClass] = useState(null);
     const [classToDelete, setClassToDelete] = useState(null);
@@ -774,6 +777,27 @@ const ClassesPage = () => {
     });
     }, [classes, courses, diplomas, users, enrollments, classCourses, user]);
 
+    const filteredClasses = useMemo(() => {
+        const q = searchTerm.trim().toLowerCase();
+        if (!q) return classesWithDetails;
+        return classesWithDetails.filter((c) =>
+            c.name?.toLowerCase().includes(q) ||
+            c.displayProgram?.toLowerCase().includes(q) ||
+            c.instructorName?.toLowerCase().includes(q)
+        );
+    }, [classesWithDetails, searchTerm]);
+
+    const totalPages = Math.max(1, Math.ceil(filteredClasses.length / ITEMS_PER_PAGE));
+    const safePage = Math.min(currentPage, totalPages);
+    const currentClasses = filteredClasses.slice(
+        (safePage - 1) * ITEMS_PER_PAGE,
+        safePage * ITEMS_PER_PAGE
+    );
+
+    useEffect(() => {
+        if (currentPage > totalPages) setCurrentPage(totalPages);
+    }, [currentPage, totalPages]);
+
     const openRosterDialog = (classData) => { setSelectedClass(classData); setRosterDialogOpen(true); };
     const openDetailsDialog = (classData) => { setSelectedClass(classData); setDetailsDialogOpen(true); };
     const handleEdit = (classData) => { setSelectedClass(classData); setEditDialogOpen(true); };
@@ -808,6 +832,22 @@ const ClassesPage = () => {
                )}
             </PageHeader>
 
+            <div className="mb-5 flex min-w-0 items-center gap-3">
+                <div className="relative w-full max-w-sm">
+                    <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[var(--ds-text-tertiary,#8A978E)]" />
+                    <Input
+                      type="search"
+                      placeholder="Search classes..."
+                      className="h-9 pl-9"
+                      value={searchTerm}
+                      onChange={(e) => {
+                        setSearchTerm(e.target.value);
+                        setCurrentPage(1);
+                      }}
+                    />
+                </div>
+            </div>
+
             <Dialog open={createDialogOpen} onOpenChange={setCreateDialogOpen}>
                 <DialogContent className="sm:max-w-[480px]"><ClassForm closeDialog={() => setCreateDialogOpen(false)} /></DialogContent>
             </Dialog>
@@ -832,7 +872,15 @@ const ClassesPage = () => {
             </AlertDialog>
 
             <div className="grid grid-cols-1 gap-6">
-                {classesWithDetails.map(c => (
+                {currentClasses.length === 0 ? (
+                    <Card>
+                        <CardContent className="py-12 text-center text-[var(--ds-text-tertiary,#8A978E)]">
+                            {searchTerm.trim()
+                              ? 'No classes match your search.'
+                              : 'No classes found.'}
+                        </CardContent>
+                    </Card>
+                ) : currentClasses.map(c => (
                     <Card key={c.id} className="transition-all hover:border-[var(--ds-primary,#1F8A5B)]/40">
                         <CardContent className="p-6">
                             <div className="flex flex-col justify-between gap-4 md:flex-row md:items-center">
@@ -908,6 +956,35 @@ const ClassesPage = () => {
                     </Card>
                 ))}
             </div>
+
+            {filteredClasses.length > ITEMS_PER_PAGE && (
+                <div className="mt-6 flex items-center justify-between border-t border-[var(--ds-border,#DDE5DF)] pt-4">
+                    <div className="hidden text-sm text-[var(--ds-text-secondary,#5B6B61)] sm:block">
+                        Showing {(safePage - 1) * ITEMS_PER_PAGE + 1} to {Math.min(safePage * ITEMS_PER_PAGE, filteredClasses.length)} of {filteredClasses.length}
+                    </div>
+                    <div className="flex items-center gap-2">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setCurrentPage((prev) => Math.max(1, prev - 1))}
+                          disabled={safePage === 1}
+                        >
+                            <ChevronLeft className="mr-1 h-4 w-4" /> Previous
+                        </Button>
+                        <span className="text-sm text-[var(--ds-text-secondary,#5B6B61)]">
+                            Page {safePage} of {totalPages}
+                        </span>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setCurrentPage((prev) => Math.min(totalPages, prev + 1))}
+                          disabled={safePage === totalPages}
+                        >
+                            Next <ChevronRight className="ml-1 h-4 w-4" />
+                        </Button>
+                    </div>
+                </div>
+            )}
         </AnimatedPage>
     );
 };

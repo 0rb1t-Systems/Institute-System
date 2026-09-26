@@ -9,12 +9,14 @@ import {
   Trash2,
   GraduationCap,
   MonitorPlay,
-  Building2,
   Pencil,
   GripVertical,
   Save,
   X,
   Loader2,
+  ArrowRight,
+  ListOrdered,
+  Search,
 } from 'lucide-react';
 import { DsIconButton, DS_ICON_STROKE } from '@/components/ui/ds-actions';
 import { useData } from '@/contexts/DataContext';
@@ -41,6 +43,15 @@ import {
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
 import { coursesForDiploma, diplomasForCourse, groupCoursesBySemester, semestersForDiploma } from '@/lib/diplomaCourses';
+
+const COURSE_ICON_COLORS = [
+  'bg-[#F59E0B]', // amber/orange
+  'bg-[#14B8A6]', // teal
+  'bg-[#EC4899]', // pink
+  'bg-[#8B5CF6]', // violet
+  'bg-[#22C55E]', // green
+  'bg-[#0EA5E9]', // sky
+];
 
 const DiplomaForm = ({ diploma, closeDialog }: any) => {
     const [name, setName] = useState(diploma?.name || '');
@@ -621,6 +632,8 @@ const CoursesPage = () => {
     const [editingDiploma, setEditingDiploma] = useState(null);
     const [sequenceDiploma, setSequenceDiploma] = useState(null);
     const [isSequenceOpen, setIsSequenceOpen] = useState(false);
+    const [expandedCourseId, setExpandedCourseId] = useState(null);
+    const [searchTerm, setSearchTerm] = useState('');
 
     const {
         courses,
@@ -632,6 +645,26 @@ const CoursesPage = () => {
     } = useData();
     const { user } = useAuth();
     const canManagePrograms = user?.role === 'admin' || user?.role === 'staff';
+
+    const searchQuery = searchTerm.trim().toLowerCase();
+
+    const filteredDiplomas = useMemo(() => {
+        if (!searchQuery) return diplomas;
+        return diplomas.filter((d) => {
+            if (d.name?.toLowerCase().includes(searchQuery)) return true;
+            const linked = coursesForDiploma(courses, diplomaCourses, d.id);
+            return linked.some((c) => c.name?.toLowerCase().includes(searchQuery));
+        });
+    }, [diplomas, courses, diplomaCourses, searchQuery]);
+
+    const filteredCourses = useMemo(() => {
+        if (!searchQuery) return courses;
+        return courses.filter((c) => {
+            if (c.name?.toLowerCase().includes(searchQuery)) return true;
+            const linked = diplomasForCourse(diplomas, diplomaCourses, c);
+            return linked.some((d) => d.name?.toLowerCase().includes(searchQuery));
+        });
+    }, [courses, diplomas, diplomaCourses, searchQuery]);
 
     const handleDeleteClick = (type, id) => {
         if (!canManagePrograms) {
@@ -738,44 +771,79 @@ const CoursesPage = () => {
             </Dialog>
 
             <Tabs defaultValue="courses" className="mt-6">
-                <TabsList className="h-auto border border-[var(--ds-border,#DDE5DF)] bg-[var(--ds-surface-muted,#F7FAF8)] p-1">
-                    <TabsTrigger
-                        value="diplomas"
-                        className="text-[var(--ds-text-secondary,#5B6B61)] data-[state=active]:bg-[var(--ds-primary-soft,#ECFDF5)] data-[state=active]:text-[var(--ds-primary,#1F8A5B)] data-[state=active]:shadow-none"
-                    >
-                        Diplomas
-                    </TabsTrigger>
-                    <TabsTrigger
-                        value="courses"
-                        className="text-[var(--ds-text-secondary,#5B6B61)] data-[state=active]:bg-[var(--ds-primary-soft,#ECFDF5)] data-[state=active]:text-[var(--ds-primary,#1F8A5B)] data-[state=active]:shadow-none"
-                    >
-                        All Courses
-                    </TabsTrigger>
-                </TabsList>
+                <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                    <TabsList className="h-auto w-fit border border-[var(--ds-border,#DDE5DF)] bg-[var(--ds-surface-muted,#F7FAF8)] p-1">
+                        <TabsTrigger
+                            value="courses"
+                            className="gap-1.5 text-[var(--ds-text-secondary,#5B6B61)] data-[state=active]:bg-[var(--ds-primary-soft,#ECFDF5)] data-[state=active]:text-[var(--ds-primary,#1F8A5B)] data-[state=active]:shadow-none"
+                        >
+                            <BookOpen className="h-3.5 w-3.5" strokeWidth={2} />
+                            All Courses
+                        </TabsTrigger>
+                        <TabsTrigger
+                            value="diplomas"
+                            className="gap-1.5 text-[var(--ds-text-secondary,#5B6B61)] data-[state=active]:bg-[var(--ds-primary-soft,#ECFDF5)] data-[state=active]:text-[var(--ds-primary,#1F8A5B)] data-[state=active]:shadow-none"
+                        >
+                            <GraduationCap className="h-3.5 w-3.5" strokeWidth={2} />
+                            Diplomas
+                        </TabsTrigger>
+                    </TabsList>
+                    <div className="relative w-full max-w-sm">
+                        <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[var(--ds-text-tertiary,#8A978E)]" />
+                        <Input
+                          type="search"
+                          placeholder="Search courses & diplomas..."
+                          className="h-9 pl-9"
+                          value={searchTerm}
+                          onChange={(e) => setSearchTerm(e.target.value)}
+                        />
+                    </div>
+                </div>
 
                 <TabsContent value="diplomas" className="mt-4">
-                    <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
-                        {diplomas.map((diploma, index) => {
+                    <div className="flex flex-wrap gap-6">
+                        {filteredDiplomas.map((diploma, index) => {
                             const diplomaCourseList = coursesForDiploma(courses, diplomaCourses, diploma.id);
                             const diplomaSems = semestersForDiploma(diplomaSemesters, diploma.id);
                             const grouped = groupCoursesBySemester(diplomaCourseList, diplomaSems);
+                            const courseCount = diplomaCourseList.length;
                             return (
-                                <motion.div key={diploma.id} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: index * 0.05 }}>
-                                    <Card className="flex h-full flex-col transition-colors hover:border-[var(--ds-primary,#1F8A5B)]/50">
-                                        <CardHeader>
-                                            <CardTitle className="flex items-start justify-between gap-2 text-[var(--ds-text-primary,#122018)]">
-                                                <span className="leading-snug">{diploma.name}</span>
-                                                <div className="flex shrink-0 items-center gap-1">
+                                <motion.div
+                                  key={diploma.id}
+                                  initial={{ opacity: 0, y: 20 }}
+                                  animate={{ opacity: 1, y: 0 }}
+                                  transition={{ delay: index * 0.05 }}
+                                  className="w-full min-w-[300px] max-w-[440px] flex-[1_1_360px]"
+                                >
+                                    <Card className="flex h-full flex-col overflow-hidden rounded-2xl border border-[var(--ds-border,#DDE5DF)] bg-[var(--ds-surface,#fff)] shadow-sm transition-shadow hover:shadow-md">
+                                        <CardHeader className="pb-3">
+                                            <div className="flex items-start gap-3">
+                                                <div
+                                                  className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-[var(--ds-primary,#0B3D2E)] text-[var(--ds-text-on-primary,#fff)] shadow-sm"
+                                                  aria-hidden
+                                                >
+                                                  <GraduationCap className="h-6 w-6" strokeWidth={2} />
+                                                </div>
+                                                <div className="min-w-0 flex-1 pr-1">
+                                                    <CardTitle className="text-lg font-bold leading-snug break-words text-[var(--ds-text-primary,#122018)]">
+                                                        {diploma.name}
+                                                    </CardTitle>
+                                                    <p className="mt-0.5 text-sm text-[var(--ds-text-tertiary,#8A978E)]">
+                                                        {courseCount} course{courseCount === 1 ? '' : 's'} • Course Package
+                                                    </p>
+                                                </div>
+                                                <div className="flex shrink-0 items-center gap-2">
                                                     <span
-                                                      className="inline-flex h-6 min-w-6 items-center justify-center rounded-full border border-[var(--ds-primary,#1F8A5B)]/30 bg-[var(--ds-primary-soft,#ECFDF5)] px-1.5 text-[11px] font-bold text-[var(--ds-primary,#1F8A5B)]"
-                                                      title={`${diplomaCourseList.length} course${diplomaCourseList.length !== 1 ? 's' : ''}`}
+                                                      className="inline-flex h-7 min-w-7 items-center justify-center rounded-full border border-[var(--ds-primary,#1F8A5B)]/30 bg-[var(--ds-primary-soft,#ECFDF5)] px-2 text-[11px] font-bold text-[var(--ds-primary,#1F8A5B)]"
+                                                      title={`${courseCount} course${courseCount !== 1 ? 's' : ''}`}
                                                     >
-                                                        {diplomaCourseList.length}
+                                                        {courseCount}
                                                     </span>
                                                     {canManagePrograms && (
                                                         <>
                                                             <DsIconButton
                                                               tone="info"
+                                                              chrome="outline"
                                                               onClick={() => handleEditDiploma(diploma)}
                                                               title="Edit diploma"
                                                             >
@@ -783,6 +851,7 @@ const CoursesPage = () => {
                                                             </DsIconButton>
                                                             <DsIconButton
                                                               tone="danger"
+                                                              chrome="outline"
                                                               onClick={() => handleDeleteClick('diploma', diploma.id)}
                                                               title="Delete diploma"
                                                             >
@@ -791,38 +860,55 @@ const CoursesPage = () => {
                                                         </>
                                                     )}
                                                 </div>
-                                            </CardTitle>
+                                            </div>
                                         </CardHeader>
-                                        <CardContent className="flex-grow space-y-4">
-                                            <div className="rounded-lg border border-[var(--ds-border,#DDE5DF)] bg-[var(--ds-surface-muted,#F7FAF8)] p-3 text-sm">
-                                                <div className="mb-2 flex items-center justify-between gap-2 font-medium text-[var(--ds-text-secondary,#5B6B61)]">
-                                                    <span className="flex items-center">
-                                                        <BookOpen className="mr-2 h-3.5 w-3.5"/> Included Courses
-                                                    </span>
-                                                    {canManagePrograms && diplomaCourseList.length > 0 ? (
+                                        <CardContent className="flex flex-grow flex-col pt-0">
+                                            <div className="flex flex-grow flex-col rounded-xl border border-[var(--ds-border,#DDE5DF)] bg-[var(--ds-surface-muted,#F7FAF8)] p-4">
+                                                <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
+                                                    <div className="flex min-w-0 items-center gap-2.5">
+                                                        <span
+                                                          className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-[var(--ds-accent,#1F8A5B)] text-[var(--ds-text-on-primary,#fff)] shadow-sm"
+                                                          aria-hidden
+                                                        >
+                                                          <BookOpen className="h-4 w-4" strokeWidth={2.25} />
+                                                        </span>
+                                                        <span className="text-sm font-semibold text-[var(--ds-text-primary,#122018)]">
+                                                          Included Courses
+                                                        </span>
+                                                    </div>
+                                                    {canManagePrograms && courseCount > 0 ? (
                                                         <button
                                                             type="button"
                                                             onClick={() => openSequence(diploma)}
-                                                            className="text-xs font-medium text-[var(--ds-primary,#1F8A5B)] hover:text-[var(--ds-primary-hover,#187A50)]"
+                                                            className="inline-flex shrink-0 items-center justify-center gap-2 rounded-lg border border-[var(--ds-primary,#1F8A5B)]/25 bg-[var(--ds-primary-soft,#ECFDF5)] px-4 py-2.5 text-xs font-semibold text-[var(--ds-primary,#1F8A5B)] transition-colors hover:border-[var(--ds-primary,#1F8A5B)]/40 hover:bg-[var(--ds-primary-soft,#ECFDF5)]"
                                                         >
+                                                            <ListOrdered className="h-3.5 w-3.5 shrink-0" strokeWidth={2} />
                                                             Manage Sequence
                                                         </button>
                                                     ) : null}
                                                 </div>
-                                                <div className="max-h-[180px] space-y-3 overflow-y-auto text-xs">
-                                                    {diplomaCourseList.length > 0 ? grouped.map((g) => (
-                                                        <div key={g.id || 'none'}>
+                                                <div className="max-h-[220px] flex-grow space-y-4 overflow-y-auto pr-1">
+                                                    {courseCount > 0 ? grouped.map((g) => (
+                                                        <div key={g.id || 'none'} className="space-y-2">
                                                             {g.name ? (
-                                                                <p className="mb-1 font-semibold text-[var(--ds-text-primary,#122018)]">{g.name}</p>
+                                                                <span className="inline-flex max-w-full rounded-md border border-[var(--ds-accent,#1F8A5B)]/20 bg-[var(--ds-primary-soft,#ECFDF5)] px-2.5 py-1 text-[11px] font-semibold leading-snug break-words text-[var(--ds-accent,#1F8A5B)]">
+                                                                    {g.name}
+                                                                </span>
                                                             ) : null}
-                                                            <ul className="list-inside list-disc space-y-1 text-[var(--ds-text-secondary,#5B6B61)]">
+                                                            <ul className="divide-y divide-[var(--ds-border,#DDE5DF)] rounded-lg border border-[var(--ds-border,#DDE5DF)] bg-[var(--ds-surface,#fff)] px-3">
                                                                 {g.courses.map((c) => (
-                                                                    <li key={c.id} className="truncate">{c.name}</li>
+                                                                    <li
+                                                                      key={c.id}
+                                                                      className="flex items-start gap-2.5 py-2.5 text-sm text-[var(--ds-text-primary,#122018)]"
+                                                                    >
+                                                                        <span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-[var(--ds-accent,#1F8A5B)]" />
+                                                                        <span className="min-w-0 flex-1 break-words leading-snug">{c.name}</span>
+                                                                    </li>
                                                                 ))}
                                                             </ul>
                                                         </div>
                                                     )) : (
-                                                        <p className="text-[var(--ds-text-tertiary,#8A978E)]">No courses added yet</p>
+                                                        <p className="py-6 text-center text-sm text-[var(--ds-text-tertiary,#8A978E)]">No courses added yet</p>
                                                     )}
                                                 </div>
                                             </div>
@@ -831,24 +917,64 @@ const CoursesPage = () => {
                                 </motion.div>
                             );
                         })}
-                        {diplomas.length === 0 && <div className="col-span-full py-10 text-center text-[var(--ds-text-tertiary,#8A978E)]">No diplomas found.</div>}
+                        {filteredDiplomas.length === 0 && (
+                          <div className="w-full py-10 text-center text-[var(--ds-text-tertiary,#8A978E)]">
+                            {searchQuery ? 'No diplomas match your search.' : 'No diplomas found.'}
+                          </div>
+                        )}
                     </div>
                 </TabsContent>
 
                 <TabsContent value="courses" className="mt-4">
-                     <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
-                        {courses.map((course, index) => {
+                     <div className="flex flex-wrap gap-5">
+                        {filteredCourses.map((course, index) => {
                             const linkedDiplomas = diplomasForCourse(diplomas, diplomaCourses, course);
                             const diplomaCount = linkedDiplomas.length;
                             const isElearning = course.type === 'outsource';
+                            const iconColor = COURSE_ICON_COLORS[index % COURSE_ICON_COLORS.length];
+                            const isExpanded = expandedCourseId === course.id;
+                            const hasDiplomas = linkedDiplomas.length > 0;
                             return (
-                            <motion.div key={course.id} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: index * 0.03 }}>
-                                <Card className="flex h-full flex-col overflow-hidden rounded-2xl shadow-sm">
-                                    <CardHeader className="space-y-3 pb-3">
-                                        <div className="flex items-start justify-between gap-3">
-                                            <CardTitle className="pr-1 text-lg font-bold leading-snug text-[var(--ds-text-primary,#122018)]">
-                                                {course.name}
-                                            </CardTitle>
+                            <motion.div
+                              key={course.id}
+                              initial={{ opacity: 0, y: 20 }}
+                              animate={{ opacity: 1, y: 0 }}
+                              transition={{ delay: index * 0.03 }}
+                              className="w-full min-w-[260px] max-w-[300px] flex-[1_1_280px]"
+                            >
+                                <Card className="flex h-full flex-col overflow-hidden rounded-2xl border border-[var(--ds-border,#DDE5DF)] bg-[var(--ds-surface,#fff)] shadow-sm transition-shadow hover:shadow-md">
+                                    <CardHeader className="space-y-0 pb-4">
+                                        <div className="flex items-start gap-3">
+                                            <div
+                                              className={cn(
+                                                'flex h-12 w-12 shrink-0 items-center justify-center rounded-xl shadow-sm',
+                                                iconColor,
+                                              )}
+                                              style={{ color: '#ffffff' }}
+                                              aria-hidden
+                                            >
+                                              <BookOpen
+                                                className="h-6 w-6"
+                                                strokeWidth={2.25}
+                                                stroke="#ffffff"
+                                                color="#ffffff"
+                                              />
+                                            </div>
+                                            <div className="min-w-0 flex-1">
+                                                <CardTitle className="text-lg font-bold leading-snug text-[var(--ds-text-primary,#122018)]">
+                                                    {course.name}
+                                                </CardTitle>
+                                                <Badge
+                                                    variant="outline"
+                                                    className="mt-1.5 w-fit rounded-full border-[var(--ds-primary,#1F8A5B)]/20 bg-[var(--ds-primary-soft,#ECFDF5)] px-2.5 py-0.5 font-medium text-[var(--ds-primary,#1F8A5B)]"
+                                                >
+                                                    {isElearning ? (
+                                                        <><span className="mr-1.5 inline-block h-1.5 w-1.5 rounded-full bg-[var(--ds-primary,#1F8A5B)]" /><MonitorPlay className="mr-1 h-3 w-3" /> E-Learning</>
+                                                    ) : (
+                                                        <><span className="mr-1.5 inline-block h-1.5 w-1.5 rounded-full bg-[var(--ds-primary,#1F8A5B)]" /> Regular</>
+                                                    )}
+                                                </Badge>
+                                            </div>
                                             {canManagePrograms && (
                                                 <div className="inline-flex shrink-0 items-center gap-0.5">
                                                     <DsIconButton
@@ -868,45 +994,60 @@ const CoursesPage = () => {
                                                 </div>
                                             )}
                                         </div>
-                                        <Badge
-                                            variant="outline"
-                                            className="w-fit rounded-full border-[var(--ds-border,#DDE5DF)] bg-[var(--ds-surface-muted,#F7FAF8)] px-2.5 py-0.5 font-normal text-[var(--ds-text-secondary,#5B6B61)]"
-                                        >
-                                            {isElearning ? (
-                                                <><MonitorPlay className="mr-1.5 h-3 w-3" /> E-Learning</>
-                                            ) : (
-                                                <><Building2 className="mr-1.5 h-3 w-3" /> Regular</>
-                                            )}
-                                        </Badge>
                                     </CardHeader>
-                                    <CardContent className="flex flex-grow flex-col pt-0">
-                                        <div className="mt-auto space-y-2.5 border-t border-[var(--ds-border,#DDE5DF)] pt-3">
-                                            <p className="text-xs text-[var(--ds-text-tertiary,#8A978E)]">
+
+                                    {isExpanded && (
+                                      <CardContent className="flex flex-grow flex-col pb-4 pt-0">
+                                          <div className="border-t border-[var(--ds-border,#DDE5DF)] pt-3">
+                                            <div className="flex items-center gap-2 text-sm text-[var(--ds-text-secondary,#5B6B61)]">
+                                              <BookOpen className="h-4 w-4 shrink-0 text-[var(--ds-text-primary,#122018)]" strokeWidth={2} />
+                                              <span>
                                                 Assigned to {diplomaCount} diploma{diplomaCount === 1 ? '' : 's'}
-                                            </p>
-                                            {linkedDiplomas.length > 0 ? (
-                                                <div className="flex flex-wrap gap-1.5">
-                                                    {linkedDiplomas.map((d) => (
-                                                        <span
-                                                            key={d.id}
-                                                            className="inline-flex max-w-full items-center truncate rounded-full border border-[var(--ds-primary,#1F8A5B)]/30 bg-[var(--ds-primary-soft,#ECFDF5)] px-3 py-1 text-sm font-medium text-[var(--ds-primary,#1F8A5B)]"
-                                                        >
-                                                            {d.name}
-                                                        </span>
-                                                    ))}
-                                                </div>
+                                              </span>
+                                            </div>
+                                            {hasDiplomas ? (
+                                              <div className="mt-2.5 flex flex-col gap-1.5">
+                                                {linkedDiplomas.map((d) => (
+                                                  <span
+                                                    key={d.id}
+                                                    className="inline-flex w-full items-start rounded-xl border border-[var(--ds-primary,#1F8A5B)]/30 bg-[var(--ds-primary-soft,#ECFDF5)] px-3 py-1.5 text-xs font-medium leading-snug text-[var(--ds-primary,#1F8A5B)] break-words whitespace-normal"
+                                                    title={d.name}
+                                                  >
+                                                    {d.name}
+                                                  </span>
+                                                ))}
+                                              </div>
                                             ) : (
-                                                <span className="inline-flex items-center rounded-full border border-[var(--ds-border,#DDE5DF)] bg-[var(--ds-surface-muted,#F7FAF8)] px-3 py-1 text-sm text-[var(--ds-text-tertiary,#8A978E)]">
-                                                    Standalone
-                                                </span>
+                                              <span className="mt-2.5 inline-flex w-fit items-center rounded-full border border-[var(--ds-border,#DDE5DF)] bg-[var(--ds-surface-muted,#F7FAF8)] px-3 py-1 text-xs text-[var(--ds-text-tertiary,#8A978E)]">
+                                                Standalone
+                                              </span>
                                             )}
-                                        </div>
-                                    </CardContent>
+                                          </div>
+                                      </CardContent>
+                                    )}
+
+                                    <button
+                                      type="button"
+                                      onClick={() => setExpandedCourseId(isExpanded ? null : course.id)}
+                                      className="mt-auto flex w-full items-center gap-2.5 border-t border-[var(--ds-border,#DDE5DF)] bg-[var(--ds-surface-muted,#F7FAF8)] px-5 py-3.5 text-left text-sm font-semibold text-[var(--ds-primary,#1F8A5B)] transition-colors hover:bg-[var(--ds-primary-soft,#ECFDF5)]"
+                                    >
+                                      <span className="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-[var(--ds-primary,#0B3D2E)] text-[var(--ds-text-on-primary,#fff)] shadow-sm">
+                                        <ArrowRight
+                                          className={cn('h-3.5 w-3.5 transition-transform', isExpanded && 'rotate-90')}
+                                          strokeWidth={2.5}
+                                        />
+                                      </span>
+                                      {isExpanded ? 'Hide Details' : 'View Details'}
+                                    </button>
                                 </Card>
                             </motion.div>
                             );
                         })}
-                        {courses.length === 0 && <div className="col-span-full py-10 text-center text-[var(--ds-text-tertiary,#8A978E)]">No courses found.</div>}
+                        {filteredCourses.length === 0 && (
+                          <div className="w-full py-10 text-center text-[var(--ds-text-tertiary,#8A978E)]">
+                            {searchQuery ? 'No courses match your search.' : 'No courses found.'}
+                          </div>
+                        )}
                      </div>
                 </TabsContent>
             </Tabs>

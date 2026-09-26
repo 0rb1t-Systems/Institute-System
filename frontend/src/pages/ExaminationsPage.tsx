@@ -330,12 +330,12 @@ const ExaminationsPageContent = () => {
                         onClick={() => setExpandedClass(expandedClass === cls.id ? null : cls.id)}
                     >
                         <div className="flex items-center gap-4">
-                            <div className={`p-2 rounded-[var(--ds-radius-lg,12px)] ${expandedClass === cls.id ? 'bg-[var(--ds-primary-soft,#ECFDF5)] text-[var(--ds-accent,#1F8A5B)]' : 'bg-[var(--ds-surface-muted,#F7FAF8)] text-[var(--ds-text-secondary,#5B6B61)]'}`}>
+                            <div className="rounded-[var(--ds-radius-lg,12px)] bg-[var(--ds-primary-soft,#ECFDF5)] p-2 text-[var(--ds-accent,#1F8A5B)]">
                                 <BookOpen className="h-5 w-5" />
                             </div>
                             <div>
-                                <h3 className="font-semibold">{cls.name}</h3>
-                                <p className="text-sm text-[var(--ds-text-tertiary,#8A978E)]">
+                                <h3 className="font-semibold text-[var(--ds-primary,#0B3D2E)] [html[data-platform-theme='dark']_&]:text-[var(--ds-text-primary,#E8EEEA)]">{cls.name}</h3>
+                                <p className="text-sm text-[var(--ds-accent,#1F8A5B)]">
                                     {cls.derivedCourses.length} Courses • {cls.instructorName || 'No Instructor'}
                                 </p>
                             </div>

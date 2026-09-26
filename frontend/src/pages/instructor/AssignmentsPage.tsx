@@ -18,6 +18,7 @@ import { Plus, Calendar, BookOpen, Clock, Trash2, Edit, CheckCircle, Users, File
 import { formatDateTime } from '@/lib/utils';
 import { uploadAssignmentFile } from '@/lib/api';
 import { coursesForClass } from '@/lib/diplomaCourses';
+import { DsIconButton, DS_ICON_STROKE } from '@/components/ui/ds-actions';
 import {
   DateTimePickerField,
   splitDateTimeLocal,
@@ -231,16 +232,21 @@ const AssignmentsPage = () => {
                 const cls = classes.find((c) => c.id === assign.class_id);
                 const courseName = courses.find((c) => c.id === assign.course_id)?.name;
                 return (
-                    <Card key={assign.id} className="flex min-h-[280px] min-w-0 flex-col overflow-hidden">
+                    <Card key={assign.id} className="flex min-h-[280px] min-w-0 flex-col overflow-hidden border-[var(--ds-border,#DDE5DF)] bg-[var(--ds-surface,#fff)] shadow-sm">
                         <CardHeader className="space-y-0 pb-3">
                             <div className="flex justify-between items-start gap-3">
                                 <div className="min-w-0 flex-1">
-                                    <CardTitle className="text-base line-clamp-2 leading-snug" title={assign.title}>{assign.title}</CardTitle>
-                                    <CardDescription className="mt-1.5 line-clamp-1">
+                                    <CardTitle
+                                      className="text-base font-bold leading-snug line-clamp-2 text-[var(--ds-primary,#0B3D2E)] [html[data-platform-theme='dark']_&]:text-[var(--ds-text-primary,#E8EEEA)]"
+                                      title={assign.title}
+                                    >
+                                      {assign.title}
+                                    </CardTitle>
+                                    <CardDescription className="mt-1.5 line-clamp-1 text-[var(--ds-accent,#1F8A5B)]">
                                       {courseName ? (
                                         <>
-                                          <span className="text-[var(--ds-accent,#1F8A5B)]">{courseName}</span>
-                                          {cls?.name ? <span> · {cls.name}</span> : null}
+                                          <span className="font-medium">{courseName}</span>
+                                          {cls?.name ? <span className="text-[var(--ds-accent,#1F8A5B)]"> · {cls.name}</span> : null}
                                         </>
                                       ) : (
                                         assign.class?.name || cls?.name
@@ -252,57 +258,62 @@ const AssignmentsPage = () => {
                                       className={`text-[10px] px-2 py-0.5 rounded border whitespace-nowrap ${
                                         assign.counts_toward_grade !== false
                                           ? 'border-[var(--ds-warning,#C2410C)]/40 text-[var(--ds-warning,#C2410C)] bg-[var(--ds-warning-bg,#FFF7ED)]'
-                                          : 'border-[var(--ds-border,#DDE5DF)] text-[var(--ds-text-secondary,#5B6B61)] bg-[var(--ds-surface-muted,#F7FAF8)]'
+                                          : 'border-[var(--ds-accent,#1F8A5B)]/30 text-[var(--ds-accent,#1F8A5B)] bg-[var(--ds-primary-soft,#ECFDF5)]'
                                       }`}
                                     >
                                       {assign.counts_toward_grade !== false ? 'Gradebook' : 'Practice'}
                                     </span>
-                                    <div className="p-2 bg-[var(--ds-primary-soft,#ECFDF5)] rounded-full">
+                                    <div className="rounded-full bg-[var(--ds-primary-soft,#ECFDF5)] p-2">
                                         <BookOpen className="h-4 w-4 text-[var(--ds-accent,#1F8A5B)]" />
                                     </div>
                                 </div>
                             </div>
                         </CardHeader>
                         <CardContent className="flex-1 space-y-3 pt-0">
-                            <div className="flex items-center text-sm text-[var(--ds-text-secondary,#5B6B61)] gap-2 min-w-0">
-                                <Calendar className="h-4 w-4 shrink-0" />
+                            <div className="flex min-w-0 items-center gap-2 text-sm text-[var(--ds-text-secondary,#5B6B61)]">
+                                <Calendar className="h-4 w-4 shrink-0 text-[var(--ds-accent,#1F8A5B)]" />
                                 <span className="truncate">Due: {formatDateTime(assign.due_date)}</span>
                             </div>
-                            <div className="flex items-start text-sm text-[var(--ds-text-secondary,#5B6B61)] gap-2 min-w-0">
-                                <CheckCircle className="mt-0.5 h-4 w-4 shrink-0" />
+                            <div className="flex min-w-0 items-start gap-2 text-sm text-[var(--ds-text-secondary,#5B6B61)]">
+                                <CheckCircle className="mt-0.5 h-4 w-4 shrink-0 text-[var(--ds-accent,#1F8A5B)]" />
                                 <span className="leading-snug">
                                   {assign.counts_toward_grade !== false
-                                    ? `Gradebook bonus: ${assign.total_marks} pts (added to exam)`
-                                    : `Practice: ${assign.total_marks} pts (not in gradebook)`}
+                                    ? <>Gradebook bonus: <span className="font-semibold text-[var(--ds-accent,#1F8A5B)]">{assign.total_marks} pts</span> (added to exam)</>
+                                    : <>Practice: <span className="font-semibold text-[var(--ds-accent,#1F8A5B)]">{assign.total_marks} pts</span> (not in gradebook)</>}
                                 </span>
                             </div>
                             {assign.attachment_url && (
-                                <div className="flex items-center text-sm text-[var(--ds-info,#2563EB)] gap-2 bg-[var(--ds-info-bg,#EFF6FF)] p-2 rounded border border-[var(--ds-info,#2563EB)]/20 min-w-0">
+                                <div className="flex min-w-0 items-center gap-2 rounded border border-[var(--ds-accent,#1F8A5B)]/20 bg-[var(--ds-primary-soft,#ECFDF5)] p-2 text-sm text-[var(--ds-accent,#1F8A5B)]">
                                     <File className="h-3 w-3 shrink-0" />
                                     <span className="truncate">File Attached</span>
                                 </div>
                             )}
-                            <div className="flex justify-between items-center pt-2 border-t border-[var(--ds-border,#DDE5DF)] mt-auto">
+                            <div className="mt-auto flex items-center justify-between border-t border-[var(--ds-border,#DDE5DF)] pt-2">
                                 <div className="text-xs text-[var(--ds-text-tertiary,#8A978E)]">
-                                    Submitted: <span className="text-[var(--ds-text-primary,#122018)] font-medium">{stats.total}</span>
+                                    Submitted: <span className="font-semibold text-[var(--ds-accent,#1F8A5B)]">{stats.total}</span>
                                 </div>
                                 <div className="text-xs text-[var(--ds-text-tertiary,#8A978E)]">
-                                    Graded: <span className="text-[var(--ds-text-primary,#122018)] font-medium">{stats.graded}</span>
+                                    Graded: <span className="font-semibold text-[var(--ds-accent,#1F8A5B)]">{stats.graded}</span>
                                 </div>
                             </div>
                         </CardContent>
-                        <CardFooter className="pt-2 gap-2">
-                            <Button variant="secondary" className="min-w-0 flex-1" onClick={() => navigate(`/assignments/${assign.id}/grading`)}>
-                                <Users className="mr-2 h-4 w-4 shrink-0" /> <span className="truncate">View Submissions</span>
+                        <CardFooter className="gap-2 pt-2">
+                            <Button variant="secondary" className="min-w-0 flex-1 text-[var(--ds-primary,#0B3D2E)]" onClick={() => navigate(`/assignments/${assign.id}/grading`)}>
+                                <Users className="mr-2 h-4 w-4 shrink-0 text-[var(--ds-accent,#1F8A5B)]" /> <span className="truncate">View Submissions</span>
                             </Button>
-                            <Button variant="ghost" size="icon" className="shrink-0" onClick={() => handleOpenDialog(assign)}>
-                                <Edit className="h-4 w-4" />
-                            </Button>
+                            <DsIconButton
+                              tone="info"
+                              chrome="outline"
+                              title="Edit assignment"
+                              onClick={() => handleOpenDialog(assign)}
+                            >
+                              <Edit className="h-4 w-4" strokeWidth={DS_ICON_STROKE} />
+                            </DsIconButton>
                             <AlertDialog>
                                 <AlertDialogTrigger asChild>
-                                    <Button variant="ghost" size="icon" className="shrink-0 text-[var(--ds-danger,#DC2626)] hover:bg-[var(--ds-danger-bg,#FEF2F2)] hover:text-[var(--ds-danger,#DC2626)]">
-                                        <Trash2 className="h-4 w-4" />
-                                    </Button>
+                                    <DsIconButton tone="danger" chrome="outline" title="Delete assignment">
+                                      <Trash2 className="h-4 w-4" strokeWidth={DS_ICON_STROKE} />
+                                    </DsIconButton>
                                 </AlertDialogTrigger>
                                 <AlertDialogContent>
                                     <AlertDialogHeader>
