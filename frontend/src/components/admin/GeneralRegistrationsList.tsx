@@ -84,30 +84,45 @@ const GeneralRegistrationsList = () => {
     return { name, typeLabel };
   };
 
-  // Categorize Registrations
-  const { pending, approved, rejected } = useMemo(() => {
+  const digitsOnly = (value) => String(value || '').replace(/\D/g, '');
+
+  // Categorize Registrations (pending searchable by name or phone)
+  const { pending, approved, rejected, pendingTotal } = useMemo(() => {
     const p = [];
     const a = [];
     const r = [];
-    const searchLower = searchTerm.toLowerCase();
-    
-    generalRegistrations.forEach(reg => {
-        const matches = 
-            reg.student_name.toLowerCase().includes(searchLower) || 
-            reg.student_email.toLowerCase().includes(searchLower) ||
-            reg.student_phone?.toLowerCase().includes(searchLower);
-        
-        if (matches) {
-            if (reg.status === 'pending') p.push(reg);
-            else if (reg.status === 'approved') a.push(reg);
-            else r.push(reg);
-        }
+    let pendingTotal = 0;
+    const query = searchTerm.trim().toLowerCase();
+    const queryDigits = digitsOnly(searchTerm);
+
+    generalRegistrations.forEach((reg) => {
+      if (reg.status === 'approved') {
+        a.push(reg);
+        return;
+      }
+      if (reg.status === 'rejected') {
+        r.push(reg);
+        return;
+      }
+      if (reg.status !== 'pending') return;
+
+      pendingTotal += 1;
+      const name = String(reg.student_name || '').toLowerCase();
+      const phone = String(reg.student_phone || '').toLowerCase();
+      const phoneDigits = digitsOnly(reg.student_phone);
+      const matches =
+        !query ||
+        name.includes(query) ||
+        phone.includes(query) ||
+        (queryDigits.length > 0 && phoneDigits.includes(queryDigits));
+
+      if (matches) p.push(reg);
     });
     // Newest first
     const byDateDesc = (x, y) => Number(new Date(y.submitted_at)) - Number(new Date(x.submitted_at));
     p.sort(byDateDesc);
     a.sort(byDateDesc);
-    return { pending: p, approved: a, rejected: r };
+    return { pending: p, approved: a, rejected: r, pendingTotal };
   }, [generalRegistrations, searchTerm]);
 
   // Pagination Logic
@@ -245,22 +260,6 @@ const GeneralRegistrationsList = () => {
             </DialogContent>
         </Dialog>
 
-        <div className="flex items-center justify-between gap-4">
-            <div className="relative flex-1 max-w-md">
-                <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[var(--ds-text-tertiary,#8A978E)]" />
-                <Input 
-                    placeholder="Search registrations..." 
-                    className="pl-9" 
-                    value={searchTerm}
-                    onChange={e => {
-                      setSearchTerm(e.target.value);
-                      setPendingPage(1);
-                      setApprovedPage(1);
-                    }}
-                />
-            </div>
-        </div>
-
         {/* SECTION 1: APPROVED HISTORY (MOVED TO TOP AS REQUESTED) */}
         <Card>
             <CardHeader>
@@ -343,13 +342,30 @@ const GeneralRegistrationsList = () => {
 
         {/* SECTION 2: PENDING REGISTRATIONS */}
         <Card className="border-l-4 border-l-[var(--ds-warning,#C2410C)]">
-            <CardHeader>
-                <div className="flex items-center justify-between">
+            <CardHeader className="space-y-4">
+                <div className="flex items-center justify-between gap-4">
                     <div>
                         <CardTitle className="text-[var(--ds-warning,#C2410C)]">Pending Applications</CardTitle>
                         <CardDescription>New registrations waiting for review and approval.</CardDescription>
                     </div>
-                    <Badge className="bg-[var(--ds-warning,#C2410C)] text-[var(--ds-text-on-primary,#fff)]">{pending.length} Pending</Badge>
+                    <Badge className="shrink-0 bg-[var(--ds-warning,#C2410C)] text-[var(--ds-text-on-primary,#fff)]">
+                      {searchTerm.trim() && pending.length !== pendingTotal
+                        ? `${pending.length} of ${pendingTotal} Pending`
+                        : `${pendingTotal} Pending`}
+                    </Badge>
+                </div>
+                <div className="relative max-w-md">
+                    <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[var(--ds-text-tertiary,#8A978E)]" />
+                    <Input
+                        placeholder="Search by name or phone..."
+                        className="pl-9"
+                        value={searchTerm}
+                        onChange={(e) => {
+                          setSearchTerm(e.target.value);
+                          setPendingPage(1);
+                        }}
+                        aria-label="Search pending applications by name or phone"
+                    />
                 </div>
             </CardHeader>
             <CardContent>
@@ -421,7 +437,11 @@ const GeneralRegistrationsList = () => {
                                 <TableCell colSpan={6} className="py-12 text-center text-[var(--ds-text-tertiary,#8A978E)]">
                                     <div className="flex flex-col items-center gap-2">
                                         <CheckCircle2 className="h-8 w-8 opacity-40" />
-                                        <span>No pending applications. You're all caught up!</span>
+                                        <span>
+                                          {searchTerm.trim()
+                                            ? 'No pending applications match that name or phone.'
+                                            : "No pending applications. You're all caught up!"}
+                                        </span>
                                     </div>
                                 </TableCell>
                             </TableRow>
