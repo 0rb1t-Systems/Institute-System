@@ -218,7 +218,8 @@ const CertificateImportReview = ({
               ))}
             </select>
             <p className="text-[11px] text-[var(--ds-text-secondary,#5B6B61)]">
-              When you generate that class in Report Center, student + class names print on this design.
+              When you generate in Report Center, each student&apos;s name and their program
+              (diploma/course) print on this design — even if you save for All classes.
             </p>
           </div>
         </div>

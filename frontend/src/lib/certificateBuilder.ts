@@ -3643,6 +3643,32 @@ export function normalizeLogoBuilderDesign(raw: unknown): LogoBuilderDesign {
     )
   })
 
+  // Heal older imported templates that saved the scanned program title as
+  // static text (bind: none). Without this, "All classes" certificates keep
+  // printing the uploaded file's program instead of each student's program.
+  const hasProgramBind = normalized.elements.some((el) => el.bind === 'programName')
+  if (!hasProgramBind) {
+    const byName = normalized.elements.find(
+      (el) =>
+        el.type === 'text' &&
+        (el.bind === 'none' || !el.bind) &&
+        /^program title$/i.test(String(el.name || '').trim()),
+    )
+    const diplomaLike =
+      byName ||
+      normalized.elements.find(
+        (el) =>
+          el.type === 'text' &&
+          (el.bind === 'none' || !el.bind) &&
+          /diploma|certificate of|programme|program in|course in|award in|mastery/i.test(
+            String(el.text || ''),
+          ),
+      )
+    if (diplomaLike) {
+      diplomaLike.bind = 'programName'
+    }
+  }
+
   return normalizeVerificationQr(normalized)
 }
 

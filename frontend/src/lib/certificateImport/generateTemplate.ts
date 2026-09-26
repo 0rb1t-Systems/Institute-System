@@ -429,23 +429,25 @@ function buildCleanLayout(scan: RawCertificateScan, brand: ImportBrand, classifi
   let y = topY + logoSize + (landscape ? 28 : 36)
 
   const programText = resolveProgramTitle(classified, allLines)
-  // Static imported program title so the uploaded wording is visible & editable.
-  // Also keep a bound copy for live issuance — user can delete one if preferred.
+  // Bound to student program at generate/print time. OCR text is only a
+  // canvas placeholder so editors still see realistic wording while designing.
   elements.push(
-    staticText(programText, {
+    bound('programName', { width: w, height: h }, {
+      name: 'Program title',
+      text: programText || 'Program / Course',
       x: marginX,
       y,
       width: contentW,
       height: landscape ? 42 : 48,
       fontSize: landscape ? 28 : 30,
       color: ink,
-      italic: true,
-      bold: true,
-      zIndex: nextZ(),
-      name: 'Program title',
+      fontStyle: 'italic',
+      fontWeight: 'bold',
+      textAlign: 'center',
       fontFamily: fontPlayfair(),
       letterSpacing: 0.3,
       lineHeight: 1.15,
+      zIndex: nextZ(),
     }),
   )
   y += landscape ? 46 : 54
