@@ -961,7 +961,10 @@ const CoursesPage = () => {
                                               />
                                             </div>
                                             <div className="min-w-0 flex-1">
-                                                <CardTitle className="text-lg font-bold leading-snug text-[var(--ds-text-primary,#122018)]">
+                                                <CardTitle
+                                                  className="line-clamp-2 text-lg font-bold leading-snug text-[var(--ds-text-primary,#122018)]"
+                                                  title={course.name}
+                                                >
                                                     {course.name}
                                                 </CardTitle>
                                                 <Badge
