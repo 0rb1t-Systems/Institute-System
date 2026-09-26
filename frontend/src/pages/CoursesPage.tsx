@@ -14,7 +14,6 @@ import {
   Save,
   X,
   Loader2,
-  ArrowRight,
   ListOrdered,
   Search,
 } from 'lucide-react';
@@ -632,7 +631,6 @@ const CoursesPage = () => {
     const [editingDiploma, setEditingDiploma] = useState(null);
     const [sequenceDiploma, setSequenceDiploma] = useState(null);
     const [isSequenceOpen, setIsSequenceOpen] = useState(false);
-    const [expandedCourseId, setExpandedCourseId] = useState(null);
     const [searchTerm, setSearchTerm] = useState('');
 
     const {
@@ -932,7 +930,6 @@ const CoursesPage = () => {
                             const diplomaCount = linkedDiplomas.length;
                             const isElearning = course.type === 'outsource';
                             const iconColor = COURSE_ICON_COLORS[index % COURSE_ICON_COLORS.length];
-                            const isExpanded = expandedCourseId === course.id;
                             const hasDiplomas = linkedDiplomas.length > 0;
                             return (
                             <motion.div
@@ -1005,8 +1002,7 @@ const CoursesPage = () => {
                                         </div>
                                     </CardHeader>
 
-                                    {isExpanded && (
-                                      <CardContent className="flex flex-grow flex-col pb-4 pt-0">
+                                    <CardContent className="flex flex-grow flex-col pb-4 pt-0">
                                           <div className="border-t border-[var(--ds-border,#DDE5DF)] pt-3">
                                             <div className="flex items-center gap-2 text-sm text-[var(--ds-text-secondary,#5B6B61)]">
                                               <BookOpen className="h-4 w-4 shrink-0 text-[var(--ds-text-primary,#122018)]" strokeWidth={2} />
@@ -1032,22 +1028,7 @@ const CoursesPage = () => {
                                               </span>
                                             )}
                                           </div>
-                                      </CardContent>
-                                    )}
-
-                                    <button
-                                      type="button"
-                                      onClick={() => setExpandedCourseId(isExpanded ? null : course.id)}
-                                      className="mt-auto flex w-full items-center gap-2.5 border-t border-[var(--ds-border,#DDE5DF)] bg-[var(--ds-surface-muted,#F7FAF8)] px-5 py-3.5 text-left text-sm font-semibold text-[var(--ds-primary,#1F8A5B)] transition-colors hover:bg-[var(--ds-primary-soft,#ECFDF5)]"
-                                    >
-                                      <span className="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-[var(--ds-primary,#0B3D2E)] text-[var(--ds-text-on-primary,#fff)] shadow-sm">
-                                        <ArrowRight
-                                          className={cn('h-3.5 w-3.5 transition-transform', isExpanded && 'rotate-90')}
-                                          strokeWidth={2.5}
-                                        />
-                                      </span>
-                                      {isExpanded ? 'Hide Details' : 'View Details'}
-                                    </button>
+                                    </CardContent>
                                 </Card>
                             </motion.div>
                             );
