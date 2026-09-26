@@ -943,23 +943,47 @@ const CoursesPage = () => {
                               className="min-w-0 w-full"
                             >
                                 <Card className="flex h-full flex-col overflow-hidden rounded-2xl border border-[var(--ds-border,#DDE5DF)] bg-[var(--ds-surface,#fff)] shadow-sm transition-shadow hover:shadow-md">
-                                    <CardHeader className="space-y-0 pb-4">
-                                        <div className="flex items-start justify-between gap-2">
+                                    <CardHeader className="space-y-0 pb-3">
+                                        <div className="flex items-start gap-2">
                                             <div
                                               className={cn(
-                                                'flex h-12 w-12 shrink-0 items-center justify-center rounded-xl shadow-sm',
+                                                'mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-md shadow-sm',
                                                 iconColor,
                                               )}
                                               style={{ color: '#ffffff' }}
                                               aria-hidden
                                             >
                                               <BookOpen
-                                                className="h-6 w-6"
+                                                className="h-3.5 w-3.5"
                                                 strokeWidth={2.25}
                                                 stroke="#ffffff"
                                                 color="#ffffff"
                                               />
                                             </div>
+                                            <CardTitle
+                                              className={cn(
+                                                'min-w-0 flex-1 break-words font-semibold text-[var(--ds-text-primary,#122018)] [overflow-wrap:anywhere]',
+                                                course.name.length > 60
+                                                  ? 'text-[10.5px] leading-[1.3]'
+                                                  : course.name.length > 35
+                                                    ? 'text-[11.5px] leading-[1.3]'
+                                                    : 'text-xs leading-snug',
+                                              )}
+                                            >
+                                              {course.name}
+                                            </CardTitle>
+                                        </div>
+                                        <div className="mt-2 flex items-center justify-between gap-2">
+                                            <Badge
+                                                variant="outline"
+                                                className="w-fit rounded-full border-[var(--ds-primary,#1F8A5B)]/20 bg-[var(--ds-primary-soft,#ECFDF5)] px-2 py-0 text-[10px] font-medium text-[var(--ds-primary,#1F8A5B)]"
+                                            >
+                                                {isElearning ? (
+                                                    <><span className="mr-1 inline-block h-1.5 w-1.5 rounded-full bg-[var(--ds-primary,#1F8A5B)]" /><MonitorPlay className="mr-1 h-3 w-3" /> E-Learning</>
+                                                ) : (
+                                                    <><span className="mr-1 inline-block h-1.5 w-1.5 rounded-full bg-[var(--ds-primary,#1F8A5B)]" /> Regular</>
+                                                )}
+                                            </Badge>
                                             {canManagePrograms && (
                                                 <div className="inline-flex shrink-0 items-center gap-0.5">
                                                     <DsIconButton
@@ -967,41 +991,18 @@ const CoursesPage = () => {
                                                         onClick={() => handleEditCourse(course)}
                                                         title="Edit course"
                                                     >
-                                                        <Pencil className="h-4 w-4" strokeWidth={DS_ICON_STROKE} />
+                                                        <Pencil className="h-3.5 w-3.5" strokeWidth={DS_ICON_STROKE} />
                                                     </DsIconButton>
                                                     <DsIconButton
                                                         tone="danger"
                                                         onClick={() => handleDeleteClick('course', course.id)}
                                                         title="Delete course"
                                                     >
-                                                        <Trash2 className="h-4 w-4" strokeWidth={DS_ICON_STROKE} />
+                                                        <Trash2 className="h-3.5 w-3.5" strokeWidth={DS_ICON_STROKE} />
                                                     </DsIconButton>
                                                 </div>
                                             )}
                                         </div>
-                                        <CardTitle
-                                          className={cn(
-                                            'mt-3 font-bold break-words text-[var(--ds-text-primary,#122018)]',
-                                            // Keep full name visible in ≤2 lines inside a 3-col card
-                                            course.name.length > 55
-                                              ? 'text-[12.5px] leading-[1.3]'
-                                              : course.name.length > 36
-                                                ? 'text-[13.5px] leading-snug'
-                                                : 'text-base leading-snug',
-                                          )}
-                                        >
-                                            {course.name}
-                                        </CardTitle>
-                                        <Badge
-                                            variant="outline"
-                                            className="mt-1.5 w-fit rounded-full border-[var(--ds-primary,#1F8A5B)]/20 bg-[var(--ds-primary-soft,#ECFDF5)] px-2.5 py-0.5 font-medium text-[var(--ds-primary,#1F8A5B)]"
-                                        >
-                                            {isElearning ? (
-                                                <><span className="mr-1.5 inline-block h-1.5 w-1.5 rounded-full bg-[var(--ds-primary,#1F8A5B)]" /><MonitorPlay className="mr-1 h-3 w-3" /> E-Learning</>
-                                            ) : (
-                                                <><span className="mr-1.5 inline-block h-1.5 w-1.5 rounded-full bg-[var(--ds-primary,#1F8A5B)]" /> Regular</>
-                                            )}
-                                        </Badge>
                                     </CardHeader>
 
                                     {isExpanded && (
