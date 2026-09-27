@@ -7,25 +7,35 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useData } from '@/contexts/DataContext';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { DsPrimaryAction, DsOutlineAction, DS_ICON_STROKE } from '@/components/ui/ds-actions';
+import { DsPrimaryAction, DS_ICON_STROKE } from '@/components/ui/ds-actions';
 import {
-  BookOpen,
   Calendar,
-  ArrowRight,
-  CheckCircle,
   CreditCard,
   ClipboardList,
   GraduationCap,
-  Activity,
-  FileText,
+  BookOpen,
 } from 'lucide-react';
 import { getAttendanceEnriched } from '@/lib/api';
-import { formatCurrency, formatDate, getMonthsBetween, cn } from '@/lib/utils';
+import { formatCurrency, getMonthsBetween } from '@/lib/utils';
 import { goToTenantLanding } from '@/lib/institution';
 import { computeStudentBalance, computeMonthlyFee } from '@/lib/finance';
 import { getLetterGrade } from '@/lib/examPass';
 import { getInstitutionGradeScale } from '@/lib/gradingScale';
-import { getPersonInitials } from '@/lib/studentAvatar';
+import {
+  ResponsiveContainer,
+  PieChart,
+  Pie,
+  Cell,
+  Tooltip,
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  LabelList,
+} from 'recharts';
+
+const CLASS_PIE_COLORS = ['#0B3D2E', '#1F8A5B', '#34B87A', '#059669', '#C5D0C8'];
 
 const formatMonthLabel = (ym: string) => {
   const [y, m] = ym.split('-');
@@ -36,22 +46,22 @@ const formatMonthLabel = (ym: string) => {
   });
 };
 
-const formatRelative = (value: string | Date | null | undefined) => {
-  if (!value) return '';
-  const d = new Date(value);
-  if (Number.isNaN(d.getTime())) return '';
-  const diffMs = Date.now() - d.getTime();
-  const days = Math.floor(diffMs / 86400000);
-  if (days <= 0) return 'today';
-  if (days === 1) return 'yesterday';
-  if (days < 7) return `${days}d ago`;
-  return formatDate(d);
+const formatMonthShort = (ym: string) => {
+  const [y, m] = ym.split('-');
+  if (!y || !m) return ym;
+  return new Date(Number(y), Number(m) - 1, 1).toLocaleDateString('en-US', { month: 'short' });
+};
+
+const timeGreeting = () => {
+  const hour = new Date().getHours();
+  if (hour < 12) return 'Good morning';
+  if (hour < 17) return 'Good afternoon';
+  return 'Good evening';
 };
 
 /**
  * Student academic + finance overview — visual layout from design-system.pen
- * (Student Dashboard), matching Admin/Staff/Instructor shell patterns.
- * Data fetching, finance math, and permissions unchanged.
+ * (Student Dashboard). Data fetching, finance math, and permissions unchanged.
  */
 const StudentDashboard = () => {
   const { user, institution, loading: authLoading } = useAuth();
@@ -234,19 +244,56 @@ const StudentDashboard = () => {
       let status: 'paid' | 'partial' | 'unpaid' | 'upcoming' =
         paidAmount <= 0 ? 'unpaid' : remaining > 0 ? 'partial' : 'paid';
       if (status === 'unpaid' && month > nowKey) status = 'upcoming';
-      const progress =
-        monthlyFee > 0 ? Math.min(100, (paidAmount / monthlyFee) * 100) : status === 'paid' ? 100 : 0;
       return {
         month,
         label: formatMonthLabel(month),
+        shortLabel: formatMonthShort(month),
         monthlyFee,
         paidAmount,
         remaining,
         status,
-        progress,
+        displayAmount: status === 'upcoming' ? 0 : status === 'paid' ? paidAmount : remaining || monthlyFee,
       };
     });
   }, [activeClass, activeEnrollment, myPayments]);
+
+  const monthlyBars = useMemo(() => {
+    const rows = monthlyBreakdown.slice(-5);
+    const maxFee = Math.max(...rows.map((r) => r.monthlyFee || 0), 1);
+    return rows.map((row) => {
+      let fill = 'var(--ds-border-strong, #C5D0C8)';
+      let amountLabel = '—';
+      let barValue = Math.max(maxFee * 0.12, 1);
+      if (row.status === 'paid') {
+        fill = 'var(--ds-success, #059669)';
+        amountLabel = formatCurrency(row.paidAmount || row.monthlyFee);
+        barValue = row.monthlyFee || maxFee;
+      } else if (row.status === 'partial' || row.status === 'unpaid') {
+        fill = 'var(--ds-danger, #DC2626)';
+        amountLabel = formatCurrency(row.remaining || row.monthlyFee);
+        barValue = Math.max((row.remaining || row.monthlyFee) * 0.45, maxFee * 0.28);
+      }
+      return {
+        name: row.shortLabel,
+        amount: barValue,
+        fill,
+        amountLabel,
+        status: row.status,
+      };
+    });
+  }, [monthlyBreakdown]);
+
+  const paidYtd = useMemo(() => {
+    const year = new Date().getFullYear();
+    return myPayments
+      .filter((p) => {
+        if (p.status && p.status !== 'completed') return false;
+        const when = p.payment_date || p.created_at;
+        if (!when) return false;
+        return new Date(when).getFullYear() === year;
+      })
+      .reduce((sum, p) => sum + Number(p.amount || 0), 0);
+  }, [myPayments]);
 
   const assignmentsDueThisWeek = useMemo(() => {
     if (!studentId || myClassIds.size === 0) return 0;
@@ -266,182 +313,31 @@ const StudentDashboard = () => {
     }).length;
   }, [assignments, assignmentSubmissions, myClassIds, studentId]);
 
-  const classRows = useMemo(() => {
-    return activeClasses.map((cls: any) => {
-      const classAttendance = myAttendance.filter((a) => a.class_id === cls.id);
-      const present = classAttendance.filter(
-        (a) => a.status === 'present' || a.status === 'late',
-      ).length;
-      const rate =
-        classAttendance.length > 0 ? Math.round((present / classAttendance.length) * 100) : null;
-      const gb = (gradebookEntries || []).find(
-        (g) => g.student_id === studentId && g.class_id === cls.id && g.final_mark != null,
-      );
-      const letter =
-        gb?.letter_grade && gb.letter_grade !== '-'
-          ? gb.letter_grade
-          : gb?.final_mark != null
-            ? getLetterGrade(Number(gb.final_mark), gradeScale)
-            : null;
-      return {
-        id: cls.id,
-        name: cls.name,
-        start: cls.start_date,
-        letter,
-        attendanceRate: rate,
-        isActive: true,
-      };
+  const classShare = useMemo(() => {
+    if (activeClasses.length === 0) return [];
+    const weights = activeClasses.map((cls: any) => {
+      const sessions = myAttendance.filter((a) => a.class_id === cls.id).length;
+      return { cls, weight: Math.max(sessions, 1) };
     });
-  }, [activeClasses, myAttendance, gradebookEntries, studentId, gradeScale]);
-
-  const recentActivity = useMemo(() => {
-    const items: {
-      id: string;
-      title: string;
-      detail: string;
-      at: number;
-      icon: 'assignment' | 'grade' | 'attendance' | 'payment';
-    }[] = [];
-
-    for (const s of assignmentSubmissions || []) {
-      if (s.student_id !== studentId || !s.submitted_at) continue;
-      const assignment = (assignments || []).find((a) => a.id === s.assignment_id);
-      items.push({
-        id: `sub-${s.id}`,
-        title: 'Assignment submitted',
-        detail: `${assignment?.title || 'Assignment'} · ${formatRelative(s.submitted_at)}`,
-        at: Number(new Date(s.submitted_at)),
-        icon: 'assignment',
-      });
-    }
-
-    for (const g of gradebookEntries || []) {
-      if (g.student_id !== studentId || g.final_mark == null) continue;
-      const when = g.synced_at || g.updated_at || g.created_at;
-      if (!when) continue;
-      const course = courses.find((c) => c.id === g.course_id);
-      const letter =
-        g.letter_grade && g.letter_grade !== '-'
-          ? g.letter_grade
-          : getLetterGrade(Number(g.final_mark), gradeScale);
-      items.push({
-        id: `gb-${g.id}`,
-        title: 'Grade posted',
-        detail: `${course?.name || 'Course'} · ${letter}`,
-        at: Number(new Date(when)),
-        icon: 'grade',
-      });
-    }
-
-    for (const r of myResults || []) {
-      const when = r.graded_at || r.created_at;
-      if (!when) continue;
-      items.push({
-        id: `res-${r.id}`,
-        title: 'Exam result',
-        detail: `Score ${r.score ?? '—'} · ${formatRelative(when)}`,
-        at: Number(new Date(when)),
-        icon: 'grade',
-      });
-    }
-
-    for (const a of myAttendance || []) {
-      const when = a.date || a.created_at;
-      if (!when) continue;
-      const label =
-        a.status === 'present' || a.status === 'late'
-          ? 'Present'
-          : a.status === 'absent'
-            ? 'Absent'
-            : String(a.status || 'Marked');
-      items.push({
-        id: `att-${a.id}`,
-        title: 'Attendance marked',
-        detail: `${label} · ${formatDate(when)}`,
-        at: Number(new Date(when)),
-        icon: 'attendance',
-      });
-    }
-
-    for (const p of myPayments || []) {
-      if (p.status && p.status !== 'completed') continue;
-      const when = p.payment_date || p.created_at;
-      if (!when) continue;
-      items.push({
-        id: `pay-${p.id}`,
-        title: p.is_registration_fee ? 'Registration fee paid' : 'Tuition payment',
-        detail: `${formatCurrency(Number(p.amount || 0))} · ${formatRelative(when)}`,
-        at: Number(new Date(when)),
-        icon: 'payment',
-      });
-    }
-
-    return items
-      .filter((i) => Number.isFinite(i.at))
-      .sort((a, b) => b.at - a.at)
-      .slice(0, 6);
-  }, [
-    assignmentSubmissions,
-    assignments,
-    gradebookEntries,
-    courses,
-    myResults,
-    myAttendance,
-    myPayments,
-    studentId,
-    gradeScale,
-  ]);
-
-  const nextDueLabel = useMemo(() => {
-    const due = monthlyBreakdown.find((r) => r.status === 'unpaid' || r.status === 'partial');
-    if (!due) return financialSummary.balance > 0 ? 'Outstanding balance' : 'All clear';
-    return `Due ${due.label}`;
-  }, [monthlyBreakdown, financialSummary.balance]);
+    const total = weights.reduce((sum, w) => sum + w.weight, 0) || 1;
+    return weights.map((w, index) => ({
+      name: w.cls.name || 'Class',
+      value: w.weight,
+      pct: Math.round((w.weight / total) * 100),
+      status: 'Active',
+      fill: CLASS_PIE_COLORS[index % CLASS_PIE_COLORS.length],
+    }));
+  }, [activeClasses, myAttendance]);
 
   const displayName = user?.name || studentRecord?.name || 'Student';
-  const initials = getPersonInitials(displayName, 'ST');
   const studentCode = user?.studentCode || studentRecord?.student_code || studentRecord?.code || '—';
   const loading = authLoading || dataLoading || loadingAttendance;
   const v = (n: React.ReactNode) => (loading ? '…' : n);
-
-  const activityIcon = (kind: string) => {
-    if (kind === 'assignment') return <ClipboardList className="h-3.5 w-3.5" />;
-    if (kind === 'grade') return <GraduationCap className="h-3.5 w-3.5" />;
-    if (kind === 'attendance') return <CheckCircle className="h-3.5 w-3.5" />;
-    return <CreditCard className="h-3.5 w-3.5" />;
-  };
-
-  const monthStatusBadge = (status: string) => {
-    if (status === 'paid') {
-      return (
-        <Badge className="border-transparent bg-[var(--ds-primary-soft,#ECFDF5)] text-[var(--ds-accent,#0F766E)]">
-          Paid
-        </Badge>
-      );
-    }
-    if (status === 'partial') {
-      return (
-        <Badge className="border-transparent bg-[var(--ds-warning-bg,#FFF7ED)] text-[var(--ds-warning,#C2410C)]">
-          Partial
-        </Badge>
-      );
-    }
-    if (status === 'upcoming') {
-      return (
-        <Badge
-          variant="outline"
-          className="border-[var(--ds-border,#DDE5DF)] bg-[var(--ds-surface-muted,#F7FAF8)] text-[var(--ds-text-secondary,#5B6B61)]"
-        >
-          Upcoming
-        </Badge>
-      );
-    }
-    return (
-      <Badge className="border-transparent bg-[var(--ds-danger-bg,#FEF2F2)] text-[var(--ds-danger,#DC2626)]">
-        Due
-      </Badge>
-    );
-  };
+  const greeting = useMemo(() => timeGreeting(), []);
+  const axisColor = 'var(--ds-text-tertiary, #8A978E)';
+  const gridColor = 'var(--ds-border, #DDE5DF)';
+  const balanceEmpty = !loading && monthlyBars.length === 0;
+  const classesEmpty = !loading && classShare.length === 0;
 
   if (!authLoading && !user) return null;
 
@@ -451,91 +347,72 @@ const StudentDashboard = () => {
         <title>Dashboard | Student Portal</title>
       </Helmet>
 
-      {/* Profile header — design-system.pen Student Dashboard */}
-      <Card className="mb-5 overflow-hidden border-slate-800 bg-slate-900/50">
-        <div className="flex flex-col md:flex-row">
-          <div
-            className="flex shrink-0 flex-col items-center justify-center gap-3 px-6 py-6 md:w-[200px] md:py-7"
-            style={{
-              background: 'linear-gradient(200deg, #0B3D2E 0%, #145C45 100%)',
-            }}
-          >
-            <div className="flex h-16 w-16 items-center justify-center rounded-full bg-[#ECFDF5] ring-4 ring-[#34D39955]">
-              <span className="font-data text-[22px] font-bold text-[#0B3D2E]">{initials}</span>
-            </div>
-            <span className="font-data text-[11px] font-semibold uppercase tracking-[0.14em] text-[#A7D7C0]">
-              Active
-            </span>
-          </div>
-
-          <div className="flex min-w-0 flex-1 flex-col gap-4 p-5 sm:flex-row sm:items-center sm:justify-between sm:p-6">
-            <div className="min-w-0 space-y-2">
-              <p className="text-[13px] text-slate-400 [.tenant-shell_&]:text-[var(--ds-text-secondary,#5B6B61)]">
-                Welcome back
-              </p>
-              <h1 className="truncate text-[24px] font-bold tracking-[-0.02em] text-white sm:text-[28px] [.tenant-shell_&]:text-[var(--ds-text-primary,#122018)]">
-                {displayName}
-              </h1>
-              <div className="flex flex-wrap items-center gap-2">
-                <Badge
-                  variant="outline"
-                  className="font-data border-[var(--ds-border,#DDE5DF)] bg-[var(--ds-surface-muted,#F7FAF8)] text-[11px] font-semibold text-[var(--ds-text-secondary,#5B6B61)]"
-                >
-                  {studentCode}
+      {/* Greeting header — design-system.pen Student Dashboard */}
+      <div className="mb-5 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+        <div className="min-w-0 space-y-2">
+          <p className="text-[14px] font-medium text-slate-400 [.tenant-shell_&]:text-[var(--ds-text-secondary,#5B6B61)]">
+            {greeting}
+          </p>
+          <h1 className="truncate text-[24px] font-bold tracking-[-0.025em] text-white sm:text-[28px] [.tenant-shell_&]:text-[var(--ds-text-primary,#122018)]">
+            {displayName}
+          </h1>
+          <div className="flex flex-wrap items-center gap-2">
+            <Badge
+              variant="outline"
+              className="rounded-[6px] border-[var(--ds-border,#DDE5DF)] bg-[var(--ds-surface,#fff)] px-2 py-1 font-data text-[12px] font-semibold text-[var(--ds-text-secondary,#5B6B61)]"
+            >
+              {studentCode}
+            </Badge>
+            {programLabel ? (
+              <>
+                <Badge className="rounded-[6px] border-transparent bg-[var(--ds-primary-soft,#ECFDF5)] px-2 py-1 text-[12px] font-semibold text-[var(--ds-accent,#0F766E)]">
+                  {programLabel.kind}
                 </Badge>
-                {programLabel ? (
-                  <>
-                    <Badge className="border-transparent bg-[var(--ds-primary-soft,#ECFDF5)] text-[11px] font-semibold text-[var(--ds-accent,#0F766E)]">
-                      {programLabel.kind}
-                    </Badge>
-                    <span className="truncate text-[12px] text-slate-400 [.tenant-shell_&]:text-[var(--ds-text-secondary,#5B6B61)]">
-                      {programLabel.name}
-                    </span>
-                  </>
-                ) : null}
-                {activeEnrollment ? (
-                  <Badge className="border-transparent bg-[var(--ds-primary-soft,#ECFDF5)] text-[11px] font-semibold text-[var(--ds-accent,#0F766E)]">
-                    Active enrollment
-                  </Badge>
-                ) : null}
-              </div>
-            </div>
-
-            <div className="flex shrink-0 flex-wrap gap-2">
-              <DsPrimaryAction asChild>
-                <Link to="/portal/id-card">
-                  <CreditCard className="h-3.5 w-3.5" strokeWidth={DS_ICON_STROKE} />
-                  Student ID
-                </Link>
-              </DsPrimaryAction>
-              <DsOutlineAction asChild>
-                <Link to="/student/classes">
-                  <BookOpen className="h-3.5 w-3.5" strokeWidth={DS_ICON_STROKE} />
-                  My classes
-                </Link>
-              </DsOutlineAction>
-            </div>
+                <span className="truncate text-[13px] font-medium text-slate-400 [.tenant-shell_&]:text-[var(--ds-text-secondary,#5B6B61)]">
+                  {programLabel.name}
+                </span>
+              </>
+            ) : null}
+            {activeEnrollment ? (
+              <>
+                <span className="hidden h-1 w-1 rounded-full bg-[var(--ds-border-strong,#C5D0C8)] sm:inline-block" />
+                <Badge className="gap-1.5 rounded-[6px] border-transparent bg-[var(--ds-primary-soft,#ECFDF5)] px-2 py-1 text-[12px] font-semibold text-[var(--ds-accent,#0F766E)]">
+                  <span className="h-1.5 w-1.5 rounded-full bg-[var(--ds-success,#059669)]" />
+                  Active
+                </Badge>
+              </>
+            ) : null}
           </div>
         </div>
-      </Card>
+        <DsPrimaryAction asChild>
+          <Link to="/portal/id-card">
+            <CreditCard className="h-4 w-4" strokeWidth={DS_ICON_STROKE} />
+            Student ID
+          </Link>
+        </DsPrimaryAction>
+      </div>
 
-      <div className="mb-5 grid grid-cols-2 gap-3 lg:grid-cols-4 lg:gap-4">
+      <div className="mb-5 grid grid-cols-2 gap-3 lg:grid-cols-4 lg:gap-[12px]">
         <StatCard
           title="Attendance"
           value={
-            overallAttendanceStats.total === 0
-              ? v('—')
-              : v(`${Math.round(overallAttendanceStats.rate)}%`)
+            overallAttendanceStats.total === 0 ? (
+              v('—')
+            ) : (
+              <span className="text-[var(--ds-success,#059669)]">
+                {v(`${Math.round(overallAttendanceStats.rate)}%`)}
+              </span>
+            )
           }
           tone="primary"
           descriptionTone="secondary"
-          icon={<CheckCircle className="h-[18px] w-[18px]" />}
+          icon={<Calendar className="h-[18px] w-[18px]" />}
           description={
             loading
               ? '…'
               : overallAttendanceStats.total === 0
                 ? 'No sessions yet'
-                : `${overallAttendanceStats.present} / ${overallAttendanceStats.total} sessions`
+                : `${overallAttendanceStats.present} of ${overallAttendanceStats.total} sessions`
           }
         />
         <StatCard
@@ -555,253 +432,231 @@ const StudentDashboard = () => {
           }
         />
         <StatCard
-          title="Assignments"
-          value={v(assignmentsDueThisWeek)}
-          tone={assignmentsDueThisWeek > 0 ? 'warning' : 'corporate'}
-          descriptionTone={assignmentsDueThisWeek > 0 ? 'warning' : 'secondary'}
-          icon={<ClipboardList className="h-[18px] w-[18px]" />}
-          description={
-            loading
-              ? '…'
-              : assignmentsDueThisWeek > 0
-                ? 'Due this week'
-                : 'Nothing due this week'
+          title="Due soon"
+          value={
+            <span
+              className={
+                assignmentsDueThisWeek > 0
+                  ? 'text-[var(--ds-warning,#C2410C)]'
+                  : undefined
+              }
+            >
+              {v(assignmentsDueThisWeek)}
+            </span>
           }
+          tone="warning"
+          descriptionTone="secondary"
+          icon={<ClipboardList className="h-[18px] w-[18px]" />}
+          description="Assignments this week"
         />
         <StatCard
-          title="Balance"
-          value={loading ? '…' : formatCurrency(financialSummary.balance)}
-          tone={financialSummary.balance > 0 ? 'danger' : 'primary'}
-          descriptionTone={financialSummary.balance > 0 ? 'danger' : 'secondary'}
-          icon={<FileText className="h-[18px] w-[18px]" />}
-          description={loading ? '…' : nextDueLabel}
+          title="Paid"
+          value={v(formatCurrency(paidYtd))}
+          tone="primary"
+          descriptionTone="secondary"
+          icon={<CreditCard className="h-[18px] w-[18px]" />}
+          description="Year to date"
         />
       </div>
 
-      <div className="grid gap-4 lg:grid-cols-5">
-        <div className="min-w-0 space-y-4 lg:col-span-3">
-          <Card className="border-slate-800 bg-slate-900/50">
-            <CardHeader className="flex flex-row items-start justify-between gap-3 space-y-0 p-6 pb-2">
-              <div className="min-w-0 space-y-1">
-                <CardTitle className="text-lg text-white">Monthly balance</CardTitle>
-                <CardDescription className="text-slate-400 [.tenant-shell_&]:text-[12px]">
-                  {activeClass?.name
-                    ? `Tuition months for ${activeClass.name}`
-                    : 'Tuition months for your active class'}
-                  {financialSummary.monthlyFee > 0
-                    ? ` · ${formatCurrency(financialSummary.monthlyFee)} / month`
-                    : ''}
-                </CardDescription>
+      <div className="grid gap-3.5 lg:grid-cols-[minmax(0,1fr)_minmax(280px,400px)]">
+        <Card className="border-slate-800 bg-slate-900/50 min-h-[368px]">
+          <CardHeader className="flex flex-row items-start justify-between gap-3 space-y-0 p-[22px] pb-0">
+            <div className="min-w-0 space-y-0.5">
+              <CardTitle className="text-lg text-white [.tenant-shell_&]:text-[16px] [.tenant-shell_&]:font-bold [.tenant-shell_&]:text-[var(--ds-text-primary,#122018)]">
+                My classes
+              </CardTitle>
+              <CardDescription className="text-slate-400 [.tenant-shell_&]:text-[12px]">
+                Share of study time
+              </CardDescription>
+            </div>
+            <Link
+              to="/student/classes"
+              className="shrink-0 rounded-sm text-[12px] font-semibold text-[var(--ds-accent,#1F8A5B)] transition-colors hover:text-[var(--ds-primary,#1F8A5B)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ds-focus-ring,#1F8A5B)]/40"
+            >
+              View all
+            </Link>
+          </CardHeader>
+          <CardContent className="flex flex-1 flex-col justify-center px-[22px] pb-[22px] pt-[18px]">
+            {loading ? (
+              <p className="py-16 text-center text-sm text-slate-500 [.tenant-shell_&]:text-[var(--ds-text-tertiary,#8A978E)]">
+                Loading classes…
+              </p>
+            ) : classesEmpty ? (
+              <div className="flex flex-col items-center gap-2 py-16 text-center">
+                <BookOpen className="h-8 w-8 text-[var(--ds-primary-muted,#D1FAE5)]" />
+                <p className="text-sm text-slate-500 [.tenant-shell_&]:text-[var(--ds-text-tertiary,#8A978E)]">
+                  No active classes. Contact your institution if this looks wrong.
+                </p>
               </div>
-              <Link
-                to="/portal/finance"
-                className="shrink-0 rounded-sm text-[12px] font-semibold text-[var(--ds-accent,#1F8A5B)] transition-colors hover:text-[var(--ds-primary,#1F8A5B)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ds-focus-ring,#1F8A5B)]/40"
-              >
-                Pay now
-              </Link>
-            </CardHeader>
-            <CardContent className="space-y-3 px-6 pb-6 pt-2">
-              {loading ? (
-                <p className="py-8 text-center text-sm text-slate-500 [.tenant-shell_&]:text-[var(--ds-text-tertiary,#8A978E)]">
-                  Loading balance…
-                </p>
-              ) : monthlyBreakdown.length === 0 ? (
-                <p className="py-8 text-center text-sm text-slate-500 [.tenant-shell_&]:text-[var(--ds-text-tertiary,#8A978E)]">
-                  No tuition schedule for an active class yet.
-                </p>
-              ) : (
-                monthlyBreakdown.map((row) => (
-                  <div
-                    key={row.month}
-                    className="flex flex-col gap-2 rounded-[var(--ds-radius-md,8px)] border border-slate-800 px-3 py-2.5 sm:flex-row sm:items-center sm:gap-4 [.tenant-shell_&]:border-[var(--ds-border,#DDE5DF)]"
-                  >
-                    <div className="flex w-full items-center justify-between gap-3 sm:w-28 sm:shrink-0 sm:flex-col sm:items-start sm:justify-center sm:gap-0.5">
-                      <span className="text-[13px] font-semibold text-white [.tenant-shell_&]:text-[var(--ds-text-primary,#122018)]">
-                        {row.label}
-                      </span>
-                      <span className="text-[11px] text-slate-500 sm:hidden">
-                        {row.status === 'paid'
-                          ? formatCurrency(row.paidAmount)
-                          : row.status === 'partial'
-                            ? `${formatCurrency(row.paidAmount)} / ${formatCurrency(row.monthlyFee)}`
-                            : formatCurrency(row.monthlyFee)}
+            ) : (
+              <div className="flex flex-col items-center gap-7 sm:flex-row sm:items-center">
+                <div className="h-[180px] w-[180px] shrink-0">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <PieChart>
+                      <Pie
+                        data={classShare}
+                        dataKey="value"
+                        nameKey="name"
+                        cx="50%"
+                        cy="50%"
+                        innerRadius={52}
+                        outerRadius={84}
+                        paddingAngle={3}
+                        strokeWidth={0}
+                      >
+                        {classShare.map((entry) => (
+                          <Cell key={entry.name} fill={entry.fill} />
+                        ))}
+                      </Pie>
+                      <Tooltip
+                        contentStyle={{
+                          background: 'var(--ds-surface, #fff)',
+                          border: '1px solid var(--ds-border, #DDE5DF)',
+                          borderRadius: 8,
+                          color: 'var(--ds-text-primary, #122018)',
+                          fontSize: 13,
+                        }}
+                        formatter={(value, name) => [`${Number(value)} sessions`, String(name)]}
+                      />
+                    </PieChart>
+                  </ResponsiveContainer>
+                </div>
+                <div className="flex w-full min-w-0 flex-1 flex-col gap-3.5">
+                  {classShare.map((row) => (
+                    <div key={row.name} className="flex items-center gap-2.5">
+                      <span
+                        className="h-2.5 w-2.5 shrink-0 rounded-full"
+                        style={{ background: row.fill }}
+                      />
+                      <div className="min-w-0 flex-1">
+                        <p className="truncate text-[13px] font-semibold text-white [.tenant-shell_&]:text-[var(--ds-text-primary,#122018)]">
+                          {row.name}
+                        </p>
+                        <p className="text-[11px] font-medium text-slate-500 [.tenant-shell_&]:text-[var(--ds-text-tertiary,#8A978E)]">
+                          {row.status}
+                        </p>
+                      </div>
+                      <span className="shrink-0 font-data text-[14px] font-semibold text-white [.tenant-shell_&]:text-[var(--ds-text-primary,#122018)]">
+                        {row.pct}%
                       </span>
                     </div>
-                    <div className="min-w-0 flex-1">
-                      <div className="h-2 overflow-hidden rounded-full bg-[var(--ds-border,#DDE5DF)]">
-                        <div
-                          className={cn(
-                            'h-full rounded-full transition-all',
-                            row.status === 'paid' && 'bg-[var(--ds-primary,#0B3D2E)]',
-                            row.status === 'partial' && 'bg-[var(--ds-warning,#C2410C)]',
-                            row.status === 'unpaid' && 'bg-[var(--ds-danger,#DC2626)]',
-                            row.status === 'upcoming' && 'bg-[var(--ds-border-strong,#C5D0C8)]',
-                          )}
+                  ))}
+                </div>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        <Card className="border-slate-800 bg-slate-900/50 min-h-[368px]">
+          <CardHeader className="space-y-0.5 p-[22px] pb-0">
+            <CardTitle className="text-lg text-white [.tenant-shell_&]:text-[16px] [.tenant-shell_&]:font-bold [.tenant-shell_&]:text-[var(--ds-text-primary,#122018)]">
+              Monthly balance
+            </CardTitle>
+            <CardDescription className="text-slate-400 [.tenant-shell_&]:text-[12px]">
+              {financialSummary.monthlyFee > 0
+                ? `${formatCurrency(financialSummary.monthlyFee)} / month · last ${Math.min(5, monthlyBars.length || 5)} months`
+                : 'Tuition months for your active class'}
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="flex flex-col gap-[18px] px-[22px] pb-[22px] pt-[18px]">
+            <div className="flex items-end gap-2.5">
+              <span
+                className={`font-data text-[28px] font-semibold leading-none tracking-[-0.02em] ${
+                  financialSummary.balance > 0
+                    ? 'text-[var(--ds-danger,#DC2626)]'
+                    : 'text-[var(--ds-success,#059669)]'
+                }`}
+              >
+                {loading ? '…' : formatCurrency(financialSummary.balance)}
+              </span>
+              <span className="pb-0.5 text-[12px] font-medium text-slate-500 [.tenant-shell_&]:text-[var(--ds-text-tertiary,#8A978E)]">
+                {financialSummary.balance > 0 ? 'outstanding' : 'cleared'}
+              </span>
+            </div>
+
+            {loading ? (
+              <p className="py-12 text-center text-sm text-slate-500 [.tenant-shell_&]:text-[var(--ds-text-tertiary,#8A978E)]">
+                Loading balance…
+              </p>
+            ) : balanceEmpty ? (
+              <p className="py-12 text-center text-sm text-slate-500 [.tenant-shell_&]:text-[var(--ds-text-tertiary,#8A978E)]">
+                No tuition schedule for an active class yet.
+              </p>
+            ) : (
+              <>
+                <div className="h-[180px] w-full">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <BarChart data={monthlyBars} margin={{ top: 22, right: 4, left: 4, bottom: 0 }}>
+                      <CartesianGrid strokeDasharray="0" stroke={gridColor} vertical={false} />
+                      <XAxis
+                        dataKey="name"
+                        stroke={axisColor}
+                        tick={{ fill: axisColor, fontSize: 11, fontWeight: 500 }}
+                        axisLine={false}
+                        tickLine={false}
+                      />
+                      <YAxis hide />
+                      <Tooltip
+                        cursor={{
+                          fill: 'color-mix(in srgb, var(--ds-primary, #1F8A5B) 8%, transparent)',
+                        }}
+                        contentStyle={{
+                          background: 'var(--ds-surface, #fff)',
+                          border: '1px solid var(--ds-border, #DDE5DF)',
+                          borderRadius: 8,
+                          color: 'var(--ds-text-primary, #122018)',
+                          fontSize: 13,
+                        }}
+                        formatter={(_value, _name, item) => [
+                          item?.payload?.amountLabel || '—',
+                          item?.payload?.status || 'Status',
+                        ]}
+                      />
+                      <Bar dataKey="amount" radius={[6, 6, 6, 6]} maxBarSize={42}>
+                        {monthlyBars.map((entry) => (
+                          <Cell key={entry.name} fill={entry.fill} />
+                        ))}
+                        <LabelList
+                          dataKey="amountLabel"
+                          position="top"
                           style={{
-                            width: `${row.status === 'upcoming' ? 12 : Math.max(row.progress, row.status === 'unpaid' ? 8 : 0)}%`,
+                            fill: 'var(--ds-text-tertiary, #8A978E)',
+                            fontSize: 10,
+                            fontWeight: 600,
+                            fontFamily: 'IBM Plex Mono, ui-monospace, monospace',
                           }}
                         />
-                      </div>
-                      <p className="mt-1 hidden text-[11px] text-slate-500 sm:block [.tenant-shell_&]:text-[var(--ds-text-tertiary,#8A978E)]">
-                        {row.status === 'paid'
-                          ? `Paid ${formatCurrency(row.paidAmount)}`
-                          : row.status === 'partial'
-                            ? `Paid ${formatCurrency(row.paidAmount)} · Due ${formatCurrency(row.remaining)}`
-                            : row.status === 'upcoming'
-                              ? `Upcoming · ${formatCurrency(row.monthlyFee)}`
-                              : `Due ${formatCurrency(row.monthlyFee)}`}
-                      </p>
-                    </div>
-                    <div className="shrink-0 self-end sm:self-center">{monthStatusBadge(row.status)}</div>
-                  </div>
-                ))
-              )}
-              {!loading && financialSummary.regBalance > 0 ? (
-                <p className="text-sm text-[var(--ds-warning,#C2410C)]">
-                  Registration fee still due: {formatCurrency(financialSummary.regBalance)}
-                </p>
-              ) : null}
-            </CardContent>
-          </Card>
-
-          <Card className="border-slate-800 bg-slate-900/50">
-            <CardHeader className="flex flex-row items-start justify-between gap-3 space-y-0 p-6 pb-2">
-              <div className="min-w-0 space-y-1">
-                <CardTitle className="text-lg text-white flex items-center gap-2">
-                  <Activity className="h-4 w-4 text-[var(--ds-accent,#1F8A5B)]" />
-                  Quick actions
-                </CardTitle>
-                <CardDescription className="text-slate-400 [.tenant-shell_&]:text-[12px]">
-                  Jump to grades, attendance, assignments, and finance
-                </CardDescription>
-              </div>
-            </CardHeader>
-            <CardContent className="grid gap-2 px-6 pb-6 pt-2 sm:grid-cols-2">
-              {[
-                { to: '/portal/gradebook', label: 'My grades', icon: GraduationCap },
-                { to: '/portal/attendance', label: 'Attendance log', icon: CheckCircle },
-                { to: '/portal/assignments', label: 'Assignments', icon: ClipboardList },
-                { to: '/portal/finance', label: 'Financial status', icon: CreditCard },
-              ].map((action) => (
-                <Link
-                  key={action.to}
-                  to={action.to}
-                  className="flex items-center justify-between rounded-[var(--ds-radius-md,8px)] border border-slate-800 px-3 py-2.5 transition-colors hover:bg-[var(--ds-surface-muted,#F7FAF8)]/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ds-focus-ring,#1F8A5B)]/40 [.tenant-shell_&]:border-[var(--ds-border,#DDE5DF)]"
-                >
-                  <span className="flex items-center gap-2.5 text-[13px] font-medium text-white [.tenant-shell_&]:text-[var(--ds-text-primary,#122018)]">
-                    <action.icon className="h-4 w-4 text-[var(--ds-accent,#1F8A5B)]" strokeWidth={DS_ICON_STROKE} />
-                    {action.label}
-                  </span>
-                  <ArrowRight className="h-3.5 w-3.5 text-slate-500" />
-                </Link>
-              ))}
-            </CardContent>
-          </Card>
-        </div>
-
-        <div className="space-y-4 lg:col-span-2">
-          <Card className="border-slate-800 bg-slate-900/50">
-            <CardHeader className="flex flex-row items-start justify-between gap-3 space-y-0 p-6 pb-2">
-              <div className="min-w-0 space-y-1">
-                <CardTitle className="text-lg text-white">My classes</CardTitle>
-                <CardDescription className="text-slate-400 [.tenant-shell_&]:text-[12px]">
-                  Active enrollments
-                </CardDescription>
-              </div>
-              <Link
-                to="/student/classes"
-                className="shrink-0 rounded-sm text-[12px] font-semibold text-[var(--ds-accent,#1F8A5B)] transition-colors hover:text-[var(--ds-primary,#1F8A5B)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ds-focus-ring,#1F8A5B)]/40"
-              >
-                View all
-              </Link>
-            </CardHeader>
-            <CardContent className="space-y-2 px-6 pb-6 pt-2">
-              {loading ? (
-                <p className="py-6 text-center text-sm text-slate-500 [.tenant-shell_&]:text-[var(--ds-text-tertiary,#8A978E)]">
-                  Loading classes…
-                </p>
-              ) : classRows.length === 0 ? (
-                <div className="flex flex-col items-center gap-2 py-8 text-center">
-                  <BookOpen className="h-8 w-8 text-[var(--ds-primary-muted,#D1FAE5)]" />
-                  <p className="text-sm text-slate-500 [.tenant-shell_&]:text-[var(--ds-text-tertiary,#8A978E)]">
-                    No active classes. Contact your institution if this looks wrong.
-                  </p>
+                      </Bar>
+                    </BarChart>
+                  </ResponsiveContainer>
                 </div>
-              ) : (
-                classRows.map((row) => (
-                  <button
-                    key={row.id}
-                    type="button"
-                    onClick={() => navigate('/student/classes')}
-                    className="flex w-full items-start justify-between gap-3 rounded-[var(--ds-radius-md,8px)] border border-slate-800 px-3 py-2.5 text-left transition-colors hover:bg-[var(--ds-surface-muted,#F7FAF8)]/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ds-focus-ring,#1F8A5B)]/40 [.tenant-shell_&]:border-[var(--ds-border,#DDE5DF)]"
-                  >
-                    <div className="min-w-0">
-                      <p className="truncate text-[13px] font-semibold text-white [.tenant-shell_&]:text-[var(--ds-text-primary,#122018)]">
-                        {row.name}
-                      </p>
-                      <p className="mt-0.5 flex items-center gap-1.5 text-[11px] text-slate-500 [.tenant-shell_&]:text-[var(--ds-text-tertiary,#8A978E)]">
-                        <Calendar className="h-3 w-3 shrink-0" />
-                        {row.start ? formatDate(row.start) : 'In progress'}
-                        {row.attendanceRate != null ? ` · ${row.attendanceRate}% attendance` : ''}
-                      </p>
+                <div className="flex flex-wrap items-center gap-3.5">
+                  {[
+                    { label: 'Paid', color: 'var(--ds-success, #059669)' },
+                    { label: 'Due', color: 'var(--ds-danger, #DC2626)' },
+                    { label: 'Upcoming', color: 'var(--ds-border-strong, #C5D0C8)' },
+                  ].map((item) => (
+                    <div key={item.label} className="flex items-center gap-1.5">
+                      <span
+                        className="h-2 w-2 rounded-full"
+                        style={{ background: item.color }}
+                      />
+                      <span className="text-[11px] font-medium text-slate-500 [.tenant-shell_&]:text-[var(--ds-text-tertiary,#8A978E)]">
+                        {item.label}
+                      </span>
                     </div>
-                    {row.letter ? (
-                      <Badge className="shrink-0 border-transparent bg-[var(--ds-primary-soft,#ECFDF5)] font-data text-[var(--ds-accent,#0F766E)]">
-                        {row.letter}
-                      </Badge>
-                    ) : (
-                      <Badge
-                        variant="outline"
-                        className="shrink-0 border-[var(--ds-border,#DDE5DF)] text-[var(--ds-text-secondary,#5B6B61)]"
-                      >
-                        Active
-                      </Badge>
-                    )}
-                  </button>
-                ))
-              )}
-            </CardContent>
-          </Card>
-
-          <Card className="border-slate-800 bg-slate-900/50">
-            <CardHeader className="space-y-1 p-6 pb-2">
-              <CardTitle className="text-lg text-white">Recent activity</CardTitle>
-              <CardDescription className="text-slate-400 [.tenant-shell_&]:text-[12px]">
-                Grades, attendance, assignments, and payments
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-1 px-6 pb-6 pt-2">
-              {loading ? (
-                <p className="py-6 text-center text-sm text-slate-500 [.tenant-shell_&]:text-[var(--ds-text-tertiary,#8A978E)]">
-                  Loading activity…
-                </p>
-              ) : recentActivity.length === 0 ? (
-                <p className="py-6 text-center text-sm text-slate-500 [.tenant-shell_&]:text-[var(--ds-text-tertiary,#8A978E)]">
-                  No recent academic or payment activity yet.
-                </p>
-              ) : (
-                recentActivity.map((item) => (
-                  <div
-                    key={item.id}
-                    className="flex items-start gap-3 border-b border-slate-800 py-2.5 last:border-0 [.tenant-shell_&]:border-[var(--ds-border,#DDE5DF)]"
-                  >
-                    <div className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-[var(--ds-radius-md,8px)] bg-[var(--ds-primary-soft,#ECFDF5)] text-[var(--ds-primary,#1F8A5B)]">
-                      {activityIcon(item.icon)}
-                    </div>
-                    <div className="min-w-0">
-                      <p className="text-[13px] font-semibold text-white [.tenant-shell_&]:text-[var(--ds-text-primary,#122018)]">
-                        {item.title}
-                      </p>
-                      <p className="truncate text-[11px] text-slate-500 [.tenant-shell_&]:text-[var(--ds-text-tertiary,#8A978E)]">
-                        {item.detail}
-                      </p>
-                    </div>
-                  </div>
-                ))
-              )}
-            </CardContent>
-          </Card>
-        </div>
+                  ))}
+                </div>
+              </>
+            )}
+            {!loading && financialSummary.regBalance > 0 ? (
+              <p className="text-sm text-[var(--ds-warning,#C2410C)]">
+                Registration fee still due: {formatCurrency(financialSummary.regBalance)}
+              </p>
+            ) : null}
+          </CardContent>
+        </Card>
       </div>
     </AnimatedPage>
   );

@@ -3,8 +3,8 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { cn } from '@/lib/utils';
 
 const TONE_WRAP = {
-  info: 'bg-[var(--ds-primary-soft,#ECFDF5)] text-[var(--ds-primary,#1F8A5B)]',
-  corporate: 'bg-[var(--ds-primary-soft,#ECFDF5)] text-[var(--ds-primary,#1F8A5B)]',
+  info: 'bg-[var(--ds-info-bg,#EFF6FF)] text-[var(--ds-info,#2563EB)]',
+  corporate: 'bg-[var(--ds-badge-corporate-bg,#F5F3FF)] text-[var(--ds-badge-corporate,#7C3AED)]',
   primary: 'bg-[var(--ds-primary-soft,#ECFDF5)] text-[var(--ds-primary,#1F8A5B)]',
   warning: 'bg-[var(--ds-warning-bg,#FFF7ED)] text-[var(--ds-warning,#C2410C)]',
   danger: 'bg-[var(--ds-danger-bg,#FEF2F2)] text-[var(--ds-danger,#DC2626)]',
@@ -65,7 +65,7 @@ const StatCard = ({
       </div>
     </CardHeader>
     <CardContent className="p-5 pt-2 [.tenant-shell_&]:pb-5 [.tenant-shell_&]:pt-0">
-      <div className="text-2xl font-bold text-white [.platform-shell_&]:text-[var(--pf-text)] [.tenant-shell_&]:text-[28px] [.tenant-shell_&]:font-bold [.tenant-shell_&]:leading-none [.tenant-shell_&]:tracking-normal [.tenant-shell_&]:text-[var(--ds-text-primary,#122018)]">
+      <div className="text-2xl font-bold text-white [.platform-shell_&]:text-[var(--pf-text)] [.tenant-shell_&]:font-data [.tenant-shell_&]:text-[28px] [.tenant-shell_&]:font-bold [.tenant-shell_&]:leading-none [.tenant-shell_&]:tracking-normal [.tenant-shell_&]:text-[var(--ds-text-primary,#122018)]">
         {value}
       </div>
       {description ? (

@@ -23,7 +23,6 @@ import { formatCurrency } from '@/lib/utils';
 import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
-import { Badge } from '@/components/ui/badge';
 import { DsPrimaryAction, DS_ICON_STROKE } from '@/components/ui/ds-actions';
 import { getUserMessage } from '@/lib/mapError';
 import { MESSAGES } from '@/lib/messages';
@@ -42,6 +41,8 @@ import {
   ResponsiveContainer,
   Cell,
   LabelList,
+  PieChart,
+  Pie,
 } from 'recharts';
 
 const WEEKDAY_LABELS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri'] as const;
@@ -306,6 +307,28 @@ const DashboardPage = () => {
     const priorityRank = { High: 0, Med: 1, Low: 2 };
     queue.sort((a, b) => priorityRank[a.priority] - priorityRank[b.priority]);
 
+    const priorityColors = {
+      High: 'var(--ds-warning, #C2410C)',
+      Med: 'var(--ds-info, #2563EB)',
+      Low: 'var(--ds-border-strong, #C5D0C8)',
+    } as const;
+    const priorityOrder = ['High', 'Med', 'Low'] as const;
+    const priorityMix = priorityOrder
+      .map((level) => {
+        const items = queue.filter((q) => q.priority === level);
+        const samples = [...new Set(items.map((q) => q.title.replace(/^New /, '').replace(/ verify$/, '').replace(/ reminder$/, '')))]
+          .slice(0, 2)
+          .join(' · ');
+        return {
+          name: level,
+          value: items.length,
+          fill: priorityColors[level],
+          samples: samples || (level === 'High' ? 'Registration · Payment' : level === 'Med' ? 'Balance · Attendance' : 'Document request'),
+        };
+      })
+      .filter((row) => row.value > 0);
+    const priorityTotal = priorityMix.reduce((sum, row) => sum + row.value, 0);
+
     return {
       openTasks,
       pendingRegs: pendingRegs.length,
@@ -316,6 +339,8 @@ const DashboardPage = () => {
       classesCovered: stats.classes,
       activity,
       queue: queue.slice(0, 5),
+      priorityMix,
+      priorityTotal,
       seeAllHref:
         pendingRegs.length > 0
           ? '/students/forms'
@@ -431,16 +456,6 @@ const DashboardPage = () => {
   const gridColor = 'var(--ds-border, #DDE5DF)';
   const activityEmpty = !loading && staffOps.activity.every((d) => d.amount === 0);
 
-  const priorityBadgeClass = (priority: 'High' | 'Med' | 'Low') => {
-    if (priority === 'High') {
-      return 'border-transparent bg-[var(--ds-warning-bg,#FFF7ED)] text-[var(--ds-warning,#C2410C)]';
-    }
-    if (priority === 'Med') {
-      return 'border-transparent bg-[var(--ds-info-bg,#EFF6FF)] text-[var(--ds-info,#2563EB)]';
-    }
-    return 'border-[var(--ds-border,#DDE5DF)] bg-[var(--ds-surface-muted,#F7FAF8)] text-[var(--ds-text-secondary,#5B6B61)]';
-  };
-
   /* ── Staff workspace (design-system.pen · Staff Dashboard) ── */
   if (isStaff) {
     return (
@@ -450,7 +465,7 @@ const DashboardPage = () => {
         </Helmet>
 
         <PageHeader
-          eyebrow="Operations · Staff"
+          eyebrow="OPERATIONS > STAFF"
           title="Staff workspace"
           subtitle="Registrations, balances, and attendance queues ready for action."
         >
@@ -466,8 +481,8 @@ const DashboardPage = () => {
           <StatCard
             title="Open tasks"
             value={v(staffOps.openTasks)}
-            tone="warning"
-            descriptionTone={staffOps.openTasks > 0 ? 'warning' : 'secondary'}
+            tone="primary"
+            descriptionTone="secondary"
             icon={<ClipboardList className="h-[18px] w-[18px]" />}
             description={
               loading
@@ -510,20 +525,22 @@ const DashboardPage = () => {
             tone="corporate"
             descriptionTone="secondary"
             icon={<School className="h-[18px] w-[18px]" />}
-            description="Currently running"
+            description="This morning"
           />
         </div>
 
-        <div className="grid gap-4 lg:grid-cols-5">
-          <Card className="border-slate-800 bg-slate-900/50 lg:col-span-3">
+        <div className="grid gap-4 lg:grid-cols-2">
+          <Card className="border-slate-800 bg-slate-900/50">
             <CardHeader className="flex flex-row items-start justify-between gap-3 space-y-0 p-6 pb-2">
               <div className="min-w-0 space-y-1">
-                <CardTitle className="text-lg text-white">Daily activity</CardTitle>
+                <CardTitle className="text-lg text-white [.tenant-shell_&]:text-[16px] [.tenant-shell_&]:font-bold [.tenant-shell_&]:text-[var(--ds-text-primary,#122018)]">
+                  Daily activity
+                </CardTitle>
                 <CardDescription className="text-slate-400 [.tenant-shell_&]:text-[12px]">
-                  Registrations, enrollments, and payments this week
+                  Tasks completed this week
                 </CardDescription>
               </div>
-              <span className="shrink-0 font-data text-[11px] font-semibold text-slate-500 [.tenant-shell_&]:text-[var(--ds-text-tertiary,#8A978E)]">
+              <span className="shrink-0 rounded-full bg-[var(--ds-surface-muted,#F7FAF8)] px-3 py-1.5 font-data text-[11px] font-semibold text-[var(--ds-text-tertiary,#8A978E)]">
                 This week
               </span>
             </CardHeader>
@@ -559,7 +576,7 @@ const DashboardPage = () => {
                         color: 'var(--ds-text-primary, #122018)',
                         fontSize: 13,
                       }}
-                      formatter={(value) => [Number(value), 'Events']}
+                      formatter={(value) => [Number(value), 'Tasks']}
                     />
                     <Bar dataKey="amount" radius={[10, 10, 10, 10]} maxBarSize={72}>
                       {staffOps.activity.map((entry) => (
@@ -572,7 +589,7 @@ const DashboardPage = () => {
                           fill: 'var(--ds-text-primary, #122018)',
                           fontSize: 12,
                           fontWeight: 600,
-                          fontFamily: 'Arial, Helvetica, sans-serif',
+                          fontFamily: 'IBM Plex Mono, ui-monospace, monospace',
                         }}
                       />
                     </Bar>
@@ -582,49 +599,94 @@ const DashboardPage = () => {
             </CardContent>
           </Card>
 
-          <Card className="border-slate-800 bg-slate-900/50 lg:col-span-2">
+          <Card className="border-slate-800 bg-slate-900/50">
             <CardHeader className="flex flex-row items-start justify-between gap-3 space-y-0 p-6 pb-2">
               <div className="min-w-0 space-y-1">
-                <CardTitle className="text-lg text-white">Priority queue</CardTitle>
+                <CardTitle className="text-lg text-white [.tenant-shell_&]:text-[16px] [.tenant-shell_&]:font-bold [.tenant-shell_&]:text-[var(--ds-text-primary,#122018)]">
+                  Priority queue
+                </CardTitle>
                 <CardDescription className="text-slate-400 [.tenant-shell_&]:text-[12px]">
-                  Items needing staff action
+                  By priority level
                 </CardDescription>
               </div>
               <Link
                 to={staffOps.seeAllHref}
-                className="shrink-0 text-[12px] font-semibold text-[var(--ds-accent,#1F8A5B)] transition-colors hover:text-[var(--ds-primary,#1F8A5B)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ds-focus-ring,#1F8A5B)]/40 rounded-sm"
+                className="shrink-0 rounded-sm text-[12px] font-semibold text-[var(--ds-accent,#1F8A5B)] transition-colors hover:text-[var(--ds-primary,#1F8A5B)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ds-focus-ring,#1F8A5B)]/40"
               >
                 See all
               </Link>
             </CardHeader>
-            <CardContent className="space-y-0 px-6 pb-4 pt-2">
+            <CardContent className="px-6 pb-6 pt-2">
               {loading ? (
                 <p className="py-8 text-center text-sm text-slate-500 [.tenant-shell_&]:text-[var(--ds-text-tertiary,#8A978E)]">
                   Loading queue…
                 </p>
-              ) : staffOps.queue.length > 0 ? (
-                staffOps.queue.map((item) => (
-                  <Link
-                    key={item.id}
-                    to={item.href}
-                    className="flex items-center gap-3 border-b border-slate-800 py-2.5 last:border-0 transition-colors hover:bg-[var(--ds-surface-muted,#F7FAF8)]/60 -mx-2 px-2 rounded-md [.tenant-shell_&]:border-[var(--ds-border,#DDE5DF)]"
-                  >
-                    <div className="min-w-0 flex-1">
-                      <p className="truncate text-sm font-medium text-white [.tenant-shell_&]:text-[13px] [.tenant-shell_&]:font-semibold [.tenant-shell_&]:text-[var(--ds-text-primary,#122018)]">
-                        {item.title}
-                      </p>
-                      <p className="truncate text-xs text-slate-500 [.tenant-shell_&]:text-[11px] [.tenant-shell_&]:text-[var(--ds-text-tertiary,#8A978E)]">
-                        {item.detail}
-                      </p>
-                    </div>
-                    <Badge
-                      variant="outline"
-                      className={`shrink-0 px-1.5 py-0 text-[10px] font-bold uppercase tracking-wide ${priorityBadgeClass(item.priority)}`}
-                    >
-                      {item.priority}
-                    </Badge>
-                  </Link>
-                ))
+              ) : staffOps.priorityMix.length > 0 ? (
+                <div className="flex flex-col items-center gap-6 sm:flex-row sm:items-center sm:gap-7">
+                  <div className="h-[168px] w-[168px] shrink-0">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <PieChart>
+                        <Pie
+                          data={staffOps.priorityMix}
+                          dataKey="value"
+                          nameKey="name"
+                          cx="50%"
+                          cy="50%"
+                          innerRadius={48}
+                          outerRadius={78}
+                          paddingAngle={3}
+                          strokeWidth={0}
+                        >
+                          {staffOps.priorityMix.map((entry) => (
+                            <Cell key={entry.name} fill={entry.fill} />
+                          ))}
+                        </Pie>
+                        <Tooltip
+                          contentStyle={{
+                            background: 'var(--ds-surface, #fff)',
+                            border: '1px solid var(--ds-border, #DDE5DF)',
+                            borderRadius: 8,
+                            color: 'var(--ds-text-primary, #122018)',
+                            fontSize: 13,
+                          }}
+                          formatter={(value, name) => [`${Number(value)} tasks`, String(name)]}
+                        />
+                      </PieChart>
+                    </ResponsiveContainer>
+                  </div>
+                  <div className="flex w-full min-w-0 flex-1 flex-col gap-3.5">
+                    {staffOps.priorityMix.map((row) => {
+                      const pct =
+                        staffOps.priorityTotal > 0
+                          ? Math.round((row.value / staffOps.priorityTotal) * 100)
+                          : 0;
+                      return (
+                        <div key={row.name} className="flex items-center gap-2.5">
+                          <span
+                            className="h-2.5 w-2.5 shrink-0 rounded-full"
+                            style={{ background: row.fill }}
+                          />
+                          <div className="min-w-0 flex-1">
+                            <p className="truncate text-[13px] font-semibold text-white [.tenant-shell_&]:text-[var(--ds-text-primary,#122018)]">
+                              {row.name}
+                            </p>
+                            <p className="truncate text-[11px] text-slate-500 [.tenant-shell_&]:text-[var(--ds-text-tertiary,#8A978E)]">
+                              {row.samples}
+                            </p>
+                          </div>
+                          <div className="shrink-0 text-right">
+                            <p className="font-data text-[14px] font-semibold text-white [.tenant-shell_&]:text-[var(--ds-text-primary,#122018)]">
+                              {pct}%
+                            </p>
+                            <p className="text-[11px] text-slate-500 [.tenant-shell_&]:text-[var(--ds-text-tertiary,#8A978E)]">
+                              {row.value} task{row.value === 1 ? '' : 's'}
+                            </p>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
               ) : (
                 <div className="flex flex-col items-center justify-center gap-2 py-10 text-center">
                   <ListChecks className="h-8 w-8 text-[var(--ds-primary-muted,#D1FAE5)]" />

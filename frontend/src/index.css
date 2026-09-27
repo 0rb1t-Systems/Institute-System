@@ -409,7 +409,7 @@ html[data-platform-theme='light'] {
 
 /* Platform landing world — Ops Desk light brand (dashboard gold + geometric sans). */
 .platform-landing {
-  --landing-limewash: #ffffff;
+  --landing-limewash: #f7f7f7;
   --landing-poche: #0f172a;
   --landing-sun: #eab308;
   --landing-sun-soft: #fef3c7;
@@ -417,7 +417,7 @@ html[data-platform-theme='light'] {
   --landing-ink: #0f172a;
   --landing-muted: #64748b;
   --landing-line: #e2e8f0;
-  --landing-room: #f8fafc;
+  --landing-room: #ffffff;
   --landing-room-dim: #f1f5f9;
   --landing-on-sun: #0f172a;
   --landing-on-poche: #f8fafc;
@@ -663,11 +663,23 @@ html[data-platform-theme='light'] .platform-shell ::-webkit-scrollbar-thumb {
 
 @keyframes landing-social-float {
   0%, 100% { transform: translateY(0) scale(1); }
-  50% { transform: translateY(-8px) scale(1.04); }
+  50% { transform: translateY(-11px) scale(1.08); }
 }
 
 .landing-social-icon {
-  animation: landing-social-float 2.7s ease-in-out infinite;
+  animation: landing-social-float 2.4s ease-in-out infinite;
+}
+
+html[data-platform-theme='dark'] .platform-social-brand[data-brand='x'] {
+  color: #e7e9ea !important;
+  border-color: rgba(231, 233, 234, 0.35) !important;
+  background-color: rgba(231, 233, 234, 0.12) !important;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .landing-social-icon {
+    animation: none;
+  }
 }
 
 /* Platform hero socials — readable in light + gold in dark */

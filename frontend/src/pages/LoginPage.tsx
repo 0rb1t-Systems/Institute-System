@@ -222,7 +222,7 @@ const LoginPage = ({ initialError = '' }) => {
           ? `relative flex min-h-screen items-center justify-center overflow-hidden p-4 ${
               light ? 'bg-slate-50' : 'bg-slate-950'
             }`
-          : 'platform-public relative flex min-h-screen items-center justify-center overflow-hidden p-4'
+          : 'platform-public platform-landing relative flex min-h-screen items-center justify-center overflow-hidden p-4'
       }
     >
       <Helmet>
@@ -240,7 +240,7 @@ const LoginPage = ({ initialError = '' }) => {
           className="absolute -left-[10%] -top-[20%] h-[50%] w-[50%] rounded-full blur-[120px]"
           style={{ backgroundColor: `${primary}18` }}
         />
-        <div className="absolute bottom-[10%] right-[10%] h-[30%] w-[30%] rounded-full bg-teal-500/5 blur-[100px]" />
+        <div className="absolute bottom-[10%] right-[10%] h-[30%] w-[30%] rounded-full bg-[var(--landing-sun)]/10 blur-[100px]" />
       </div>
 
       <div
@@ -296,11 +296,11 @@ const LoginPage = ({ initialError = '' }) => {
             </div>
           ) : (
             <>
-              <Link to="/" className="font-display text-2xl font-bold tracking-tight text-[var(--pf-text)]">
-                Tvet<span className="text-teal-500">Flow</span>
+              <Link to="/" className="landing-display text-2xl font-extrabold tracking-tight text-[var(--landing-ink)]">
+                Tvet<span className="text-[var(--landing-sun)]">Flow</span>
               </Link>
-              <CardTitle className="text-2xl font-bold text-[var(--pf-text)]">Sign in</CardTitle>
-              <CardDescription className="text-[var(--pf-muted)]">
+              <CardTitle className="landing-display text-2xl font-extrabold text-[var(--landing-ink)]">Sign in</CardTitle>
+              <CardDescription className="text-[var(--landing-muted)]">
                 Institution admin sign in
               </CardDescription>
             </>
@@ -309,7 +309,7 @@ const LoginPage = ({ initialError = '' }) => {
         <CardContent>
           <form onSubmit={forgotMode ? handleForgot : handleSubmit} className="space-y-4">
             {info && !error && (
-              <Alert className={light ? 'border-teal-200 bg-teal-50 text-teal-800' : 'border-teal-900/50 bg-teal-950/50 text-teal-100'}>
+              <Alert className={light ? 'border-[var(--landing-sun)]/30 bg-[var(--landing-sun-soft)] text-[var(--landing-ink)]' : 'border-[var(--landing-sun)]/25 bg-[var(--landing-sun-soft)]/40 text-[var(--landing-ink)]'}>
                 <AlertDescription>{info}</AlertDescription>
               </Alert>
             )}
@@ -400,7 +400,7 @@ const LoginPage = ({ initialError = '' }) => {
                 className={
                   isTenantLogin
                     ? 'w-full text-white transition-all hover:opacity-90'
-                    : 'w-full bg-[var(--pf-accent)] font-semibold text-[var(--pf-accent-fg)] hover:opacity-90'
+                    : 'landing-btn-primary w-full text-sm'
                 }
                 style={isTenantLogin ? { backgroundColor: primary } : undefined}
                 disabled={isLoading}
@@ -420,7 +420,7 @@ const LoginPage = ({ initialError = '' }) => {
               {forgotMode ? (
                 <button
                   type="button"
-                  className="w-full text-center text-xs text-teal-400 hover:text-teal-300"
+                  className="w-full text-center text-xs text-[var(--landing-sun)] hover:opacity-90"
                   onClick={() => {
                     setForgotMode(false);
                     setForgotSent(false);
@@ -434,7 +434,7 @@ const LoginPage = ({ initialError = '' }) => {
             ) : (
               <button
                 type="button"
-                className="w-full text-center text-xs text-teal-400 hover:text-teal-300"
+                className="w-full text-center text-xs text-[var(--landing-sun)] hover:opacity-90"
                 onClick={() => {
                   setForgotMode(false);
                   setForgotSent(false);
@@ -483,7 +483,7 @@ const LoginPage = ({ initialError = '' }) => {
               </p>
               <p className="text-center text-sm text-[var(--pf-text)]">
                 New institution?{' '}
-                <Link to="/create-institution" className="font-medium text-teal-600 hover:underline">
+                <Link to="/create-institution" className="font-semibold text-[var(--landing-sun)] hover:underline">
                   Create institution admin
                 </Link>
               </p>

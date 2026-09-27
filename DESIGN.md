@@ -10,8 +10,8 @@
 
 | Token | Hex | Role |
 |-------|-----|------|
-| limewash | `#FFFFFF` | Page ground |
-| room | `#F8FAFC` | Soft fields / feature tiles |
+| limewash | `#F7F7F7` | Page ground (matches light hero cutout) |
+| room | `#FFFFFF` | Elevated fields / feature tiles |
 | poche | `#0F172A` | Inverse CTA band, logo mark |
 | sun | `#EAB308` | Primary CTA + dashboard accent |
 | sun-soft | `#FEF3C7` | Soft washes |
@@ -26,10 +26,8 @@
 ## Components / layout rules
 
 - Corner radius 10px
-- Hero: bold brand type + transparent cutout (nudged up) over a soft fabric texture wash; light veil keeps contrast
-- Features as soft tiles (not serif ops index)
-- Sun gold reserved for primary actions
-- Light mode is the default public chrome; dark tokens stay available via theme toggle
+- Hero: light mode uses cutout `hero-tvetflow-light.png`; dark mode keeps `hero-tvetflow.png`
+- Auth surfaces (login, create institution, verify) share Ops Desk tokens via `platform-landing` (gold CTAs, Montserrat brand)
 
 ## Anti-references
 

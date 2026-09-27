@@ -1,13 +1,9 @@
 import React, { useState } from 'react'
 import { Link, useLocation } from 'react-router-dom'
+import { motion } from 'framer-motion'
 import {
   Menu,
   X,
-  Facebook,
-  Instagram,
-  Linkedin,
-  Twitter,
-  Youtube,
   Home,
   LayoutGrid,
   Info,
@@ -21,15 +17,13 @@ import {
 } from 'lucide-react'
 import ThemeToggle from '@/components/platform/ThemeToggle'
 import LanguageSwitcher from '@/components/platform/LanguageSwitcher'
+import PlatformSocialLinks, {
+  PLATFORM_SOCIAL,
+  PLATFORM_CONTACT_EMAIL,
+} from '@/components/platform/PlatformSocialLinks'
 import { usePlatformLang } from '@/contexts/PlatformLangContext'
 
-export const PLATFORM_SOCIAL = [
-  { name: 'Facebook', href: 'https://facebook.com', icon: Facebook },
-  { name: 'Instagram', href: 'https://instagram.com', icon: Instagram },
-  { name: 'LinkedIn', href: 'https://linkedin.com', icon: Linkedin },
-  { name: 'X (Twitter)', href: 'https://x.com', icon: Twitter },
-  { name: 'YouTube', href: 'https://youtube.com', icon: Youtube },
-]
+export { PLATFORM_SOCIAL, PLATFORM_CONTACT_EMAIL }
 
 const LINKS = [
   { to: '/', labelKey: 'home' as const, icon: Home, end: true },
@@ -67,7 +61,10 @@ const PlatformLayout = ({
 
   return (
     <div className="platform-public platform-landing relative min-h-screen overflow-x-hidden">
-      <header
+      <motion.header
+        initial={{ y: -28, opacity: 0 }}
+        animate={{ y: 0, opacity: 1 }}
+        transition={{ duration: 0.55, ease: [0.22, 1, 0.36, 1] }}
         className={`sticky top-0 z-30 border-b border-[var(--landing-line)] transition-[background,box-shadow] duration-300 ${
           scrolled
             ? 'bg-[var(--landing-limewash)]/95 shadow-[0_8px_24px_rgba(23,26,28,0.08)] backdrop-blur-sm'
@@ -193,7 +190,7 @@ const PlatformLayout = ({
             </div>
           </div>
         ) : null}
-      </header>
+      </motion.header>
 
       <main>{children}</main>
 
@@ -212,24 +209,13 @@ const PlatformLayout = ({
             <p className="mt-3 max-w-xs text-sm leading-relaxed text-[var(--landing-muted)]">
               Operations software for training centers — one portal per institution, one console for the platform.
             </p>
-            <div className="mt-5 flex flex-wrap gap-2">
-              {PLATFORM_SOCIAL.map((item) => {
-                const Icon = item.icon
-                return (
-                  <a
-                    key={item.name}
-                    href={item.href}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    aria-label={item.name}
-                    className="inline-flex h-9 w-9 items-center justify-center border border-[var(--landing-line)] text-[var(--landing-muted)] transition-colors hover:border-[var(--landing-ink)] hover:text-[var(--landing-ink)]"
-                    style={{ borderRadius: 'var(--landing-radius)' }}
-                  >
-                    <Icon className="h-4 w-4" />
-                  </a>
-                )
-              })}
-            </div>
+            <PlatformSocialLinks variant="footer" className="mt-5" />
+            <a
+              href={`mailto:${PLATFORM_CONTACT_EMAIL}`}
+              className="mt-3 inline-block text-sm font-semibold text-[var(--landing-sun)] hover:underline"
+            >
+              {PLATFORM_CONTACT_EMAIL}
+            </a>
           </div>
           <div>
             <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-[var(--landing-shadow)]">

@@ -33,28 +33,28 @@ const PlatformAboutPage = () => {
       <section className="relative overflow-hidden bg-[var(--pf-bg)]">
         <div className="mx-auto grid max-w-6xl items-center gap-10 px-5 py-14 sm:px-8 sm:py-20 lg:grid-cols-[1.05fr_0.95fr] lg:gap-14">
           <motion.div
-            initial={{ opacity: 0, y: 18 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5 }}
+            initial={{ opacity: 0, y: 36, filter: 'blur(10px)' }}
+            animate={{ opacity: 1, y: 0, filter: 'blur(0px)' }}
+            transition={{ duration: 0.7, ease: [0.22, 1, 0.36, 1] }}
           >
-            <p className="text-sm text-teal-600">About</p>
-            <h1 className="mt-2 font-display text-3xl font-semibold text-[var(--pf-text)] sm:text-4xl">
+            <p className="text-sm font-semibold text-[var(--landing-sun)]">About</p>
+            <h1 className="landing-display mt-2 text-3xl font-extrabold text-[var(--landing-ink)] sm:text-4xl">
               Software for centers that train people for work
             </h1>
-            <p className="mt-5 text-[15px] leading-relaxed text-[var(--pf-muted)]">
-              TvetFlow started from a simple problem: vocational schools were running students, fees, and certificates in different notebooks. Each institution gets its own portal — same teal, same type, dark or light.
+            <p className="mt-5 text-[15px] leading-relaxed text-[var(--landing-muted)]">
+              TvetFlow started from a simple problem: vocational schools were running students, fees, and certificates in different notebooks. Each institution gets its own portal — same brand, dark or light.
             </p>
-            <p className="mt-4 text-[15px] leading-relaxed text-[var(--pf-muted)]">
+            <p className="mt-4 text-[15px] leading-relaxed text-[var(--landing-muted)]">
               Institution admins register here. Instructors, staff, and students are invited from the institution page.
             </p>
-            <Button asChild variant="outline" className="mt-8 border-[var(--pf-line)] bg-transparent text-[var(--pf-text)] hover:bg-[var(--pf-hover)]">
+            <Button asChild className="landing-btn-primary mt-8 h-11 px-5 text-sm">
               <Link to="/contact">Get in touch</Link>
             </Button>
           </motion.div>
           <motion.div
-            initial={{ opacity: 0, x: 40, rotate: 1.2 }}
-            animate={{ opacity: 1, x: 0, rotate: 0 }}
-            transition={{ duration: 0.75, ease: [0.22, 1, 0.36, 1] }}
+            initial={{ opacity: 0, x: 56, rotate: 2.4, scale: 0.94 }}
+            animate={{ opacity: 1, x: 0, rotate: 0, scale: 1 }}
+            transition={{ duration: 0.9, ease: [0.22, 1, 0.36, 1] }}
           >
             <PlatformPhoto
               src={aboutSrc!}

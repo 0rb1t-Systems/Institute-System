@@ -70,7 +70,7 @@ const PlatformFeaturesPage = () => {
           <motion.p
             initial={{ opacity: 0, y: 8 }}
             animate={{ opacity: 1, y: 0 }}
-            className="text-sm text-teal-600"
+            className="text-sm font-semibold text-[var(--landing-sun)]"
           >
             Product
           </motion.p>
@@ -100,38 +100,52 @@ const PlatformFeaturesPage = () => {
             key={item.title}
             className={`border-t border-[var(--pf-line)] ${i % 2 === 1 ? 'bg-[var(--pf-bg-2)]' : ''}`}
           >
-            <div
-              className={`mx-auto grid max-w-6xl items-center gap-8 px-5 py-12 sm:px-8 lg:grid-cols-2 lg:gap-14 ${
-                imageFirst ? '' : ''
-              }`}
-            >
-              <div className={imageFirst ? 'lg:order-2' : ''}>
+            <div className="mx-auto grid max-w-6xl items-center gap-8 px-5 py-12 sm:px-8 lg:grid-cols-2 lg:gap-14">
+              <motion.div
+                className={imageFirst ? 'lg:order-2' : ''}
+                initial={{ opacity: 0, x: imageFirst ? 36 : -36, filter: 'blur(8px)' }}
+                whileInView={{ opacity: 1, x: 0, filter: 'blur(0px)' }}
+                viewport={{ once: true, margin: '-60px' }}
+                transition={{ duration: 0.7, ease: [0.22, 1, 0.36, 1] }}
+              >
                 <h2 className="font-display text-2xl font-semibold text-[var(--pf-text)]">{item.title}</h2>
                 <p className="mt-3 text-[15px] leading-relaxed text-[var(--pf-muted)]">{item.body}</p>
                 <p className="mt-4 text-sm text-[var(--pf-faint)]">{item.caption}</p>
-              </div>
-              <div className={imageFirst ? 'lg:order-1' : ''}>
+              </motion.div>
+              <motion.div
+                className={imageFirst ? 'lg:order-1' : ''}
+                initial={{ opacity: 0, y: 40, scale: 0.94 }}
+                whileInView={{ opacity: 1, y: 0, scale: 1 }}
+                viewport={{ once: true, margin: '-60px' }}
+                transition={{ duration: 0.75, delay: 0.08, ease: [0.22, 1, 0.36, 1] }}
+              >
                 <PlatformPhoto
                   src={item.image!}
                   alt={item.title}
                   objectPosition={item.objectPosition}
                   className="h-56 w-full sm:h-72"
                 />
-              </div>
+              </motion.div>
             </div>
           </section>
         )
       })}
 
       <section className="border-t border-[var(--pf-line)] px-5 py-14 sm:px-8">
-        <div className="mx-auto max-w-6xl text-center">
+        <motion.div
+          className="mx-auto max-w-6xl text-center"
+          initial={{ opacity: 0, y: 28 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true }}
+          transition={{ duration: 0.55 }}
+        >
           <Button asChild className="bg-[var(--pf-accent)] font-semibold text-[var(--pf-accent-fg)] hover:opacity-90">
             <Link to="/create-institution">
               Create institution
               <ArrowRight className="ml-2 h-4 w-4" />
             </Link>
           </Button>
-        </div>
+        </motion.div>
       </section>
     </PlatformLayout>
   )

@@ -28,7 +28,7 @@ const CREATE_STEPS = [
   { id: 'template' as const, n: 3, label: '3. Landing template', short: 'Template' },
 ]
 
-const GOLD = '#E8C547'
+const GOLD = '#EAB308'
 
 const empty = {
   institution_name: '',
@@ -238,18 +238,18 @@ const PublicCreateInstitutionPage = () => {
         : 'Choose landing template · TvetFlow'
 
   const fieldClass =
-    'border-[var(--pf-line)] bg-[var(--pf-bg)] text-[var(--pf-text)] placeholder:text-[var(--pf-faint)]'
+    'border-[var(--landing-line)] bg-[var(--landing-limewash)] text-[var(--landing-ink)] placeholder:text-[var(--landing-shadow)]'
 
   return (
-    <div className="platform-public relative min-h-screen overflow-x-hidden font-sans">
+    <div className="platform-public platform-landing relative min-h-screen overflow-x-hidden">
       <Helmet>
         <title>{title}</title>
       </Helmet>
 
       <div className={`relative z-10 mx-auto px-4 py-10 sm:py-14 ${step === 'template' ? 'max-w-5xl' : 'max-w-xl'}`}>
         <div className="mb-8 flex items-center justify-between gap-3">
-          <Link to="/" className="font-display text-lg font-bold tracking-tight text-[var(--pf-text)]">
-            Tvet<span className="text-teal-500">Flow</span>
+          <Link to="/" className="landing-display text-lg font-extrabold tracking-tight text-[var(--landing-ink)]">
+            Tvet<span className="text-[var(--landing-sun)]">Flow</span>
           </Link>
           <div className="flex items-center gap-2">
             <ThemeToggle />
@@ -339,15 +339,18 @@ const PublicCreateInstitutionPage = () => {
                 transition={{ duration: 0.32, ease: [0.22, 1, 0.36, 1] }}
               >
                 <div>
-                  <h1 className="font-display text-2xl font-bold text-[var(--pf-text)] sm:text-3xl">
+                  <h1 className="landing-display text-2xl font-extrabold text-[var(--landing-ink)] sm:text-3xl">
                     Create your admin account
                   </h1>
-                  <p className="mt-2 text-sm leading-relaxed text-[var(--pf-muted)]">
+                  <p className="mt-2 text-sm leading-relaxed text-[var(--landing-muted)]">
                     This is the only account you create on TvetFlow. After this, you will set up your institution and landing page.
                   </p>
                 </div>
 
-                <div className="space-y-4 rounded-xl border border-[var(--pf-line)] bg-[var(--pf-surface)] p-5 shadow-sm">
+                <div
+                  className="space-y-4 border border-[var(--landing-line)] bg-[var(--landing-room)] p-5 shadow-sm"
+                  style={{ borderRadius: 'var(--landing-radius)' }}
+                >
                   <div className="space-y-2">
                     <Label htmlFor="admin_full_name" className="text-[var(--pf-text)]">Full name</Label>
                     <Input
@@ -426,7 +429,7 @@ const PublicCreateInstitutionPage = () => {
                   <p className="text-xs text-[var(--pf-faint)]">At least 8 characters.</p>
                 </div>
 
-                <Button type="submit" className="h-11 w-full bg-[var(--pf-accent)] font-semibold text-[var(--pf-accent-fg)] hover:opacity-90">
+                <Button type="submit" className="landing-btn-primary h-11 w-full text-sm">
                   Continue
                   <ArrowRight className="ml-2 h-4 w-4" />
                 </Button>
@@ -444,15 +447,18 @@ const PublicCreateInstitutionPage = () => {
                 transition={{ duration: 0.32, ease: [0.22, 1, 0.36, 1] }}
               >
                 <div>
-                  <h1 className="font-display text-2xl font-bold text-[var(--pf-text)] sm:text-3xl">
+                  <h1 className="landing-display text-2xl font-extrabold text-[var(--landing-ink)] sm:text-3xl">
                     Create your institution
                   </h1>
-                  <p className="mt-2 text-sm leading-relaxed text-[var(--pf-muted)]">
-                    Admin: <span className="text-[var(--pf-text)]">{form.admin_email}</span> — next you will choose a landing template.
+                  <p className="mt-2 text-sm leading-relaxed text-[var(--landing-muted)]">
+                    Admin: <span className="text-[var(--landing-ink)]">{form.admin_email}</span> — next you will choose a landing template.
                   </p>
                 </div>
 
-                <div className="space-y-4 rounded-xl border border-[var(--pf-line)] bg-[var(--pf-surface)] p-5 shadow-sm">
+                <div
+                  className="space-y-4 border border-[var(--landing-line)] bg-[var(--landing-room)] p-5 shadow-sm"
+                  style={{ borderRadius: 'var(--landing-radius)' }}
+                >
                   <div className="space-y-2">
                     <Label htmlFor="institution_name" className="text-[var(--pf-text)]">Institution name</Label>
                     <Input
@@ -527,7 +533,7 @@ const PublicCreateInstitutionPage = () => {
                   >
                     Back
                   </Button>
-                  <Button type="submit" className="h-11 flex-1 bg-[var(--pf-accent)] font-semibold text-[var(--pf-accent-fg)] hover:opacity-90">
+                  <Button type="submit" className="landing-btn-primary h-11 flex-1 text-sm">
                     Continue to templates
                     <ArrowRight className="ml-2 h-4 w-4" />
                   </Button>
@@ -565,7 +571,7 @@ const PublicCreateInstitutionPage = () => {
                     type="button"
                     disabled={saving}
                     onClick={handleCreate}
-                    className="h-11 flex-1 bg-[var(--pf-accent)] font-semibold text-[var(--pf-accent-fg)] hover:opacity-90"
+                    className="landing-btn-primary h-11 flex-1 text-sm"
                   >
                     {saving ? (
                       <>
