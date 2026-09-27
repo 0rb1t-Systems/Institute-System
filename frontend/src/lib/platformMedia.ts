@@ -2,7 +2,7 @@ import { supabase } from '@/lib/supabaseClient'
 
 /** Documentary photo defaults for the public platform site. */
 export const PLATFORM_PHOTO_DEFAULTS = {
-  hero: '/platform/hero-dashboard.jpg',
+  hero: '/platform/hero-tvetflow.png',
   workshop:
     'https://images.unsplash.com/photo-1581092918056-0c4c3acd3789?auto=format&fit=crop&w=1600&q=80',
   classroom:

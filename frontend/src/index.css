@@ -407,6 +407,126 @@ html[data-platform-theme='light'] {
   --pf-accent-fg: #ffffff;
 }
 
+/* Platform landing world — Ops Desk light brand (dashboard gold + geometric sans). */
+.platform-landing {
+  --landing-limewash: #ffffff;
+  --landing-poche: #0f172a;
+  --landing-sun: #eab308;
+  --landing-sun-soft: #fef3c7;
+  --landing-shadow: #64748b;
+  --landing-ink: #0f172a;
+  --landing-muted: #64748b;
+  --landing-line: #e2e8f0;
+  --landing-room: #f8fafc;
+  --landing-room-dim: #f1f5f9;
+  --landing-on-sun: #0f172a;
+  --landing-on-poche: #f8fafc;
+  --landing-radius: 10px;
+  --landing-font-display: 'Montserrat', 'Segoe UI', sans-serif;
+  --landing-font-body: 'DM Sans', 'Segoe UI', sans-serif;
+  --pf-bg: var(--landing-limewash);
+  --pf-bg-2: var(--landing-room);
+  --pf-surface: var(--landing-room);
+  --pf-text: var(--landing-ink);
+  --pf-muted: var(--landing-muted);
+  --pf-faint: var(--landing-shadow);
+  --pf-line: var(--landing-line);
+  --pf-hover: rgba(15, 23, 42, 0.04);
+  --pf-accent: var(--landing-sun);
+  --pf-accent-fg: var(--landing-on-sun);
+  background: var(--landing-limewash);
+  color: var(--landing-ink);
+  font-family: var(--landing-font-body);
+}
+
+html[data-platform-theme='dark'] .platform-landing {
+  --landing-limewash: #0b1220;
+  --landing-poche: #020617;
+  --landing-sun: #facc15;
+  --landing-sun-soft: #422006;
+  --landing-shadow: #94a3b8;
+  --landing-ink: #f1f5f9;
+  --landing-muted: #94a3b8;
+  --landing-line: #1e293b;
+  --landing-room: #111827;
+  --landing-room-dim: #1e293b;
+  --landing-on-sun: #0f172a;
+  --landing-on-poche: #f8fafc;
+}
+
+/* Fabric wash reads softer on dark ground */
+html[data-platform-theme='dark'] .platform-landing .landing-hero-fabric {
+  opacity: 0.16;
+}
+
+html[data-platform-theme='dark'] .platform-landing .landing-hero-fabric-veil {
+  background:
+    linear-gradient(180deg, rgba(11,18,32,0.78) 0%, rgba(11,18,32,0.7) 50%, rgba(17,24,39,0.88) 100%),
+    radial-gradient(ellipse 55% 50% at 88% 35%, rgba(250,204,21,0.08) 0%, transparent 70%) !important;
+}
+
+.platform-landing .font-display,
+.platform-landing .landing-display {
+  font-family: var(--landing-font-display);
+  font-weight: 800;
+  letter-spacing: -0.04em;
+}
+
+.platform-landing .platform-brand-text {
+  font-family: var(--landing-font-display);
+  font-weight: 800;
+  letter-spacing: -0.03em;
+}
+
+.platform-landing .landing-btn-primary {
+  border-radius: var(--landing-radius);
+  background: var(--landing-sun);
+  color: var(--landing-on-sun);
+  font-weight: 700;
+  box-shadow: 0 10px 24px rgba(234, 179, 8, 0.28);
+}
+
+.platform-landing .landing-btn-primary:hover {
+  filter: brightness(0.97);
+}
+
+.platform-landing .landing-btn-outline {
+  border-radius: var(--landing-radius);
+  border: 1.5px solid color-mix(in srgb, var(--landing-ink) 18%, transparent);
+  background: transparent;
+  color: var(--landing-ink);
+  font-weight: 700;
+}
+
+.platform-landing .landing-btn-outline:hover {
+  background: var(--pf-hover);
+  border-color: color-mix(in srgb, var(--landing-ink) 35%, transparent);
+}
+
+.platform-landing .landing-hairline {
+  border-color: var(--landing-line);
+}
+
+.platform-landing header .rounded-lg,
+.platform-landing header .rounded-md,
+.platform-landing footer .rounded-lg,
+.platform-landing footer .rounded-md {
+  border-radius: var(--landing-radius);
+}
+
+.platform-landing header a.after\:rounded-full::after {
+  border-radius: 0;
+}
+
+@keyframes landing-sunbeam {
+  0%, 100% { transform: translateX(0); opacity: 0.85; }
+  50% { transform: translateX(28px); opacity: 1; }
+}
+
+.landing-sunbeam {
+  animation: landing-sunbeam 9s cubic-bezier(0.22, 1, 0.36, 1) infinite;
+}
+
 html[data-platform-theme='dark'] {
   --pf-bg: #061512;
   --pf-bg-2: #071816;
@@ -424,6 +544,12 @@ html[data-platform-theme='dark'] {
   background: var(--pf-bg);
   color: var(--pf-text);
   min-height: 100%;
+  font-family: var(--landing-font-body, 'DM Sans', 'Segoe UI', system-ui, sans-serif);
+}
+
+.platform-public .platform-brand-text {
+  font-family: var(--landing-font-display, 'Montserrat', 'Segoe UI', sans-serif);
+  letter-spacing: -0.03em;
 }
 
 .platform-shell {

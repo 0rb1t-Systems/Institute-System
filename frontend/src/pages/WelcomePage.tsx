@@ -2,55 +2,31 @@ import React, { useEffect, useState } from 'react'
 import { Helmet } from 'react-helmet'
 import { Link, useSearchParams } from 'react-router-dom'
 import { motion } from 'framer-motion'
-import {
-  ArrowRight,
-  Shield,
-  Users,
-  BarChart3,
-  Cloud,
-  Building2,
-  LayoutDashboard,
-  GraduationCap,
-  CreditCard,
-  FileBadge,
-  Globe2,
-} from 'lucide-react'
-import { Button } from '@/components/ui/button'
+import { ArrowRight } from 'lucide-react'
 import { Dialog, DialogContent } from '@/components/ui/dialog'
 import { resolvePublicTenantSubdomain } from '@/lib/institution'
 import TenantHomePage from '@/pages/public/TenantHomePage'
 import StudentIdentityVerify from '@/components/public/StudentIdentityVerify'
-import PlatformLayout, { PLATFORM_SOCIAL } from '@/components/platform/PlatformLayout'
-import PlatformPhoto from '@/components/platform/PlatformPhoto'
+import PlatformLayout from '@/components/platform/PlatformLayout'
 import {
-  PLATFORM_PHOTO_DEFAULTS,
   getPublicSiteCms,
   type SiteTrustedItem,
 } from '@/lib/platformMedia'
 import { usePlatformLang } from '@/contexts/PlatformLangContext'
 
-const HERO_PILLS = [
-  { icon: Shield, labelKey: 'secureReliable' as const, bg: 'bg-emerald-100', fg: 'text-emerald-700' },
-  { icon: Users, labelKey: 'multiTenant' as const, bg: 'bg-amber-100', fg: 'text-amber-700' },
-  { icon: BarChart3, labelKey: 'powerfulInsights' as const, bg: 'bg-violet-100', fg: 'text-violet-700' },
-  { icon: Cloud, labelKey: 'cloudBased' as const, bg: 'bg-sky-100', fg: 'text-sky-700' },
-]
+const HERO_ILLUSTRATION = '/platform/hero-tvetflow.png'
 
 const FEATURES = [
-  { icon: Building2, title: 'Institution portal', body: 'Logo, colors, and a public page that belongs to the center.' },
-  { icon: LayoutDashboard, title: 'Admin console', body: 'Classes, staff, enrollments, and day-to-day work in one place.' },
-  { icon: GraduationCap, title: 'Learning', body: 'Programs, schedules, and progress without a second system.' },
-  { icon: Users, title: 'Roles', body: 'Staff, instructors, affiliates, and students join from the institution page.' },
-  { icon: CreditCard, title: 'Payments', body: 'Registration fees and tuition records that match the register.' },
-  { icon: FileBadge, title: 'Credentials', body: 'Certificates and transcripts using the same brand as the landing page.' },
-  { icon: Shield, title: 'Secure isolation', body: 'Every institution’s data stays private — multi-tenant from day one.' },
-  { icon: Globe2, title: 'Ready to grow', body: 'Start locally today; move to your domain when you are ready.' },
+  { code: '01', title: 'Institution portal', body: 'Your logo, colors, and public page — branded to the center.' },
+  { code: '02', title: 'Day-to-day ops', body: 'Students, classes, attendance, and staff in one console.' },
+  { code: '03', title: 'Payments', body: 'Fees and tuition that match the register.' },
+  { code: '04', title: 'Credentials', body: 'Certificates and transcripts in your own brand.' },
 ]
 
 const STEPS = [
-  { n: '01', title: 'Create admin', body: 'Open an institution admin account on TvetFlow.' },
-  { n: '02', title: 'Set up institution', body: 'Add your center name, contact details, and slug.' },
-  { n: '03', title: 'Open your portal', body: 'Sign in and start managing training operations.' },
+  { title: 'Create admin', body: 'Open an institution admin account.' },
+  { title: 'Set up institution', body: 'Add your center name and details.' },
+  { title: 'Open your portal', body: 'Sign in and start running operations.' },
 ]
 
 const WelcomePage = () => {
@@ -58,7 +34,6 @@ const WelcomePage = () => {
   const { t } = usePlatformLang()
   const [verifyOpen, setVerifyOpen] = useState(false)
   const [trusted, setTrusted] = useState<SiteTrustedItem[]>([])
-  const [photos, setPhotos] = useState(PLATFORM_PHOTO_DEFAULTS)
   const tenant =
     searchParams.get('tenant') ||
     searchParams.get('subdomain') ||
@@ -71,9 +46,8 @@ const WelcomePage = () => {
         const cms = await getPublicSiteCms()
         if (cancelled) return
         setTrusted(cms.trusted.filter((item) => item.logo_url))
-        setPhotos(cms.photos)
       } catch {
-        /* keep defaults */
+        /* keep empty */
       }
     })()
     return () => {
@@ -91,261 +65,191 @@ const WelcomePage = () => {
         <title>TvetFlow — Training center platform</title>
       </Helmet>
 
-      <section className="relative overflow-x-clip border-b border-[var(--pf-line)] bg-[var(--pf-bg)]">
-        <div className="mx-auto grid max-w-6xl items-start gap-12 px-5 py-12 sm:px-8 sm:py-16 lg:grid-cols-[1.05fr_0.95fr] lg:gap-10 lg:overflow-visible lg:py-16">
+      {/* Light hero — fabric wash + cutout illustration */}
+      <section className="relative overflow-hidden border-b border-[var(--landing-line)] bg-[var(--landing-limewash)]">
+        <div
+          className="landing-hero-fabric pointer-events-none absolute inset-0 opacity-[0.09]"
+          aria-hidden
+          style={{
+            backgroundImage: 'url(/platform/hero-fabric.png)',
+            backgroundSize: 'cover',
+            backgroundPosition: 'center',
+            backgroundRepeat: 'no-repeat',
+          }}
+        />
+        <div
+          className="landing-hero-fabric-veil pointer-events-none absolute inset-0"
+          aria-hidden
+          style={{
+            background:
+              'linear-gradient(180deg, rgba(255,255,255,0.82) 0%, rgba(255,255,255,0.72) 45%, rgba(248,250,252,0.88) 100%), radial-gradient(ellipse 55% 50% at 88% 35%, rgba(234,179,8,0.1) 0%, transparent 70%)',
+          }}
+        />
+
+        <div className="relative mx-auto grid max-w-6xl items-center gap-4 px-5 pb-4 pt-8 sm:gap-6 sm:px-8 sm:pb-8 sm:pt-12 lg:grid-cols-[minmax(0,0.92fr)_minmax(0,1.08fr)] lg:gap-2 lg:px-10 lg:pb-6 lg:pt-6 xl:px-16">
           <motion.div
-            initial={{ opacity: 0, y: 18 }}
+            initial={{ opacity: 0, y: 16 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
+            transition={{ duration: 0.55, ease: [0.22, 1, 0.36, 1] }}
+            className="relative z-10 max-w-xl lg:pb-4"
           >
-            <p className="inline-flex items-center rounded-md bg-teal-50 px-3 py-1 text-xs font-semibold text-teal-700 [html[data-platform-theme='dark']_&]:bg-teal-500/15 [html[data-platform-theme='dark']_&]:text-teal-300">
-              {t('heroBadge')}
-            </p>
-
-            <h1 className="mt-5 max-w-xl font-display text-[2rem] font-bold leading-[1.15] tracking-tight text-[var(--pf-text)] sm:text-[2.75rem]">
-              {t('heroTitleA')} <span className="text-[var(--pf-accent)]">{t('heroTitleAccent')}</span>
-              <br />
-              {t('heroTitleB')}
-            </h1>
-
-            <p className="mt-4 max-w-md text-[15px] leading-relaxed text-[var(--pf-muted)]">
-              {t('heroBody')}
-            </p>
-
-            <div className="mt-7 flex w-full flex-col gap-3 sm:flex-row sm:flex-wrap">
-              <Button
-                asChild
-                size="lg"
-                className="h-11 w-full rounded-lg bg-[var(--pf-accent)] px-5 font-semibold text-[var(--pf-accent-fg)] hover:opacity-90 sm:w-auto"
-              >
-                <Link to="/create-institution">
-                  {t('createInstitution')}
-                  <ArrowRight className="ml-2 h-4 w-4" />
-                </Link>
-              </Button>
-              <Button
-                type="button"
-                size="lg"
-                variant="outline"
-                className="h-11 w-full rounded-lg border-[var(--pf-line)] bg-[var(--pf-surface)] font-semibold text-[var(--pf-text)] hover:bg-[var(--pf-hover)] sm:w-auto"
-                onClick={() => setVerifyOpen(true)}
-              >
-                {t('verifyIdentity')}
-              </Button>
-            </div>
-
-            <div className="mt-6 flex flex-wrap items-center gap-3" aria-label="Social media">
-              {PLATFORM_SOCIAL.map((item, i) => {
-                const Icon = item.icon
-                return (
-                  <a
-                    key={item.name}
-                    href={item.href}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    aria-label={item.name}
-                    className="platform-hero-social landing-social-icon inline-flex h-10 w-10 items-center justify-center rounded-full border transition hover:scale-110"
-                    style={{ animationDelay: `${i * 0.22}s` }}
-                  >
-                    <Icon className="h-4 w-4" />
-                  </a>
-                )
-              })}
-            </div>
-          </motion.div>
-
-          <motion.div
-            initial={{ opacity: 0, y: 24 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.65, delay: 0.1, ease: [0.22, 1, 0.36, 1] }}
-            className="platform-preview-bob relative mx-auto min-w-0 max-w-xl pb-10 pt-8 sm:pb-12 sm:pt-10 lg:max-w-none lg:pb-14 lg:pt-12"
-          >
-            <div className="overflow-hidden rounded-[2.25rem] border border-[var(--pf-line)] bg-[var(--pf-surface)] shadow-[0_20px_50px_rgba(15,23,42,0.12)] sm:rounded-[2.75rem]">
-              <img
-                src={photos.hero || PLATFORM_PHOTO_DEFAULTS.hero}
-                alt="TvetFlow dashboard on desktop and mobile"
-                className="block h-auto w-full rounded-[2.25rem] object-cover object-center sm:rounded-[2.75rem]"
-              />
-            </div>
-
-            {/* Feature icons orbiting the hero image */}
-            <ul className="pointer-events-none absolute inset-0" aria-label="Platform highlights">
-              {HERO_PILLS.map((item, i) => {
-                const Icon = item.icon
-                const spot = [
-                  'left-0 top-0 -translate-x-1 sm:-translate-x-3',
-                  'right-0 top-1 translate-x-0 sm:translate-x-3',
-                  'bottom-2 left-0 -translate-x-0 sm:-translate-x-2 sm:bottom-4',
-                  'bottom-0 right-1 translate-x-0 sm:bottom-2 sm:translate-x-2',
-                ][i]
-                return (
-                  <li key={item.labelKey} className={`absolute ${spot}`}>
-                    <motion.div
-                      initial={{ opacity: 0, scale: 0.85 }}
-                      animate={{ opacity: 1, scale: 1 }}
-                      transition={{ duration: 0.45, delay: 0.35 + i * 0.08 }}
-                      className="pointer-events-auto flex items-center gap-2 rounded-2xl border border-[var(--pf-line)] bg-[var(--pf-surface)]/95 px-2.5 py-2 shadow-[0_10px_28px_rgba(15,23,42,0.14)] backdrop-blur-sm"
-                    >
-                      <span
-                        className={`inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-2xl ${item.bg} ${item.fg} [html[data-platform-theme='dark']_&]:bg-white/10 [html[data-platform-theme='dark']_&]:text-teal-300`}
-                      >
-                        <Icon className="h-4 w-4" />
-                      </span>
-                      <span className="hidden max-w-[5.5rem] text-[11px] font-semibold leading-snug text-[var(--pf-text)] sm:block">
-                        {t(item.labelKey)}
-                      </span>
-                    </motion.div>
-                  </li>
-                )
-              })}
-            </ul>
-          </motion.div>
-        </div>
-
-        {trusted.length > 0 ? (
-          <div className="border-t border-[var(--pf-line)] bg-[var(--pf-bg-2)]">
-            <div className="mx-auto max-w-6xl px-5 pt-8 sm:px-8">
-              <p className="text-center text-sm font-medium text-[var(--pf-muted)]">
-                {t('trustedBy')}
+            <div className="relative">
+              <h1 className="landing-display text-[2.75rem] font-black leading-[0.92] text-[var(--landing-ink)] sm:text-6xl lg:text-[4.75rem]">
+                TvetFlow
+              </h1>
+              <p className="landing-display mt-4 text-[1.45rem] font-extrabold leading-[1.12] text-[var(--landing-ink)] sm:mt-5 sm:text-[2.1rem] lg:text-[2.35rem]">
+                {t('heroTitleA')} {t('heroTitleAccent')}
+                <br />
+                {t('heroTitleB')}
               </p>
-            </div>
-            <div className="trusted-marquee mt-6 pb-8" aria-label="Trusted partner logos">
-              <div className="trusted-marquee-track gap-4 px-4 sm:gap-5">
-                {(() => {
-                  const padded: typeof trusted = []
-                  while (padded.length < 6) {
-                    for (const item of trusted) {
-                      padded.push(item)
-                      if (padded.length >= 6) break
-                    }
-                  }
-                  return [...padded, ...padded].map((item, i) => (
-                    <div
-                      key={`${item.id}-${i}`}
-                      className="trusted-logo-slot"
-                      aria-hidden={i >= padded.length}
-                    >
-                      <img
-                        src={item.logo_url}
-                        alt={i < padded.length ? item.name || 'Partner logo' : ''}
-                      />
-                    </div>
-                  ))
-                })()}
+              <p className="mt-4 max-w-md text-[15px] font-medium leading-relaxed text-[var(--landing-muted)] sm:text-base">
+                {t('heroBody')}
+              </p>
+              <div className="mt-6 flex w-full flex-col gap-3 sm:mt-8 sm:flex-row sm:flex-wrap">
+                <Link
+                  to="/create-institution"
+                  className="landing-btn-primary inline-flex h-12 items-center justify-center gap-2 px-6 text-sm sm:w-auto"
+                >
+                  {t('createInstitution')}
+                  <ArrowRight className="h-4 w-4" />
+                </Link>
+                <button
+                  type="button"
+                  className="landing-btn-outline inline-flex h-12 items-center justify-center px-6 text-sm sm:w-auto"
+                  onClick={() => setVerifyOpen(true)}
+                >
+                  {t('verifyIdentity')}
+                </button>
               </div>
             </div>
-          </div>
-        ) : null}
-      </section>
+          </motion.div>
 
-      <section className="border-b border-[var(--pf-line)] bg-[var(--pf-bg)]">
-        <div className="mx-auto grid max-w-6xl gap-8 px-5 py-14 sm:px-8 lg:grid-cols-[0.9fr_1.1fr] lg:items-center">
-          <div>
-            <p className="text-sm font-medium text-[var(--pf-accent)]">On the floor</p>
-            <h2 className="mt-2 font-display text-2xl font-semibold text-[var(--pf-text)] sm:text-3xl">
-              Workshops, classrooms, and the admin desk
-            </h2>
-            <p className="mt-4 text-[15px] leading-relaxed text-[var(--pf-muted)]">
-              Built around how a training center actually runs — from the shop floor to the front desk.
-            </p>
-            <Link to="/features" className="mt-6 inline-flex items-center text-sm font-semibold text-[var(--pf-accent)] hover:underline">
-              See what is included
-              <ArrowRight className="ml-1 h-4 w-4" />
-            </Link>
-          </div>
-          <div className="grid grid-cols-2 gap-3">
-            {[
-              { src: photos.workshop, alt: 'Technical workshop', className: 'h-44 sm:h-56' },
-              { src: photos.classroom, alt: 'Training classroom', className: 'mt-6 h-44 sm:h-56' },
-              { src: photos.operations, alt: 'Admin desk', className: 'h-44 sm:h-56' },
-              { src: photos.students, alt: 'Students', className: 'mt-6 h-44 sm:h-56' },
-            ].map((photo, i) => (
-              <motion.div
-                key={photo.alt}
-                initial={{ opacity: 0, y: 20 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true, amount: 0.3 }}
-                transition={{ duration: 0.5, delay: i * 0.08 }}
-              >
-                <PlatformPhoto src={photo.src!} alt={photo.alt} className={photo.className} />
-              </motion.div>
-            ))}
-          </div>
+          <motion.div
+            initial={{ opacity: 0, y: 18, filter: 'blur(8px)' }}
+            animate={{ opacity: 1, y: 0, filter: 'blur(0px)' }}
+            transition={{ duration: 0.7, delay: 0.08, ease: [0.22, 1, 0.36, 1] }}
+            className="relative z-0 -mx-2 flex items-center justify-center sm:mx-0 lg:-mr-8 lg:-mt-8 lg:min-h-[480px] lg:justify-end xl:-mr-12 xl:-mt-10"
+          >
+            <img
+              src={HERO_ILLUSTRATION}
+              alt="Administrator running a training center on TvetFlow"
+              className="block h-auto w-full max-w-[640px] object-contain object-center drop-shadow-[0_28px_56px_rgba(15,23,42,0.16)] lg:max-w-none lg:w-[115%] lg:-translate-y-6 lg:translate-x-2"
+            />
+          </motion.div>
         </div>
       </section>
 
-      <section id="features" className="border-b border-[var(--pf-line)] bg-[var(--pf-bg-2)] px-5 py-14 sm:px-8">
+      {trusted.length > 0 ? (
+        <section className="border-b border-[var(--landing-line)] bg-[var(--landing-room)] py-8">
+          <p className="px-5 text-center text-xs font-semibold uppercase tracking-[0.14em] text-[var(--landing-muted)] sm:px-8">
+            {t('trustedBy')}
+          </p>
+          <div className="trusted-marquee mt-5" aria-label="Trusted partner logos">
+            <div className="trusted-marquee-track gap-4 px-4 sm:gap-5">
+              {(() => {
+                const padded: typeof trusted = []
+                while (padded.length < 6) {
+                  for (const item of trusted) {
+                    padded.push(item)
+                    if (padded.length >= 6) break
+                  }
+                }
+                return [...padded, ...padded].map((item, i) => (
+                  <div key={`${item.id}-${i}`} className="trusted-logo-slot" aria-hidden={i >= padded.length}>
+                    <img src={item.logo_url} alt={i < padded.length ? item.name || 'Partner logo' : ''} />
+                  </div>
+                ))
+              })()}
+            </div>
+          </div>
+        </section>
+      ) : null}
+
+      <section id="features" className="border-b border-[var(--landing-line)] bg-[var(--landing-limewash)] px-5 py-14 sm:px-8 lg:px-16">
         <div className="mx-auto max-w-6xl">
-          <h2 className="font-display text-2xl font-semibold text-[var(--pf-text)] sm:text-3xl">
-            Everything your institution needs
+          <h2 className="landing-display text-3xl font-extrabold tracking-tight text-[var(--landing-ink)] sm:text-4xl">
+            What you run from day one
           </h2>
-          <div className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-            {FEATURES.map((item, i) => {
-              const Icon = item.icon
-              return (
-                <motion.article
-                  key={item.title}
-                  initial={{ opacity: 0, y: 12 }}
-                  whileInView={{ opacity: 1, y: 0 }}
-                  viewport={{ once: true, margin: '-40px' }}
-                  transition={{ duration: 0.4, delay: (i % 4) * 0.05, ease: [0.22, 1, 0.36, 1] }}
-                  whileHover={{ y: -3 }}
-                  className="rounded-xl border border-[var(--pf-line)] bg-[var(--pf-surface)] p-5"
-                >
-                  <span className="mb-4 inline-flex h-10 w-10 items-center justify-center rounded-lg bg-teal-50 text-teal-700 [html[data-platform-theme='dark']_&]:bg-teal-500/15 [html[data-platform-theme='dark']_&]:text-teal-300">
-                    <Icon className="h-5 w-5" />
-                  </span>
-                  <h3 className="font-display text-base font-semibold text-[var(--pf-text)]">{item.title}</h3>
-                  <p className="mt-2 text-sm leading-relaxed text-[var(--pf-muted)]">{item.body}</p>
-                </motion.article>
-              )
-            })}
-          </div>
-        </div>
-      </section>
-
-      <section className="border-b border-[var(--pf-line)] bg-[var(--pf-bg)] px-5 py-14 sm:px-8">
-        <div className="mx-auto max-w-6xl">
-          <h2 className="font-display text-2xl font-semibold text-[var(--pf-text)]">Three simple steps</h2>
-          <div className="mt-8 grid gap-4 md:grid-cols-3">
-            {STEPS.map((item, i) => (
+          <div className="mt-8 grid gap-4 sm:grid-cols-2">
+            {FEATURES.map((item, i) => (
               <motion.article
-                key={item.n}
-                initial={{ opacity: 0, y: 16 }}
+                key={item.code}
+                initial={{ opacity: 0, y: 10 }}
                 whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true }}
-                transition={{ duration: 0.45, delay: i * 0.08 }}
-                className="rounded-xl border border-[var(--pf-line)] bg-[var(--pf-surface)] p-6"
+                viewport={{ once: true, margin: '-20px' }}
+                transition={{ duration: 0.35, delay: i * 0.05 }}
+                className="border border-[var(--landing-line)] bg-[var(--landing-room)] p-5 sm:p-6"
+                style={{ borderRadius: 'var(--landing-radius)' }}
               >
-                <p className="font-display text-3xl font-bold text-[var(--pf-accent)]/35">{item.n}</p>
-                <h3 className="mt-2 font-display text-lg font-semibold text-[var(--pf-text)]">{item.title}</h3>
-                <p className="mt-2 text-sm leading-relaxed text-[var(--pf-muted)]">{item.body}</p>
+                <p className="text-xs font-bold tracking-[0.16em] text-[var(--landing-sun)]">{item.code}</p>
+                <h3 className="landing-display mt-2 text-xl font-extrabold text-[var(--landing-ink)]">{item.title}</h3>
+                <p className="mt-2 text-sm leading-relaxed text-[var(--landing-muted)] sm:text-[15px]">{item.body}</p>
               </motion.article>
             ))}
           </div>
         </div>
       </section>
 
-      <section className="bg-[var(--pf-bg-2)] px-5 py-14 sm:px-8">
-        <div className="mx-auto max-w-6xl rounded-2xl border border-[var(--pf-line)] bg-[var(--pf-surface)] px-6 py-10 sm:px-10">
-          <h2 className="font-display text-2xl font-semibold text-[var(--pf-text)]">Ready to open your institution?</h2>
-          <p className="mt-2 max-w-lg text-sm text-[var(--pf-muted)]">
-            Start with your admin account. You can set up the institution right after.
-          </p>
-          <div className="mt-6 flex flex-wrap gap-3">
-            <Button asChild className="bg-[var(--pf-accent)] font-semibold text-[var(--pf-accent-fg)] hover:opacity-90">
-              <Link to="/create-institution">{t('createInstitution')}</Link>
-            </Button>
-            <Button asChild variant="outline" className="border-[var(--pf-line)] bg-transparent text-[var(--pf-text)] hover:bg-[var(--pf-hover)]">
-              <Link to="/login">{t('logIn')}</Link>
-            </Button>
+      <section className="border-b border-[var(--landing-line)] bg-[var(--landing-room)] px-5 py-14 sm:px-8 lg:px-16">
+        <div className="mx-auto max-w-6xl">
+          <h2 className="landing-display text-3xl font-extrabold tracking-tight text-[var(--landing-ink)] sm:text-4xl">
+            Open in three moves
+          </h2>
+          <div className="mt-10 grid gap-8 md:grid-cols-3">
+            {STEPS.map((item, i) => (
+              <motion.article
+                key={item.title}
+                initial={{ opacity: 0, y: 14 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true }}
+                transition={{ duration: 0.4, delay: i * 0.08 }}
+              >
+                <div className="mb-4 h-1.5 w-12 rounded-full bg-[var(--landing-sun)]" />
+                <h3 className="landing-display text-xl font-extrabold text-[var(--landing-ink)]">{item.title}</h3>
+                <p className="mt-2 text-sm leading-relaxed text-[var(--landing-muted)]">{item.body}</p>
+              </motion.article>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      <section className="px-5 py-14 sm:px-8 lg:px-16">
+        <div
+          className="mx-auto flex max-w-6xl flex-col gap-8 bg-[var(--landing-poche)] px-6 py-10 sm:flex-row sm:items-end sm:justify-between sm:px-10"
+          style={{ borderRadius: 'calc(var(--landing-radius) + 4px)' }}
+        >
+          <div>
+            <h2 className="landing-display text-3xl font-extrabold tracking-tight text-[var(--landing-on-poche)]">
+              Ready to open your center?
+            </h2>
+            <p className="mt-2 max-w-md text-sm text-[var(--landing-shadow)]">
+              Start with your admin account. Set up the institution right after.
+            </p>
+          </div>
+          <div className="flex flex-wrap gap-3">
+            <Link
+              to="/create-institution"
+              className="landing-btn-primary inline-flex h-12 items-center justify-center px-6 text-sm"
+            >
+              {t('createInstitution')}
+            </Link>
+            <Link
+              to="/login"
+              className="inline-flex h-12 items-center justify-center border border-[var(--landing-on-poche)]/30 px-6 text-sm font-bold text-[var(--landing-on-poche)] transition-colors hover:border-[var(--landing-on-poche)] hover:bg-[var(--landing-on-poche)]/8"
+              style={{ borderRadius: 'var(--landing-radius)' }}
+            >
+              {t('logIn')}
+            </Link>
           </div>
         </div>
       </section>
 
       <Dialog open={verifyOpen} onOpenChange={setVerifyOpen}>
-        <DialogContent className="max-h-[90vh] max-w-lg overflow-y-auto rounded-2xl border-[var(--pf-line)] bg-[var(--pf-surface)] p-4 text-[var(--pf-text)] shadow-[0_24px_60px_rgba(6,21,18,0.35)] sm:p-6">
-          <StudentIdentityVerify variant="platform" accent="#0d9488" />
+        <DialogContent
+          className="max-h-[90vh] max-w-lg overflow-y-auto border-[var(--landing-line)] bg-[var(--landing-limewash)] p-4 text-[var(--landing-ink)] shadow-[0_24px_60px_rgba(15,23,42,0.18)] sm:p-6"
+          style={{ borderRadius: 'var(--landing-radius)' }}
+        >
+          <StudentIdentityVerify variant="platform" accent="#eab308" />
         </DialogContent>
       </Dialog>
     </PlatformLayout>

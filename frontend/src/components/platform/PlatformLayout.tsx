@@ -19,7 +19,6 @@ import {
   LifeBuoy,
   ArrowRight,
 } from 'lucide-react'
-import { Button } from '@/components/ui/button'
 import ThemeToggle from '@/components/platform/ThemeToggle'
 import LanguageSwitcher from '@/components/platform/LanguageSwitcher'
 import { usePlatformLang } from '@/contexts/PlatformLangContext'
@@ -41,6 +40,7 @@ const LINKS = [
   { to: '/contact', labelKey: 'contact' as const, icon: Mail },
 ]
 
+/** Public platform chrome — Daylight Section branding (replaces old teal SaaS shell). */
 const PlatformLayout = ({
   children,
   onVerify,
@@ -66,40 +66,41 @@ const PlatformLayout = ({
   }
 
   return (
-    <div className="platform-public relative min-h-screen overflow-x-hidden font-sans">
+    <div className="platform-public platform-landing relative min-h-screen overflow-x-hidden">
       <header
-        className={`sticky top-0 z-30 border-b transition-[background,box-shadow,border-color] duration-300 ${
+        className={`sticky top-0 z-30 border-b border-[var(--landing-line)] transition-[background,box-shadow] duration-300 ${
           scrolled
-            ? 'border-[var(--pf-line)] bg-[var(--pf-bg)] shadow-[0_8px_28px_rgba(6,21,18,0.14)]'
-            : 'border-[var(--pf-line)] bg-[var(--pf-bg)]'
+            ? 'bg-[var(--landing-limewash)]/95 shadow-[0_8px_24px_rgba(23,26,28,0.08)] backdrop-blur-sm'
+            : 'bg-[var(--landing-limewash)]'
         }`}
       >
-        <div className="mx-auto flex h-[4.25rem] max-w-7xl items-center justify-between gap-2 px-3 sm:px-6 lg:px-8">
-          <Link to="/" className="flex min-w-0 shrink-0 items-center gap-2">
-            <span className="inline-flex h-9 w-9 items-center justify-center rounded-lg bg-[var(--pf-accent)] text-[var(--pf-accent-fg)]">
-              <GraduationCap className="h-4 w-4" />
+        <div className="mx-auto flex h-[4.25rem] max-w-6xl items-center justify-between gap-2 px-4 sm:px-8 lg:px-16">
+          <Link to="/" className="platform-brand flex min-w-0 shrink-0 items-center gap-2.5">
+            <span
+              className="inline-flex h-9 w-9 items-center justify-center bg-[var(--landing-sun)] text-[var(--landing-on-sun)]"
+              style={{ borderRadius: 'var(--landing-radius)' }}
+            >
+              <GraduationCap className="h-4 w-4" aria-hidden />
             </span>
-            <span className="font-display text-base font-bold tracking-tight text-[var(--pf-text)] sm:text-lg">
-              Tvet<span className="text-[var(--pf-accent)]">Flow</span>
+            <span className="platform-brand-text text-lg font-bold tracking-tight text-[var(--landing-ink)] sm:text-xl">
+              TvetFlow
             </span>
           </Link>
 
-          <nav className="hidden items-center gap-1 lg:flex">
+          <nav className="hidden items-center gap-7 lg:flex" aria-label="Primary">
             {LINKS.map((item) => {
               const active = isActive(item.to, item.end)
               return (
                 <Link
                   key={item.to}
                   to={item.to}
-                  className={`relative px-2.5 py-2 text-[13px] transition-colors duration-200 ${
+                  className={`relative py-2 text-sm transition-colors ${
                     active
-                      ? 'font-semibold text-[var(--pf-text)] after:absolute after:inset-x-2.5 after:bottom-0.5 after:h-0.5 after:rounded-full after:bg-[var(--pf-accent)]'
-                      : 'font-medium text-[var(--pf-muted)] hover:text-[var(--pf-text)]'
+                      ? 'font-semibold text-[var(--landing-ink)] after:absolute after:inset-x-0 after:bottom-0 after:h-0.5 after:bg-[var(--landing-sun)]'
+                      : 'font-medium text-[var(--landing-muted)] hover:text-[var(--landing-ink)]'
                   }`}
                 >
-                  <span className="whitespace-nowrap">
-                    {item.to === '/plans' ? t('plans') : t(item.labelKey)}
-                  </span>
+                  {item.to === '/plans' ? t('plans') : t(item.labelKey)}
                 </Link>
               )
             })}
@@ -107,7 +108,7 @@ const PlatformLayout = ({
               <button
                 type="button"
                 onClick={onVerify}
-                className="px-2.5 py-2 text-[13px] font-medium text-[var(--pf-muted)] transition-colors hover:text-[var(--pf-text)]"
+                className="py-2 text-sm font-medium text-[var(--landing-muted)] transition-colors hover:text-[var(--landing-ink)]"
               >
                 {t('verifyId')}
               </button>
@@ -116,26 +117,25 @@ const PlatformLayout = ({
 
           <div className="flex items-center gap-2">
             <LanguageSwitcher />
-            <ThemeToggle className="hidden sm:inline-flex" />
-            <Button
-              asChild
-              size="sm"
-              variant="outline"
-              className="hidden h-9 rounded-lg border-[var(--pf-line)] bg-transparent px-3 font-semibold text-[var(--pf-text)] hover:bg-[var(--pf-hover)] sm:inline-flex"
+            <ThemeToggle className="hidden sm:inline-flex !rounded-[2px]" />
+            <Link
+              to="/login"
+              className="landing-btn-outline hidden h-9 items-center px-4 text-sm sm:inline-flex"
             >
-              <Link to="/login">{t('logIn')}</Link>
-            </Button>
-            <Button
-              asChild
-              size="sm"
-              className="hidden h-9 rounded-lg bg-[var(--pf-accent)] px-3.5 font-semibold text-[var(--pf-accent-fg)] hover:opacity-90 sm:inline-flex"
+              {t('logIn')}
+            </Link>
+            <Link
+              to="/create-institution"
+              className="landing-btn-primary hidden h-9 items-center px-4 text-sm sm:inline-flex"
             >
-              <Link to="/create-institution">{t('getStarted')}</Link>
-            </Button>
+              {t('getStarted')}
+            </Link>
             <button
               type="button"
-              className="inline-flex h-10 w-10 items-center justify-center rounded-lg border border-[var(--pf-line)] text-[var(--pf-muted)] lg:hidden"
+              className="inline-flex h-10 w-10 items-center justify-center border border-[var(--landing-line)] text-[var(--landing-muted)] lg:hidden"
+              style={{ borderRadius: 'var(--landing-radius)' }}
               aria-label={menuOpen ? 'Close menu' : 'Open menu'}
+              aria-expanded={menuOpen}
               onClick={() => setMenuOpen((v) => !v)}
             >
               {menuOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
@@ -144,8 +144,8 @@ const PlatformLayout = ({
         </div>
 
         {menuOpen ? (
-          <div className="border-t border-[var(--pf-line)] bg-[var(--pf-bg)] px-4 py-3 lg:hidden">
-            <div className="flex flex-col gap-1">
+          <div className="border-t border-[var(--landing-line)] bg-[var(--landing-limewash)] px-4 py-3 lg:hidden">
+            <div className="flex flex-col gap-0.5">
               {LINKS.map((item) => {
                 const Icon = item.icon
                 return (
@@ -153,7 +153,7 @@ const PlatformLayout = ({
                     key={item.to}
                     to={item.to}
                     onClick={() => setMenuOpen(false)}
-                    className="inline-flex items-center gap-2 rounded-lg px-3 py-2.5 text-sm text-[var(--pf-muted)]"
+                    className="inline-flex items-center gap-2 px-2 py-2.5 text-sm text-[var(--landing-muted)]"
                   >
                     <Icon className="h-4 w-4" />
                     {item.to === '/plans' ? t('plansFull') : t(item.labelKey)}
@@ -163,7 +163,7 @@ const PlatformLayout = ({
               {onVerify ? (
                 <button
                   type="button"
-                  className="inline-flex items-center gap-2 rounded-lg px-3 py-2.5 text-left text-sm text-[var(--pf-muted)]"
+                  className="inline-flex items-center gap-2 px-2 py-2.5 text-left text-sm text-[var(--landing-muted)]"
                   onClick={() => {
                     setMenuOpen(false)
                     onVerify()
@@ -174,22 +174,22 @@ const PlatformLayout = ({
                 </button>
               ) : null}
               <div className="mt-2 flex items-center gap-2 px-1 sm:hidden">
-                <ThemeToggle />
+                <ThemeToggle className="!rounded-[2px]" />
               </div>
-              <Button
-                asChild
-                variant="outline"
-                className="mt-2 border-[var(--pf-line)] bg-transparent font-semibold text-[var(--pf-text)] hover:bg-[var(--pf-hover)]"
+              <Link
+                to="/login"
+                onClick={() => setMenuOpen(false)}
+                className="landing-btn-outline mt-2 inline-flex h-11 items-center justify-center text-sm"
               >
-                <Link to="/login" onClick={() => setMenuOpen(false)}>
-                  {t('logIn')}
-                </Link>
-              </Button>
-              <Button asChild className="bg-[var(--pf-accent)] font-semibold text-[var(--pf-accent-fg)] hover:opacity-90">
-                <Link to="/create-institution" onClick={() => setMenuOpen(false)}>
-                  {t('getStarted')}
-                </Link>
-              </Button>
+                {t('logIn')}
+              </Link>
+              <Link
+                to="/create-institution"
+                onClick={() => setMenuOpen(false)}
+                className="landing-btn-primary mt-2 inline-flex h-11 items-center justify-center text-sm"
+              >
+                {t('getStarted')}
+              </Link>
             </div>
           </div>
         ) : null}
@@ -197,16 +197,19 @@ const PlatformLayout = ({
 
       <main>{children}</main>
 
-      <footer className="border-t border-[var(--pf-line)] bg-[var(--pf-bg-2)]">
-        <div className="mx-auto grid max-w-7xl gap-10 px-5 py-12 sm:px-8 md:grid-cols-2 lg:grid-cols-4">
+      <footer className="border-t border-[var(--landing-line)] bg-[var(--landing-limewash)]">
+        <div className="mx-auto grid max-w-6xl gap-10 px-5 py-12 sm:px-8 md:grid-cols-2 lg:grid-cols-4 lg:px-16">
           <div className="lg:col-span-1">
-            <p className="flex items-center gap-2 font-display text-base font-bold text-[var(--pf-text)]">
-              <span className="inline-flex h-8 w-8 items-center justify-center rounded-md bg-[var(--pf-accent)] text-[var(--pf-accent-fg)]">
-                <GraduationCap className="h-4 w-4" />
+            <p className="platform-brand flex items-center gap-2.5 text-base font-bold text-[var(--landing-ink)]">
+              <span
+                className="inline-flex h-8 w-8 items-center justify-center bg-[var(--landing-sun)] text-[var(--landing-on-sun)]"
+                style={{ borderRadius: 'var(--landing-radius)' }}
+              >
+                <GraduationCap className="h-4 w-4" aria-hidden />
               </span>
-              Tvet<span className="text-[var(--pf-accent)]">Flow</span>
+              <span className="platform-brand-text text-xl">TvetFlow</span>
             </p>
-            <p className="mt-3 max-w-xs text-sm leading-relaxed text-[var(--pf-muted)]">
+            <p className="mt-3 max-w-xs text-sm leading-relaxed text-[var(--landing-muted)]">
               Operations software for training centers — one portal per institution, one console for the platform.
             </p>
             <div className="mt-5 flex flex-wrap gap-2">
@@ -219,7 +222,8 @@ const PlatformLayout = ({
                     target="_blank"
                     rel="noopener noreferrer"
                     aria-label={item.name}
-                    className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-[var(--pf-line)] bg-[var(--pf-surface)] text-[var(--pf-muted)] transition-colors duration-200 hover:border-teal-500/40 hover:text-teal-600"
+                    className="inline-flex h-9 w-9 items-center justify-center border border-[var(--landing-line)] text-[var(--landing-muted)] transition-colors hover:border-[var(--landing-ink)] hover:text-[var(--landing-ink)]"
+                    style={{ borderRadius: 'var(--landing-radius)' }}
                   >
                     <Icon className="h-4 w-4" />
                   </a>
@@ -228,69 +232,76 @@ const PlatformLayout = ({
             </div>
           </div>
           <div>
-            <p className="text-xs font-semibold uppercase tracking-wider text-[var(--pf-faint)]">{t('product')}</p>
-            <ul className="mt-3 space-y-2 text-sm text-[var(--pf-muted)]">
+            <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-[var(--landing-shadow)]">
+              {t('product')}
+            </p>
+            <ul className="mt-3 space-y-2 text-sm text-[var(--landing-muted)]">
               <li>
-                <Link to="/features" className="inline-flex items-center gap-2 hover:text-[var(--pf-text)]">
+                <Link to="/features" className="inline-flex items-center gap-2 hover:text-[var(--landing-ink)]">
                   <LayoutGrid className="h-3.5 w-3.5" /> {t('features')}
                 </Link>
               </li>
               <li>
-                <Link to="/plans" className="inline-flex items-center gap-2 hover:text-[var(--pf-text)]">
+                <Link to="/plans" className="inline-flex items-center gap-2 hover:text-[var(--landing-ink)]">
                   <Package className="h-3.5 w-3.5" /> {t('plansFull')}
                 </Link>
               </li>
               <li>
-                <Link to="/about" className="inline-flex items-center gap-2 hover:text-[var(--pf-text)]">
+                <Link to="/about" className="inline-flex items-center gap-2 hover:text-[var(--landing-ink)]">
                   <Info className="h-3.5 w-3.5" /> {t('about')}
                 </Link>
               </li>
             </ul>
           </div>
           <div>
-            <p className="text-xs font-semibold uppercase tracking-wider text-[var(--pf-faint)]">{t('help')}</p>
-            <ul className="mt-3 space-y-2 text-sm text-[var(--pf-muted)]">
+            <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-[var(--landing-shadow)]">
+              {t('help')}
+            </p>
+            <ul className="mt-3 space-y-2 text-sm text-[var(--landing-muted)]">
               <li>
-                <Link to="/support" className="inline-flex items-center gap-2 hover:text-[var(--pf-text)]">
+                <Link to="/support" className="inline-flex items-center gap-2 hover:text-[var(--landing-ink)]">
                   <LifeBuoy className="h-3.5 w-3.5" /> {t('support')}
                 </Link>
               </li>
               <li>
-                <Link to="/contact" className="inline-flex items-center gap-2 hover:text-[var(--pf-text)]">
+                <Link to="/contact" className="inline-flex items-center gap-2 hover:text-[var(--landing-ink)]">
                   <Mail className="h-3.5 w-3.5" /> {t('contact')}
                 </Link>
               </li>
               <li>
-                <Link to="/login" className="inline-flex items-center gap-2 hover:text-[var(--pf-text)]">
+                <Link to="/login" className="inline-flex items-center gap-2 hover:text-[var(--landing-ink)]">
                   <LogIn className="h-3.5 w-3.5" /> {t('logIn')}
                 </Link>
               </li>
             </ul>
           </div>
           <div>
-            <p className="text-xs font-semibold uppercase tracking-wider text-[var(--pf-faint)]">{t('getStarted')}</p>
-            <p className="mt-3 text-sm leading-relaxed text-[var(--pf-muted)]">
+            <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-[var(--landing-shadow)]">
+              {t('getStarted')}
+            </p>
+            <p className="mt-3 text-sm leading-relaxed text-[var(--landing-muted)]">
               Open an admin account, then your institution portal.
             </p>
-            <Button asChild size="sm" className="mt-4 bg-[var(--pf-accent)] font-semibold text-[var(--pf-accent-fg)] hover:opacity-90">
-              <Link to="/create-institution">
-                {t('createInstitution')}
-                <ArrowRight className="ml-1.5 h-3.5 w-3.5" />
-              </Link>
-            </Button>
-            <div className="mt-5 flex gap-4 text-xs text-[var(--pf-faint)]">
-              <Link to="/privacy" className="hover:text-[var(--pf-text)]">
+            <Link
+              to="/create-institution"
+              className="landing-btn-primary mt-4 inline-flex h-9 items-center gap-1.5 px-4 text-sm"
+            >
+              {t('createInstitution')}
+              <ArrowRight className="h-3.5 w-3.5" />
+            </Link>
+            <div className="mt-5 flex gap-4 text-xs text-[var(--landing-shadow)]">
+              <Link to="/privacy" className="hover:text-[var(--landing-ink)]">
                 {t('privacy')}
               </Link>
-              <Link to="/terms" className="hover:text-[var(--pf-text)]">
+              <Link to="/terms" className="hover:text-[var(--landing-ink)]">
                 {t('terms')}
               </Link>
             </div>
           </div>
         </div>
-        <div className="border-t border-[var(--pf-line)] px-5 py-4 sm:px-8">
-          <p className="mx-auto max-w-7xl text-xs text-[var(--pf-faint)]">
-            © {new Date().getFullYear()} TvetFlow
+        <div className="border-t border-[var(--landing-line)] px-5 py-4 sm:px-8 lg:px-16">
+          <p className="mx-auto max-w-6xl text-xs text-[var(--landing-shadow)]">
+            © {new Date().getFullYear()} TvetFlow — Multi-tenant ops for training centers.
           </p>
         </div>
       </footer>

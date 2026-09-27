@@ -26,7 +26,7 @@ const DICT = {
     heroTitleAccent: 'your institute.',
     heroTitleB: 'Grow your impact.',
     heroBody:
-      'The all-in-one platform to manage students, classes, payments, attendance, exams, and certificates — built for training centers.',
+      'Students, classes, payments, attendance, and certificates — one platform for training centers.',
     verifyIdentity: 'Verify Identity',
     trustedBy: 'Trusted by training centers across the region',
     secureReliable: 'Secure & Reliable',
@@ -57,7 +57,7 @@ const DICT = {
     heroTitleAccent: 'machadkaaga.',
     heroTitleB: 'Kordhi saamayntaada.',
     heroBody:
-      'Platform dhammaystiran oo maamula ardayda, fasallada, lacagaha, imaanshaha, imtixaannada, iyo shahaadooyinka — loogu talagalay xarumaha tababarka.',
+      'Ardayda, fasallada, lacagaha, imaanshaha, iyo shahaadooyinka — platform keliya oo loogu talagalay xarumaha tababarka.',
     verifyIdentity: 'Xaqiiji aqoonsiga',
     trustedBy: 'Waxaa aaminsan xarumaha tababarka gobolka',
     secureReliable: 'Ammaan & la isku hallayn karo',
