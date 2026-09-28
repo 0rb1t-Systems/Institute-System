@@ -94,10 +94,6 @@ export async function updateTenant(id, updates) {
   if (updates.address !== undefined) allowed.address = updates.address
   if (updates.status !== undefined) allowed.status = updates.status
   if (updates.description !== undefined) allowed.description = updates.description
-  if (updates.dashboard_theme !== undefined) {
-    const t = updates.dashboard_theme
-    allowed.dashboard_theme = t === 'light' || t === 'dark' ? t : null
-  }
 
   const { data, error } = await supabase
     .from('institutions')
@@ -112,16 +108,13 @@ export async function updateTenant(id, updates) {
       ? 'tenant.suspended'
       : updates.status === 'active'
         ? 'tenant.activated'
-        : updates.dashboard_theme !== undefined
-          ? 'tenant.theme_updated'
-          : 'tenant.updated'
+        : 'tenant.updated'
 
   try {
     await writeAuditLog(action, 'institution', id, {
       fields: Object.keys(allowed),
       status: data.status,
       name: data.name,
-      dashboard_theme: data.dashboard_theme ?? null,
     })
   } catch {
     /* non-blocking — mutation already succeeded under RLS */
@@ -294,8 +287,6 @@ export type SuperAdminOverviewPeriod =
   | 'this_month'
   | 'previous_month'
 
-export type DashboardThemePolicy = 'light' | 'dark' | 'institution'
-
 export type PlatformDashboardBrandSettings = {
   primary: string
   accent: string
@@ -322,40 +313,6 @@ function parsePlatformDashboardBrand(raw: unknown): PlatformDashboardBrandSettin
 export async function getPlatformDashboardBrand(): Promise<PlatformDashboardBrandSettings> {
   const s = await getSystemSettings()
   return parsePlatformDashboardBrand(s.platform_dashboard_brand)
-}
-
-/** Super Admin only — save dashboard brand colors. */
-export async function savePlatformDashboardBrand(
-  brand: PlatformDashboardBrandSettings,
-): Promise<PlatformDashboardBrandSettings> {
-  const next = parsePlatformDashboardBrand(brand)
-  await savePlatformSettings({ platform_dashboard_brand: next })
-  return next
-}
-
-/** Platform-wide dashboard theme policy (readable by any authenticated user). */
-export async function getDashboardThemePolicy(): Promise<DashboardThemePolicy> {
-  const { data, error } = await supabase.rpc('get_dashboard_theme_policy')
-  if (error) throw error
-  const v = String(data || 'institution')
-  if (v === 'light' || v === 'dark' || v === 'institution') return v
-  return 'institution'
-}
-
-/** Super Admin only — force light/dark or allow institution choice. */
-export async function setDashboardThemePolicy(policy: DashboardThemePolicy): Promise<DashboardThemePolicy> {
-  const { data, error } = await supabase.rpc('set_dashboard_theme_policy', { p_policy: policy })
-  if (error) throw error
-  const v = String(data || policy)
-  try {
-    await writeAuditLog('settings.theme_policy', 'system_settings', 'dashboard_theme_policy', {
-      policy: v,
-    })
-  } catch {
-    /* non-blocking */
-  }
-  if (v === 'light' || v === 'dark' || v === 'institution') return v
-  return policy
 }
 
 /**

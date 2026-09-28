@@ -757,6 +757,20 @@ html[data-platform-theme='light'] .platform-shell .bg-slate-950\/80 {
   opacity: 0.92;
 }
 
+/* Map shared green --primary tokens to Ops Desk gold inside Super Admin */
+.platform-shell .bg-primary {
+  background-color: var(--pf-accent) !important;
+  color: var(--pf-accent-fg) !important;
+}
+
+.platform-shell .text-primary {
+  color: var(--pf-accent) !important;
+}
+
+.platform-shell .hover\:bg-primary\/90:hover {
+  background-color: color-mix(in srgb, var(--pf-accent) 90%, transparent) !important;
+}
+
 html[data-platform-theme='dark'] .platform-public ::-webkit-scrollbar-track,
 html[data-platform-theme='dark'] .platform-shell ::-webkit-scrollbar-track {
   background: #0b1220;

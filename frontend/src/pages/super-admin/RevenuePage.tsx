@@ -71,19 +71,19 @@ const RevenuePage = () => {
         <StatCard
           title="Total volume"
           value={loading ? '…' : money(revenue?.total)}
-          icon={<DollarSign className="h-4 w-4 text-emerald-400" />}
+          icon={<DollarSign className="h-4 w-4 text-[var(--pf-accent)]" />}
           description="Across all tenants"
         />
         <StatCard
           title="Payments"
           value={loading ? '…' : revenue?.count}
-          icon={<CreditCard className="h-4 w-4 text-sky-400" />}
+          icon={<CreditCard className="h-4 w-4 text-[var(--pf-accent)]" />}
           description="Recorded transactions"
         />
         <StatCard
           title="Paying tenants"
           value={loading ? '…' : revenue?.byTenant?.length}
-          icon={<Building2 className="h-4 w-4 text-blue-400" />}
+          icon={<Building2 className="h-4 w-4 text-[var(--pf-accent)]" />}
           description="With at least one payment"
         />
       </div>

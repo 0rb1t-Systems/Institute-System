@@ -105,7 +105,7 @@ const Sidebar = () => {
           className={cn(
             'w-full justify-start gap-3 pl-3 text-sm',
             isPlatform
-              ? 'text-red-400 hover:text-red-300 hover:bg-red-950/40'
+              ? 'text-red-500 hover:text-red-600 hover:bg-red-50 [html[data-platform-theme=\'dark\']_&]:text-red-400 [html[data-platform-theme=\'dark\']_&]:hover:text-red-300 [html[data-platform-theme=\'dark\']_&]:hover:bg-red-950/40'
               : 'text-[var(--ds-danger,#DC2626)] hover:text-[var(--ds-danger,#DC2626)] hover:bg-[var(--ds-danger-bg,#FEF2F2)]',
           )}
           onClick={handleLogout}

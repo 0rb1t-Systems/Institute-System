@@ -7,7 +7,7 @@ import { Dialog, DialogContent } from '@/components/ui/dialog'
 import { resolvePublicTenantSubdomain } from '@/lib/institution'
 import TenantHomePage from '@/pages/public/TenantHomePage'
 import StudentIdentityVerify from '@/components/public/StudentIdentityVerify'
-import PlatformLayout, { PLATFORM_CONTACT_EMAIL } from '@/components/platform/PlatformLayout'
+import PlatformLayout from '@/components/platform/PlatformLayout'
 import PlatformSocialLinks from '@/components/platform/PlatformSocialLinks'
 import {
   getPublicSiteCms,
@@ -161,12 +161,6 @@ const WelcomePage = () => {
 
             <motion.div variants={fadeUp} transition={{ duration: 0.6, ease: easeOut }} className="mt-7">
               <PlatformSocialLinks variant="hero" animated />
-              <a
-                href={`mailto:${PLATFORM_CONTACT_EMAIL}`}
-                className="mt-2.5 inline-block text-xs font-semibold text-[var(--landing-sun)] hover:underline sm:text-sm"
-              >
-                {PLATFORM_CONTACT_EMAIL}
-              </a>
             </motion.div>
           </motion.div>
 

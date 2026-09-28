@@ -9,7 +9,7 @@ const TONE_WRAP = {
   warning: 'bg-[var(--ds-warning-bg,#FFF7ED)] text-[var(--ds-warning,#C2410C)]',
   danger: 'bg-[var(--ds-danger-bg,#FEF2F2)] text-[var(--ds-danger,#DC2626)]',
   default:
-    'bg-white/5 text-primary [.platform-shell_&]:bg-teal-500/10 [.tenant-shell_&]:bg-[var(--ds-primary-soft,#ECFDF5)] [.tenant-shell_&]:text-[var(--ds-primary,#1F8A5B)]',
+    'bg-white/5 text-primary [.platform-shell_&]:bg-[color-mix(in_srgb,var(--pf-accent)_14%,transparent)] [.platform-shell_&]:text-[var(--pf-accent)] [.tenant-shell_&]:bg-[var(--ds-primary-soft,#ECFDF5)] [.tenant-shell_&]:text-[var(--ds-primary,#1F8A5B)]',
 };
 
 const TONE_DESC = {
@@ -45,7 +45,7 @@ const StatCard = ({
     className={cn(
       'h-full overflow-hidden border-slate-800 bg-slate-900/50 transition-colors duration-200',
       'hover:border-slate-700 hover:shadow-[0_12px_32px_rgba(0,0,0,0.28)]',
-      '[.platform-shell_&]:bg-[var(--pf-surface)] [.platform-shell_&]:border-[var(--pf-line)] [.platform-shell_&]:hover:border-teal-500/35',
+      '[.platform-shell_&]:bg-[var(--pf-surface)] [.platform-shell_&]:border-[var(--pf-line)] [.platform-shell_&]:hover:border-[color-mix(in_srgb,var(--pf-accent)_40%,transparent)]',
       '[.tenant-shell_&]:rounded-[var(--ds-radius-xl,16px)] [.tenant-shell_&]:border-[var(--ds-border,#DDE5DF)] [.tenant-shell_&]:bg-[var(--ds-surface,#fff)]',
       '[.tenant-shell_&]:shadow-[var(--ds-shadow-card,0_1px_2px_#1F8A5B14,0_8px_24px_#1F8A5B0A)] [.tenant-shell_&]:hover:border-[var(--ds-border-strong,#C5D0C8)]',
     )}

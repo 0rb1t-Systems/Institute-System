@@ -339,15 +339,28 @@ export function normalizePlatformDashboardBrand(
   }
 }
 
+/** Darken very light accents so icons/labels stay readable on light surfaces. */
+export function accentForPlatformTheme(accent: string, theme?: string | null): string {
+  const hex = normalizeHexColor(accent, DEFAULT_PLATFORM_ACCENT)
+  if (theme !== 'light') return hex
+  const { r, g, b } = hexToRgb(hex)
+  const { h, s, l } = rgbToHsl(r, g, b)
+  if (l < 0.52) return hex
+  const next = hslToRgb(h, Math.min(0.9, s + 0.05), Math.min(0.42, l * 0.72))
+  return rgbToHex(next.r, next.g, next.b)
+}
+
 /** Pushes Super Admin dashboard colors onto --pf-* (platform-shell only). */
 export function applyPlatformBrandCss(brand?: Partial<PlatformDashboardBrand> | null): void {
   if (typeof document === 'undefined') return
   const root = document.documentElement
   const { primary, accent, tertiary } = normalizePlatformDashboardBrand(brand)
-  const accentFg = hexForegroundHex(accent)
-  root.style.setProperty('--pf-accent', accent)
+  const theme = root.getAttribute('data-platform-theme')
+  const accentUi = accentForPlatformTheme(accent, theme)
+  const accentFg = hexForegroundHex(accentUi)
+  root.style.setProperty('--pf-accent', accentUi)
   root.style.setProperty('--pf-accent-fg', accentFg)
-  root.style.setProperty('--pf-hover', `color-mix(in srgb, ${accent} 12%, transparent)`)
+  root.style.setProperty('--pf-hover', `color-mix(in srgb, ${accentUi} 14%, transparent)`)
   root.style.setProperty('--pf-brand-primary', primary)
   root.style.setProperty('--pf-brand-on-primary', hexForegroundHex(primary))
   if (tertiary) root.style.setProperty('--pf-brand-tertiary', tertiary)

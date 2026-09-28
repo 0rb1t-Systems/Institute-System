@@ -160,11 +160,11 @@ const SiteCmsPage = () => {
       ) : null}
 
       <div className="space-y-6">
-        <Card className="border-slate-800 bg-slate-900">
+        <Card className="border-[var(--pf-line)] bg-[var(--pf-surface)]">
           <CardHeader className="flex flex-row items-start justify-between gap-3">
             <div>
-              <CardTitle className="text-base text-white">Trusted by</CardTitle>
-              <CardDescription>
+              <CardTitle className="text-base text-[var(--pf-text)]">Trusted by</CardTitle>
+              <CardDescription className="text-[var(--pf-muted)]">
                 Upload partner logos only. After Save, they replace the text row on the home page.
               </CardDescription>
             </div>
@@ -190,7 +190,7 @@ const SiteCmsPage = () => {
                 type="button"
                 size="sm"
                 variant="outline"
-                className="border-slate-700"
+                className="border-[var(--pf-line)] bg-[var(--pf-bg)] text-[var(--pf-text)] hover:bg-[var(--pf-hover)]"
                 disabled={!!uploading}
                 onClick={() => pickFile('trusted-add')}
               >
@@ -205,25 +205,25 @@ const SiteCmsPage = () => {
           </CardHeader>
           <CardContent>
             {trusted.length === 0 ? (
-              <p className="text-sm text-slate-400">No logos yet. Click Upload logo, then Save &amp; publish.</p>
+              <p className="text-sm text-[var(--pf-muted)]">No logos yet. Click Upload logo, then Save &amp; publish.</p>
             ) : (
               <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
                 {trusted.map((row) => (
                   <div
                     key={row.id}
-                    className="relative rounded-xl border border-slate-800 bg-slate-950/60 p-3"
+                    className="relative rounded-xl border border-[var(--pf-line)] bg-[var(--pf-bg)] p-3"
                   >
                     <Button
                       type="button"
                       size="icon"
                       variant="ghost"
-                      className="absolute right-1 top-1 z-10 h-8 w-8 text-slate-400 hover:text-red-400"
+                      className="absolute right-1 top-1 z-10 h-8 w-8 text-[var(--pf-muted)] hover:text-red-400"
                       onClick={() => setTrusted((prev) => prev.filter((item) => item.id !== row.id))}
                       aria-label="Remove logo"
                     >
                       <Trash2 className="h-4 w-4" />
                     </Button>
-                    <div className="flex aspect-[3/2] items-center justify-center overflow-hidden rounded-lg border border-slate-800 bg-slate-900">
+                    <div className="flex aspect-[3/2] items-center justify-center overflow-hidden rounded-lg border border-[var(--pf-line)] bg-[var(--pf-surface)]">
                       <img
                         src={row.logo_url}
                         alt=""
@@ -251,7 +251,7 @@ const SiteCmsPage = () => {
                       type="button"
                       size="sm"
                       variant="outline"
-                      className="mt-3 w-full border-slate-700"
+                      className="mt-3 w-full border-[var(--pf-line)] bg-[var(--pf-surface)] text-[var(--pf-text)] hover:bg-[var(--pf-hover)]"
                       disabled={uploading === `trusted-${row.id}`}
                       onClick={() => pickFile(`trusted-${row.id}`)}
                     >
@@ -271,10 +271,10 @@ const SiteCmsPage = () => {
           </CardContent>
         </Card>
 
-        <Card className="border-slate-800 bg-slate-900">
+        <Card className="border-[var(--pf-line)] bg-[var(--pf-surface)]">
           <CardHeader>
-            <CardTitle className="text-base text-white">Site photos</CardTitle>
-            <CardDescription>
+            <CardTitle className="text-base text-[var(--pf-text)]">Site photos</CardTitle>
+            <CardDescription className="text-[var(--pf-muted)]">
               Replace Unsplash defaults used on Home, Features, About, and the platform login page.
             </CardDescription>
           </CardHeader>
@@ -283,18 +283,18 @@ const SiteCmsPage = () => {
               const url = photos[field.key]
               const busy = uploading === `photo-${field.key}`
               return (
-                <div key={field.key} className="rounded-xl border border-slate-800 bg-slate-950/60 p-3">
-                  <div className="relative mb-3 aspect-[16/10] overflow-hidden rounded-lg border border-slate-800 bg-slate-900">
+                <div key={field.key} className="rounded-xl border border-[var(--pf-line)] bg-[var(--pf-bg)] p-3">
+                  <div className="relative mb-3 aspect-[16/10] overflow-hidden rounded-lg border border-[var(--pf-line)] bg-[var(--pf-surface)]">
                     {url ? (
                       <img src={url} alt="" className="h-full w-full object-cover" />
                     ) : (
-                      <div className="flex h-full items-center justify-center text-slate-600">
+                      <div className="flex h-full items-center justify-center text-[var(--pf-faint)]">
                         <ImageIcon className="h-8 w-8" />
                       </div>
                     )}
                   </div>
-                  <p className="text-sm font-medium text-white">{field.label}</p>
-                  <p className="mt-0.5 text-xs text-slate-400">{field.hint}</p>
+                  <p className="text-sm font-medium text-[var(--pf-text)]">{field.label}</p>
+                  <p className="mt-0.5 text-xs text-[var(--pf-muted)]">{field.hint}</p>
                   <input
                     ref={(el) => {
                       fileRefs.current[`photo-${field.key}`] = el
@@ -315,7 +315,7 @@ const SiteCmsPage = () => {
                       type="button"
                       size="sm"
                       variant="outline"
-                      className="border-slate-700"
+                      className="border-[var(--pf-line)] bg-[var(--pf-surface)] text-[var(--pf-text)] hover:bg-[var(--pf-hover)]"
                       disabled={busy}
                       onClick={() => pickFile(`photo-${field.key}`)}
                     >
@@ -326,7 +326,7 @@ const SiteCmsPage = () => {
                         type="button"
                         size="sm"
                         variant="ghost"
-                        className="text-slate-400"
+                        className="text-[var(--pf-muted)] hover:bg-[var(--pf-hover)] hover:text-[var(--pf-text)]"
                         onClick={() => setPhotos((prev) => ({ ...prev, login: null }))}
                       >
                         Clear
@@ -337,7 +337,7 @@ const SiteCmsPage = () => {
                         type="button"
                         size="sm"
                         variant="ghost"
-                        className="text-slate-400"
+                        className="text-[var(--pf-muted)] hover:bg-[var(--pf-hover)] hover:text-[var(--pf-text)]"
                         onClick={() =>
                           setPhotos((prev) => ({
                             ...prev,

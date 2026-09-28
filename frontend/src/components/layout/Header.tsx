@@ -183,11 +183,6 @@ const Header = () => {
               isPlatform ? 'border-[var(--pf-line)]' : 'border-[var(--ds-border,#DDE5DF)]',
             )}
           >
-            {isPlatform ? (
-              <ThemeToggle className="mb-1" />
-            ) : (
-              <ThemeToggle variant="brand" className="mb-1" />
-            )}
             <Button
               variant="ghost"
               className={cn(
@@ -214,7 +209,7 @@ const Header = () => {
       <div className="min-w-0 flex-1" />
 
       <div className="flex shrink-0 items-center gap-1.5 sm:gap-2">
-        {isPlatform ? <ThemeToggle /> : <ThemeToggle variant="brand" />}
+        {isPlatform ? <ThemeToggle /> : null}
 
         <Button
           variant="ghost"
@@ -277,7 +272,14 @@ const Header = () => {
                 )}
               >
                 <AvatarImage src={user?.avatar_url} alt={user?.name} />
-                <AvatarFallback className="bg-primary font-bold text-primary-foreground">
+                <AvatarFallback
+                  className={cn(
+                    'font-bold',
+                    isPlatform
+                      ? 'bg-[var(--pf-accent)] text-[var(--pf-accent-fg)]'
+                      : 'bg-primary text-primary-foreground',
+                  )}
+                >
                   {user?.name ? user.name.charAt(0).toUpperCase() : 'U'}
                 </AvatarFallback>
               </Avatar>

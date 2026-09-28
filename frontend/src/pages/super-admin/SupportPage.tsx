@@ -181,11 +181,11 @@ const SupportPage = () => {
           return (
             <div
               key={item.label}
-              className="rounded-xl border border-[var(--pf-line)] bg-[var(--pf-surface)] p-4 transition-all duration-300 hover:-translate-y-1 hover:border-teal-500/35"
+              className="rounded-xl border border-[var(--pf-line)] bg-[var(--pf-surface)] p-4 transition-all duration-300 hover:-translate-y-1 hover:border-[color-mix(in_srgb,var(--pf-accent)_40%,transparent)]"
             >
               <div className="flex items-center justify-between">
                 <p className="text-sm text-[var(--pf-muted)]">{item.label}</p>
-                <Icon className="h-4 w-4 text-teal-600" />
+                <Icon className="h-4 w-4 text-[var(--pf-accent)]" />
               </div>
               <p className="mt-2 font-display text-2xl font-semibold text-[var(--pf-text)]">{item.value}</p>
             </div>
