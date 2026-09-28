@@ -209,7 +209,7 @@ const Header = () => {
       <div className="min-w-0 flex-1" />
 
       <div className="flex shrink-0 items-center gap-1.5 sm:gap-2">
-        {isPlatform ? <ThemeToggle /> : null}
+        <ThemeToggle variant={isPlatform ? 'platform' : 'brand'} />
 
         <Button
           variant="ghost"
