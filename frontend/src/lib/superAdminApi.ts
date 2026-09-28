@@ -70,7 +70,7 @@ export async function writeAuditLog(action, entityType = null, entityId = null, 
 export async function listTenants() {
   const { data, error } = await supabase
     .from('institutions')
-    .select('id, name, subdomain, email, phone, address, status, logo_url, description, created_at')
+    .select('id, name, subdomain, email, phone, address, status, logo_url, description, created_at, dashboard_theme')
     .order('created_at', { ascending: false })
   if (error) throw error
   return data || []
@@ -79,7 +79,7 @@ export async function listTenants() {
 export async function getTenant(id) {
   const { data, error } = await supabase
     .from('institutions')
-    .select('id, name, subdomain, email, phone, address, status, logo_url, description, created_at')
+    .select('id, name, subdomain, email, phone, address, status, logo_url, description, created_at, dashboard_theme')
     .eq('id', id)
     .maybeSingle()
   if (error) throw error
@@ -94,6 +94,10 @@ export async function updateTenant(id, updates) {
   if (updates.address !== undefined) allowed.address = updates.address
   if (updates.status !== undefined) allowed.status = updates.status
   if (updates.description !== undefined) allowed.description = updates.description
+  if (updates.dashboard_theme !== undefined) {
+    const t = updates.dashboard_theme
+    allowed.dashboard_theme = t === 'light' || t === 'dark' ? t : null
+  }
 
   const { data, error } = await supabase
     .from('institutions')
@@ -108,13 +112,16 @@ export async function updateTenant(id, updates) {
       ? 'tenant.suspended'
       : updates.status === 'active'
         ? 'tenant.activated'
-        : 'tenant.updated'
+        : updates.dashboard_theme !== undefined
+          ? 'tenant.theme_updated'
+          : 'tenant.updated'
 
   try {
     await writeAuditLog(action, 'institution', id, {
       fields: Object.keys(allowed),
       status: data.status,
       name: data.name,
+      dashboard_theme: data.dashboard_theme ?? null,
     })
   } catch {
     /* non-blocking — mutation already succeeded under RLS */
@@ -274,6 +281,98 @@ export async function saveSiteCms(trusted, photos) {
 
 export async function getPlatformAnalytics() {
   const { data, error } = await supabase.rpc('get_platform_analytics')
+  if (error) throw error
+  return data || {}
+}
+
+/** Period keys for get_super_admin_overview RPC */
+export type SuperAdminOverviewPeriod =
+  | 'today'
+  | '7d'
+  | '30d'
+  | '90d'
+  | 'this_month'
+  | 'previous_month'
+
+export type DashboardThemePolicy = 'light' | 'dark' | 'institution'
+
+export type PlatformDashboardBrandSettings = {
+  primary: string
+  accent: string
+  tertiary: string
+}
+
+const DEFAULT_PLATFORM_BRAND: PlatformDashboardBrandSettings = {
+  primary: '#0F172A',
+  accent: '#EAB308',
+  tertiary: '',
+}
+
+function parsePlatformDashboardBrand(raw: unknown): PlatformDashboardBrandSettings {
+  if (!raw || typeof raw !== 'object') return { ...DEFAULT_PLATFORM_BRAND }
+  const o = raw as Record<string, unknown>
+  return {
+    primary: typeof o.primary === 'string' && o.primary.trim() ? o.primary.trim() : DEFAULT_PLATFORM_BRAND.primary,
+    accent: typeof o.accent === 'string' && o.accent.trim() ? o.accent.trim() : DEFAULT_PLATFORM_BRAND.accent,
+    tertiary: typeof o.tertiary === 'string' ? o.tertiary.trim() : '',
+  }
+}
+
+/** Super Admin dashboard brand colors (platform-shell). */
+export async function getPlatformDashboardBrand(): Promise<PlatformDashboardBrandSettings> {
+  const s = await getSystemSettings()
+  return parsePlatformDashboardBrand(s.platform_dashboard_brand)
+}
+
+/** Super Admin only — save dashboard brand colors. */
+export async function savePlatformDashboardBrand(
+  brand: PlatformDashboardBrandSettings,
+): Promise<PlatformDashboardBrandSettings> {
+  const next = parsePlatformDashboardBrand(brand)
+  await savePlatformSettings({ platform_dashboard_brand: next })
+  return next
+}
+
+/** Platform-wide dashboard theme policy (readable by any authenticated user). */
+export async function getDashboardThemePolicy(): Promise<DashboardThemePolicy> {
+  const { data, error } = await supabase.rpc('get_dashboard_theme_policy')
+  if (error) throw error
+  const v = String(data || 'institution')
+  if (v === 'light' || v === 'dark' || v === 'institution') return v
+  return 'institution'
+}
+
+/** Super Admin only — force light/dark or allow institution choice. */
+export async function setDashboardThemePolicy(policy: DashboardThemePolicy): Promise<DashboardThemePolicy> {
+  const { data, error } = await supabase.rpc('set_dashboard_theme_policy', { p_policy: policy })
+  if (error) throw error
+  const v = String(data || policy)
+  try {
+    await writeAuditLog('settings.theme_policy', 'system_settings', 'dashboard_theme_policy', {
+      policy: v,
+    })
+  } catch {
+    /* non-blocking */
+  }
+  if (v === 'light' || v === 'dark' || v === 'institution') return v
+  return policy
+}
+
+/**
+ * Aggregated Super Admin control-center payload.
+ * Counts only — no student PII, no email content.
+ */
+export async function getSuperAdminOverview(period: SuperAdminOverviewPeriod = '30d') {
+  const { data, error } = await supabase.rpc('get_super_admin_overview', { p_period: period })
+  if (error) throw error
+  return data || {}
+}
+
+/** Per-institution metric snapshot for tenant detail (Super Admin only). */
+export async function getSuperAdminTenantMetrics(institutionId: string) {
+  const { data, error } = await supabase.rpc('get_super_admin_tenant_metrics', {
+    p_institution_id: institutionId,
+  })
   if (error) throw error
   return data || {}
 }

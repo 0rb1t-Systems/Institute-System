@@ -18,6 +18,8 @@ type Props = {
   primaryId?: string
   accentId?: string
   tertiaryId?: string
+  /** When false, hide the “upload a logo” empty-state hint. */
+  showLogoHint?: boolean
 }
 
 const LogoBrandColorPicker = ({
@@ -33,6 +35,7 @@ const LogoBrandColorPicker = ({
   primaryId = 'theme_primary',
   accentId = 'theme_accent',
   tertiaryId = 'theme_tertiary',
+  showLogoHint = true,
 }: Props) => {
   const safePrimary = normalizeHexColor(primary)
   const safeAccent = normalizeHexColor(accent, '#D32F2F')
@@ -50,12 +53,12 @@ const LogoBrandColorPicker = ({
               type="color"
               value={safePrimary}
               onChange={(e) => onPrimaryChange(e.target.value)}
-              className="h-10 w-14 cursor-pointer p-1 bg-[var(--tenant-bg)] border-[var(--tenant-line)] [.platform-public_&]:bg-[var(--pf-bg)] [.platform-public_&]:border-[var(--pf-line)]"
+              className="h-10 w-14 cursor-pointer p-1 bg-[var(--tenant-bg)] border-[var(--tenant-line)] [.platform-public_&]:bg-[var(--pf-bg)] [.platform-public_&]:border-[var(--pf-line)] [.platform-shell_&]:bg-[var(--pf-bg)] [.platform-shell_&]:border-[var(--pf-line)]"
             />
             <Input
               value={primary}
               onChange={(e) => onPrimaryChange(e.target.value)}
-              className="bg-[var(--tenant-bg)] border-[var(--tenant-line)] font-mono [.platform-public_&]:bg-[var(--pf-bg)] [.platform-public_&]:border-[var(--pf-line)]"
+              className="bg-[var(--tenant-bg)] border-[var(--tenant-line)] font-mono [.platform-public_&]:bg-[var(--pf-bg)] [.platform-public_&]:border-[var(--pf-line)] [.platform-shell_&]:bg-[var(--pf-bg)] [.platform-shell_&]:border-[var(--pf-line)]"
             />
           </div>
         </div>
@@ -67,12 +70,12 @@ const LogoBrandColorPicker = ({
               type="color"
               value={safeAccent}
               onChange={(e) => onAccentChange(e.target.value)}
-              className="h-10 w-14 cursor-pointer p-1 bg-[var(--tenant-bg)] border-[var(--tenant-line)] [.platform-public_&]:bg-[var(--pf-bg)] [.platform-public_&]:border-[var(--pf-line)]"
+              className="h-10 w-14 cursor-pointer p-1 bg-[var(--tenant-bg)] border-[var(--tenant-line)] [.platform-public_&]:bg-[var(--pf-bg)] [.platform-public_&]:border-[var(--pf-line)] [.platform-shell_&]:bg-[var(--pf-bg)] [.platform-shell_&]:border-[var(--pf-line)]"
             />
             <Input
               value={accent}
               onChange={(e) => onAccentChange(e.target.value)}
-              className="bg-[var(--tenant-bg)] border-[var(--tenant-line)] font-mono [.platform-public_&]:bg-[var(--pf-bg)] [.platform-public_&]:border-[var(--pf-line)]"
+              className="bg-[var(--tenant-bg)] border-[var(--tenant-line)] font-mono [.platform-public_&]:bg-[var(--pf-bg)] [.platform-public_&]:border-[var(--pf-line)] [.platform-shell_&]:bg-[var(--pf-bg)] [.platform-shell_&]:border-[var(--pf-line)]"
             />
           </div>
         </div>
@@ -84,13 +87,13 @@ const LogoBrandColorPicker = ({
               type="color"
               value={safeTertiary}
               onChange={(e) => onTertiaryChange(e.target.value)}
-              className="h-10 w-14 cursor-pointer p-1 bg-[var(--tenant-bg)] border-[var(--tenant-line)] [.platform-public_&]:bg-[var(--pf-bg)] [.platform-public_&]:border-[var(--pf-line)]"
+              className="h-10 w-14 cursor-pointer p-1 bg-[var(--tenant-bg)] border-[var(--tenant-line)] [.platform-public_&]:bg-[var(--pf-bg)] [.platform-public_&]:border-[var(--pf-line)] [.platform-shell_&]:bg-[var(--pf-bg)] [.platform-shell_&]:border-[var(--pf-line)]"
             />
             <Input
               value={tertiary || ''}
               onChange={(e) => onTertiaryChange(e.target.value)}
               placeholder="optional"
-              className="bg-[var(--tenant-bg)] border-[var(--tenant-line)] font-mono [.platform-public_&]:bg-[var(--pf-bg)] [.platform-public_&]:border-[var(--pf-line)]"
+              className="bg-[var(--tenant-bg)] border-[var(--tenant-line)] font-mono [.platform-public_&]:bg-[var(--pf-bg)] [.platform-public_&]:border-[var(--pf-line)] [.platform-shell_&]:bg-[var(--pf-bg)] [.platform-shell_&]:border-[var(--pf-line)]"
             />
           </div>
         </div>
@@ -140,11 +143,11 @@ const LogoBrandColorPicker = ({
             })}
           </div>
         </div>
-      ) : (
+      ) : showLogoHint ? (
         <p className="text-xs text-slate-500">
           Upload a logo to auto-fill primary, secondary, and a third color when the logo has them.
         </p>
-      )}
+      ) : null}
     </div>
   )
 }

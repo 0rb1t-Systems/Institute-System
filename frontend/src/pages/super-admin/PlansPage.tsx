@@ -180,7 +180,7 @@ const PlansPage = () => {
           <Button variant="outline" onClick={() => setSubOpen(true)}>
             Assign subscription
           </Button>
-          <Button className="bg-indigo-600 hover:bg-indigo-500" onClick={openCreatePlan}>
+          <Button className="bg-[var(--pf-accent)] text-[var(--pf-accent-fg)] hover:opacity-90" onClick={openCreatePlan}>
             <Plus className="h-4 w-4 mr-2" />
             New plan
           </Button>
@@ -206,7 +206,7 @@ const PlansPage = () => {
           plans.map((plan) => (
             <Card
               key={plan.id}
-              className="border-[var(--pf-line)] bg-[var(--pf-surface)] transition-all duration-300 hover:-translate-y-1 hover:border-teal-500/35 hover:shadow-[0_14px_36px_rgba(6,21,18,0.14)]"
+              className="border-[var(--pf-line)] bg-[var(--pf-surface)] transition-all duration-300 hover:-translate-y-1 hover:border-[var(--pf-accent)]/40 hover:shadow-[0_14px_36px_rgba(15,23,42,0.08)]"
             >
               <CardHeader className="pb-2">
                 <div className="flex items-start justify-between gap-2">
@@ -237,7 +237,7 @@ const PlansPage = () => {
                   <span>Max students</span>
                   <span>{plan.max_students ?? 'Unlimited'}</span>
                 </div>
-                <Button variant="ghost" size="sm" className="px-0 text-teal-600 hover:text-teal-500" onClick={() => openEditPlan(plan)}>
+                <Button variant="ghost" size="sm" className="px-0 font-semibold text-[var(--pf-accent)] hover:text-[var(--pf-accent)] hover:opacity-80" onClick={() => openEditPlan(plan)}>
                   Edit plan
                 </Button>
               </CardContent>
@@ -298,10 +298,10 @@ const PlansPage = () => {
 
       <Link
         to="/super-admin/support"
-        className="mt-8 flex flex-col gap-3 rounded-xl border border-[var(--pf-line)] bg-[var(--pf-surface)] p-5 transition-all duration-300 hover:-translate-y-0.5 hover:border-teal-500/35 sm:flex-row sm:items-center sm:justify-between"
+        className="mt-8 flex flex-col gap-3 rounded-xl border border-[var(--pf-line)] bg-[var(--pf-surface)] p-5 transition-all duration-300 hover:-translate-y-0.5 hover:border-[var(--pf-accent)]/40 sm:flex-row sm:items-center sm:justify-between"
       >
         <div className="flex items-start gap-3">
-          <span className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-teal-500/12 text-teal-600">
+          <span className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-[var(--pf-hover)] text-[var(--pf-accent)]">
             <LifeBuoy className="h-5 w-5" />
           </span>
           <div>
@@ -311,7 +311,7 @@ const PlansPage = () => {
             </p>
           </div>
         </div>
-        <span className="inline-flex items-center gap-1 text-sm font-medium text-teal-600">
+        <span className="inline-flex items-center gap-1 text-sm font-medium text-[var(--pf-accent)]">
           <Ticket className="h-4 w-4" />
           Open Support
         </span>
@@ -401,7 +401,7 @@ const PlansPage = () => {
               <Button type="button" variant="outline" onClick={() => setPlanOpen(false)}>
                 Cancel
               </Button>
-              <Button type="submit" disabled={saving} className="bg-indigo-600 hover:bg-indigo-500">
+              <Button type="submit" disabled={saving} className="bg-[var(--pf-accent)] text-[var(--pf-accent-fg)] hover:opacity-90">
                 {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Save'}
               </Button>
             </DialogFooter>
@@ -477,7 +477,7 @@ const PlansPage = () => {
               <Button type="button" variant="outline" onClick={() => setSubOpen(false)}>
                 Cancel
               </Button>
-              <Button type="submit" disabled={saving} className="bg-indigo-600 hover:bg-indigo-500">
+              <Button type="submit" disabled={saving} className="bg-[var(--pf-accent)] text-[var(--pf-accent-fg)] hover:opacity-90">
                 {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Assign'}
               </Button>
             </DialogFooter>

@@ -34,7 +34,7 @@ const LINKS = [
   { to: '/contact', labelKey: 'contact' as const, icon: Mail },
 ]
 
-/** Public platform chrome — Daylight Section branding (replaces old teal SaaS shell). */
+/** Public platform chrome — Ops Desk branding (gold actions). */
 const PlatformLayout = ({
   children,
   onVerify,
@@ -94,7 +94,7 @@ const PlatformLayout = ({
                   className={`relative py-2 text-sm transition-colors ${
                     active
                       ? 'font-semibold text-[var(--landing-ink)] after:absolute after:inset-x-0 after:bottom-0 after:h-0.5 after:bg-[var(--landing-sun)]'
-                      : 'font-medium text-[var(--landing-muted)] hover:text-[var(--landing-ink)]'
+                      : 'font-medium text-[var(--landing-muted)] hover:text-[var(--landing-sun)]'
                   }`}
                 >
                   {item.to === '/plans' ? t('plans') : t(item.labelKey)}
@@ -105,7 +105,7 @@ const PlatformLayout = ({
               <button
                 type="button"
                 onClick={onVerify}
-                className="py-2 text-sm font-medium text-[var(--landing-muted)] transition-colors hover:text-[var(--landing-ink)]"
+                className="py-2 text-sm font-medium text-[var(--landing-muted)] transition-colors hover:text-[var(--landing-sun)]"
               >
                 {t('verifyId')}
               </button>
@@ -223,17 +223,17 @@ const PlatformLayout = ({
             </p>
             <ul className="mt-3 space-y-2 text-sm text-[var(--landing-muted)]">
               <li>
-                <Link to="/features" className="inline-flex items-center gap-2 hover:text-[var(--landing-ink)]">
+                <Link to="/features" className="inline-flex items-center gap-2 hover:text-[var(--landing-sun)]">
                   <LayoutGrid className="h-3.5 w-3.5" /> {t('features')}
                 </Link>
               </li>
               <li>
-                <Link to="/plans" className="inline-flex items-center gap-2 hover:text-[var(--landing-ink)]">
+                <Link to="/plans" className="inline-flex items-center gap-2 hover:text-[var(--landing-sun)]">
                   <Package className="h-3.5 w-3.5" /> {t('plansFull')}
                 </Link>
               </li>
               <li>
-                <Link to="/about" className="inline-flex items-center gap-2 hover:text-[var(--landing-ink)]">
+                <Link to="/about" className="inline-flex items-center gap-2 hover:text-[var(--landing-sun)]">
                   <Info className="h-3.5 w-3.5" /> {t('about')}
                 </Link>
               </li>
@@ -245,17 +245,17 @@ const PlatformLayout = ({
             </p>
             <ul className="mt-3 space-y-2 text-sm text-[var(--landing-muted)]">
               <li>
-                <Link to="/support" className="inline-flex items-center gap-2 hover:text-[var(--landing-ink)]">
+                <Link to="/support" className="inline-flex items-center gap-2 hover:text-[var(--landing-sun)]">
                   <LifeBuoy className="h-3.5 w-3.5" /> {t('support')}
                 </Link>
               </li>
               <li>
-                <Link to="/contact" className="inline-flex items-center gap-2 hover:text-[var(--landing-ink)]">
+                <Link to="/contact" className="inline-flex items-center gap-2 hover:text-[var(--landing-sun)]">
                   <Mail className="h-3.5 w-3.5" /> {t('contact')}
                 </Link>
               </li>
               <li>
-                <Link to="/login" className="inline-flex items-center gap-2 hover:text-[var(--landing-ink)]">
+                <Link to="/login" className="inline-flex items-center gap-2 hover:text-[var(--landing-sun)]">
                   <LogIn className="h-3.5 w-3.5" /> {t('logIn')}
                 </Link>
               </li>
@@ -276,10 +276,10 @@ const PlatformLayout = ({
               <ArrowRight className="h-3.5 w-3.5" />
             </Link>
             <div className="mt-5 flex gap-4 text-xs text-[var(--landing-shadow)]">
-              <Link to="/privacy" className="hover:text-[var(--landing-ink)]">
+              <Link to="/privacy" className="hover:text-[var(--landing-sun)]">
                 {t('privacy')}
               </Link>
-              <Link to="/terms" className="hover:text-[var(--landing-ink)]">
+              <Link to="/terms" className="hover:text-[var(--landing-sun)]">
                 {t('terms')}
               </Link>
             </div>

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { 
   Dialog, 
   DialogContent, 
@@ -9,14 +9,15 @@ import {
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { updateStudentProfile, uploadStudentProfileImage } from '@/lib/api';
-import { Loader2, Upload, X, Image as ImageIcon } from 'lucide-react';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { updateStudentProfile, uploadStudentProfileImage, assignStudentAffiliate } from '@/lib/api';
+import { Loader2, Upload, X } from 'lucide-react';
 import { isValidEmail } from '@/lib/utils';
 import { normalizePhoneNumber, isValidPhoneFormat } from '@/lib/validatePhoneNumber';
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { notify, MESSAGES } from '@/lib/notify';
 
-const EditStudentModal = ({ student, isOpen, onClose, onSuccess }) => {
+const EditStudentModal = ({ student, isOpen, onClose, onSuccess, users = [] }) => {
   const fileInputRef = useRef(null);
 
   const [formData, setFormData] = useState({
@@ -25,7 +26,8 @@ const EditStudentModal = ({ student, isOpen, onClose, onSuccess }) => {
     phone: '',
     university_name: '',
     faculty: '',
-    year: ''
+    year: '',
+    affiliate_id: 'none',
   });
 
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -34,6 +36,16 @@ const EditStudentModal = ({ student, isOpen, onClose, onSuccess }) => {
   const [file, setFile] = useState(null);
   const [previewUrl, setPreviewUrl] = useState(null);
   const [isDragging, setIsDragging] = useState(false);
+
+  const affiliates = useMemo(
+    () =>
+      (users || []).filter(
+        (u) =>
+          u.role === 'affiliate' &&
+          (u.status === 'approved' || u.status === 'active' || !u.status),
+      ),
+    [users],
+  );
 
   // Initialize form when student changes or modal opens
   useEffect(() => {
@@ -44,7 +56,8 @@ const EditStudentModal = ({ student, isOpen, onClose, onSuccess }) => {
         phone: student.phone || '',
         university_name: student.university_name || '',
         faculty: student.faculty || '',
-        year: student.year || ''
+        year: student.year || '',
+        affiliate_id: student.affiliate_id || 'none',
       });
       setPreviewUrl(student.avatar_url || null);
       setFile(null);
@@ -171,6 +184,12 @@ const EditStudentModal = ({ student, isOpen, onClose, onSuccess }) => {
       };
 
       await updateStudentProfile(student.id, updateData);
+
+      const previousAffiliate = student.affiliate_id || 'none';
+      const nextAffiliate = formData.affiliate_id || 'none';
+      if (previousAffiliate !== nextAffiliate) {
+        await assignStudentAffiliate(student.id, nextAffiliate);
+      }
 
       notify.success(MESSAGES.SUCCESS.STUDENT_UPDATED);
       
@@ -314,6 +333,35 @@ const EditStudentModal = ({ student, isOpen, onClose, onSuccess }) => {
                   className="bg-slate-950 border-slate-800 text-white" 
                 />
               </div>
+            </div>
+
+            <div className="grid gap-2">
+              <Label className="text-slate-300">Assign Affiliate</Label>
+              <Select
+                value={formData.affiliate_id}
+                onValueChange={(v) => setFormData((p) => ({ ...p, affiliate_id: v }))}
+              >
+                <SelectTrigger className="bg-slate-950 border-slate-800 text-white">
+                  <SelectValue placeholder="Select Affiliate" />
+                </SelectTrigger>
+                <SelectContent className="bg-slate-900 border-slate-800 text-white">
+                  <SelectItem value="none">None</SelectItem>
+                  {affiliates.length === 0 ? (
+                    <div className="px-2 py-1.5 text-xs text-slate-500">
+                      No affiliates yet. Create them in Users.
+                    </div>
+                  ) : (
+                    affiliates.map((aff) => (
+                      <SelectItem key={aff.id} value={aff.id}>
+                        {aff.name || aff.full_name || aff.email}
+                      </SelectItem>
+                    ))
+                  )}
+                </SelectContent>
+              </Select>
+              <p className="text-xs text-slate-500">
+                Affiliates already registered for this institution. Saving applies commission on existing payments.
+              </p>
             </div>
           </div>
         </form>

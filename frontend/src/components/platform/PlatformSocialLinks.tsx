@@ -4,6 +4,7 @@ import { Facebook, Instagram, Linkedin, Twitter, Youtube, Mail } from 'lucide-re
 
 export const PLATFORM_CONTACT_EMAIL = 'orb1tsystems22@gmail.com'
 
+/** Official platform brand colors for social icons. */
 export const PLATFORM_SOCIAL = [
   {
     name: 'Facebook',
@@ -16,7 +17,7 @@ export const PLATFORM_SOCIAL = [
     name: 'Instagram',
     href: 'https://www.instagram.com/',
     icon: Instagram,
-    color: '#E4405F',
+    color: '#E1306C',
     brand: 'instagram',
   },
   {
@@ -30,7 +31,7 @@ export const PLATFORM_SOCIAL = [
     name: 'X (Twitter)',
     href: 'https://x.com/',
     icon: Twitter,
-    color: '#111111',
+    color: '#1DA1F2',
     brand: 'x',
   },
   {
@@ -77,7 +78,7 @@ export default function PlatformSocialLinks({
 }) {
   return (
     <div
-      className={`flex flex-wrap items-center gap-2 ${className}`}
+      className={`flex flex-wrap items-center gap-2.5 ${className}`}
       aria-label="Social media and contact"
     >
       {PLATFORM_SOCIAL.map((item, i) => {
@@ -90,12 +91,10 @@ export default function PlatformSocialLinks({
           'aria-label': item.name === 'Email' ? `Email ${PLATFORM_CONTACT_EMAIL}` : item.name,
           title: item.name === 'Email' ? PLATFORM_CONTACT_EMAIL : item.name,
           'data-brand': item.brand,
-          className: `platform-social-brand landing-social-icon inline-flex items-center justify-center border transition-[transform,box-shadow] duration-200 hover:-translate-y-0.5 hover:scale-105 hover:shadow-md ${sizeClass[variant]}`,
+          className: `platform-social-brand landing-social-icon inline-flex items-center justify-center transition-[transform,box-shadow,background,color,border-color] duration-200 hover:-translate-y-0.5 hover:scale-105 ${sizeClass[variant]}`,
           style: {
+            ['--social-brand' as string]: item.color,
             borderRadius: 'var(--landing-radius)',
-            color: item.color,
-            borderColor: `${item.color}55`,
-            backgroundColor: `${item.color}14`,
             animationDelay: `${i * 0.18}s`,
           } as React.CSSProperties,
         }

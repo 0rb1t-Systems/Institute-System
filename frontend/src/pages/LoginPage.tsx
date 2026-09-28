@@ -461,7 +461,7 @@ const LoginPage = ({ initialError = '' }) => {
               {/^https?:\/\//i.test(tenantHomeHref) ? (
                 <a
                   href={tenantHomeHref}
-                  className="inline-flex items-center text-sm text-teal-400 hover:text-teal-300"
+                  className="inline-flex items-center text-sm text-[var(--landing-sun)] hover:opacity-90"
                 >
                   <ArrowLeft className="mr-1 h-4 w-4" />
                   Back to {institution?.name || 'institution'} page
@@ -469,7 +469,7 @@ const LoginPage = ({ initialError = '' }) => {
               ) : (
                 <Link
                   to={tenantHomeHref}
-                  className="inline-flex items-center text-sm text-teal-400 hover:text-teal-300"
+                  className="inline-flex items-center text-sm text-[var(--landing-sun)] hover:opacity-90"
                 >
                   <ArrowLeft className="mr-1 h-4 w-4" />
                   Back to {institution?.name || 'institution'} page

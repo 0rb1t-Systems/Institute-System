@@ -8,6 +8,7 @@ import { AuthProvider } from '@/contexts/AuthContext';
 import { PlatformThemeProvider } from '@/contexts/PlatformThemeContext';
 import { PlatformLangProvider } from '@/contexts/PlatformLangContext';
 import InstitutionBrandTheme from '@/components/InstitutionBrandTheme';
+import PlatformBrandTheme from '@/components/PlatformBrandTheme';
 import '@/index.css';
 
 // Simple Error Boundary for Auth Context failures
@@ -60,6 +61,7 @@ ReactDOM.createRoot(document.getElementById('root')).render(
           <PlatformThemeProvider>
             <PlatformLangProvider>
               <InstitutionBrandTheme />
+              <PlatformBrandTheme />
               <DataProvider>
                 <App />
                 <Toaster />

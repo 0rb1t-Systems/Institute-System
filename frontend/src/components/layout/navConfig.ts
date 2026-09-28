@@ -60,6 +60,16 @@ export function getNavSectionsForRole(role?: string | null): NavSection[] {
     ];
   }
 
+  if (role === 'super_admin') {
+    return [
+      { label: 'OVERVIEW', items: items.slice(0, 1) },
+      { label: 'INSTITUTIONS', items: items.slice(1, 3) },
+      { label: 'PLATFORM', items: items.slice(3, 8) },
+      { label: 'DESIGN', items: items.slice(8, 9) },
+      { label: 'SYSTEM', items: items.slice(9) },
+    ];
+  }
+
   return [{ label: null, items }];
 }
 

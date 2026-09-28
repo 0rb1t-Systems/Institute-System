@@ -316,3 +316,55 @@ export function clearInstitutionBrandCss(): void {
   root.style.removeProperty('--primary-foreground')
   root.style.removeProperty('--ring')
 }
+
+/** Defaults match Ops Desk gold on the Super Admin shell. */
+export const DEFAULT_PLATFORM_PRIMARY = '#0F172A'
+export const DEFAULT_PLATFORM_ACCENT = '#EAB308'
+export const DEFAULT_PLATFORM_TERTIARY = '#38BDF8'
+
+export type PlatformDashboardBrand = {
+  primary: string
+  accent: string
+  tertiary: string
+}
+
+export function normalizePlatformDashboardBrand(
+  input?: Partial<PlatformDashboardBrand> | null,
+): PlatformDashboardBrand {
+  const tertiaryRaw = String(input?.tertiary || '').trim()
+  return {
+    primary: normalizeHexColor(input?.primary, DEFAULT_PLATFORM_PRIMARY),
+    accent: normalizeHexColor(input?.accent, DEFAULT_PLATFORM_ACCENT),
+    tertiary: tertiaryRaw ? normalizeHexColor(tertiaryRaw, DEFAULT_PLATFORM_TERTIARY) : '',
+  }
+}
+
+/** Pushes Super Admin dashboard colors onto --pf-* (platform-shell only). */
+export function applyPlatformBrandCss(brand?: Partial<PlatformDashboardBrand> | null): void {
+  if (typeof document === 'undefined') return
+  const root = document.documentElement
+  const { primary, accent, tertiary } = normalizePlatformDashboardBrand(brand)
+  const accentFg = hexForegroundHex(accent)
+  root.style.setProperty('--pf-accent', accent)
+  root.style.setProperty('--pf-accent-fg', accentFg)
+  root.style.setProperty('--pf-hover', `color-mix(in srgb, ${accent} 12%, transparent)`)
+  root.style.setProperty('--pf-brand-primary', primary)
+  root.style.setProperty('--pf-brand-on-primary', hexForegroundHex(primary))
+  if (tertiary) root.style.setProperty('--pf-brand-tertiary', tertiary)
+  else root.style.removeProperty('--pf-brand-tertiary')
+  root.setAttribute('data-platform-brand', '1')
+}
+
+export function clearPlatformBrandCss(): void {
+  if (typeof document === 'undefined') return
+  const root = document.documentElement
+  root.style.removeProperty('--pf-accent')
+  root.style.removeProperty('--pf-accent-fg')
+  root.style.removeProperty('--pf-hover')
+  root.style.removeProperty('--pf-brand-primary')
+  root.style.removeProperty('--pf-brand-on-primary')
+  root.style.removeProperty('--pf-brand-tertiary')
+  root.removeAttribute('data-platform-brand')
+}
+
+export const PLATFORM_BRAND_EVENT = 'tvetflow-platform-brand'

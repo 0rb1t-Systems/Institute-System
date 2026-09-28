@@ -25,10 +25,10 @@ const CHART_POINTS = [
 /** Public mock of an institution admin console — never shows platform/operator roles. */
 const DashboardPreview = () => {
   const cards = [
-    { label: 'Total Students', value: '1,248', icon: GraduationCap, tone: 'text-teal-600' },
+    { label: 'Total Students', value: '1,248', icon: GraduationCap, tone: 'text-[var(--landing-sun,#eab308)]' },
     { label: 'Active Classes', value: '36', icon: BookOpen, tone: 'text-sky-600' },
     { label: 'Staff', value: '28', icon: Users, tone: 'text-violet-600' },
-    { label: 'Revenue', value: '$12.4k', icon: TrendingUp, tone: 'text-amber-600' },
+    { label: 'Revenue', value: '$12.4k', icon: TrendingUp, tone: 'text-[var(--landing-sun,#eab308)]' },
   ]
 
   const linePath = CHART_POINTS.map((p, i) => `${i === 0 ? 'M' : 'L'}${p.x} ${p.y}`).join(' ')
@@ -53,7 +53,7 @@ const DashboardPreview = () => {
                 <div
                   key={item}
                   className={`rounded-md px-2 py-1.5 text-[10px] ${
-                    i === 0 ? 'bg-teal-500 font-medium text-white' : 'text-slate-400'
+                    i === 0 ? 'bg-[var(--landing-sun,#eab308)] font-medium text-[var(--landing-on-sun,#0f172a)]' : 'text-slate-400'
                   }`}
                 >
                   {item}

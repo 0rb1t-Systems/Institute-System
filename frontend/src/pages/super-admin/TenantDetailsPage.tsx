@@ -29,6 +29,7 @@ import { AlertCircle, ArrowLeft, Loader2, Pencil, Trash2, UserPlus } from 'lucid
 import {
   getTenant,
   getTenantAdmins,
+  getSuperAdminTenantMetrics,
   updateTenant,
   createTenantAdmin,
   deleteTenant,
@@ -45,6 +46,7 @@ const TenantDetailsPage = () => {
   const { toast } = useToast()
   const [tenant, setTenant] = useState(null)
   const [admins, setAdmins] = useState([])
+  const [metrics, setMetrics] = useState(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
   const [savingStatus, setSavingStatus] = useState(false)
@@ -55,6 +57,8 @@ const TenantDetailsPage = () => {
   const [savingEdit, setSavingEdit] = useState(false)
   const [deleting, setDeleting] = useState(false)
   const [confirmName, setConfirmName] = useState('')
+  const [savingTheme, setSavingTheme] = useState(false)
+  const [themeDraft, setThemeDraft] = useState<'light' | 'dark'>('light')
   const [form, setForm] = useState({
     full_name: '',
     email: '',
@@ -73,10 +77,16 @@ const TenantDetailsPage = () => {
     setLoading(true)
     setError(null)
     try {
-      const [t, a] = await Promise.all([getTenant(id), getTenantAdmins(id)])
+      const [t, a, m] = await Promise.all([
+        getTenant(id),
+        getTenantAdmins(id),
+        getSuperAdminTenantMetrics(id).catch(() => null),
+      ])
       if (!t) throw new Error('NOT_FOUND')
       setTenant(t)
       setAdmins(a)
+      setMetrics(m)
+      setThemeDraft(t.dashboard_theme === 'dark' ? 'dark' : 'light')
       setEditForm({
         name: t.name || '',
         email: t.email || '',
@@ -117,6 +127,27 @@ const TenantDetailsPage = () => {
       })
     } finally {
       setSavingStatus(false)
+    }
+  }
+
+  const handleSaveTheme = async () => {
+    if (!tenant) return
+    setSavingTheme(true)
+    try {
+      const updated = await updateTenant(tenant.id, { dashboard_theme: themeDraft })
+      setTenant(updated)
+      toast({
+        title: 'Theme saved',
+        description: `${tenant.name} dashboard will use ${themeDraft} mode.`,
+      })
+    } catch (err) {
+      toast({
+        title: 'Error',
+        description: getUserMessage(err, { fallback: MESSAGES.SAVE_FAILED }),
+        variant: 'destructive',
+      })
+    } finally {
+      setSavingTheme(false)
     }
   }
 
@@ -313,6 +344,80 @@ const TenantDetailsPage = () => {
           </Button>
         </div>
       </PageHeader>
+
+      {metrics && (
+        <div className="mb-6 grid grid-cols-2 gap-2 sm:grid-cols-4 lg:grid-cols-6">
+          {[
+            { label: 'Students', value: metrics.students },
+            { label: 'Staff', value: metrics.staff },
+            { label: 'Instructors', value: metrics.instructors },
+            { label: 'Courses', value: metrics.courses },
+            { label: 'Certificates', value: metrics.certificates },
+            { label: 'Registrations', value: metrics.registrations },
+          ].map((item) => (
+            <div
+              key={item.label}
+              className="rounded-xl border border-[var(--pf-line)] bg-[var(--pf-surface)] px-3 py-2.5"
+            >
+              <p className="text-[11px] text-[var(--pf-muted)]">{item.label}</p>
+              <p className="mt-1 font-display text-lg font-semibold tabular-nums text-[var(--pf-text)]">
+                {Number(item.value || 0).toLocaleString()}
+              </p>
+            </div>
+          ))}
+        </div>
+      )}
+
+      <Card className="mb-6 border-[var(--pf-line)] bg-[var(--pf-surface)]">
+        <CardHeader className="pb-3">
+          <CardTitle className="text-base text-[var(--pf-text)]">Dashboard theme</CardTitle>
+          <CardDescription className="text-[var(--pf-muted)]">
+            Choose Light or Dark for this institution’s dashboards, then save. Applies when platform
+            policy is “Institution choice”.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          <div className="grid gap-2 sm:grid-cols-2">
+            {(
+              [
+                { id: 'light' as const, title: 'Light', description: 'Bright workspace for daytime ops.' },
+                { id: 'dark' as const, title: 'Dark', description: 'Low-glare workspace for night use.' },
+              ] as const
+            ).map((opt) => (
+              <button
+                key={opt.id}
+                type="button"
+                onClick={() => setThemeDraft(opt.id)}
+                className={
+                  themeDraft === opt.id
+                    ? 'rounded-[10px] border border-[var(--pf-accent)] bg-[var(--pf-hover)] px-3 py-3 text-left'
+                    : 'rounded-[10px] border border-[var(--pf-line)] px-3 py-3 text-left hover:border-[var(--pf-accent)]/40'
+                }
+              >
+                <p className="text-sm font-semibold text-[var(--pf-text)]">{opt.title}</p>
+                <p className="mt-1 text-[11px] text-[var(--pf-muted)]">{opt.description}</p>
+              </button>
+            ))}
+          </div>
+          <div className="flex flex-wrap items-center gap-2">
+            <Button
+              type="button"
+              size="sm"
+              disabled={savingTheme || themeDraft === tenant.dashboard_theme}
+              onClick={handleSaveTheme}
+              className="bg-[var(--pf-accent)] text-[var(--pf-accent-fg)] hover:opacity-90"
+            >
+              {savingTheme ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Save theme'}
+            </Button>
+            <span className="text-[11px] text-[var(--pf-faint)]">
+              Saved:{' '}
+              {tenant.dashboard_theme === 'dark' || tenant.dashboard_theme === 'light'
+                ? tenant.dashboard_theme
+                : 'none yet'}
+            </span>
+          </div>
+        </CardContent>
+      </Card>
 
       <div className="grid gap-6 lg:grid-cols-2 mb-8">
         <Card className="bg-slate-900 border-slate-800">

@@ -135,7 +135,7 @@ const Header = () => {
                         className={cn(
                           'flex items-center gap-3 rounded-md px-3 py-2.5 transition-colors',
                           active
-                            ? 'border-l-2 border-teal-500 bg-teal-500/15 pl-[10px] text-[var(--pf-text)]'
+                            ? 'bg-[var(--pf-accent)] pl-3 text-[var(--pf-accent-fg)]'
                             : 'text-[var(--pf-muted)] hover:bg-[var(--pf-hover)]',
                         )}
                       >

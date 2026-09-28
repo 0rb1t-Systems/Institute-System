@@ -33,7 +33,7 @@ async function fetchAllPaged(buildQuery) {
 }
 
 const INST_SELECT =
-  'id, name, subdomain, logo_url, description, email, phone, address, website, motto, theme_primary, theme_accent, theme_tertiary, social_whatsapp, social_facebook, social_tiktok, status, created_at, affiliate_commission_rate, registration_fee_amount, default_instructor_commission_rate, currency, currency_symbol, signatory_left_title, signatory_right_title, signatory_left_name, signatory_right_name, seal_url, signature_url, certificate_footer_text, transcript_footer_text, transcript_narrative_text, invoice_footer_text, certificate_number_start, certificate_number_pad, certificate_number_last, student_id_prefix, student_id_start, student_id_pad, student_id_last, settings_completed_at, landing_template_id, hero_image_url, hero_headline, footer_text, landing_content, grading_scale'
+  'id, name, subdomain, logo_url, description, email, phone, address, website, motto, theme_primary, theme_accent, theme_tertiary, social_whatsapp, social_facebook, social_tiktok, status, created_at, affiliate_commission_rate, registration_fee_amount, default_instructor_commission_rate, currency, currency_symbol, signatory_left_title, signatory_right_title, signatory_left_name, signatory_right_name, seal_url, signature_url, certificate_footer_text, transcript_footer_text, transcript_narrative_text, invoice_footer_text, certificate_number_start, certificate_number_pad, certificate_number_last, student_id_prefix, student_id_start, student_id_pad, student_id_last, settings_completed_at, landing_template_id, hero_image_url, hero_headline, footer_text, landing_content, grading_scale, dashboard_theme'
 
 async function requireUser() {
   const { data, error } = await supabase.auth.getUser()
@@ -818,6 +818,7 @@ export const updateStudent = async (id, data) => {
   if (data.phone !== undefined) updates.phone = data.phone
   if (data.status) updates.status = data.status
   if (data.avatar_url !== undefined) updates.avatar_url = data.avatar_url
+  // Prefer assignStudentAffiliate when commissions must resync; this keeps a simple path for callers that only set attribution.
   if (data.affiliate_id !== undefined) {
     updates.affiliate_id =
       data.affiliate_id && data.affiliate_id !== 'none' ? data.affiliate_id : null
@@ -828,6 +829,18 @@ export const updateStudent = async (id, data) => {
 }
 
 export const updateStudentProfile = updateStudent
+
+/** Admin/staff: assign or clear affiliate and resync commission settlements. */
+export const assignStudentAffiliate = async (studentId, affiliateId) => {
+  const affiliate =
+    affiliateId && affiliateId !== 'none' ? affiliateId : null
+  const { data, error } = await supabase.rpc('assign_student_affiliate', {
+    p_student_id: studentId,
+    p_affiliate_id: affiliate,
+  })
+  if (error) throw error
+  return mapStudent(data)
+}
 
 export const deleteStudent = async (studentId) => {
   // PRD: Admin has Delete on student registration — hard-delete via Edge Function

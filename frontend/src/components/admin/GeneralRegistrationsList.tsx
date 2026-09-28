@@ -32,7 +32,7 @@ const GeneralRegistrationsList = () => {
   const [createdCreds, setCreatedCreds] = useState(null); // To show after approval
 
   // Pagination
-  const [approvedPage, setApprovedPage] = useState(1);
+  const [historyPage, setHistoryPage] = useState(1);
   const [pendingPage, setPendingPage] = useState(1);
   const ITEMS_PER_PAGE = 10;
 
@@ -87,21 +87,16 @@ const GeneralRegistrationsList = () => {
   const digitsOnly = (value) => String(value || '').replace(/\D/g, '');
 
   // Categorize Registrations (pending searchable by name or phone)
-  const { pending, approved, rejected, pendingTotal } = useMemo(() => {
+  const { pending, history, pendingTotal } = useMemo(() => {
     const p = [];
-    const a = [];
-    const r = [];
+    const h = [];
     let pendingTotal = 0;
     const query = searchTerm.trim().toLowerCase();
     const queryDigits = digitsOnly(searchTerm);
 
     generalRegistrations.forEach((reg) => {
-      if (reg.status === 'approved') {
-        a.push(reg);
-        return;
-      }
-      if (reg.status === 'rejected') {
-        r.push(reg);
+      if (reg.status === 'approved' || reg.status === 'rejected') {
+        h.push(reg);
         return;
       }
       if (reg.status !== 'pending') return;
@@ -121,16 +116,16 @@ const GeneralRegistrationsList = () => {
     // Newest first
     const byDateDesc = (x, y) => Number(new Date(y.submitted_at)) - Number(new Date(x.submitted_at));
     p.sort(byDateDesc);
-    a.sort(byDateDesc);
-    return { pending: p, approved: a, rejected: r, pendingTotal };
+    h.sort(byDateDesc);
+    return { pending: p, history: h, pendingTotal };
   }, [generalRegistrations, searchTerm]);
 
   // Pagination Logic
-  const totalApprovedPages = Math.max(1, Math.ceil(approved.length / ITEMS_PER_PAGE));
-  const safeApprovedPage = Math.min(approvedPage, totalApprovedPages);
-  const currentApproved = approved.slice(
-    (safeApprovedPage - 1) * ITEMS_PER_PAGE,
-    safeApprovedPage * ITEMS_PER_PAGE
+  const totalHistoryPages = Math.max(1, Math.ceil(history.length / ITEMS_PER_PAGE));
+  const safeHistoryPage = Math.min(historyPage, totalHistoryPages);
+  const currentHistory = history.slice(
+    (safeHistoryPage - 1) * ITEMS_PER_PAGE,
+    safeHistoryPage * ITEMS_PER_PAGE
   );
 
   const totalPendingPages = Math.max(1, Math.ceil(pending.length / ITEMS_PER_PAGE));
@@ -260,87 +255,7 @@ const GeneralRegistrationsList = () => {
             </DialogContent>
         </Dialog>
 
-        {/* SECTION 1: APPROVED HISTORY (MOVED TO TOP AS REQUESTED) */}
-        <Card>
-            <CardHeader>
-                <div className="flex items-center justify-between">
-                    <div>
-                        <CardTitle className="flex items-center gap-2 text-[var(--ds-success,#059669)]">
-                            <UserCheck className="h-5 w-5" /> Approved Students History
-                        </CardTitle>
-                        <CardDescription>Students who have been successfully registered via online forms.</CardDescription>
-                    </div>
-                    <Badge variant="outline" className="border-[var(--ds-success,#059669)] text-[var(--ds-success,#059669)]">{approved.length} Total</Badge>
-                </div>
-            </CardHeader>
-            <CardContent>
-                <Table>
-                    <TableHeader>
-                        <TableRow>
-                            <TableHead className="px-5 py-3 text-[11px] font-semibold uppercase tracking-wide text-[var(--ds-text-tertiary,#8A978E)]">Student</TableHead>
-                            <TableHead className="px-5 py-3 text-[11px] font-semibold uppercase tracking-wide text-[var(--ds-text-tertiary,#8A978E)]">Program</TableHead>
-                            <TableHead className="px-5 py-3 text-[11px] font-semibold uppercase tracking-wide text-[var(--ds-text-tertiary,#8A978E)]">Affiliate</TableHead>
-                            <TableHead className="px-5 py-3 text-[11px] font-semibold uppercase tracking-wide text-[var(--ds-text-tertiary,#8A978E)]">Date</TableHead>
-                            <TableHead className="px-5 py-3 text-right text-[11px] font-semibold uppercase tracking-wide text-[var(--ds-text-tertiary,#8A978E)]">Status</TableHead>
-                        </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                        {currentApproved.length > 0 ? (
-                            currentApproved.map(reg => (
-                                <TableRow key={reg.id}>
-                                    <TableCell className="px-5">
-                                        <div className="font-medium text-[var(--ds-text-primary,#122018)]">{reg.student_name}</div>
-                                        <div className="text-xs text-[var(--ds-text-tertiary,#8A978E)]">{reg.student_email}</div>
-                                    </TableCell>
-                                    <TableCell className="px-5 text-[var(--ds-text-secondary,#5B6B61)]">
-                                      {(() => {
-                                        const program = resolveProgramLabel(reg);
-                                        if (!program) {
-                                          return <span className="italic text-[var(--ds-text-tertiary,#8A978E)]">No program selected</span>;
-                                        }
-                                        return (
-                                          <div>
-                                            <div className="font-medium text-[var(--ds-text-primary,#122018)]">{program.name}</div>
-                                            {program.typeLabel ? (
-                                              <div className="text-[11px] text-[var(--ds-text-tertiary,#8A978E)]">{program.typeLabel}</div>
-                                            ) : null}
-                                          </div>
-                                        );
-                                      })()}
-                                    </TableCell>
-                                    <TableCell className="px-5 text-sm text-[var(--ds-accent,#1F8A5B)]">
-                                        {resolveAffiliateName(reg.affiliate_id) || '—'}
-                                    </TableCell>
-                                    <TableCell className="px-5 text-xs text-[var(--ds-text-secondary,#5B6B61)]">{formatDate(reg.submitted_at)}</TableCell>
-                                    <TableCell className="px-5 text-right">
-                                        <Badge className="border-0 bg-[var(--ds-success-bg,#ECFDF5)] text-[var(--ds-success,#059669)]">Approved</Badge>
-                                    </TableCell>
-                                </TableRow>
-                            ))
-                        ) : (
-                            <TableRow>
-                                <TableCell colSpan={5} className="py-8 text-center text-[var(--ds-text-tertiary,#8A978E)]">No approved registrations found.</TableCell>
-                            </TableRow>
-                        )}
-                    </TableBody>
-                </Table>
-                
-                {/* Approved Pagination */}
-                {approved.length > ITEMS_PER_PAGE && (
-                    <div className="flex items-center justify-end gap-2 mt-4">
-                        <Button variant="outline" size="sm" onClick={() => setApprovedPage(p => Math.max(1, p - 1))} disabled={safeApprovedPage === 1}>
-                            <ChevronLeft className="h-4 w-4" />
-                        </Button>
-                        <span className="text-xs text-[var(--ds-text-secondary,#5B6B61)]">Page {safeApprovedPage} of {totalApprovedPages}</span>
-                        <Button variant="outline" size="sm" onClick={() => setApprovedPage(p => Math.min(totalApprovedPages, p + 1))} disabled={safeApprovedPage === totalApprovedPages}>
-                            <ChevronRight className="h-4 w-4" />
-                        </Button>
-                    </div>
-                )}
-            </CardContent>
-        </Card>
-
-        {/* SECTION 2: PENDING REGISTRATIONS */}
+        {/* SECTION 1: PENDING REGISTRATIONS */}
         <Card className="border-l-4 border-l-[var(--ds-warning,#C2410C)]">
             <CardHeader className="space-y-4">
                 <div className="flex items-center justify-between gap-4">
@@ -470,34 +385,105 @@ const GeneralRegistrationsList = () => {
             </CardContent>
         </Card>
 
-        {/* SECTION 3: REJECTED HISTORY (Collapsed or at bottom) */}
-        {rejected.length > 0 && (
-             <Card>
-                <CardHeader><CardTitle className="text-sm text-[var(--ds-text-tertiary,#8A978E)]">Rejected Applications History</CardTitle></CardHeader>
-                <CardContent>
-                    <Table>
-                        <TableHeader>
-                          <TableRow>
-                            <TableHead className="h-8 px-5 text-[11px] font-semibold uppercase tracking-wide text-[var(--ds-text-tertiary,#8A978E)]">Name</TableHead>
-                            <TableHead className="h-8 px-5 text-[11px] font-semibold uppercase tracking-wide text-[var(--ds-text-tertiary,#8A978E)]">Reason</TableHead>
-                            <TableHead className="h-8 px-5 text-right text-[11px] font-semibold uppercase tracking-wide text-[var(--ds-text-tertiary,#8A978E)]">Action</TableHead>
-                          </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                            {rejected.slice(0, 5).map(reg => (
+        {/* SECTION 2: APPROVED + REJECTED HISTORY (mixed) */}
+        <Card>
+            <CardHeader>
+                <div className="flex items-center justify-between">
+                    <div>
+                        <CardTitle className="flex items-center gap-2 text-[var(--ds-text-primary,#122018)]">
+                            <UserCheck className="h-5 w-5 text-[var(--ds-success,#059669)]" /> Registration History
+                        </CardTitle>
+                        <CardDescription>Approved and rejected online registrations, newest first.</CardDescription>
+                    </div>
+                    <Badge variant="outline" className="border-[var(--ds-border,#DDE5DF)] text-[var(--ds-text-secondary,#5B6B61)]">{history.length} Total</Badge>
+                </div>
+            </CardHeader>
+            <CardContent>
+                <Table>
+                    <TableHeader>
+                        <TableRow>
+                            <TableHead className="px-5 py-3 text-[11px] font-semibold uppercase tracking-wide text-[var(--ds-text-tertiary,#8A978E)]">Student</TableHead>
+                            <TableHead className="px-5 py-3 text-[11px] font-semibold uppercase tracking-wide text-[var(--ds-text-tertiary,#8A978E)]">Program</TableHead>
+                            <TableHead className="px-5 py-3 text-[11px] font-semibold uppercase tracking-wide text-[var(--ds-text-tertiary,#8A978E)]">Affiliate</TableHead>
+                            <TableHead className="px-5 py-3 text-[11px] font-semibold uppercase tracking-wide text-[var(--ds-text-tertiary,#8A978E)]">Date</TableHead>
+                            <TableHead className="px-5 py-3 text-right text-[11px] font-semibold uppercase tracking-wide text-[var(--ds-text-tertiary,#8A978E)]">Status</TableHead>
+                        </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                        {currentHistory.length > 0 ? (
+                            currentHistory.map(reg => (
                                 <TableRow key={reg.id}>
-                                    <TableCell className="px-5 py-2 text-[var(--ds-text-secondary,#5B6B61)]">{reg.student_name}</TableCell>
-                                    <TableCell className="px-5 py-2 text-xs italic text-[var(--ds-text-tertiary,#8A978E)]">{reg.rejection_reason || 'No reason provided'}</TableCell>
-                                    <TableCell className="px-5 py-2 text-right">
-                                        <Button variant="ghost" size="sm" className="h-6 text-[var(--ds-danger,#DC2626)] hover:bg-[var(--ds-danger-bg,#FEF2F2)]" onClick={() => handleDelete(reg.id)}>Delete</Button>
+                                    <TableCell className="px-5">
+                                        <div className="font-medium text-[var(--ds-text-primary,#122018)]">{reg.student_name}</div>
+                                        <div className="text-xs text-[var(--ds-text-tertiary,#8A978E)]">{reg.student_email}</div>
+                                        {reg.status === 'rejected' && reg.rejection_reason ? (
+                                          <div className="mt-0.5 text-xs italic text-[var(--ds-text-tertiary,#8A978E)]">
+                                            {reg.rejection_reason}
+                                          </div>
+                                        ) : null}
+                                    </TableCell>
+                                    <TableCell className="px-5 text-[var(--ds-text-secondary,#5B6B61)]">
+                                      {(() => {
+                                        const program = resolveProgramLabel(reg);
+                                        if (!program) {
+                                          return <span className="italic text-[var(--ds-text-tertiary,#8A978E)]">No program selected</span>;
+                                        }
+                                        return (
+                                          <div>
+                                            <div className="font-medium text-[var(--ds-text-primary,#122018)]">{program.name}</div>
+                                            {program.typeLabel ? (
+                                              <div className="text-[11px] text-[var(--ds-text-tertiary,#8A978E)]">{program.typeLabel}</div>
+                                            ) : null}
+                                          </div>
+                                        );
+                                      })()}
+                                    </TableCell>
+                                    <TableCell className="px-5 text-sm text-[var(--ds-accent,#1F8A5B)]">
+                                        {resolveAffiliateName(reg.affiliate_id) || '—'}
+                                    </TableCell>
+                                    <TableCell className="px-5 text-xs text-[var(--ds-text-secondary,#5B6B61)]">{formatDate(reg.submitted_at)}</TableCell>
+                                    <TableCell className="px-5 text-right">
+                                        <div className="flex flex-col items-end gap-1">
+                                          {reg.status === 'approved' ? (
+                                            <Badge className="border-0 bg-[var(--ds-success-bg,#ECFDF5)] text-[var(--ds-success,#059669)]">Approved</Badge>
+                                          ) : (
+                                            <Badge className="border-0 bg-[var(--ds-danger-bg,#FEF2F2)] text-[var(--ds-danger,#DC2626)]">Rejected</Badge>
+                                          )}
+                                          {reg.status === 'rejected' ? (
+                                            <Button
+                                              variant="ghost"
+                                              size="sm"
+                                              className="h-6 px-2 text-[var(--ds-danger,#DC2626)] hover:bg-[var(--ds-danger-bg,#FEF2F2)]"
+                                              onClick={() => handleDelete(reg.id)}
+                                            >
+                                              Delete
+                                            </Button>
+                                          ) : null}
+                                        </div>
                                     </TableCell>
                                 </TableRow>
-                            ))}
-                        </TableBody>
-                    </Table>
-                </CardContent>
-            </Card>
-        )}
+                            ))
+                        ) : (
+                            <TableRow>
+                                <TableCell colSpan={5} className="py-8 text-center text-[var(--ds-text-tertiary,#8A978E)]">No registration history yet.</TableCell>
+                            </TableRow>
+                        )}
+                    </TableBody>
+                </Table>
+                
+                {history.length > ITEMS_PER_PAGE && (
+                    <div className="flex items-center justify-end gap-2 mt-4">
+                        <Button variant="outline" size="sm" onClick={() => setHistoryPage(p => Math.max(1, p - 1))} disabled={safeHistoryPage === 1}>
+                            <ChevronLeft className="h-4 w-4" />
+                        </Button>
+                        <span className="text-xs text-[var(--ds-text-secondary,#5B6B61)]">Page {safeHistoryPage} of {totalHistoryPages}</span>
+                        <Button variant="outline" size="sm" onClick={() => setHistoryPage(p => Math.min(totalHistoryPages, p + 1))} disabled={safeHistoryPage === totalHistoryPages}>
+                            <ChevronRight className="h-4 w-4" />
+                        </Button>
+                    </div>
+                )}
+            </CardContent>
+        </Card>
     </div>
   );
 };

@@ -16,12 +16,13 @@ import {
 } from '@/components/ui/table'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { AlertCircle, Plus, Search, Building2 } from 'lucide-react'
-import { listTenants } from '@/lib/superAdminApi'
+import { getSuperAdminOverview, listTenants } from '@/lib/superAdminApi'
 import { getUserMessage } from '@/lib/mapError'
 import { MESSAGES } from '@/lib/messages'
 
 const TenantsPage = () => {
   const [tenants, setTenants] = useState([])
+  const [metricsById, setMetricsById] = useState({})
   const [q, setQ] = useState('')
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
@@ -30,7 +31,16 @@ const TenantsPage = () => {
     setLoading(true)
     setError(null)
     try {
-      setTenants(await listTenants())
+      const [list, overview] = await Promise.all([
+        listTenants(),
+        getSuperAdminOverview('30d').catch(() => null),
+      ])
+      setTenants(list)
+      const map = {}
+      for (const row of overview?.institutions || []) {
+        map[row.id] = row
+      }
+      setMetricsById(map)
     } catch (err) {
       setError(err)
     } finally {
@@ -63,7 +73,7 @@ const TenantsPage = () => {
         title="Tenants"
         subtitle="View, create, and manage all institutions on the platform."
       >
-        <Button asChild className="bg-indigo-600 hover:bg-indigo-500">
+        <Button asChild className="bg-[var(--pf-accent)] text-[var(--pf-accent-fg)] hover:opacity-90">
           <Link to="/super-admin/tenants/create">
             <Plus className="h-4 w-4 mr-2" />
             Create Tenant
@@ -97,32 +107,43 @@ const TenantsPage = () => {
             <TableRow className="border-slate-800 hover:bg-transparent">
               <TableHead>Institution</TableHead>
               <TableHead>Slug</TableHead>
-              <TableHead>Email</TableHead>
+              <TableHead className="text-right">Students</TableHead>
+              <TableHead className="text-right">Courses</TableHead>
+              <TableHead className="text-right">Activity</TableHead>
               <TableHead>Status</TableHead>
-              <TableHead>Created</TableHead>
               <TableHead className="text-right">Actions</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {loading ? (
               <TableRow>
-                <TableCell colSpan={6} className="text-slate-500 text-center py-10">
+                <TableCell colSpan={7} className="text-slate-500 text-center py-10">
                   Loading tenants…
                 </TableCell>
               </TableRow>
             ) : filtered.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={6} className="text-slate-500 text-center py-10">
+                <TableCell colSpan={7} className="text-slate-500 text-center py-10">
                   <Building2 className="h-8 w-8 mx-auto mb-2 opacity-40" />
                   No tenants found.
                 </TableCell>
               </TableRow>
             ) : (
-              filtered.map((t) => (
+              filtered.map((t) => {
+                const m = metricsById[t.id] || {}
+                return (
                 <TableRow key={t.id} className="border-slate-800">
                   <TableCell className="font-medium text-slate-100">{t.name}</TableCell>
                   <TableCell className="text-slate-400 font-mono text-xs">{t.subdomain}</TableCell>
-                  <TableCell className="text-slate-400">{t.email || '—'}</TableCell>
+                  <TableCell className="text-right tabular-nums text-slate-300">
+                    {m.students != null ? Number(m.students).toLocaleString() : '—'}
+                  </TableCell>
+                  <TableCell className="text-right tabular-nums text-slate-300">
+                    {m.courses != null ? Number(m.courses).toLocaleString() : '—'}
+                  </TableCell>
+                  <TableCell className="text-right tabular-nums text-slate-300">
+                    {m.activity_score != null ? Number(m.activity_score).toLocaleString() : '—'}
+                  </TableCell>
                   <TableCell>
                     <Badge
                       variant="outline"
@@ -135,16 +156,13 @@ const TenantsPage = () => {
                       {t.status || 'active'}
                     </Badge>
                   </TableCell>
-                  <TableCell className="text-slate-500 text-sm">
-                    {t.created_at ? new Date(t.created_at).toLocaleDateString() : '—'}
-                  </TableCell>
                   <TableCell className="text-right">
                     <Button asChild variant="ghost" size="sm">
                       <Link to={`/super-admin/tenants/${t.id}`}>Details</Link>
                     </Button>
                   </TableCell>
                 </TableRow>
-              ))
+              )})
             )}
           </TableBody>
         </Table>

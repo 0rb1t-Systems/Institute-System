@@ -491,7 +491,8 @@ const StudentsPage = () => {
                 student={editingStudent} 
                 isOpen={isEditDialogOpen} 
                 onClose={() => { setIsEditDialogOpen(false); setEditingStudent(null); }} 
-                onSuccess={() => refreshData()} 
+                onSuccess={() => refreshData()}
+                users={users}
             />
             
             <Dialog open={!!transferDialogStudent} onOpenChange={(open) => !open && setTransferDialogStudent(null)}>

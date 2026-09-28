@@ -84,16 +84,16 @@ const PlatformPlansPage = () => (
           >
             {/* Corner gift ribbon */}
             <motion.div
-              initial={{ opacity: 0, scale: 0.6 }}
-              whileInView={{ opacity: 1, scale: 1 }}
+              initial={{ opacity: 0, scale: 0.6, rotate: 45 }}
+              whileInView={{ opacity: 1, scale: 1, rotate: 45 }}
               viewport={{ once: true }}
               transition={{ delay: 0.35 + i * 0.1, type: 'spring', stiffness: 260, damping: 18 }}
-              className="pointer-events-none absolute -right-10 top-5 z-10 w-40 rotate-45 bg-[var(--landing-sun)] py-1.5 text-center shadow-[0_6px_16px_rgba(234,179,8,0.35)]"
+              className={`landing-plan-ribbon pointer-events-none absolute -right-11 top-6 z-10 w-[9.75rem] py-2 text-center ${
+                plan.featured ? 'landing-plan-ribbon--featured' : ''
+              }`}
               aria-label={plan.ribbon}
             >
-              <span className="text-[10px] font-extrabold tracking-[0.06em] text-[var(--landing-on-sun)] sm:text-[11px]">
-                {plan.ribbon}
-              </span>
+              <span className="landing-plan-ribbon__label">{plan.ribbon}</span>
             </motion.div>
 
             <div className="pr-10">

@@ -31,7 +31,7 @@ const Sidebar = () => {
         'outline-none focus-visible:ring-2 focus-visible:ring-[var(--ds-focus-ring,#1F8A5B)]/50',
         active
           ? isPlatform
-            ? 'bg-teal-500/15 text-[var(--pf-text)] pointer-events-none font-semibold'
+            ? 'bg-[var(--pf-accent)] text-[var(--pf-accent-fg)] pointer-events-none font-semibold shadow-[0_6px_14px_color-mix(in_srgb,var(--pf-accent)_28%,transparent)]'
             : 'bg-[var(--ds-primary-soft,#ECFDF5)] text-[var(--ds-primary,#1F8A5B)] pointer-events-none font-semibold'
           : isPlatform
             ? 'font-medium text-[var(--pf-muted)] hover:bg-[var(--pf-hover)] hover:text-[var(--pf-text)]'
