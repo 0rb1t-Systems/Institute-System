@@ -5,11 +5,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import CertificateImportEditor from '@/components/certificates/import/CertificateImportEditor'
 import { designDependsOnSourceFile } from '@/lib/certificateImport/generateTemplate'
-import {
-  PARTIAL_RECONSTRUCTION_MESSAGE,
-  type ImportSummary,
-  type TextBlock,
-} from '@/lib/certificateImport/types'
+import { type ImportSummary, type TextBlock } from '@/lib/certificateImport/types'
 import { expandCleanLines, looksLikeJammedMash } from '@/lib/certificateImport/untangle'
 import type { CertificateRenderData } from '@/lib/certificateTemplates'
 import type { LogoBuilderDesign } from '@/lib/certificateBuilder'
@@ -80,7 +76,7 @@ const ReferencePreview = ({
   if (!file) {
     return (
       <p className="text-sm text-[var(--ds-text-secondary,#5B6B61)]">
-        The reference file has been removed. The generated template does not use it.
+        The reference file has been removed.
       </p>
     )
   }
@@ -123,7 +119,6 @@ const ReferencePreview = ({
 const CertificateImportReview = ({
   design,
   summary,
-  warnings,
   referenceFile,
   referenceTexts,
   preview,
@@ -143,53 +138,50 @@ const CertificateImportReview = ({
 
   return (
     <div className="space-y-6">
-      <div className="rounded-lg border border-[var(--ds-border,#DDE5DF)] bg-[var(--ds-surface,#fff)] px-4 py-3 text-sm text-[var(--ds-text-primary,#122018)]">
-        Drag any text or image to move it. Use the green corner handles to resize. Positions you set are kept exactly when you save and when students generate. You can save many templates — upload another certificate anytime.
-        {warnings.length ? ` ${PARTIAL_RECONSTRUCTION_MESSAGE}` : ''}
-      </div>
-
       <section className="space-y-3">
-        <div className="flex items-center justify-between gap-2">
-          <h2 className="text-base font-semibold text-[var(--ds-text-primary,#122018)]">Original reference</h2>
-          <Badge variant="outline">Reference only</Badge>
-        </div>
-        <div className="mx-auto max-w-xl overflow-hidden rounded-[var(--ds-radius-xl,16px)] border border-[var(--ds-border,#DDE5DF)] bg-[var(--ds-surface-muted,#F4F7F5)] p-3">
-          <ReferencePreview file={referenceFile} texts={referenceTexts} summary={summary} />
-        </div>
-        {referenceFile ? (
-          <Button type="button" variant="outline" onClick={onDiscardReference}>
-            Remove reference file
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <div className="flex items-center gap-2">
+            <h2 className="text-base font-semibold text-[var(--ds-text-primary,#122018)]">Edit template</h2>
+            <Badge>Generated template</Badge>
+          </div>
+          <Button
+            type="button"
+            size="sm"
+            onClick={onSave}
+            disabled={saving || saved || !independent}
+          >
+            {saved ? 'Saved & active' : saving ? 'Saving…' : 'Save'}
           </Button>
-        ) : null}
-      </section>
-
-      <section className="space-y-3">
-        <div className="flex items-center justify-between gap-2">
-          <h2 className="text-base font-semibold text-[var(--ds-text-primary,#122018)]">Edit generated template</h2>
-          <Badge>Generated template</Badge>
         </div>
         <div className="rounded-[var(--ds-radius-xl,16px)] border border-[var(--ds-border,#DDE5DF)] bg-[var(--ds-surface,#fff)] p-3 sm:p-4">
           <CertificateImportEditor design={design} preview={preview} onChange={onDesignChange} />
         </div>
-        <p className="text-xs text-[var(--ds-text-secondary,#5B6B61)]">
-          {independent
-            ? 'Drag to move · corner handles to resize · side panel for font/size/color · Upload logo or Upload patch. Save keeps every position.'
-            : 'This result still depends on the uploaded file and cannot be saved.'}
-        </p>
+        {!independent ? (
+          <p className="text-xs text-red-700">
+            This template still uses the uploaded file as a full-page background and cannot be saved. Remove the paper background or rebuild without it.
+          </p>
+        ) : null}
       </section>
 
-      {warnings.length ? (
-        <ul className="list-disc space-y-1 pl-5 text-sm text-[var(--ds-text-secondary,#5B6B61)]">
-          {warnings.map((warning) => (
-            <li key={warning}>{warning}</li>
-          ))}
-        </ul>
+      {referenceFile ? (
+        <section className="space-y-3">
+          <div className="flex items-center justify-between gap-2">
+            <h2 className="text-base font-semibold text-[var(--ds-text-primary,#122018)]">Original reference</h2>
+            <Badge variant="outline">Reference only</Badge>
+          </div>
+          <div className="mx-auto max-w-xl overflow-hidden rounded-[var(--ds-radius-xl,16px)] border border-[var(--ds-border,#DDE5DF)] bg-[var(--ds-surface-muted,#F4F7F5)] p-3">
+            <ReferencePreview file={referenceFile} texts={referenceTexts} summary={summary} />
+          </div>
+          <Button type="button" variant="outline" onClick={onDiscardReference}>
+            Remove reference file
+          </Button>
+        </section>
       ) : null}
 
       <div className="rounded-2xl border border-[var(--ds-border,#DDE5DF)] bg-[var(--ds-surface-muted,#F7FAF8)] p-4 sm:p-5">
         <p className="text-sm font-semibold text-[var(--ds-text-primary,#122018)]">Save this certificate</p>
         <p className="mt-1 text-xs text-[var(--ds-text-secondary,#5B6B61)]">
-          Give it a clear name, optionally lock it to one class, then activate for student generation.
+          Name it, optionally lock it to one class, then activate for students. Student names always print in CAPITALS.
         </p>
         <div className="mt-4 grid gap-3 sm:grid-cols-2">
           <div className="space-y-1.5">
@@ -217,10 +209,6 @@ const CertificateImportReview = ({
                 </option>
               ))}
             </select>
-            <p className="text-[11px] text-[var(--ds-text-secondary,#5B6B61)]">
-              When you generate in Report Center, each student&apos;s name and their program
-              (diploma/course) print on this design — even if you save for All classes.
-            </p>
           </div>
         </div>
 

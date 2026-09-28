@@ -1,6 +1,7 @@
 import React from 'react'
 import QRCode from 'react-qr-code'
 import type { CertificateRenderData } from '@/lib/certificateTemplates'
+import { formatCertificateStudentName } from '@/lib/certificateTemplates'
 
 type Props = {
   data: CertificateRenderData
@@ -13,7 +14,8 @@ type Props = {
  * Matches the uploaded design style (navy / gold / seal / signatures)
  * without compositing on top of a sample scan — no double text, no cover boxes.
  */
-const CertificateAppreciationLayout = ({ data, compact = false, forPdf = false }: Props) => {
+const CertificateAppreciationLayout = ({ data: raw, compact = false, forPdf = false }: Props) => {
+  const data = { ...raw, studentName: formatCertificateStudentName(raw.studentName) }
   const primary = data.primary || '#001f3f'
   const accent = data.accent || '#c9a227'
   const dateLabel = data.dateIssued ? String(data.dateIssued).slice(0, 10) : ''

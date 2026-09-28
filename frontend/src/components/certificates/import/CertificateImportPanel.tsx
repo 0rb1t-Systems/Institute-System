@@ -182,7 +182,7 @@ const CertificateImportPanel = () => {
       institutionPhone: brandSource?.phone || undefined,
       institutionAddress: brandSource?.address || undefined,
       institutionWebsite: brandSource?.website || undefined,
-      studentName: 'Amina Hassan',
+      studentName: 'AMINA HASSAN',
       studentId: 'STU-001',
       programName:
         (programFromDesign && programFromDesign !== 'Program / Course'
@@ -358,8 +358,7 @@ const CertificateImportPanel = () => {
           Turn a sample certificate into your institution template
         </h2>
         <p className="mt-1 text-sm text-[var(--ds-text-secondary,#5B6B61)]">
-          Upload a PDF or DOCX — we auto-rebuild editable blocks with {institutionName} branding.
-          Name it, attach a class, save many designs, then generate for students from Report Center.
+          Upload a PDF or DOCX to rebuild an editable template for {institutionName}.
         </p>
       </div>
 
@@ -374,7 +373,7 @@ const CertificateImportPanel = () => {
               <CertificateImportProgress active={activeStage} detail={stageDetail} done={doneStages} />
             ) : (
               <p className="text-sm text-[var(--ds-text-secondary,#5B6B61)]">
-                Upload a PDF or DOCX certificate. The file is analyzed for page size, typography, colors, and layout, then rebuilt as editable elements for {institutionName}.
+                Upload a PDF or DOCX certificate to edit for {institutionName}.
               </p>
             )}
           </div>
@@ -421,8 +420,8 @@ const CertificateImportPanel = () => {
                 <h2 className="text-lg font-semibold text-[var(--ds-text-primary,#122018)]">{openSaved.name}</h2>
                 <p className="text-sm text-[var(--ds-text-secondary,#5B6B61)]">
                   {openSaved.className
-                    ? `Saved for class “${openSaved.className}”. Drag/resize anything, then save again — or import another certificate.`
-                    : `Saved for ${institutionName}. Drag/resize anything, then save again — or import another certificate.`}
+                    ? `Saved for class “${openSaved.className}”.`
+                    : `Saved for ${institutionName}.`}
                 </p>
               </div>
               <div className="flex flex-wrap gap-2">

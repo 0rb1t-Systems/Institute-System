@@ -18,6 +18,15 @@ export function persistImportedDesignImages(design: LogoBuilderDesign): LogoBuil
       const unlocked = el.locked ? { ...el, locked: false } : el
       if (unlocked.type !== 'image' || !unlocked.src) return unlocked
       const src = String(unlocked.src).trim()
+
+      // Ready patches / decorative frames — keep inline SVG (or storage/https)
+      if (unlocked.patchKey || unlocked.decorKey) {
+        if (/^data:image\/svg\+xml/i.test(src) || /^https?:\/\//i.test(src)) return unlocked
+        const readyPath = extractCertStoragePath(src)
+        if (readyPath) return { ...unlocked, src: readyPath }
+        return { ...unlocked, src: undefined }
+      }
+
       const path = extractCertStoragePath(src)
       if (path) {
         return {

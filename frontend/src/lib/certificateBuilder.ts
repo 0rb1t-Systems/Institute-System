@@ -1,4 +1,5 @@
 import { getCertificatePatchMeta, rebuildCertificatePatch } from './certificatePatches'
+import { formatCertificateStudentName } from './certificateTemplates'
 
 /**
  * Logo / page builder + custom upload types for Certificate Management.
@@ -1615,10 +1616,10 @@ export function createBoundTextElement(
     rotation: 0,
     zIndex: 10,
     text: labels[bind] || 'Text',
-    fontFamily: BUILDER_FONT_FAMILIES[0],
+    fontFamily: bind === 'studentName' ? BUILDER_FONT_FAMILIES[4] : BUILDER_FONT_FAMILIES[0],
     fontSize: isTitle ? 36 : isProgram ? 20 : 16,
     fontWeight: isTitle ? 'bold' : 'normal',
-    fontStyle: bind === 'studentName' ? 'italic' : 'normal',
+    fontStyle: 'normal',
     textAlign: 'center',
     color: '#0f172a',
     fill: 'transparent',
@@ -2714,6 +2715,14 @@ export const DECORATIVE_SHAPES = [
   { key: 'border_elegant_thin', label: 'Elegant thin frame', category: 'borders', size: 0, fullPage: true },
   { key: 'border_maroon_gold', label: 'Maroon & gold frame', category: 'borders', size: 0, fullPage: true },
   { key: 'border_green_filigree', label: 'Green filigree frame', category: 'borders', size: 0, fullPage: true },
+  { key: 'border_simple_single', label: 'Simple single line', category: 'borders', size: 0, fullPage: true },
+  { key: 'border_simple_double', label: 'Simple double line', category: 'borders', size: 0, fullPage: true },
+  { key: 'border_thin_box', label: 'Thin box', category: 'borders', size: 0, fullPage: true },
+  { key: 'border_dashed_simple', label: 'Simple dashed', category: 'borders', size: 0, fullPage: true },
+  { key: 'border_corner_marks', label: 'Corner marks only', category: 'borders', size: 0, fullPage: true },
+  { key: 'border_inset_triple', label: 'Simple triple inset', category: 'borders', size: 0, fullPage: true },
+  { key: 'border_soft_rounded', label: 'Soft rounded box', category: 'borders', size: 0, fullPage: true },
+  { key: 'border_slate_minimal', label: 'Minimal slate', category: 'borders', size: 0, fullPage: true },
   { key: 'line_double_rule', label: 'Double rule', category: 'lines', size: 280 },
   { key: 'line_triple_rule', label: 'Triple rule', category: 'lines', size: 280 },
   { key: 'line_ornate_rule', label: 'Ornate rule', category: 'lines', size: 280 },
@@ -2853,6 +2862,54 @@ export function buildDecorativeSvg(
         viewW: 300,
         viewH: 420,
         svg: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 300 420"><rect x="14" y="14" width="272" height="392" fill="none" stroke="${g}" stroke-width="3"/><rect x="22" y="22" width="256" height="376" fill="none" stroke="${a}" stroke-width="1"/><path d="M30 30 Q50 20 70 30 Q50 40 30 30 M270 30 Q250 20 230 30 Q250 40 270 30 M30 390 Q50 400 70 390 Q50 380 30 390 M270 390 Q250 400 230 390 Q250 380 270 390" fill="${a}" opacity="0.9"/></svg>`,
+      }
+    case 'border_simple_single':
+      return {
+        viewW: 300,
+        viewH: 420,
+        svg: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 300 420"><rect x="16" y="16" width="268" height="388" fill="none" stroke="${p}" stroke-width="2.5"/></svg>`,
+      }
+    case 'border_simple_double':
+      return {
+        viewW: 300,
+        viewH: 420,
+        svg: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 300 420"><rect x="14" y="14" width="272" height="392" fill="none" stroke="${p}" stroke-width="2"/><rect x="22" y="22" width="256" height="376" fill="none" stroke="${p}" stroke-width="1"/></svg>`,
+      }
+    case 'border_thin_box':
+      return {
+        viewW: 300,
+        viewH: 420,
+        svg: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 300 420"><rect x="18" y="18" width="264" height="384" fill="none" stroke="${p}" stroke-width="1"/></svg>`,
+      }
+    case 'border_dashed_simple':
+      return {
+        viewW: 300,
+        viewH: 420,
+        svg: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 300 420"><rect x="16" y="16" width="268" height="388" fill="none" stroke="${p}" stroke-width="2" stroke-dasharray="8 6"/></svg>`,
+      }
+    case 'border_corner_marks':
+      return {
+        viewW: 300,
+        viewH: 420,
+        svg: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 300 420"><path d="M18 48 V18 H48 M252 18 H282 V48 M282 372 V402 H252 M48 402 H18 V372" fill="none" stroke="${p}" stroke-width="3" stroke-linecap="square"/></svg>`,
+      }
+    case 'border_inset_triple':
+      return {
+        viewW: 300,
+        viewH: 420,
+        svg: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 300 420"><rect x="12" y="12" width="276" height="396" fill="none" stroke="${p}" stroke-width="1.5"/><rect x="20" y="20" width="260" height="380" fill="none" stroke="${a}" stroke-width="1"/><rect x="28" y="28" width="244" height="364" fill="none" stroke="${p}" stroke-width="1"/></svg>`,
+      }
+    case 'border_soft_rounded':
+      return {
+        viewW: 300,
+        viewH: 420,
+        svg: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 300 420"><rect x="16" y="16" width="268" height="388" rx="14" ry="14" fill="none" stroke="${p}" stroke-width="2.5"/><rect x="24" y="24" width="252" height="372" rx="10" ry="10" fill="none" stroke="${a}" stroke-width="1"/></svg>`,
+      }
+    case 'border_slate_minimal':
+      return {
+        viewW: 300,
+        viewH: 420,
+        svg: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 300 420"><rect x="20" y="20" width="260" height="380" fill="none" stroke="${p}" stroke-width="1.25"/><line x1="36" y1="20" x2="36" y2="400" stroke="${a}" stroke-width="0.8" opacity="0.7"/><line x1="264" y1="20" x2="264" y2="400" stroke="${a}" stroke-width="0.8" opacity="0.7"/></svg>`,
       }
     case 'medal_gold':
     case 'medal_navy': {
@@ -3707,7 +3764,7 @@ export function resolveBuilderText(
 ): string {
   switch (el.bind) {
     case 'studentName':
-      return data.studentName || el.text || 'Student Name'
+      return formatCertificateStudentName(data.studentName || el.text || 'Student Name')
     case 'studentId':
       return data.studentId || el.text || 'Student ID'
     case 'startMonth':

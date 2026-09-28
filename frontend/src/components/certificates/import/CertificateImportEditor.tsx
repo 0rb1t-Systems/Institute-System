@@ -2,30 +2,58 @@
  * Lightweight editor for imported certificate templates only.
  * Does not touch Certificate Page Builder.
  */
-import React, { useEffect, useMemo, useRef, useState } from 'react'
-import { ClipboardPaste, Copy, ImagePlus, Plus, Scissors, Trash2 } from 'lucide-react'
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import {
+  Award,
+  ClipboardPaste,
+  Copy,
+  Frame,
+  ImagePlus,
+  Plus,
+  Redo2,
+  Scissors,
+  Trash2,
+  Undo2,
+} from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import {
   BUILDER_FONT_FAMILIES,
   builderFontLabel,
+  createBorderFrameElements,
+  createDecorativeShapeElement,
   createElementId,
+  DECORATIVE_SHAPES,
+  decorativeImageSrc,
   extractCertStoragePath,
   getBuilderLayerLabel,
+  isFullPageDecorElement,
   isPrivateCertStoragePath,
   isQrElement,
   normalizeLogoBuilderDesign,
   resolveBuilderText,
   type BuilderElement,
+  type DecorativeShapeKey,
   type LogoBuilderDesign,
 } from '@/lib/certificateBuilder'
 import {
-        applyCertificatePatchImage,
-        CERTIFICATE_PATCH_MARKER,
-        USER_PATCH_NAME,
-      } from '@/lib/certificateImport/generateTemplate'
+  CERTIFICATE_PATCHES,
+  createCertificatePatchElement,
+  getCertificatePatchPreviewSrc,
+  type CertificatePatchKey,
+} from '@/lib/certificatePatches'
+import {
+  applyCertificatePatchImage,
+  CERTIFICATE_PATCH_MARKER,
+  USER_PATCH_NAME,
+} from '@/lib/certificateImport/generateTemplate'
 import type { CertificateRenderData } from '@/lib/certificateTemplates'
 import {
   downloadCertificateTemplateAsDataUrl,
@@ -41,6 +69,10 @@ type Props = {
 }
 
 const CLIP_KEY = 'tvetflow.certificateImport.clipboard'
+const MAX_HISTORY = 40
+
+const BORDER_FRAMES = DECORATIVE_SHAPES.filter((s) => s.category === 'borders')
+const CLASSIC_FRAME_KEY = '__classic_double__'
 
 function clone(d: LogoBuilderDesign): LogoBuilderDesign {
   return JSON.parse(JSON.stringify(d)) as LogoBuilderDesign
@@ -72,6 +104,13 @@ function isPageFrameRect(el: BuilderElement, canvasW: number, canvasH: number) {
   return !fill || fill === 'transparent' || fill === 'rgba(0,0,0,0)' || fill === '#00000000'
 }
 
+/** Full-page decorative frame images + classic rect borders. */
+function isPageFrameElement(el: BuilderElement, canvasW: number, canvasH: number) {
+  if (isFullPageDecorElement(el)) return true
+  if (el.text === 'border-outer' || el.text === 'border-inner') return true
+  return isPageFrameRect(el, canvasW, canvasH)
+}
+
 function lineColor(el: BuilderElement) {
   return el.stroke || el.fill || el.color || '#0f172a'
 }
@@ -93,8 +132,8 @@ async function resolveImageDisplayUrl(src?: string | null): Promise<string | nul
   const path = extractCertStoragePath(raw) || (isPrivateCertStoragePath(raw) ? raw : null)
   if (!path) return raw
   try {
-    const dataUrl = await downloadCertificateTemplateAsDataUrl(path)
-    if (dataUrl?.startsWith('data:')) return dataUrl
+    const dataUrl = String((await downloadCertificateTemplateAsDataUrl(path)) || '')
+    if (dataUrl.startsWith('data:')) return dataUrl
   } catch {
     /* fall through */
   }
@@ -118,11 +157,15 @@ const CertificateImportEditor = ({ design, preview, onChange }: Props) => {
   const [uploading, setUploading] = useState(false)
   const [uploadError, setUploadError] = useState<string | null>(null)
   const [scale, setScale] = useState(1)
-  const [hint, setHint] = useState<string | null>(null)
+  const [framePreviewKey, setFramePreviewKey] = useState<string>(CLASSIC_FRAME_KEY)
+  const [patchPreviewKey, setPatchPreviewKey] = useState<string>(CERTIFICATE_PATCHES[0].key)
   const designRef = useRef(design)
   designRef.current = design
   const selectedIdRef = useRef(selectedId)
   selectedIdRef.current = selectedId
+  const historyRef = useRef<LogoBuilderDesign[]>([])
+  const futureRef = useRef<LogoBuilderDesign[]>([])
+  const dragStartDesignRef = useRef<LogoBuilderDesign | null>(null)
   const dragRef = useRef<{
     id: string
     mode: 'move' | 'resize'
@@ -138,6 +181,66 @@ const CertificateImportEditor = ({ design, preview, onChange }: Props) => {
   const canvasW = design.canvas?.width || 794
   const canvasH = design.canvas?.height || 1123
   const selected = (design.elements || []).find((el) => el.id === selectedId) || null
+  const brandPrimary = preview.primary || '#002147'
+  const brandAccent = preview.accent || '#c9a227'
+
+  const frameThumbSrc = useMemo(() => {
+    const map: Record<string, string> = {
+      [CLASSIC_FRAME_KEY]: decorativeImageSrc('border_classic_double', brandPrimary, brandAccent),
+    }
+    for (const s of BORDER_FRAMES) {
+      map[s.key] = decorativeImageSrc(s.key, brandPrimary, brandAccent)
+    }
+    return map
+  }, [brandPrimary, brandAccent])
+
+  const patchThumbSrc = useMemo(() => {
+    const map: Record<string, string> = {}
+    for (const s of CERTIFICATE_PATCHES) {
+      map[s.key] = getCertificatePatchPreviewSrc(s.key, brandPrimary, brandAccent, '#ffffff')
+    }
+    return map
+  }, [brandPrimary, brandAccent])
+
+  const framePreviewLabel =
+    framePreviewKey === CLASSIC_FRAME_KEY
+      ? 'Classic double border'
+      : BORDER_FRAMES.find((s) => s.key === framePreviewKey)?.label || 'Frame'
+  const patchPreviewMeta =
+    CERTIFICATE_PATCHES.find((s) => s.key === patchPreviewKey) || CERTIFICATE_PATCHES[0]
+
+  const applyDesign = useCallback(
+    (next: LogoBuilderDesign) => {
+      onChange(normalizeLogoBuilderDesign(next))
+    },
+    [onChange],
+  )
+
+  const commitDesign = useCallback(
+    (next: LogoBuilderDesign) => {
+      historyRef.current = [
+        ...historyRef.current.slice(-(MAX_HISTORY - 1)),
+        clone(designRef.current),
+      ]
+      futureRef.current = []
+      onChange(normalizeLogoBuilderDesign(next))
+    },
+    [onChange],
+  )
+
+  const undo = useCallback(() => {
+    const prev = historyRef.current.pop()
+    if (!prev) return
+    futureRef.current.push(clone(designRef.current))
+    applyDesign(prev)
+  }, [applyDesign])
+
+  const redo = useCallback(() => {
+    const nxt = futureRef.current.pop()
+    if (!nxt) return
+    historyRef.current.push(clone(designRef.current))
+    applyDesign(nxt)
+  }, [applyDesign])
 
   // Ensure every imported layer is unlocked so drag/resize always works
   useEffect(() => {
@@ -145,7 +248,7 @@ const CertificateImportEditor = ({ design, preview, onChange }: Props) => {
     if (!locked.length) return
     const next = clone(design)
     next.elements = (next.elements || []).map((el) => (el.locked ? { ...el, locked: false } : el))
-    onChange(normalizeLogoBuilderDesign(next))
+    applyDesign(next)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [design.elements])
 
@@ -203,8 +306,7 @@ const CertificateImportEditor = ({ design, preview, onChange }: Props) => {
     const next = clone(current)
     next.elements = (next.elements || []).filter((el) => el.id !== id)
     setSelectedId(null)
-    onChange(normalizeLogoBuilderDesign(next))
-    setHint('Deleted.')
+    commitDesign(next)
   }
 
   const copySelected = (cut = false) => {
@@ -217,12 +319,7 @@ const CertificateImportEditor = ({ design, preview, onChange }: Props) => {
     } catch {
       /* ignore */
     }
-    if (cut) {
-      deleteSelected(id)
-      setHint('Cut. Press Ctrl+V to paste.')
-    } else {
-      setHint('Copied. Press Ctrl+V to paste.')
-    }
+    if (cut) deleteSelected(id)
   }
 
   const pasteClipboard = () => {
@@ -232,10 +329,7 @@ const CertificateImportEditor = ({ design, preview, onChange }: Props) => {
     } catch {
       raw = ''
     }
-    if (!raw) {
-      setHint('Clipboard empty. Select an element and press Ctrl+C.')
-      return
-    }
+    if (!raw) return
     try {
       const parsed = JSON.parse(raw) as BuilderElement
       if (!parsed || typeof parsed !== 'object') return
@@ -247,16 +341,13 @@ const CertificateImportEditor = ({ design, preview, onChange }: Props) => {
         y: Math.min((parsed.y || 0) + 24, (current.canvas?.height || 1123) - 40),
         zIndex: (current.elements || []).reduce((m, e) => Math.max(m, e.zIndex || 0), 0) + 1,
       }
-      onChange(
-        normalizeLogoBuilderDesign({
-          ...current,
-          elements: [...(current.elements || []), pasted],
-        }),
-      )
+      commitDesign({
+        ...current,
+        elements: [...(current.elements || []), pasted],
+      })
       setSelectedId(pasted.id)
-      setHint('Pasted.')
     } catch {
-      setHint('Paste failed.')
+      /* ignore */
     }
   }
 
@@ -287,14 +378,64 @@ const CertificateImportEditor = ({ design, preview, onChange }: Props) => {
       opacity: 1,
       bind: 'none',
     }
-    onChange(
-      normalizeLogoBuilderDesign({
-        ...current,
-        elements: [...(current.elements || []), el],
-      }),
-    )
+    commitDesign({
+      ...current,
+      elements: [...(current.elements || []), el],
+    })
     setSelectedId(el.id)
     setTimeout(() => textEditRef.current?.focus(), 50)
+  }
+
+  const addCertificatePatch = (key: CertificatePatchKey) => {
+    const current = designRef.current
+    const canvas = {
+      width: current.canvas?.width || 794,
+      height: current.canvas?.height || 1123,
+    }
+    const el = createCertificatePatchElement(key, canvas, {
+      primary: brandPrimary,
+      accent: brandAccent,
+      ink: '#ffffff',
+    })
+    el.zIndex = (current.elements || []).reduce((m, e) => Math.max(m, e.zIndex || 0), 0) + 1
+    const next = clone(current)
+    next.elements = [...(next.elements || []), el]
+    commitDesign(next)
+    setSelectedId(el.id)
+  }
+
+  const addClassicBorderFrame = () => {
+    const current = designRef.current
+    const canvas = {
+      width: current.canvas?.width || 794,
+      height: current.canvas?.height || 1123,
+    }
+    const frames = createBorderFrameElements(canvas, brandPrimary, brandAccent)
+    const maxZ = (current.elements || []).reduce((m, e) => Math.max(m, e.zIndex || 0), 0)
+    const next = clone(current)
+    next.elements = [
+      ...frames.map((f, i) => ({ ...f, zIndex: i + 1 })),
+      ...(next.elements || []).map((e) => ({ ...e, zIndex: (e.zIndex || 0) + maxZ + 3 })),
+    ]
+    commitDesign(next)
+    setSelectedId(frames[0]?.id || null)
+  }
+
+  const addDecorativeBorder = (key: DecorativeShapeKey) => {
+    const current = designRef.current
+    const canvas = {
+      width: current.canvas?.width || 794,
+      height: current.canvas?.height || 1123,
+    }
+    const el = createDecorativeShapeElement(key, canvas, {
+      primary: brandPrimary,
+      accent: brandAccent,
+    })
+    el.zIndex = 1
+    const next = clone(current)
+    next.elements = [el, ...(next.elements || []).map((e) => ({ ...e, zIndex: (e.zIndex || 0) + 1 }))]
+    commitDesign(next)
+    setSelectedId(el.id)
   }
 
   useEffect(() => {
@@ -306,40 +447,52 @@ const CertificateImportEditor = ({ design, preview, onChange }: Props) => {
 
       const meta = event.ctrlKey || event.metaKey
       const typing = isTypingTarget(event.target)
+      if (typing) return
 
-      if (meta && event.key.toLowerCase() === 'c' && !typing) {
+      const key = event.key.toLowerCase()
+
+      if (meta && key === 'z' && !event.shiftKey) {
+        event.preventDefault()
+        undo()
+        return
+      }
+      if ((meta && key === 'z' && event.shiftKey) || (meta && key === 'y')) {
+        event.preventDefault()
+        redo()
+        return
+      }
+      if (meta && key === 'c') {
         event.preventDefault()
         copySelected(false)
         return
       }
-      if (meta && event.key.toLowerCase() === 'x' && !typing) {
+      if (meta && key === 'x') {
         event.preventDefault()
         copySelected(true)
         return
       }
-      if (meta && event.key.toLowerCase() === 'v' && !typing) {
+      if (meta && key === 'v') {
         event.preventDefault()
         pasteClipboard()
         return
       }
-      if ((event.key === 'Escape') && !typing) {
+      if (meta && key === 'd') {
+        event.preventDefault()
+        copySelected(false)
+        pasteClipboard()
+        return
+      }
+      if (event.key === 'Escape') {
         setSelectedId(null)
         return
       }
-      if ((event.key === 'Delete' || event.key === 'Backspace') && !typing) {
+      if (event.key === 'Delete' || event.key === 'Backspace') {
         if (!selectedIdRef.current) return
         event.preventDefault()
         deleteSelected()
         return
       }
-      if (meta && event.key.toLowerCase() === 'd' && !typing) {
-        event.preventDefault()
-        copySelected(false)
-        pasteClipboard()
-        return
-      }
-      // Arrow keys nudge the selected element
-      if (!typing && selectedIdRef.current && ['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown'].includes(event.key)) {
+      if (selectedIdRef.current && ['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown'].includes(event.key)) {
         event.preventDefault()
         const current = designRef.current
         const el = (current.elements || []).find((e) => e.id === selectedIdRef.current)
@@ -347,7 +500,7 @@ const CertificateImportEditor = ({ design, preview, onChange }: Props) => {
         const step = event.shiftKey ? 10 : 1
         const dx = event.key === 'ArrowLeft' ? -step : event.key === 'ArrowRight' ? step : 0
         const dy = event.key === 'ArrowUp' ? -step : event.key === 'ArrowDown' ? step : 0
-        onChange(
+        commitDesign(
           updateElement(current, el.id, {
             x: Math.round(Math.max(0, Math.min(canvasW - 8, el.x + dx))),
             y: Math.round(Math.max(0, Math.min(canvasH - 8, el.y + dy))),
@@ -358,7 +511,7 @@ const CertificateImportEditor = ({ design, preview, onChange }: Props) => {
     window.addEventListener('keydown', onKeyDown)
     return () => window.removeEventListener('keydown', onKeyDown)
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [onChange, canvasW, canvasH])
+  }, [undo, redo, commitDesign, canvasW, canvasH])
 
   const onPointerDown = (
     event: React.PointerEvent,
@@ -368,9 +521,11 @@ const CertificateImportEditor = ({ design, preview, onChange }: Props) => {
   ) => {
     event.preventDefault()
     event.stopPropagation()
+    rootRef.current?.focus?.({ preventScroll: true })
     const el = designRef.current.elements.find((e) => e.id === id)
     if (!el) return
     setSelectedId(id)
+    dragStartDesignRef.current = clone(designRef.current)
     dragRef.current = {
       id,
       mode,
@@ -428,7 +583,7 @@ const CertificateImportEditor = ({ design, preview, onChange }: Props) => {
         if (handle === 'ne' || handle === 'nw') y = drag.origY + drag.origH - minSize
         h = minSize
       }
-      onChange(
+      applyDesign(
         updateElement(current, drag.id, {
           x: Math.round(Math.max(0, Math.min(canvasW - minSize, x))),
           y: Math.round(Math.max(0, Math.min(canvasH - minSize, y))),
@@ -439,7 +594,7 @@ const CertificateImportEditor = ({ design, preview, onChange }: Props) => {
       return
     }
 
-    onChange(
+    applyDesign(
       updateElement(current, drag.id, {
         x: Math.round(Math.max(0, Math.min(canvasW - 8, drag.origX + dx))),
         y: Math.round(Math.max(0, Math.min(canvasH - 8, drag.origY + dy))),
@@ -448,19 +603,28 @@ const CertificateImportEditor = ({ design, preview, onChange }: Props) => {
   }
 
   const onPointerUp = () => {
+    const start = dragStartDesignRef.current
+    const wasDragging = !!dragRef.current
     dragRef.current = null
+    dragStartDesignRef.current = null
+    if (!wasDragging || !start) return
+    const changed =
+      JSON.stringify(start.elements || []) !== JSON.stringify(designRef.current.elements || [])
+    if (!changed) return
+    historyRef.current = [...historyRef.current.slice(-(MAX_HISTORY - 1)), start]
+    futureRef.current = []
   }
 
   const nudgeSpacing = (delta: number) => {
     if (!selected || selected.type !== 'text') return
     const current = Number(selected.letterSpacing) || 0
-    onChange(updateElement(design, selected.id, { letterSpacing: Math.max(-2, Math.min(12, current + delta)) }))
+    commitDesign(updateElement(design, selected.id, { letterSpacing: Math.max(-2, Math.min(12, current + delta)) }))
   }
 
   const nudgeLineHeight = (delta: number) => {
     if (!selected || selected.type !== 'text') return
     const current = Number(selected.lineHeight) || 1.2
-    onChange(
+    commitDesign(
       updateElement(design, selected.id, {
         lineHeight: Math.max(0.9, Math.min(2.4, Math.round((current + delta) * 100) / 100)),
       }),
@@ -489,8 +653,7 @@ const CertificateImportEditor = ({ design, preview, onChange }: Props) => {
           })
           setSelectedId(patch.id)
         }
-        onChange(next)
-        setHint('Certificate patch uploaded — it will stay in this place on save, generate, and download.')
+        commitDesign(next)
         return
       }
       if (mode === 'logo') {
@@ -503,7 +666,7 @@ const CertificateImportEditor = ({ design, preview, onChange }: Props) => {
             delete n[existing.id]
             return n
           })
-          onChange(next)
+          commitDesign(next)
           setSelectedId(existing.id)
         } else {
           const logo: BuilderElement = {
@@ -527,10 +690,9 @@ const CertificateImportEditor = ({ design, preview, onChange }: Props) => {
             elements: [...(design.elements || []), logo],
           })
           setResolvedUrls((prev) => ({ ...prev, [logo.id]: displayUrl }))
-          onChange(next)
+          commitDesign(next)
           setSelectedId(logo.id)
         }
-        setHint('Logo uploaded.')
         return
       }
       if (selected && selected.type === 'image') {
@@ -541,8 +703,7 @@ const CertificateImportEditor = ({ design, preview, onChange }: Props) => {
           delete n[selected.id]
           return n
         })
-        onChange(next)
-        setHint('Image replaced.')
+        commitDesign(next)
         return
       }
       const next = applyCertificatePatchImage(design, path)
@@ -550,8 +711,7 @@ const CertificateImportEditor = ({ design, preview, onChange }: Props) => {
         (el) => el.text === CERTIFICATE_PATCH_MARKER || el.name === USER_PATCH_NAME,
       )
       if (patch) setResolvedUrls((prev) => ({ ...prev, [patch.id]: displayUrl }))
-      onChange(next)
-      setHint('Certificate patch uploaded — it will stay in this place on save, generate, and download.')
+      commitDesign(next)
     } catch {
       URL.revokeObjectURL(localPreview)
       setUploadError('Image upload failed. Use PNG, JPG, or WebP under 10 MB.')
@@ -561,12 +721,146 @@ const CertificateImportEditor = ({ design, preview, onChange }: Props) => {
   }
 
   return (
-    <div ref={rootRef} className="space-y-4" tabIndex={-1}>
+    <div
+      ref={rootRef}
+      className="space-y-4 outline-none"
+      tabIndex={-1}
+      onPointerDown={() => rootRef.current?.focus?.({ preventScroll: true })}
+    >
       <div className="flex flex-wrap gap-2">
+        <Button type="button" variant="outline" size="sm" onClick={undo} title="Undo (Ctrl+Z)">
+          <Undo2 className="mr-1.5 h-4 w-4" />
+          Undo
+        </Button>
+        <Button type="button" variant="outline" size="sm" onClick={redo} title="Redo (Ctrl+Y)">
+          <Redo2 className="mr-1.5 h-4 w-4" />
+          Redo
+        </Button>
         <Button type="button" variant="outline" size="sm" onClick={addTextBox}>
           <Plus className="mr-1.5 h-4 w-4" />
           Add text
         </Button>
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button type="button" variant="outline" size="sm">
+              <Award className="mr-1.5 h-4 w-4" />
+              Patches
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="start" className="w-80 p-2">
+            <div className="mb-2 rounded-md border border-[var(--ds-border,#DDE5DF)] bg-white p-2">
+              <div className="flex h-36 items-center justify-center">
+                {patchThumbSrc[patchPreviewMeta.key] ? (
+                  <img
+                    src={patchThumbSrc[patchPreviewMeta.key]}
+                    alt=""
+                    className="max-h-36 max-w-full object-contain"
+                  />
+                ) : null}
+              </div>
+              <p className="mt-1 text-center text-[11px] font-medium text-[var(--ds-text-primary,#122018)]">
+                {patchPreviewMeta.label}
+              </p>
+            </div>
+            <div className="grid max-h-52 grid-cols-3 gap-1 overflow-y-auto">
+              {CERTIFICATE_PATCHES.map((patch) => (
+                <button
+                  key={patch.key}
+                  type="button"
+                  onMouseEnter={() => setPatchPreviewKey(patch.key)}
+                  onFocus={() => setPatchPreviewKey(patch.key)}
+                  onClick={() => addCertificatePatch(patch.key)}
+                  className={`rounded border p-1 ${
+                    patchPreviewKey === patch.key
+                      ? 'border-[var(--ds-accent,#1F8A5B)] bg-[var(--ds-accent,#1F8A5B)]/10'
+                      : 'border-[var(--ds-border,#DDE5DF)] hover:border-[var(--ds-accent,#1F8A5B)]'
+                  }`}
+                  title={patch.label}
+                >
+                  <img
+                    src={patchThumbSrc[patch.key]}
+                    alt=""
+                    className="mx-auto h-14 w-full object-contain bg-white"
+                  />
+                  <span className="mt-0.5 block truncate text-[9px] text-[var(--ds-text-secondary,#5B6B61)]">
+                    {patch.label}
+                  </span>
+                </button>
+              ))}
+            </div>
+          </DropdownMenuContent>
+        </DropdownMenu>
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button type="button" variant="outline" size="sm">
+              <Frame className="mr-1.5 h-4 w-4" />
+              Frames
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="start" className="w-80 p-2">
+            <div className="mb-2 rounded-md border border-[var(--ds-border,#DDE5DF)] bg-white p-2">
+              <div className="flex h-40 items-center justify-center">
+                {frameThumbSrc[framePreviewKey] ? (
+                  <img
+                    src={frameThumbSrc[framePreviewKey]}
+                    alt=""
+                    className="max-h-40 max-w-full object-contain"
+                  />
+                ) : null}
+              </div>
+              <p className="mt-1 text-center text-[11px] font-medium text-[var(--ds-text-primary,#122018)]">
+                {framePreviewLabel}
+              </p>
+            </div>
+            <div className="grid max-h-52 grid-cols-3 gap-1 overflow-y-auto">
+              <button
+                type="button"
+                onMouseEnter={() => setFramePreviewKey(CLASSIC_FRAME_KEY)}
+                onFocus={() => setFramePreviewKey(CLASSIC_FRAME_KEY)}
+                onClick={addClassicBorderFrame}
+                className={`rounded border p-1 ${
+                  framePreviewKey === CLASSIC_FRAME_KEY
+                    ? 'border-[var(--ds-accent,#1F8A5B)] bg-[var(--ds-accent,#1F8A5B)]/10'
+                    : 'border-[var(--ds-border,#DDE5DF)] hover:border-[var(--ds-accent,#1F8A5B)]'
+                }`}
+                title="Classic double border"
+              >
+                <img
+                  src={frameThumbSrc[CLASSIC_FRAME_KEY]}
+                  alt=""
+                  className="mx-auto h-14 w-full object-contain bg-white"
+                />
+                <span className="mt-0.5 block truncate text-[9px] text-[var(--ds-text-secondary,#5B6B61)]">
+                  Classic double
+                </span>
+              </button>
+              {BORDER_FRAMES.filter((shape) => shape.key !== 'border_classic_double').map((shape) => (
+                <button
+                  key={shape.key}
+                  type="button"
+                  onMouseEnter={() => setFramePreviewKey(shape.key)}
+                  onFocus={() => setFramePreviewKey(shape.key)}
+                  onClick={() => addDecorativeBorder(shape.key as DecorativeShapeKey)}
+                  className={`rounded border p-1 ${
+                    framePreviewKey === shape.key
+                      ? 'border-[var(--ds-accent,#1F8A5B)] bg-[var(--ds-accent,#1F8A5B)]/10'
+                      : 'border-[var(--ds-border,#DDE5DF)] hover:border-[var(--ds-accent,#1F8A5B)]'
+                  }`}
+                  title={shape.label}
+                >
+                  <img
+                    src={frameThumbSrc[shape.key]}
+                    alt=""
+                    className="mx-auto h-14 w-full object-contain bg-white"
+                  />
+                  <span className="mt-0.5 block truncate text-[9px] text-[var(--ds-text-secondary,#5B6B61)]">
+                    {shape.label}
+                  </span>
+                </button>
+              ))}
+            </div>
+          </DropdownMenuContent>
+        </DropdownMenu>
         <Button type="button" variant="outline" size="sm" disabled={uploading} onClick={() => logoFileRef.current?.click()}>
           <ImagePlus className="mr-1.5 h-4 w-4" />
           Upload logo
@@ -632,10 +926,6 @@ const CertificateImportEditor = ({ design, preview, onChange }: Props) => {
         />
       </div>
       {uploadError ? <p className="text-sm text-red-700">{uploadError}</p> : null}
-      <p className="text-xs text-[var(--ds-text-secondary,#5B6B61)]">
-        Drag to move · green corners to resize · click empty space or Esc to deselect frames · lines and text: change color/font in the side panel.
-      </p>
-      {hint ? <p className="text-xs text-[var(--ds-accent,#1F8A5B)]">{hint}</p> : null}
 
       <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_280px]">
         <div
@@ -690,7 +980,6 @@ const CertificateImportEditor = ({ design, preview, onChange }: Props) => {
               if (el.type === 'line') {
                 const stroke = lineColor(el)
                 const thickness = Math.max(1, el.strokeWidth || 2)
-                // Tall hit area so thin signature/name lines are easy to select
                 const hitH = Math.max(14, thickness + 10)
                 return (
                   <div
@@ -708,7 +997,6 @@ const CertificateImportEditor = ({ design, preview, onChange }: Props) => {
                       event.stopPropagation()
                       setSelectedId(el.id)
                     }}
-                    title="Line — drag, resize, or change color in the side panel"
                   >
                     <div
                       style={{
@@ -725,7 +1013,7 @@ const CertificateImportEditor = ({ design, preview, onChange }: Props) => {
               }
 
               if (el.type === 'rect') {
-                const frame = isPageFrameRect(el, canvasW, canvasH)
+                const frame = isPageFrameElement(el, canvasW, canvasH)
                 return (
                   <div
                     key={el.id}
@@ -733,20 +1021,59 @@ const CertificateImportEditor = ({ design, preview, onChange }: Props) => {
                       ...boxStyle,
                       backgroundColor: el.fill || 'transparent',
                       border: `${el.strokeWidth || 1}px solid ${el.stroke || 'transparent'}`,
-                      // Empty frame center must not block selecting text/lines underneath
-                      pointerEvents: frame && !isSelected ? 'none' : 'auto',
+                      pointerEvents: frame ? 'none' : 'auto',
+                      overflow: frame ? 'visible' : undefined,
                     }}
                     onPointerDown={(event) => {
-                      if (frame && !isSelected) return
+                      if (frame) return
                       onPointerDown(event, el.id, 'move')
                     }}
                     onClick={(event) => {
-                      if (frame && !isSelected) return
+                      if (frame) return
                       event.stopPropagation()
                       setSelectedId(el.id)
                     }}
-                    title={frame ? 'Border frame — select from the layer list, Esc or empty click to deselect' : undefined}
                   >
+                    {frame ? (
+                      <>
+                        <span
+                          className="absolute inset-x-0 top-0 z-20 min-h-[20px] cursor-move"
+                          style={{ height: '8%', pointerEvents: 'auto' }}
+                          onPointerDown={(event) => onPointerDown(event, el.id, 'move')}
+                          onClick={(event) => {
+                            event.stopPropagation()
+                            setSelectedId(el.id)
+                          }}
+                        />
+                        <span
+                          className="absolute inset-x-0 bottom-0 z-20 min-h-[20px] cursor-move"
+                          style={{ height: '8%', pointerEvents: 'auto' }}
+                          onPointerDown={(event) => onPointerDown(event, el.id, 'move')}
+                          onClick={(event) => {
+                            event.stopPropagation()
+                            setSelectedId(el.id)
+                          }}
+                        />
+                        <span
+                          className="absolute inset-y-0 left-0 z-20 min-w-[20px] cursor-move"
+                          style={{ width: '8%', pointerEvents: 'auto' }}
+                          onPointerDown={(event) => onPointerDown(event, el.id, 'move')}
+                          onClick={(event) => {
+                            event.stopPropagation()
+                            setSelectedId(el.id)
+                          }}
+                        />
+                        <span
+                          className="absolute inset-y-0 right-0 z-20 min-w-[20px] cursor-move"
+                          style={{ width: '8%', pointerEvents: 'auto' }}
+                          onPointerDown={(event) => onPointerDown(event, el.id, 'move')}
+                          onClick={(event) => {
+                            event.stopPropagation()
+                            setSelectedId(el.id)
+                          }}
+                        />
+                      </>
+                    ) : null}
                     {resizeHandles}
                   </div>
                 )
@@ -778,7 +1105,9 @@ const CertificateImportEditor = ({ design, preview, onChange }: Props) => {
                   resolvedUrls[el.id] ||
                   (!isPrivateCertStoragePath(el.src) && /^https?:\/\//i.test(String(el.src || ''))
                     ? String(el.src)
-                    : '')
+                    : '') ||
+                  (/^(blob:|data:)/i.test(String(el.src || '')) ? String(el.src) : '')
+                const pageFrame = isPageFrameElement(el, canvasW, canvasH)
                 if (!src || brokenIds[el.id]) {
                   return (
                     <div
@@ -794,9 +1123,14 @@ const CertificateImportEditor = ({ design, preview, onChange }: Props) => {
                         color: '#64748b',
                         textAlign: 'center',
                         padding: 4,
+                        pointerEvents: pageFrame ? 'none' : 'auto',
                       }}
-                      onPointerDown={(event) => onPointerDown(event, el.id, 'move')}
+                      onPointerDown={(event) => {
+                        if (pageFrame) return
+                        onPointerDown(event, el.id, 'move')
+                      }}
                       onClick={(event) => {
+                        if (pageFrame) return
                         event.stopPropagation()
                         setSelectedId(el.id)
                       }}
@@ -809,9 +1143,17 @@ const CertificateImportEditor = ({ design, preview, onChange }: Props) => {
                 return (
                   <div
                     key={el.id}
-                    style={boxStyle}
-                    onPointerDown={(event) => onPointerDown(event, el.id, 'move')}
+                    style={{
+                      ...boxStyle,
+                      pointerEvents: pageFrame ? 'none' : 'auto',
+                      overflow: pageFrame ? 'visible' : undefined,
+                    }}
+                    onPointerDown={(event) => {
+                      if (pageFrame) return
+                      onPointerDown(event, el.id, 'move')
+                    }}
                     onClick={(event) => {
+                      if (pageFrame) return
                       event.stopPropagation()
                       setSelectedId(el.id)
                     }}
@@ -819,10 +1161,55 @@ const CertificateImportEditor = ({ design, preview, onChange }: Props) => {
                     <img
                       src={src}
                       alt=""
-                      style={{ width: '100%', height: '100%', objectFit: 'contain', pointerEvents: 'none' }}
+                      style={{
+                        width: '100%',
+                        height: '100%',
+                        objectFit: pageFrame ? 'fill' : 'contain',
+                        pointerEvents: 'none',
+                      }}
                       onError={() => setBrokenIds((prev) => ({ ...prev, [el.id]: true }))}
                       draggable={false}
                     />
+                    {pageFrame ? (
+                      <>
+                        <span
+                          className="absolute inset-x-0 top-0 z-20 min-h-[20px] cursor-move"
+                          style={{ height: '8%', pointerEvents: 'auto' }}
+                          onPointerDown={(event) => onPointerDown(event, el.id, 'move')}
+                          onClick={(event) => {
+                            event.stopPropagation()
+                            setSelectedId(el.id)
+                          }}
+                        />
+                        <span
+                          className="absolute inset-x-0 bottom-0 z-20 min-h-[20px] cursor-move"
+                          style={{ height: '8%', pointerEvents: 'auto' }}
+                          onPointerDown={(event) => onPointerDown(event, el.id, 'move')}
+                          onClick={(event) => {
+                            event.stopPropagation()
+                            setSelectedId(el.id)
+                          }}
+                        />
+                        <span
+                          className="absolute inset-y-0 left-0 z-20 min-w-[20px] cursor-move"
+                          style={{ width: '8%', pointerEvents: 'auto' }}
+                          onPointerDown={(event) => onPointerDown(event, el.id, 'move')}
+                          onClick={(event) => {
+                            event.stopPropagation()
+                            setSelectedId(el.id)
+                          }}
+                        />
+                        <span
+                          className="absolute inset-y-0 right-0 z-20 min-w-[20px] cursor-move"
+                          style={{ width: '8%', pointerEvents: 'auto' }}
+                          onPointerDown={(event) => onPointerDown(event, el.id, 'move')}
+                          onClick={(event) => {
+                            event.stopPropagation()
+                            setSelectedId(el.id)
+                          }}
+                        />
+                      </>
+                    ) : null}
                     {resizeHandles}
                   </div>
                 )
@@ -897,25 +1284,22 @@ const CertificateImportEditor = ({ design, preview, onChange }: Props) => {
           <p className="text-sm font-semibold text-[var(--ds-text-primary,#122018)]">
             {selected ? getBuilderLayerLabel(selected) : 'Select an element'}
           </p>
-          {!selected ? (
-            <p className="text-xs text-[var(--ds-text-secondary,#5B6B61)]">
-              Click any text, line, logo, or patch. Drag to move, pull green corners to resize, or use Width/Height below.
-            </p>
-          ) : (
+          {selected ? (
             <>
               {selected.type === 'text' ? (
                 <div className="space-y-1.5">
-                  <Label>Edit text (type or paste)</Label>
+                  <Label>Edit text</Label>
                   <Textarea
                     ref={textEditRef}
                     rows={4}
                     value={selected.text || ''}
-                    onChange={(event) => onChange(updateElement(design, selected.id, { text: event.target.value }))}
-                    placeholder="Type or Ctrl+V paste text here…"
+                    onChange={(event) =>
+                      commitDesign(updateElement(design, selected.id, { text: event.target.value }))
+                    }
                   />
                   {selected.bind && selected.bind !== 'none' ? (
                     <p className="text-[11px] text-[var(--ds-text-secondary,#5B6B61)]">
-                      Bound field: {selected.bind}. Preview may show sample data; you can still edit this text.
+                      Bound field: {selected.bind}
                     </p>
                   ) : null}
                 </div>
@@ -928,7 +1312,7 @@ const CertificateImportEditor = ({ design, preview, onChange }: Props) => {
                       className="h-9 w-full rounded-md border border-[var(--ds-border,#DDE5DF)] bg-[var(--ds-surface-muted,#F7FAF8)] px-2 text-sm text-[var(--ds-text-primary,#122018)] outline-none focus:border-[var(--ds-accent,#1F8A5B)] focus:ring-1 focus:ring-[var(--ds-focus-ring,#1F8A5B)]"
                       value={selected.fontFamily || BUILDER_FONT_FAMILIES[0]}
                       onChange={(event) =>
-                        onChange(updateElement(design, selected.id, { fontFamily: event.target.value }))
+                        commitDesign(updateElement(design, selected.id, { fontFamily: event.target.value }))
                       }
                     >
                       {BUILDER_FONT_FAMILIES.map((f) => (
@@ -947,7 +1331,7 @@ const CertificateImportEditor = ({ design, preview, onChange }: Props) => {
                         max={96}
                         value={selected.fontSize || 16}
                         onChange={(event) =>
-                          onChange(
+                          commitDesign(
                             updateElement(design, selected.id, {
                               fontSize: Math.max(8, Math.min(96, Number(event.target.value) || 16)),
                             }),
@@ -962,7 +1346,7 @@ const CertificateImportEditor = ({ design, preview, onChange }: Props) => {
                         aria-label="Text color"
                         value={selected.color || '#0f172a'}
                         onChange={(event) =>
-                          onChange(updateElement(design, selected.id, { color: event.target.value }))
+                          commitDesign(updateElement(design, selected.id, { color: event.target.value }))
                         }
                         className="h-9 w-full cursor-pointer rounded-md border border-[var(--ds-border,#DDE5DF)] bg-[var(--ds-surface-muted,#F7FAF8)] p-1"
                       />
@@ -974,7 +1358,7 @@ const CertificateImportEditor = ({ design, preview, onChange }: Props) => {
                       size="sm"
                       variant="outline"
                       onClick={() =>
-                        onChange(
+                        commitDesign(
                           updateElement(design, selected.id, {
                             fontWeight: selected.fontWeight === 'bold' ? 'normal' : 'bold',
                           }),
@@ -988,7 +1372,7 @@ const CertificateImportEditor = ({ design, preview, onChange }: Props) => {
                       size="sm"
                       variant="outline"
                       onClick={() =>
-                        onChange(
+                        commitDesign(
                           updateElement(design, selected.id, {
                             fontStyle: selected.fontStyle === 'italic' ? 'normal' : 'italic',
                           }),
@@ -1001,31 +1385,47 @@ const CertificateImportEditor = ({ design, preview, onChange }: Props) => {
                   <div className="space-y-1.5">
                     <Label>Letter spacing</Label>
                     <div className="flex gap-1">
-                      <Button type="button" variant="outline" size="sm" onClick={() => nudgeSpacing(-0.5)}>−</Button>
+                      <Button type="button" variant="outline" size="sm" onClick={() => nudgeSpacing(-0.5)}>
+                        −
+                      </Button>
                       <Input
                         type="number"
                         step="0.1"
                         value={Number(selected.letterSpacing) || 0}
                         onChange={(event) =>
-                          onChange(updateElement(design, selected.id, { letterSpacing: Number(event.target.value) || 0 }))
+                          commitDesign(
+                            updateElement(design, selected.id, {
+                              letterSpacing: Number(event.target.value) || 0,
+                            }),
+                          )
                         }
                       />
-                      <Button type="button" variant="outline" size="sm" onClick={() => nudgeSpacing(0.5)}>+</Button>
+                      <Button type="button" variant="outline" size="sm" onClick={() => nudgeSpacing(0.5)}>
+                        +
+                      </Button>
                     </div>
                   </div>
                   <div className="space-y-1.5">
                     <Label>Line height</Label>
                     <div className="flex gap-1">
-                      <Button type="button" variant="outline" size="sm" onClick={() => nudgeLineHeight(-0.05)}>−</Button>
+                      <Button type="button" variant="outline" size="sm" onClick={() => nudgeLineHeight(-0.05)}>
+                        −
+                      </Button>
                       <Input
                         type="number"
                         step="0.05"
                         value={Number(selected.lineHeight) || 1.2}
                         onChange={(event) =>
-                          onChange(updateElement(design, selected.id, { lineHeight: Number(event.target.value) || 1.2 }))
+                          commitDesign(
+                            updateElement(design, selected.id, {
+                              lineHeight: Number(event.target.value) || 1.2,
+                            }),
+                          )
                         }
                       />
-                      <Button type="button" variant="outline" size="sm" onClick={() => nudgeLineHeight(0.05)}>+</Button>
+                      <Button type="button" variant="outline" size="sm" onClick={() => nudgeLineHeight(0.05)}>
+                        +
+                      </Button>
                     </div>
                   </div>
                 </>
@@ -1043,7 +1443,7 @@ const CertificateImportEditor = ({ design, preview, onChange }: Props) => {
                         aria-label="Line or frame color"
                         value={toColorInputValue(lineColor(selected))}
                         onChange={(event) =>
-                          onChange(
+                          commitDesign(
                             updateElement(design, selected.id, {
                               stroke: event.target.value,
                               fill: selected.type === 'line' ? event.target.value : selected.fill,
@@ -1062,7 +1462,7 @@ const CertificateImportEditor = ({ design, preview, onChange }: Props) => {
                         max={24}
                         value={Math.max(1, selected.strokeWidth || 2)}
                         onChange={(event) =>
-                          onChange(
+                          commitDesign(
                             updateElement(design, selected.id, {
                               strokeWidth: Math.max(1, Math.min(24, Number(event.target.value) || 2)),
                             }),
@@ -1071,11 +1471,6 @@ const CertificateImportEditor = ({ design, preview, onChange }: Props) => {
                       />
                     </div>
                   </div>
-                  {selected.type === 'rect' && isPageFrameRect(selected, canvasW, canvasH) ? (
-                    <p className="text-[11px] text-[var(--ds-text-tertiary,#8A978E)]">
-                      Border frame: click empty space on the certificate (or press Esc) to deselect, then click text or lines.
-                    </p>
-                  ) : null}
                   <Button type="button" size="sm" variant="outline" onClick={() => setSelectedId(null)}>
                     Deselect
                   </Button>
@@ -1083,10 +1478,13 @@ const CertificateImportEditor = ({ design, preview, onChange }: Props) => {
               ) : null}
               {selected.type === 'image' ? (
                 <div className="space-y-2">
-                  <p className="text-xs text-[var(--ds-text-secondary,#5B6B61)]">
-                    {selected.name || 'Image'} — use Replace image, Upload logo, or Upload patch.
-                  </p>
-                  <Button type="button" size="sm" variant="outline" disabled={uploading} onClick={() => fileRef.current?.click()}>
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    disabled={uploading}
+                    onClick={() => fileRef.current?.click()}
+                  >
                     Replace this image
                   </Button>
                 </div>
@@ -1097,7 +1495,9 @@ const CertificateImportEditor = ({ design, preview, onChange }: Props) => {
                   <Input
                     type="number"
                     value={Math.round(selected.x)}
-                    onChange={(event) => onChange(updateElement(design, selected.id, { x: Number(event.target.value) || 0 }))}
+                    onChange={(event) =>
+                      commitDesign(updateElement(design, selected.id, { x: Number(event.target.value) || 0 }))
+                    }
                   />
                 </div>
                 <div className="space-y-1.5">
@@ -1105,7 +1505,9 @@ const CertificateImportEditor = ({ design, preview, onChange }: Props) => {
                   <Input
                     type="number"
                     value={Math.round(selected.y)}
-                    onChange={(event) => onChange(updateElement(design, selected.id, { y: Number(event.target.value) || 0 }))}
+                    onChange={(event) =>
+                      commitDesign(updateElement(design, selected.id, { y: Number(event.target.value) || 0 }))
+                    }
                   />
                 </div>
                 <div className="space-y-1.5">
@@ -1114,7 +1516,11 @@ const CertificateImportEditor = ({ design, preview, onChange }: Props) => {
                     type="number"
                     value={Math.round(selected.width)}
                     onChange={(event) =>
-                      onChange(updateElement(design, selected.id, { width: Math.max(8, Number(event.target.value) || 8) }))
+                      commitDesign(
+                        updateElement(design, selected.id, {
+                          width: Math.max(8, Number(event.target.value) || 8),
+                        }),
+                      )
                     }
                   />
                 </div>
@@ -1124,7 +1530,7 @@ const CertificateImportEditor = ({ design, preview, onChange }: Props) => {
                     type="number"
                     value={Math.round(selected.height)}
                     onChange={(event) =>
-                      onChange(
+                      commitDesign(
                         updateElement(design, selected.id, {
                           height: Math.max(selected.type === 'line' ? 2 : 8, Number(event.target.value) || 8),
                         }),
@@ -1138,16 +1544,11 @@ const CertificateImportEditor = ({ design, preview, onChange }: Props) => {
                   Deselect
                 </Button>
               ) : null}
-              {selected.type === 'image' ? (
-                <Button type="button" variant="outline" size="sm" disabled={uploading} onClick={() => fileRef.current?.click()}>
-                  Replace this image
-                </Button>
-              ) : null}
             </>
-          )}
+          ) : null}
 
           <div className="max-h-48 space-y-1 overflow-auto border-t border-[var(--ds-border,#DDE5DF)] pt-2">
-            <p className="px-1 text-[11px] font-medium text-[var(--ds-text-tertiary,#8A978E)]">Layers (click to select)</p>
+            <p className="px-1 text-[11px] font-medium text-[var(--ds-text-tertiary,#8A978E)]">Layers</p>
             {sorted.map((el) => (
               <button
                 key={el.id}

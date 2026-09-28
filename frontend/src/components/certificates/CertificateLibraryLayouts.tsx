@@ -1,6 +1,7 @@
 import React from 'react'
 import QRCode from 'react-qr-code'
 import type { CertificateRenderData } from '@/lib/certificateTemplates'
+import { formatCertificateStudentName } from '@/lib/certificateTemplates'
 import { getCertificatePatchMeta, getCertificatePatchPreviewSrc } from '@/lib/certificatePatches'
 
 type LayoutProps = {
@@ -110,6 +111,7 @@ function MetaLine({ data, compact }: { data: CertificateRenderData; compact: boo
 }
 
 function AwardBody({ data, compact, ink }: { data: CertificateRenderData; compact: boolean; ink: string }) {
+  const studentName = formatCertificateStudentName(data.studentName)
   return (
     <div className="flex flex-col items-center text-center px-[6%] w-full">
       <p className="uppercase tracking-[0.22em] text-slate-400" style={{ fontSize: fs(compact, 9) }}>
@@ -123,9 +125,9 @@ function AwardBody({ data, compact, ink }: { data: CertificateRenderData; compac
           lineHeight: 1.1,
           color: ink,
         }}
-        title={data.studentName}
+        title={studentName}
       >
-        {data.studentName}
+        {studentName}
       </p>
       <p className="text-slate-500" style={{ fontSize: fs(compact, 10), marginTop: 4 }}>
         has successfully completed

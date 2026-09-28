@@ -41,6 +41,12 @@ export const CERTIFICATE_ALL_LAYOUT_KEYS = [
 
 export type CertificateLayoutKey = (typeof CERTIFICATE_ALL_LAYOUT_KEYS)[number]
 
+/** Student names always print in full capitals on certificates. */
+export function formatCertificateStudentName(name?: string | null): string {
+  const trimmed = String(name || '').trim()
+  return (trimmed || 'Student Name').toUpperCase()
+}
+
 export type CertificateTemplateMeta = {
   key: CertificateLayoutKey
   name: string

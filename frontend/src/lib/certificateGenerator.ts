@@ -10,6 +10,7 @@ import CertificateCanvas from '@/components/certificates/CertificateCanvas'
 import {
   isLandscapeCertificateLayout,
   normalizeCertificateLayoutKey,
+  formatCertificateStudentName,
   type CertificateRenderData,
 } from '@/lib/certificateTemplates'
 import {
@@ -197,11 +198,12 @@ export function toCertificateRenderData(certificateData: Record<string, any>): C
       certificateData.template_snapshot?.layout_key,
   )
 
-  const studentName =
+  const studentName = formatCertificateStudentName(
     certificateData.student?.name ||
-    certificateData.student?.full_name ||
-    certificateData.studentName ||
-    'Student Name'
+      certificateData.student?.full_name ||
+      certificateData.studentName ||
+      'Student Name',
+  )
   const studentId =
     certificateData.student?.student_code ||
     certificateData.studentId ||

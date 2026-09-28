@@ -15,6 +15,7 @@ import {
 } from '@/lib/certificateBuilder'
 import { resolveCertificateDesignImages } from '@/lib/certificateGenerator'
 import type { CertificateRenderData } from '@/lib/certificateTemplates'
+import { formatCertificateStudentName } from '@/lib/certificateTemplates'
 import CertificateAppreciationLayout from '@/components/certificates/CertificateAppreciationLayout'
 
 type Props = {
@@ -37,7 +38,7 @@ function sortedElements(elements: BuilderElement[]) {
 function fieldValue(slot: UploadFieldSlot, data: CertificateRenderData): string {
   switch (slot.key) {
     case 'studentName':
-      return data.studentName || ''
+      return formatCertificateStudentName(data.studentName || '')
     case 'programName':
       return data.programName || data.className || ''
     case 'certificateNumber':
@@ -203,7 +204,7 @@ function UploadFieldOverlay({
                 color: slot.color || '#111827',
                 fontFamily:
                   slot.key === 'studentName'
-                    ? '"Great Vibes", "Segoe Script", Georgia, serif'
+                    ? 'Arial, Helvetica, sans-serif'
                     : 'Georgia, serif',
                 fontSize: s(slot.fontSize || 14),
                 fontWeight: slot.key === 'programName' ? 600 : 400,

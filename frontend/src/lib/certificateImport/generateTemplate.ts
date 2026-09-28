@@ -283,8 +283,8 @@ function fontPlayfair() {
   return BUILDER_FONT_FAMILIES.find((f) => /Playfair Display/i.test(f)) || BUILDER_FONT_FAMILIES[0]
 }
 
-function fontScript() {
-  return BUILDER_FONT_FAMILIES.find((f) => /Great Vibes/i.test(f)) || BUILDER_FONT_FAMILIES[0]
+function fontArial() {
+  return BUILDER_FONT_FAMILIES.find((f) => /^Arial\b/i.test(f)) || 'Arial, Helvetica, sans-serif'
 }
 
 function fontSerif() {
@@ -479,12 +479,12 @@ function buildCleanLayout(scan: RawCertificateScan, brand: ImportBrand, classifi
       width: nameW,
       height: landscape ? 56 : 60,
       fontSize: landscape ? 44 : 46,
-      fontFamily: fontScript(),
-      fontWeight: 'normal',
+      fontFamily: fontArial(),
+      fontWeight: 'bold',
       fontStyle: 'normal',
       textAlign: 'center',
       color: ink,
-      letterSpacing: 0.5,
+      letterSpacing: 0.8,
       lineHeight: 1.05,
       zIndex: nextZ(),
     }),
@@ -711,14 +711,18 @@ export function designDependsOnSourceFile(design: LogoBuilderDesign) {
   const canvasW = design.canvas?.width || 1
   const canvasH = design.canvas?.height || 1
   return (design.elements || []).some((el) => {
+    // Ready patches / decorative frames are inline SVG assets — always saveable.
+    if (el.patchKey || el.decorKey) return false
     const src = String(el.src || '')
+    if (/^data:image\/svg\+xml/i.test(src)) return false
     const fullBleed = el.type === 'image' && el.width > canvasW * 0.85 && el.height > canvasH * 0.85
     return (
       fullBleed ||
       el.text === '__upload_paper__' ||
       el.text === 'background-art' ||
       src.startsWith('blob:') ||
-      src.startsWith('data:')
+      // Full-page raster data URLs from a scan — not independent templates
+      (src.startsWith('data:') && fullBleed)
     )
   })
 }

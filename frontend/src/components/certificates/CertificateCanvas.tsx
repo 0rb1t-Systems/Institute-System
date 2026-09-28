@@ -1,6 +1,6 @@
 import React from 'react'
 import QRCode from 'react-qr-code'
-import { isLandscapeCertificateLayout, type CertificateRenderData } from '@/lib/certificateTemplates'
+import { isLandscapeCertificateLayout, formatCertificateStudentName, type CertificateRenderData } from '@/lib/certificateTemplates'
 import CertificateDesignRenderer from '@/components/certificates/CertificateDesignRenderer'
 import CertificateAppreciationLayout from '@/components/certificates/CertificateAppreciationLayout'
 import {
@@ -108,7 +108,11 @@ const CertificateCanvas = ({ data: rawData, compact = false, forPdf = false }: P
     String(rawData.primary).toLowerCase() !== 'transparent'
       ? String(rawData.primary)
       : '#002147'
-  const data = rawData.primary === primary ? rawData : { ...rawData, primary }
+  const data = {
+    ...rawData,
+    primary,
+    studentName: formatCertificateStudentName(rawData.studentName),
+  }
   const tagline = data.motto || ''
   const layout = data.layoutKey
   const hasLogo = Boolean(String(data.logoUrl || '').trim())

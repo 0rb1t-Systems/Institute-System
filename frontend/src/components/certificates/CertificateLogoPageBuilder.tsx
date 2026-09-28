@@ -244,7 +244,7 @@ const CertificateLogoPageBuilder = ({
   const [selectedIds, setSelectedIds] = useState<string[]>([])
   const [guides, setGuides] = useState<{ x: number | null; y: number | null }>({ x: null, y: null })
   const [starterOpen, setStarterOpen] = useState(false)
-  const [toolbarMenu, setToolbarMenu] = useState<'none' | 'fields' | 'decor' | 'layers' | 'patches' | 'fonts'>('none')
+  const [toolbarMenu, setToolbarMenu] = useState<'none' | 'fields' | 'decor' | 'layers' | 'patches' | 'frames' | 'fonts'>('none')
   const [pickerPreviewKey, setPickerPreviewKey] = useState<string | null>(null)
   const [chromeTab, setChromeTab] = useState<'insert' | 'design' | 'format'>('insert')
   const [draftTick, setDraftTick] = useState(0)
@@ -1959,6 +1959,13 @@ const CertificateLogoPageBuilder = ({
     return map
   }, [brandPrimary, brandAccent])
 
+  const borderFrames = useMemo(
+    () => DECORATIVE_SHAPES.filter((s) => s.category === 'borders'),
+    [],
+  )
+  const framePreview =
+    borderFrames.find((s) => s.key === pickerPreviewKey) || borderFrames[0]
+
   const filteredDecor = DECORATIVE_SHAPES.filter((s) => {
     const q = elementSearch.trim().toLowerCase()
     const catOk = libraryCategory === 'all' || s.category === libraryCategory
@@ -2084,7 +2091,92 @@ const CertificateLogoPageBuilder = ({
               <ToolBtn title="Text" onClick={() => addElement('text')}><Type className="h-3.5 w-3.5" /> Text</ToolBtn>
               <ToolBtn title="Rectangle" onClick={() => addElement('rect')}><Square className="h-3.5 w-3.5" /></ToolBtn>
               <ToolBtn title="Circle" onClick={() => addElement('ellipse')}><Circle className="h-3.5 w-3.5" /></ToolBtn>
-              <ToolBtn title="Border frame" onClick={addBorderFrame}><Frame className="h-3.5 w-3.5" /></ToolBtn>
+              <div className="relative z-50">
+                <ToolBtn
+                  title="Border frames"
+                  active={toolbarMenu === 'frames'}
+                  onClick={() => {
+                    setToolbarMenu((m) => {
+                      const next = m === 'frames' ? 'none' : 'frames'
+                      if (next === 'frames') setPickerPreviewKey(borderFrames[0]?.key || null)
+                      return next
+                    })
+                  }}
+                >
+                  <Frame className="h-3.5 w-3.5" /> Frames
+                </ToolBtn>
+                {toolbarMenu === 'frames' ? (
+                  <div className="absolute left-0 top-full z-[60] mt-1 w-80 overflow-hidden rounded-md border border-slate-700 bg-[#0b0d14] p-2 shadow-2xl">
+                    <div className="mb-2 rounded-md bg-white p-2">
+                      <div className="flex h-40 items-center justify-center">
+                        {framePreview && decorThumbSrc[framePreview.key] ? (
+                          <img
+                            src={decorThumbSrc[framePreview.key]}
+                            alt=""
+                            className="max-h-40 max-w-full object-contain"
+                          />
+                        ) : (
+                          <span className="text-[11px] text-slate-400">Hover a frame</span>
+                        )}
+                      </div>
+                      <p className="mt-1 text-center text-[11px] font-medium text-slate-700">
+                        {framePreview?.label || 'Frame'}
+                      </p>
+                    </div>
+                    <div className="grid max-h-56 grid-cols-3 gap-1 overflow-y-auto">
+                      <button
+                        type="button"
+                        onMouseEnter={() => setPickerPreviewKey('border_classic_double')}
+                        onFocus={() => setPickerPreviewKey('border_classic_double')}
+                        onClick={() => {
+                          addBorderFrame()
+                          setToolbarMenu('none')
+                        }}
+                        className={`rounded border p-1 ${
+                          pickerPreviewKey === 'border_classic_double'
+                            ? 'border-violet-500 bg-violet-600/20'
+                            : 'border-slate-800 hover:border-slate-600'
+                        }`}
+                        title="Classic double border"
+                      >
+                        <img
+                          src={decorThumbSrc.border_classic_double}
+                          alt=""
+                          className="mx-auto h-14 w-full object-contain bg-white rounded-sm"
+                        />
+                        <span className="mt-0.5 block truncate text-[9px] text-slate-300">Classic double</span>
+                      </button>
+                      {borderFrames
+                        .filter((s) => s.key !== 'border_classic_double')
+                        .map((s) => (
+                        <button
+                          key={s.key}
+                          type="button"
+                          onMouseEnter={() => setPickerPreviewKey(s.key)}
+                          onFocus={() => setPickerPreviewKey(s.key)}
+                          onClick={() => {
+                            addDecorativeShape(s.key)
+                            setToolbarMenu('none')
+                          }}
+                          className={`rounded border p-1 ${
+                            framePreview?.key === s.key
+                              ? 'border-violet-500 bg-violet-600/20'
+                              : 'border-slate-800 hover:border-slate-600'
+                          }`}
+                          title={s.label}
+                        >
+                          <img
+                            src={decorThumbSrc[s.key]}
+                            alt=""
+                            className="mx-auto h-14 w-full object-contain bg-white rounded-sm"
+                          />
+                          <span className="mt-0.5 block truncate text-[9px] text-slate-300">{s.label}</span>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                ) : null}
+              </div>
               <ToolBtn title="Image" onClick={() => fileRef.current?.click()}><ImagePlus className="h-3.5 w-3.5" /></ToolBtn>
               <ToolBtn title="QR code" active={hasVerificationQr(design)} onClick={addVerificationQr}><QrCode className="h-3.5 w-3.5" /></ToolBtn>
               <ToolBtn title="Institution logo" onClick={() => addInstitutionAsset('logo')}>Logo</ToolBtn>
