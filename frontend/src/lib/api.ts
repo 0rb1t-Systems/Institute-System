@@ -50,8 +50,19 @@ async function requireUser() {
 }
 
 async function getMyProfile() {
-  const user = await requireUser()
   const now = Date.now()
+  // Prefer local session so a warm cache does not pay auth.getUser() latency.
+  const { data: sessionData } = await supabase.auth.getSession()
+  const sessionUserId = sessionData?.session?.user?.id
+  if (
+    sessionUserId &&
+    _myProfileCache &&
+    _myProfileCache.userId === sessionUserId &&
+    now - _myProfileCache.at < MY_PROFILE_TTL_MS
+  ) {
+    return _myProfileCache.row
+  }
+  const user = await requireUser()
   if (
     _myProfileCache &&
     _myProfileCache.userId === user.id &&
@@ -2681,30 +2692,6 @@ export const chargeWaafiPay = async (_args?: { enrollment_id?: string; amount?: 
 }
 
 // --- Attendance ---
-async function ensureSession(classId, date, topic = null) {
-  const me = await getMyProfile()
-  const sessionDate = String(date).slice(0, 10)
-  const { data: existing } = await supabase
-    .from('class_sessions')
-    .select('*')
-    .eq('class_id', classId)
-    .eq('session_date', sessionDate)
-    .maybeSingle()
-  if (existing) return existing
-  const { data: created, error } = await supabase
-    .from('class_sessions')
-    .insert({
-      institution_id: me.institution_id,
-      class_id: classId,
-      session_date: sessionDate,
-      topic,
-    })
-    .select()
-    .single()
-  if (error) throw error
-  return created
-}
-
 async function fetchAttendanceForSessions(sessionIds) {
   if (!sessionIds.length) return []
   const chunkSize = 100
@@ -2847,9 +2834,7 @@ export const bulkUpsertAttendanceWithDuplicatePrevention = async (records) => {
   const list = Array.isArray(records) ? records.filter(Boolean) : []
   if (!list.length) return []
 
-  const me = await getMyProfile()
-
-  // Group by class+date so Mark All Present is 1 session + 1 upsert, not N×3 round-trips.
+  // Group by class+date — one RPC per day (Mark All Present = 1 network round-trip).
   const groups = new Map()
   for (const rec of list) {
     const classId = rec.class_id
@@ -2864,32 +2849,43 @@ export const bulkUpsertAttendanceWithDuplicatePrevention = async (records) => {
 
   const results = []
   for (const g of groups.values()) {
-    const session = await ensureSession(g.classId, g.date, g.topic)
     const payload = g.rows.map((rec) => {
       const status = ['present', 'absent', 'late', 'excused'].includes(rec.status)
         ? rec.status
         : 'present'
       return {
-        institution_id: me.institution_id,
-        session_id: session.id,
         student_id: rec.student_id,
         status,
         notes: rec.notes ?? null,
       }
     })
 
-    // Chunk upserts — PostgREST payloads stay reasonable for large classes.
-    const chunkSize = 200
+    // Chunk large classes — keep PostgREST/jsonb payload reasonable.
+    const chunkSize = 400
     for (let i = 0; i < payload.length; i += chunkSize) {
       const chunk = payload.slice(i, i + chunkSize)
-      const { data, error } = await supabase
-        .from('attendance')
-        .upsert(chunk, { onConflict: 'session_id,student_id' })
-        .select()
+      const { error } = await supabase.rpc('bulk_upsert_attendance', {
+        p_class_id: g.classId,
+        p_session_date: g.date,
+        p_records: chunk,
+        p_topic: g.topic,
+      })
       if (error) throw error
-      for (const row of data || []) {
-        results.push(mapAttendance(row, { [session.id]: session }))
-      }
+    }
+
+    // Callers that ignore the return (Mark All Present) stay fast; single-save
+    // still gets a stable client-shaped row without a follow-up SELECT.
+    for (const rec of g.rows) {
+      const status = ['present', 'absent', 'late', 'excused'].includes(rec.status)
+        ? rec.status
+        : 'present'
+      results.push({
+        student_id: rec.student_id,
+        class_id: g.classId,
+        date: g.date,
+        status,
+        notes: rec.notes ?? null,
+      })
     }
   }
   return results

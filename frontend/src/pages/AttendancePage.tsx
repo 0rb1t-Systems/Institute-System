@@ -138,7 +138,14 @@ const AttendancePage = () => {
 
   const handleMarkAllPresent = async () => {
       if (!selectedClassId || !selectedDate || enrolledStudents.length === 0) return;
-      
+
+      const previousStatus = attendanceState;
+      const newStatus: Record<string, string> = {};
+      enrolledStudents.forEach((s) => {
+        newStatus[s.id] = 'present';
+      });
+      // Optimistic UI — roster flips to Present immediately while one RPC saves.
+      setAttendanceState(newStatus);
       setBulkSaving(true);
       try {
           const records = enrolledStudents.map(s => ({
@@ -151,13 +158,10 @@ const AttendancePage = () => {
           }));
 
           await bulkUpsertAttendanceWithDuplicatePrevention(records);
-
-          const newStatus: any = {};
-          enrolledStudents.forEach(s => { newStatus[s.id] = 'present'; });
-          setAttendanceState(newStatus);
           
           toast({ title: "Success", description: MESSAGES.SUCCESS.ATTENDANCE_SAVED });
       } catch (error) {
+          setAttendanceState(previousStatus);
           notify.error(error, { context: 'AttendancePage - bulkSave', fallback: { title: 'Error', description: MESSAGES.DOMAIN.ATTENDANCE_SAVE } });
       } finally {
           setBulkSaving(false);
