@@ -117,9 +117,11 @@ const MAX_IMPORT_ROWS = 500;
     let fail = 0;
     const errors = [];
     const seenEmails = new Set();
+
+    const jobs = [];
     for (let i = 0; i < rows.length; i++) {
       const row = rows[i];
-      const payload = { name: '', email: '', phone: '', class_id: classId };
+      const payload = { name: '', email: '', phone: '', class_id: classId, skipWelcomeEmail: true };
       for (const [src, dest] of Object.entries(mapping) as [string, any][]) {
         if (dest && dest !== 'skip') payload[dest] = String(row[src] ?? '').trim();
       }
@@ -135,21 +137,40 @@ const MAX_IMPORT_ROWS = 500;
         continue;
       }
       seenEmails.add(emailKey);
-      try {
-        await registerManualStudent(payload);
-        ok++;
-      } catch (err) {
-        fail++;
-        errors.push(`Row ${i + 2} (${payload.email}): ${getUserMessage(err, { context: 'BulkImportStudentsModal - row', log: false })}`);
-      }
+      jobs.push({ index: i, payload });
     }
+
+    // Limited concurrency — sequential create-user + welcome email was freezing Vercel/prod.
+    const CONCURRENCY = 4;
+    let cursor = 0;
+    const workers = Array.from({ length: Math.min(CONCURRENCY, jobs.length) }, async () => {
+      while (cursor < jobs.length) {
+        const job = jobs[cursor++];
+        try {
+          await registerManualStudent(job.payload);
+          ok++;
+          setResult({ ok, fail, errors: errors.slice(0, 10) });
+        } catch (err) {
+          fail++;
+          errors.push(
+            `Row ${job.index + 2} (${job.payload.email}): ${getUserMessage(err, {
+              context: 'BulkImportStudentsModal - row',
+              log: false,
+            })}`,
+          );
+          setResult({ ok, fail, errors: errors.slice(0, 10) });
+        }
+      }
+    });
+    await Promise.all(workers);
+
     setResult({ ok, fail, errors: errors.slice(0, 10) });
     setStep('done');
     setImporting(false);
     if (ok > 0 && onSuccess) onSuccess();
     toast({
       title: 'Import finished',
-      description: `${ok} created, ${fail} failed. Welcome emails sent via EmailJS when configured.`,
+      description: `${ok} created, ${fail} failed. Welcome emails skipped during bulk import for speed.`,
     });
   };
 

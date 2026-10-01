@@ -15,10 +15,8 @@ import {
 import { cn } from '@/lib/utils';
 import {
   autoGenerateCertificatesBatch,
-  getClasses,
   getCertificateTemplateSignedUrl,
   getDocumentTemplate,
-  getStudents,
   listCertificateEligibleEnrollments,
 } from '@/lib/api';
 import {
@@ -41,6 +39,7 @@ import {
 } from '@/lib/certificateTemplates';
 import CertificateCanvas from '@/components/certificates/CertificateCanvas';
 import { useAuth } from '@/contexts/AuthContext';
+import { useData } from '@/contexts/DataContext';
 import {
   getCertificateFooterText,
   getInstitutionAccent,
@@ -165,13 +164,12 @@ function CertificateThumb({ data }: { data: CertificateRenderData }) {
  */
 const CertificateAutoGenerate = ({ onGenerationComplete }) => {
   const { institution } = useAuth();
+  const { students: contextStudents, classes: contextClasses } = useData();
   const { toast } = useToast();
   const [showConfirmDialog, setShowConfirmDialog] = useState(false);
   const [generating, setGenerating] = useState(false);
   const [result, setResult] = useState(null);
   const [mode, setMode] = useState('all'); // all | selected
-  const [students, setStudents] = useState([]);
-  const [classes, setClasses] = useState([]);
   const [eligibilityRows, setEligibilityRows] = useState([]);
   const [selectedStudent, setSelectedStudent] = useState('');
   const [selectedClass, setSelectedClass] = useState('all');
@@ -184,6 +182,10 @@ const CertificateAutoGenerate = ({ onGenerationComplete }) => {
   const [importedTemplates, setImportedTemplates] = useState<SavedCertificateImport[]>([]);
   const [customPreviewUrl, setCustomPreviewUrl] = useState(null);
   const [loadingMeta, setLoadingMeta] = useState(true);
+
+  // Reuse DataContext lists — re-downloading every student on each filter change froze generation online.
+  const students = contextStudents || [];
+  const classes = contextClasses || [];
 
   const templateOptions = useMemo(() => {
     const base = [
@@ -330,17 +332,11 @@ const CertificateAutoGenerate = ({ onGenerationComplete }) => {
     (async () => {
       setLoadingMeta(true);
       try {
-        const [studentsData, classesData, rows] = await Promise.all([
-          getStudents(),
-          getClasses(),
-          listCertificateEligibleEnrollments({
-            classId: selectedClass !== 'all' ? selectedClass : null,
-            studentId: selectedStudent || null,
-          }),
-        ]);
+        const rows = await listCertificateEligibleEnrollments({
+          classId: selectedClass !== 'all' ? selectedClass : null,
+          studentId: selectedStudent || null,
+        });
         if (cancelled) return;
-        setStudents(studentsData || []);
-        setClasses(classesData || []);
         setEligibilityRows(rows || []);
       } catch (err) {
         notify.error(err, { context: 'CertificateAutoGenerate - load', fallback: MESSAGES.LOAD_FAILED });

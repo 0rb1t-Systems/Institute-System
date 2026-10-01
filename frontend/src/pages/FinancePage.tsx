@@ -25,7 +25,7 @@ import { computeStudentBalance, mustPayRegistrationFirst, remainingForBillingMon
 
 // --- Payment Form Component ---
 const PaymentForm = ({ closeDialog, preSelectedStudentId, existingPayment, financials, initialMode = 'payment' }) => {
-  const { students, classes, enrollments, addPayment, updatePaymentData, payments, refreshData } = useData();
+  const { students, classes, enrollments, addPayment, updatePaymentData, payments } = useData();
   const { institution } = useAuth();
   const { toast } = useToast();
   const registrationFee = getRegistrationFeeAmount(institution);
@@ -392,7 +392,8 @@ const PaymentForm = ({ closeDialog, preSelectedStudentId, existingPayment, finan
               toast({ title: "Success", description: MESSAGES.SUCCESS.PAYMENT_RECORDED });
           }
 
-          await refreshData();
+          // addPayment/updatePaymentData already soft-refresh payment slices —
+          // do not call full refreshData() (that freezes the whole app online).
           closeDialog();
       } catch(e) {
           notify.error(e, { context: 'FinancePage - savePayment', fallback: { title: 'Error', description: MESSAGES.DOMAIN.PAYMENT_SAVE } });

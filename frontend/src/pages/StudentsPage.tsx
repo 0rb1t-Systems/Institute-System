@@ -248,7 +248,7 @@ const StudentsPage = () => {
     const [isDeleting, setIsDeleting] = useState(false);
     const [deletingRowId, setDeletingRowId] = useState(null);
 
-    const { students, deleteStudentData, enrollments, classes, courses, diplomas, users, generalRegistrations, payments, refreshData } = useData();
+    const { students, deleteStudentData, enrollments, classes, courses, diplomas, users, generalRegistrations, payments, refreshKeys } = useData();
     const { user, institution } = useAuth();
     const canManageStudents = user?.role === 'admin' || user?.role === 'staff';
     const canDeleteStudents = user?.role === 'admin';
@@ -469,7 +469,7 @@ const StudentsPage = () => {
             <StudentRegistrationModal 
                 isOpen={isRegistrationModalOpen} 
                 onClose={() => setIsRegistrationModalOpen(false)} 
-                onSuccess={() => refreshData()}
+                onSuccess={() => refreshKeys(['students', 'enrollments', 'generalRegistrations'])}
                 classes={classes}
                 users={users}
             />
@@ -477,21 +477,21 @@ const StudentsPage = () => {
             <BulkImportStudentsModal
                 open={isBulkImportOpen}
                 onClose={() => setIsBulkImportOpen(false)}
-                onSuccess={() => refreshData()}
+                onSuccess={() => refreshKeys(['students', 'enrollments', 'generalRegistrations'])}
                 classes={classes}
             />
 
             <AlumniImportModal
                 open={isAlumniImportOpen}
                 onClose={() => setIsAlumniImportOpen(false)}
-                onSuccess={() => refreshData()}
+                onSuccess={() => refreshKeys(['students', 'enrollments', 'certificates', 'generalRegistrations'])}
             />
 
             <EditStudentModal 
                 student={editingStudent} 
                 isOpen={isEditDialogOpen} 
                 onClose={() => { setIsEditDialogOpen(false); setEditingStudent(null); }} 
-                onSuccess={() => refreshData()}
+                onSuccess={() => refreshKeys(['students'])}
                 users={users}
             />
             

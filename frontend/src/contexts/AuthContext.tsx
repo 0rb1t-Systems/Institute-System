@@ -47,6 +47,12 @@ export const AuthProvider = ({ children }) => {
   const inFlightBuild = useRef(null);
 
   const clearAuthData = useCallback(async () => {
+    try {
+      const { clearMyProfileCache } = await import('@/lib/api')
+      clearMyProfileCache()
+    } catch {
+      /* ignore */
+    }
     await supabase.auth.signOut();
     if (mounted.current) {
       setUser(null);

@@ -10,9 +10,11 @@ const DataContext = createContext<any>(null);
 /**
  * Efficient data strategy:
  * 1) Core shell first (dashboard + most menus) → clear loading quickly
- * 2) Secondary (users, settlements, withdrawals) in background — never blocks nav
- * 3) Attendance is NOT loaded globally — pages fetch filtered data on demand
- * 4) Mutations refresh ONLY the resources they touched (see MUTATION_SCOPES)
+ * 2) Light secondary in background — never blocks nav
+ * 3) Heavy secondary (exam_results ~4k, gradebook ~4k, transcripts, certificates)
+ *    is deferred until after first paint — this was the main Vercel/online freeze
+ * 4) Attendance is NOT loaded globally — pages fetch filtered data on demand
+ * 5) Mutations refresh ONLY the resources they touched (see MUTATION_SCOPES)
  *
  * Performance notes:
  * - Every fetch is generation-stamped. Responses from a superseded load are
@@ -25,23 +27,28 @@ const DataContext = createContext<any>(null);
 
 /** Which slices each fetcher owns. */
 const CORE_KEYS = ['students', 'courses', 'diplomas', 'diplomaCourses', 'diplomaSemesters', 'classes', 'enrollments', 'payments', 'generalRegistrations'];
-const SECONDARY_KEYS = [
+/** Small / rarely grows huge — safe to load soon after core. */
+const LIGHT_SECONDARY_KEYS = [
   'users',
   'affiliateSettlements',
   'withdrawalRequests',
   'instructorEarnings',
   'classCourses',
   'exams',
-  'results',
   'assignments',
   'assignmentSubmissions',
   'ratingEvaluations',
   'ratingQuestions',
   'ratingResponses',
+];
+/** Multi-thousand-row tenants: defer so Mark Attendance / Finance stay responsive. */
+const HEAVY_SECONDARY_KEYS = [
+  'results',
   'gradebookEntries',
   'certificates',
   'transcripts',
 ];
+const SECONDARY_KEYS = [...LIGHT_SECONDARY_KEYS, ...HEAVY_SECONDARY_KEYS];
 
 const FETCHERS = {
   students: api.getStudents,
@@ -263,10 +270,19 @@ export const DataProvider = ({ children }) => {
         hasLoadedOnceRef.current = true;
         if (!soft) setLoading(false);
 
-        // Secondary never blocks the UI.
-        fetchKeys(SECONDARY_KEYS, generation, { force: true }).catch((err) =>
+        // Light secondary never blocks the UI.
+        fetchKeys(LIGHT_SECONDARY_KEYS, generation, { force: true }).catch((err) =>
           console.warn('Secondary data fetch failed', err)
         );
+
+        // Heavy slices (~8k+ rows on large tenants) wait so attendance/payment
+        // actions are not fighting a full exam_results download on Vercel.
+        window.setTimeout(() => {
+          if (generation !== generationRef.current) return;
+          fetchKeys(HEAVY_SECONDARY_KEYS, generation, { force: true }).catch((err) =>
+            console.warn('Heavy secondary data fetch failed', err)
+          );
+        }, 1500);
       } catch (err) {
         logError('DataContext - loadData', err);
         if (generation === generationRef.current) setError(err);
@@ -577,7 +593,23 @@ export const DataProvider = ({ children }) => {
       issueCertificates: (items) =>
         runMutation('certificate', () => api.generateCertificatesBatch(items)),
 
-      refreshData: () => loadDataRef.current({ soft: false }),
+      refreshData: () => {
+        // After first paint, never flip the global loading spinner (that froze
+        // the whole Vercel app while re-downloading ~8k grade rows).
+        if (hasLoadedOnceRef.current) {
+          return loadDataRef.current({ soft: true, keys: CORE_KEYS, force: true }).then(() =>
+            loadDataRef.current({ soft: true, keys: LIGHT_SECONDARY_KEYS, force: true }),
+          );
+        }
+        return loadDataRef.current({ soft: false });
+      },
+      /** Soft partial refresh — does not flip global loading (avoids full-app freeze on Vercel). */
+      refreshKeys: (keys) =>
+        loadDataRef.current({
+          soft: true,
+          keys: Array.isArray(keys) && keys.length ? keys : null,
+          force: true,
+        }),
     }),
     [runMutation, mergeExamResults]
   );

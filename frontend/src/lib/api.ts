@@ -35,6 +35,14 @@ async function fetchAllPaged(buildQuery) {
 const INST_SELECT =
   'id, name, subdomain, logo_url, description, email, phone, address, website, motto, theme_primary, theme_accent, theme_tertiary, social_whatsapp, social_facebook, social_tiktok, status, created_at, affiliate_commission_rate, registration_fee_amount, default_instructor_commission_rate, currency, currency_symbol, signatory_left_title, signatory_right_title, signatory_left_name, signatory_right_name, seal_url, signature_url, certificate_footer_text, transcript_footer_text, transcript_narrative_text, invoice_footer_text, certificate_number_start, certificate_number_pad, certificate_number_last, student_id_prefix, student_id_start, student_id_pad, student_id_last, settings_completed_at, landing_template_id, hero_image_url, hero_headline, footer_text, landing_content, grading_scale, dashboard_theme'
 
+/** Short-lived profile cache — avoids N+1 profile round-trips in bulk flows. */
+let _myProfileCache: { at: number; userId: string; row: any } | null = null
+const MY_PROFILE_TTL_MS = 30_000
+
+export function clearMyProfileCache() {
+  _myProfileCache = null
+}
+
 async function requireUser() {
   const { data, error } = await supabase.auth.getUser()
   if (error || !data.user) throw new Error('UNAUTHORIZED')
@@ -43,12 +51,21 @@ async function requireUser() {
 
 async function getMyProfile() {
   const user = await requireUser()
+  const now = Date.now()
+  if (
+    _myProfileCache &&
+    _myProfileCache.userId === user.id &&
+    now - _myProfileCache.at < MY_PROFILE_TTL_MS
+  ) {
+    return _myProfileCache.row
+  }
   const { data, error } = await supabase
     .from('profiles')
     .select('*')
     .eq('id', user.id)
     .single()
   if (error) throw error
+  _myProfileCache = { at: now, userId: user.id, row: data }
   return data
 }
 
@@ -314,15 +331,21 @@ export const createNewUser = async (data) => {
   const role = meta.role || data.role || 'student'
   const full_name = meta.name || meta.full_name || data.full_name || email
 
-  // Ensure a fresh access token before Edge Function invoke (avoids stale JWT 401s)
+  // Ensure a usable access token before Edge Function invoke (avoids stale JWT 401s).
+  // Skip refresh when the token still has >2 min left — bulk import was refreshing
+  // once per student and freezing the UI on slow networks.
   let {
     data: { session },
   } = await supabase.auth.getSession()
   if (!session?.access_token) throw new Error('Must be logged in to create users')
 
-  const { data: refreshed, error: refreshErr } = await supabase.auth.refreshSession()
-  if (!refreshErr && refreshed.session?.access_token) {
-    session = refreshed.session
+  const expiresAtMs = Number(session.expires_at || 0) * 1000
+  const needsRefresh = !expiresAtMs || expiresAtMs - Date.now() < 120_000
+  if (needsRefresh) {
+    const { data: refreshed, error: refreshErr } = await supabase.auth.refreshSession()
+    if (!refreshErr && refreshed.session?.access_token) {
+      session = refreshed.session
+    }
   }
 
   const settlementModel =
@@ -410,9 +433,14 @@ export const createNewUser = async (data) => {
       user: {
         id: payload.id,
         email: payload.email,
-        user_metadata: { name: full_name, role: createdRole },
+        user_metadata: {
+          name: full_name,
+          role: createdRole,
+          student_code: payload.student_code || data.student_code || null,
+        },
       },
       password: payload.password,
+      student_code: payload.student_code || data.student_code || null,
       role: createdRole,
       emailed,
       email_skipped: emailSkipped,
@@ -760,7 +788,11 @@ export const createStudentWithAutoCode = async (data) => {
     student_code: data.student_code,
     skipWelcomeEmail: data.skipWelcomeEmail === true,
   })
-  const profile = await getProfile(result.user.id)
+  const code =
+    result.student_code ||
+    result.user?.user_metadata?.student_code ||
+    data.student_code ||
+    null
   const student = mapStudent({
     id: result.user.id,
     full_name: data.name || data.full_name,
@@ -769,11 +801,11 @@ export const createStudentWithAutoCode = async (data) => {
     created_at: new Date().toISOString(),
     status: 'approved',
     role: 'student',
-    ...(profile || {}),
+    student_code: code,
   })
   return {
     ...student,
-    password: result.password || student.student_code,
+    password: result.password || code || student.student_code,
     emailed: result.emailed,
     email_skipped: result.email_skipped,
     email_error: result.email_error,
@@ -2812,42 +2844,52 @@ export const sendPaymentReminderEmail = async (studentId, message) =>
   })
 
 export const bulkUpsertAttendanceWithDuplicatePrevention = async (records) => {
+  const list = Array.isArray(records) ? records.filter(Boolean) : []
+  if (!list.length) return []
+
   const me = await getMyProfile()
-  const results = []
-  for (const rec of records) {
+
+  // Group by class+date so Mark All Present is 1 session + 1 upsert, not N×3 round-trips.
+  const groups = new Map()
+  for (const rec of list) {
     const classId = rec.class_id
-    const date = rec.date
-    const session = await ensureSession(classId, date, rec.topic)
-    const status = ['present', 'absent', 'late', 'excused'].includes(rec.status) ? rec.status : 'present'
-    const { data: existing } = await supabase
-      .from('attendance')
-      .select('id')
-      .eq('session_id', session.id)
-      .eq('student_id', rec.student_id)
-      .maybeSingle()
-    if (existing) {
+    const date = String(rec.date || '').slice(0, 10)
+    if (!classId || !date) continue
+    const key = `${classId}|${date}`
+    if (!groups.has(key)) groups.set(key, { classId, date, topic: rec.topic || null, rows: [] })
+    const g = groups.get(key)
+    if (rec.topic && !g.topic) g.topic = rec.topic
+    g.rows.push(rec)
+  }
+
+  const results = []
+  for (const g of groups.values()) {
+    const session = await ensureSession(g.classId, g.date, g.topic)
+    const payload = g.rows.map((rec) => {
+      const status = ['present', 'absent', 'late', 'excused'].includes(rec.status)
+        ? rec.status
+        : 'present'
+      return {
+        institution_id: me.institution_id,
+        session_id: session.id,
+        student_id: rec.student_id,
+        status,
+        notes: rec.notes ?? null,
+      }
+    })
+
+    // Chunk upserts — PostgREST payloads stay reasonable for large classes.
+    const chunkSize = 200
+    for (let i = 0; i < payload.length; i += chunkSize) {
+      const chunk = payload.slice(i, i + chunkSize)
       const { data, error } = await supabase
         .from('attendance')
-        .update({ status, notes: rec.notes ?? null })
-        .eq('id', existing.id)
+        .upsert(chunk, { onConflict: 'session_id,student_id' })
         .select()
-        .single()
       if (error) throw error
-      results.push(mapAttendance(data, { [session.id]: session }))
-    } else {
-      const { data, error } = await supabase
-        .from('attendance')
-        .insert({
-          institution_id: me.institution_id,
-          session_id: session.id,
-          student_id: rec.student_id,
-          status,
-          notes: rec.notes ?? null,
-        })
-        .select()
-        .single()
-      if (error) throw error
-      results.push(mapAttendance(data, { [session.id]: session }))
+      for (const row of data || []) {
+        results.push(mapAttendance(row, { [session.id]: session }))
+      }
     }
   }
   return results
@@ -3545,12 +3587,12 @@ export const deleteExam = async (id) => {
 }
 
 export const getResults = async () => {
-  // Lean columns — answers payloads are unused in most list UIs and slow the 4k-row pull.
+  // Lean columns — never pull `answers` JSON on the global list (multi-MB on large tenants).
   const data = await fetchAllPaged(() =>
     supabase
       .from('exam_results')
       .select(
-        'id, institution_id, exam_id, student_id, enrollment_id, raw_score, final_score, comments, course_project, graded_by, graded_at, created_at, answers',
+        'id, institution_id, exam_id, student_id, enrollment_id, raw_score, final_score, comments, course_project, graded_by, graded_at, created_at',
       )
       .order('created_at', { ascending: false })
       .order('id', { ascending: false }),
@@ -3713,12 +3755,25 @@ export const ensureStudentTranscript = async (classId, studentId = null) => {
 }
 
 export const getTranscripts = async () => {
+  // List only — nested transcript_entries (~5k rows) made every login crawl.
+  // Detail views load entries via getTranscriptById / getTranscriptEntries.
   const { data, error } = await supabase
     .from('transcripts')
-    .select('*, entries:transcript_entries(*)')
+    .select('*')
     .order('issued_at', { ascending: false })
   if (error) throw error
   return data || []
+}
+
+export const getTranscriptById = async (id) => {
+  if (!id) return null
+  const { data, error } = await supabase
+    .from('transcripts')
+    .select('*, entries:transcript_entries(*)')
+    .eq('id', id)
+    .maybeSingle()
+  if (error) throw error
+  return data
 }
 
 export const getTranscriptEntries = async () => {
