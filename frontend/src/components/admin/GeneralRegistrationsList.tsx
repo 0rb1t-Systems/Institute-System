@@ -154,9 +154,7 @@ const GeneralRegistrationsList = () => {
               : '';
           toast({
             title: 'Registration Approved',
-            description: reg.class_id
-              ? `Student ${reg.student_name} has been enrolled successfully.${emailNote}`
-              : `Student ${reg.student_name} account created (no class assigned yet).${emailNote}`,
+            description: `Student ${reg.student_name} account created. Application kept in Registration History.${emailNote}`,
           });
       }
 

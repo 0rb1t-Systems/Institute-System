@@ -224,6 +224,8 @@ export const MESSAGES = {
     REGISTRATION_FEE_FIRST:
       'This student must pay the registration fee before any other payments can be recorded.',
     ENROLLMENT_FAILED: 'Unable to enroll the student. Please try again.',
+    ENROLLMENT_CLASS_MISSING:
+      'No active class exists for this preferred program. Create or activate a class, then approve again.',
     TRANSFER_FAILED: 'Unable to transfer the student. Please try again.',
     CERTIFICATE_VERIFY: 'Certificate could not be verified. Please check the details and try again.',
     CERTIFICATE_NOT_FOUND: 'Document not found or not yet valid.',

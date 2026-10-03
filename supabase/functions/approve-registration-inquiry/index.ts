@@ -1,7 +1,8 @@
 // =====================================================================
 //  Edge Function: approve-registration-inquiry
 //  Option B — Admin/Staff approve a pending inquiry → create student
-//  account + enroll. Idempotent on repeated approval.
+//  account only (no auto-enrollment). Idempotent on repeated approval.
+//  Registration History stays on registration_inquiries (status=approved).
 // =====================================================================
 import { createClient } from 'jsr:@supabase/supabase-js@2'
 
@@ -33,60 +34,6 @@ function normalizeSecret(raw: string | undefined | null): string {
     key = key.slice(1, -1).trim()
   }
   return key
-}
-
-function isDuplicateKey(msg: string): boolean {
-  const lower = String(msg || '').toLowerCase()
-  return (
-    lower.includes('duplicate') ||
-    lower.includes('unique') ||
-    lower.includes('already exists')
-  )
-}
-
-type AdminClient = ReturnType<typeof createClient>
-
-/** Ensure student is enrolled in inquiry class; never silently ignore failures. */
-async function ensureEnrollment(
-  admin: AdminClient,
-  opts: { institutionId: string; studentId: string; classId: string },
-): Promise<{ ok: true } | { ok: false; error: string }> {
-  const { institutionId, studentId, classId } = opts
-
-  const { data: cls, error: classErr } = await admin
-    .from('classes')
-    .select('id, institution_id, status')
-    .eq('id', classId)
-    .maybeSingle()
-
-  if (classErr) return { ok: false, error: classErr.message }
-  if (!cls || cls.institution_id !== institutionId) {
-    return { ok: false, error: 'INVALID_CLASS' }
-  }
-
-  const { data: existing, error: findErr } = await admin
-    .from('enrollments')
-    .select('id')
-    .eq('student_id', studentId)
-    .eq('class_id', classId)
-    .maybeSingle()
-
-  if (findErr) return { ok: false, error: findErr.message }
-  if (existing?.id) return { ok: true }
-
-  const { error: insertErr } = await admin.from('enrollments').insert({
-    institution_id: institutionId,
-    student_id: studentId,
-    class_id: classId,
-    discount_amount: 0,
-  })
-
-  if (insertErr) {
-    if (isDuplicateKey(insertErr.message)) return { ok: true }
-    return { ok: false, error: insertErr.message || 'ENROLLMENT_FAILED' }
-  }
-
-  return { ok: true }
 }
 
 Deno.serve(async (req) => {
@@ -156,63 +103,27 @@ Deno.serve(async (req) => {
     const email = String(inquiry.email || '').trim().toLowerCase()
     const fullName = String(inquiry.full_name || '').trim()
 
-    // Idempotent: already approved — return existing student, heal missing enrollment
-    if (inquiry.status === 'approved') {
-      const { data: existing } = await admin
-        .from('profiles')
-        .select('id, full_name, email')
-        .eq('institution_id', caller.institution_id)
-        .ilike('email', email)
-        .maybeSingle()
-
-      if (inquiry.class_id && existing?.id) {
-        const enrolled = await ensureEnrollment(admin, {
-          institutionId: caller.institution_id,
-          studentId: existing.id,
-          classId: inquiry.class_id,
-        })
-        if (!enrolled.ok) {
-          return json(
-            {
-              error: 'ENROLLMENT_FAILED',
-              detail: enrolled.error,
-              id: existing.id,
-              email,
-              already_approved: true,
-            },
-            400,
-          )
-        }
-      }
-
-      return json({
-        id: existing?.id || null,
-        name: existing?.full_name || fullName,
-        email,
-        already_approved: true,
-        password: null,
-      })
-    }
-
-    if (inquiry.status !== 'pending') {
+    const alreadyApproved = inquiry.status === 'approved'
+    if (inquiry.status !== 'pending' && !alreadyApproved) {
       return json({ error: 'INVALID_INQUIRY' }, 400)
     }
 
-    // Claim inquiry first to prevent double-approve races
-    const { data: claimed, error: claimErr } = await admin
-      .from('registration_inquiries')
-      .update({ status: 'approved', updated_at: new Date().toISOString() })
-      .eq('id', inquiryId)
-      .eq('status', 'pending')
-      .select('id')
-      .maybeSingle()
+    // Claim pending inquiry — history row stays as status=approved forever.
+    if (!alreadyApproved) {
+      const { data: claimed, error: claimErr } = await admin
+        .from('registration_inquiries')
+        .update({ status: 'approved', updated_at: new Date().toISOString() })
+        .eq('id', inquiryId)
+        .eq('status', 'pending')
+        .select('id')
+        .maybeSingle()
 
-    if (claimErr) return json({ error: claimErr.message }, 400)
-    if (!claimed) {
-      return json({ error: 'ALREADY_PROCESSED' }, 409)
+      if (claimErr) return json({ error: claimErr.message }, 400)
+      if (!claimed) {
+        return json({ error: 'ALREADY_PROCESSED' }, 409)
+      }
     }
 
-    // Existing profile in same tenant?
     const { data: existingProfile } = await admin
       .from('profiles')
       .select('id, full_name, email, student_code')
@@ -232,12 +143,16 @@ Deno.serve(async (req) => {
         user_metadata: { full_name: fullName },
       })
 
-      if (authErr || !createdAuth?.user) {
-        // Roll claim back so staff can retry
+      const revertClaim = async () => {
+        if (alreadyApproved) return
         await admin
           .from('registration_inquiries')
           .update({ status: 'pending', updated_at: new Date().toISOString() })
           .eq('id', inquiryId)
+      }
+
+      if (authErr || !createdAuth?.user) {
+        await revertClaim()
         const msg = String(authErr?.message || 'USER_CREATE_FAILED')
         if (/already|exists|registered/i.test(msg)) {
           return json({ error: 'USER_ACCOUNT_EXISTS' }, 409)
@@ -259,10 +174,7 @@ Deno.serve(async (req) => {
 
       if (profErr) {
         await admin.auth.admin.deleteUser(studentId)
-        await admin
-          .from('registration_inquiries')
-          .update({ status: 'pending', updated_at: new Date().toISOString() })
-          .eq('id', inquiryId)
+        await revertClaim()
         return json({ error: profErr.message }, 400)
       }
 
@@ -274,18 +186,12 @@ Deno.serve(async (req) => {
       const studentCode = String(codeRow?.student_code || '').trim()
       if (!studentCode) {
         await admin.auth.admin.deleteUser(studentId)
-        await admin
-          .from('registration_inquiries')
-          .update({ status: 'pending', updated_at: new Date().toISOString() })
-          .eq('id', inquiryId)
+        await revertClaim()
         return json({ error: 'STUDENT_ID_REQUIRED' }, 400)
       }
       if (studentCode.length < 3) {
         await admin.auth.admin.deleteUser(studentId)
-        await admin
-          .from('registration_inquiries')
-          .update({ status: 'pending', updated_at: new Date().toISOString() })
-          .eq('id', inquiryId)
+        await revertClaim()
         return json({ error: 'STUDENT_ID_TOO_SHORT' }, 400)
       }
       const { error: pwErr } = await admin.rpc('set_auth_password_exact', {
@@ -294,10 +200,7 @@ Deno.serve(async (req) => {
       })
       if (pwErr) {
         await admin.auth.admin.deleteUser(studentId)
-        await admin
-          .from('registration_inquiries')
-          .update({ status: 'pending', updated_at: new Date().toISOString() })
-          .eq('id', inquiryId)
+        await revertClaim()
         console.error('[approve-registration-inquiry] student ID password failed', pwErr.message)
         const short = /at least \d+ characters/i.test(pwErr.message || '')
         return json({ error: short ? 'STUDENT_ID_TOO_SHORT' : 'STUDENT_PASSWORD_FAILED' }, 400)
@@ -311,41 +214,22 @@ Deno.serve(async (req) => {
         .is('affiliate_id', null)
     }
 
-    if (inquiry.class_id && studentId) {
-      const enrolled = await ensureEnrollment(admin, {
-        institutionId: caller.institution_id,
-        studentId,
-        classId: inquiry.class_id,
+    // No enrollment on approve — staff enrolls manually when ready.
+    if (!alreadyApproved || !existingProfile || tempPassword) {
+      await admin.from('audit_logs').insert({
+        actor_id: caller.id,
+        action: alreadyApproved ? 'registration.approved_healed' : 'registration.approved',
+        entity_type: 'registration_inquiry',
+        entity_id: inquiryId,
+        metadata: {
+          institution_id: caller.institution_id,
+          student_id: studentId,
+          email,
+          enrolled: false,
+          reused_existing: !!existingProfile,
+        },
       })
-      if (!enrolled.ok) {
-        // Account may already exist; keep inquiry approved so re-approve can heal enrollment
-        return json(
-          {
-            error: 'ENROLLMENT_FAILED',
-            detail: enrolled.error,
-            id: studentId,
-            email,
-            password: tempPassword,
-            already_approved: false,
-          },
-          400,
-        )
-      }
     }
-
-    await admin.from('audit_logs').insert({
-      actor_id: caller.id,
-      action: 'registration.approved',
-      entity_type: 'registration_inquiry',
-      entity_id: inquiryId,
-      metadata: {
-        institution_id: caller.institution_id,
-        student_id: studentId,
-        email,
-        class_id: inquiry.class_id,
-        reused_existing: !!existingProfile,
-      },
-    })
 
     let studentCode = existingProfile?.student_code || null
     if (studentId) {
@@ -363,8 +247,10 @@ Deno.serve(async (req) => {
       email,
       student_code: studentCode,
       password: tempPassword,
-      already_approved: false,
+      already_approved: alreadyApproved,
       reused_existing: !!existingProfile,
+      enrolled: false,
+      class_id: null,
     })
   } catch (e) {
     return json({ error: String(e) }, 500)

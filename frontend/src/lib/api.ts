@@ -1483,11 +1483,32 @@ export const resyncInstitutionGradeLetters = async (institutionId) => {
   return data
 }
 
+/** Short-lived template cache — get_document_template was millions of RPCs project-wide. */
+const _documentTemplateCache = new Map<string, { at: number; data: any }>()
+const DOCUMENT_TEMPLATE_TTL_MS = 60_000
+
+export function clearDocumentTemplateCache(documentType: string | null = null) {
+  if (!documentType) {
+    _documentTemplateCache.clear()
+    return
+  }
+  const key = String(documentType || '').toLowerCase()
+  _documentTemplateCache.delete(key)
+}
+
 export const getDocumentTemplate = async (documentType) => {
+  const type = String(documentType || '').toLowerCase()
+  const now = Date.now()
+  const hit = _documentTemplateCache.get(type)
+  if (hit && now - hit.at < DOCUMENT_TEMPLATE_TTL_MS) {
+    return hit.data
+  }
+
   const { data, error } = await supabase.rpc('get_document_template', {
-    p_document_type: documentType,
+    p_document_type: type,
   })
   if (error) throw error
+  _documentTemplateCache.set(type, { at: now, data })
   return data
 }
 
@@ -1499,7 +1520,8 @@ export const upsertDocumentTemplate = async (documentType, updates: any = {}) =>
     throw new Error('INVALID_DOCUMENT_TYPE')
   }
 
-  await supabase.rpc('get_document_template', { p_document_type: type })
+  // Ensure row exists (uses cache when warm) then update.
+  await getDocumentTemplate(type)
 
   const payload: Record<string, unknown> = {
     updated_at: new Date().toISOString(),
@@ -1519,6 +1541,7 @@ export const upsertDocumentTemplate = async (documentType, updates: any = {}) =>
     .select('*')
     .maybeSingle()
   if (error) throw error
+  clearDocumentTemplateCache(type)
   return data
 }
 
@@ -1530,6 +1553,7 @@ export const setActiveCertificateTemplate = async (layoutKey) => {
     p_layout_key: key,
   })
   if (error) throw error
+  clearDocumentTemplateCache('certificate')
   return data
 }
 
@@ -1602,6 +1626,7 @@ export const saveDocumentLogoBuilder = async (
     p_activate: activate !== false,
   })
   if (error) throw error
+  clearDocumentTemplateCache(type)
   return data
 }
 
@@ -1629,6 +1654,7 @@ export const saveDocumentUploadBuilder = async (
     p_activate: activate !== false,
   })
   if (error) throw error
+  clearDocumentTemplateCache(type)
   return data
 }
 
@@ -1835,6 +1861,7 @@ export const uploadOwnDocumentTemplate = async (
     await removeOrphanCertTemplatePaths([path, previewPath].filter(Boolean))
     throw error
   }
+  clearDocumentTemplateCache(type)
 
   // Drop superseded files only after the new paths are registered
   await removeOrphanCertTemplatePaths(
@@ -1934,6 +1961,7 @@ export const saveCertificateCustomUpload = async ({
     p_activate: Boolean(activate),
   })
   if (error) throw error
+  clearDocumentTemplateCache('certificate')
   return data
 }
 
@@ -1945,6 +1973,7 @@ export const setActiveTranscriptTemplate = async (layoutKey) => {
     p_layout_key: key,
   })
   if (error) throw error
+  clearDocumentTemplateCache('transcript')
   return data
 }
 
@@ -1956,6 +1985,7 @@ export const setActiveInvoiceTemplate = async (layoutKey) => {
     p_layout_key: key,
   })
   if (error) throw error
+  clearDocumentTemplateCache('invoice')
   return data
 }
 
@@ -4364,6 +4394,8 @@ export const approveRegistrationInquiry = async (id) => {
     student_code: payload.student_code || payload.email?.split('@')[0],
     password: payload.password || null,
     already_approved: !!payload.already_approved,
+    enrolled: !!payload.enrolled,
+    class_id: payload.class_id || null,
     emailed,
     email_skipped: emailSkipped,
     email_error: emailError,

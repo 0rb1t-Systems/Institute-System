@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useState, useEffect, useCallback, useRef, useMemo } from 'react';
+import { useLocation } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import * as api from '@/lib/api';
 import { logError } from '@/lib/errorHandler';
@@ -12,7 +13,7 @@ const DataContext = createContext<any>(null);
  * 1) Core shell first (dashboard + most menus) → clear loading quickly
  * 2) Light secondary in background — never blocks nav
  * 3) Heavy secondary (exam_results ~4k, gradebook ~4k, transcripts, certificates)
- *    is deferred until after first paint — this was the main Vercel/online freeze
+ *    loads ONLY on routes that need them (not on every login)
  * 4) Attendance is NOT loaded globally — pages fetch filtered data on demand
  * 5) Mutations refresh ONLY the resources they touched (see MUTATION_SCOPES)
  *
@@ -24,6 +25,26 @@ const DataContext = createContext<any>(null);
  *   held, which keeps array identities stable and stops every downstream
  *   useMemo in the app from recomputing after an unrelated mutation.
  */
+
+/** Routes that need the multi-thousand-row caches. */
+function heavyKeysForPath(pathname: string): string[] {
+  const p = String(pathname || '');
+  if (
+    p.startsWith('/gradebook') ||
+    p.startsWith('/examinations') ||
+    p.startsWith('/admin/grading') ||
+    p.startsWith('/assignments/') ||
+    p.startsWith('/portal/gradebook') ||
+    p.startsWith('/portal/exam-result') ||
+    p === '/student/dashboard'
+  ) {
+    return ['results', 'gradebookEntries'];
+  }
+  if (p.startsWith('/reports') || p.startsWith('/admin/certificates')) {
+    return ['certificates', 'transcripts', 'gradebookEntries', 'results'];
+  }
+  return [];
+}
 
 /** Which slices each fetcher owns. */
 const CORE_KEYS = ['students', 'courses', 'diplomas', 'diplomaCourses', 'diplomaSemesters', 'classes', 'enrollments', 'payments', 'generalRegistrations'];
@@ -134,6 +155,7 @@ const sameRows = (a, b) => {
 };
 
 export const DataProvider = ({ children }) => {
+  const location = useLocation();
   const { user, institution } = useAuth();
 
   const [students, setStudents] = useState([]);
@@ -172,6 +194,8 @@ export const DataProvider = ({ children }) => {
 
   const userIdRef = useRef(null);
   const hasLoadedOnceRef = useRef(false);
+  /** Heavy keys already fetched at least once this session (avoid re-download storms). */
+  const heavyLoadedKeysRef = useRef(new Set());
   /** Bumped on every full (re)load; stale responses are dropped. */
   const generationRef = useRef(0);
   /** key -> in-flight promise, so concurrent refreshes share one request. */
@@ -275,14 +299,19 @@ export const DataProvider = ({ children }) => {
           console.warn('Secondary data fetch failed', err)
         );
 
-        // Heavy slices (~8k+ rows on large tenants) wait so attendance/payment
-        // actions are not fighting a full exam_results download on Vercel.
-        window.setTimeout(() => {
-          if (generation !== generationRef.current) return;
-          fetchKeys(HEAVY_SECONDARY_KEYS, generation, { force: true }).catch((err) =>
-            console.warn('Heavy secondary data fetch failed', err)
-          );
-        }, 1500);
+        // If the user landed directly on a heavy route, load those caches now
+        // (otherwise wait until they navigate — see pathname effect).
+        const heavyNeeded = heavyKeysForPath(
+          typeof window !== 'undefined' ? window.location.pathname : '',
+        ).filter((k) => !heavyLoadedKeysRef.current.has(k));
+        if (heavyNeeded.length) {
+          fetchKeys(heavyNeeded, generation, { force: true })
+            .then(() => {
+              if (generation !== generationRef.current) return;
+              for (const k of heavyNeeded) heavyLoadedKeysRef.current.add(k);
+            })
+            .catch((err) => console.warn('Heavy secondary data fetch failed', err));
+        }
       } catch (err) {
         logError('DataContext - loadData', err);
         if (generation === generationRef.current) setError(err);
@@ -304,6 +333,7 @@ export const DataProvider = ({ children }) => {
       setLoading(false);
       userIdRef.current = null;
       hasLoadedOnceRef.current = false;
+      heavyLoadedKeysRef.current = new Set();
       generationRef.current += 1; // invalidate anything still in flight
       return;
     }
@@ -317,11 +347,27 @@ export const DataProvider = ({ children }) => {
     if (user.id !== userIdRef.current) {
       userIdRef.current = user.id;
       hasLoadedOnceRef.current = false;
+      heavyLoadedKeysRef.current = new Set();
       loadData({ soft: false });
     } else if (!hasLoadedOnceRef.current) {
       loadData({ soft: false });
     }
   }, [user?.id, user?.role, loadData]);
+
+  // Load heavy academic caches only when the open route needs them.
+  useEffect(() => {
+    if (!user?.id || user.role === 'super_admin' || !hasLoadedOnceRef.current) return;
+    const needed = heavyKeysForPath(location.pathname);
+    const missing = needed.filter((k) => !heavyLoadedKeysRef.current.has(k));
+    if (!missing.length) return;
+    const generation = generationRef.current;
+    fetchKeys(missing, generation, { force: true })
+      .then(() => {
+        if (generation !== generationRef.current) return;
+        for (const k of missing) heavyLoadedKeysRef.current.add(k);
+      })
+      .catch((err) => console.warn('Heavy route data fetch failed', err));
+  }, [user?.id, user?.role, location.pathname, fetchKeys]);
 
   const calculateStudentFinancials = useCallback(() => {
     // Index payments/enrollments once instead of scanning the full arrays for
@@ -596,20 +642,35 @@ export const DataProvider = ({ children }) => {
       refreshData: () => {
         // After first paint, never flip the global loading spinner (that froze
         // the whole Vercel app while re-downloading ~8k grade rows).
+        // Also skip untouched heavy caches — only reload ones already in session.
         if (hasLoadedOnceRef.current) {
+          const heavyLoaded = HEAVY_SECONDARY_KEYS.filter((k) =>
+            heavyLoadedKeysRef.current.has(k),
+          );
           return loadDataRef.current({ soft: true, keys: CORE_KEYS, force: true }).then(() =>
-            loadDataRef.current({ soft: true, keys: LIGHT_SECONDARY_KEYS, force: true }),
+            loadDataRef.current({
+              soft: true,
+              keys: [...LIGHT_SECONDARY_KEYS, ...heavyLoaded],
+              force: true,
+            }),
           );
         }
         return loadDataRef.current({ soft: false });
       },
       /** Soft partial refresh — does not flip global loading (avoids full-app freeze on Vercel). */
-      refreshKeys: (keys) =>
-        loadDataRef.current({
+      refreshKeys: (keys) => {
+        const list = Array.isArray(keys) && keys.length ? keys : null;
+        if (list) {
+          for (const k of list) {
+            if (HEAVY_SECONDARY_KEYS.includes(k)) heavyLoadedKeysRef.current.add(k);
+          }
+        }
+        return loadDataRef.current({
           soft: true,
-          keys: Array.isArray(keys) && keys.length ? keys : null,
+          keys: list,
           force: true,
-        }),
+        });
+      },
     }),
     [runMutation, mergeExamResults]
   );

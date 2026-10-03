@@ -33,6 +33,14 @@ const CODE_MAP = {
     title: 'Class unavailable',
     description: 'Please choose an active class and try again.',
   },
+  ENROLLMENT_CLASS_MISSING: {
+    title: 'Class required for enrollment',
+    description: MESSAGES.DOMAIN.ENROLLMENT_CLASS_MISSING,
+  },
+  ENROLLMENT_FAILED: {
+    title: 'Enrollment failed',
+    description: MESSAGES.DOMAIN.ENROLLMENT_FAILED,
+  },
   INVALID_SUBDOMAIN: {
     title: 'Institution not found',
     description: 'Open registration from your institution link (?tenant=subdomain).',
