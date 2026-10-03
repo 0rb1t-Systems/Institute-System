@@ -1935,3 +1935,30 @@ html[data-platform-theme='light'] .cert-page-builder textarea {
   border-color: var(--builder-line);
 }
 
+/* Recharts tooltips — readable in light + dark tenant chrome */
+html[data-platform-theme='dark'] .recharts-default-tooltip {
+  background-color: var(--ds-surface, #121C18) !important;
+  border: 1px solid var(--ds-border, #2A3A32) !important;
+  box-shadow: 0 8px 24px #00000066;
+}
+html[data-platform-theme='dark'] .recharts-default-tooltip,
+html[data-platform-theme='dark'] .recharts-tooltip-label,
+html[data-platform-theme='dark'] .recharts-tooltip-item,
+html[data-platform-theme='dark'] .recharts-tooltip-item-name,
+html[data-platform-theme='dark'] .recharts-tooltip-item-value,
+html[data-platform-theme='dark'] .recharts-tooltip-item-separator {
+  color: var(--ds-text-primary, #E8EEEA) !important;
+}
+html[data-platform-theme='light'] .recharts-default-tooltip {
+  background-color: var(--ds-surface, #fff) !important;
+  border: 1px solid var(--ds-border, #DDE5DF) !important;
+}
+html[data-platform-theme='light'] .recharts-default-tooltip,
+html[data-platform-theme='light'] .recharts-tooltip-label,
+html[data-platform-theme='light'] .recharts-tooltip-item,
+html[data-platform-theme='light'] .recharts-tooltip-item-name,
+html[data-platform-theme='light'] .recharts-tooltip-item-value,
+html[data-platform-theme='light'] .recharts-tooltip-item-separator {
+  color: var(--ds-text-primary, #122018) !important;
+}
+

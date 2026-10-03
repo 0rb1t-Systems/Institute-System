@@ -456,6 +456,22 @@ const DashboardPage = () => {
   const v = (n) => (loading ? '…' : n);
   const axisColor = 'var(--ds-text-secondary, #5B6B61)';
   const gridColor = 'var(--ds-border, #DDE5DF)';
+  const chartTooltipStyle = {
+    contentStyle: {
+      background: 'var(--ds-surface, #fff)',
+      border: '1px solid var(--ds-border, #DDE5DF)',
+      borderRadius: 8,
+      color: 'var(--ds-text-primary, #122018)',
+      fontSize: 13,
+    },
+    itemStyle: {
+      color: 'var(--ds-text-primary, #122018)',
+    },
+    labelStyle: {
+      color: 'var(--ds-text-primary, #122018)',
+      fontWeight: 600,
+    },
+  } as const;
   const activityEmpty = !loading && staffOps.activity.every((d) => d.amount === 0);
   const distributionEmpty = !loading && studentDistribution.slices.length === 0;
   const registrationsEmpty =
@@ -574,13 +590,7 @@ const DashboardPage = () => {
                       cursor={{
                         fill: 'color-mix(in srgb, var(--ds-primary, #1F8A5B) 10%, transparent)',
                       }}
-                      contentStyle={{
-                        background: 'var(--ds-surface, #fff)',
-                        border: '1px solid var(--ds-border, #DDE5DF)',
-                        borderRadius: 8,
-                        color: 'var(--ds-text-primary, #122018)',
-                        fontSize: 13,
-                      }}
+                      {...chartTooltipStyle}
                       formatter={(value) => [Number(value), 'Tasks']}
                     />
                     <Bar dataKey="amount" radius={[10, 10, 10, 10]} maxBarSize={72}>
@@ -647,13 +657,7 @@ const DashboardPage = () => {
                           ))}
                         </Pie>
                         <Tooltip
-                          contentStyle={{
-                            background: 'var(--ds-surface, #fff)',
-                            border: '1px solid var(--ds-border, #DDE5DF)',
-                            borderRadius: 8,
-                            color: 'var(--ds-text-primary, #122018)',
-                            fontSize: 13,
-                          }}
+                          {...chartTooltipStyle}
                           formatter={(value, name) => [`${Number(value)} tasks`, String(name)]}
                         />
                       </PieChart>
@@ -836,13 +840,7 @@ const DashboardPage = () => {
                         ))}
                       </Pie>
                       <Tooltip
-                        contentStyle={{
-                          background: 'var(--ds-surface, #fff)',
-                          border: '1px solid var(--ds-border, #DDE5DF)',
-                          borderRadius: 8,
-                          color: 'var(--ds-text-primary, #122018)',
-                          fontSize: 13,
-                        }}
+                        {...chartTooltipStyle}
                         formatter={(value, name) => [`${Number(value)} students`, String(name)]}
                       />
                     </PieChart>
@@ -926,13 +924,7 @@ const DashboardPage = () => {
                     cursor={{
                       fill: 'color-mix(in srgb, var(--ds-primary, #1F8A5B) 10%, transparent)',
                     }}
-                    contentStyle={{
-                      background: 'var(--ds-surface, #fff)',
-                      border: '1px solid var(--ds-border, #DDE5DF)',
-                      borderRadius: 8,
-                      color: 'var(--ds-text-primary, #122018)',
-                      fontSize: 13,
-                    }}
+                    {...chartTooltipStyle}
                     formatter={(value) => [Number(value), 'Registrations']}
                   />
                   <Bar dataKey="amount" radius={[10, 10, 0, 0]} maxBarSize={56}>
