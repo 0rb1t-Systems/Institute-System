@@ -107,13 +107,13 @@ const StudentFinanceList = ({ students, financials, onRecordPayment, onChargeBal
                                     </div>
                                 )}
                             </TableCell>
-                            <TableCell className="px-5 py-3">
+                            <TableCell className="px-5 py-3 whitespace-nowrap">
                                 {item.totalPending > 0 ? (
-                                    <Badge className="border-0 bg-[var(--ds-warning-bg,#FFF7ED)] text-[var(--ds-warning,#C2410C)] hover:bg-[var(--ds-warning-bg,#FFF7ED)]">Inv. Sent</Badge>
+                                    <Badge className="whitespace-nowrap border-0 bg-[var(--ds-warning-bg,#FFF7ED)] text-[var(--ds-warning,#C2410C)] hover:bg-[var(--ds-warning-bg,#FFF7ED)]">Inv. Sent</Badge>
                                 ) : item.balance > 0 ? (
-                                    <Badge className="border-0 bg-[var(--ds-danger-bg,#FEF2F2)] text-[var(--ds-danger,#DC2626)] hover:bg-[var(--ds-danger-bg,#FEF2F2)]">Overdue</Badge>
+                                    <Badge className="whitespace-nowrap border-0 bg-[var(--ds-danger-bg,#FEF2F2)] text-[var(--ds-danger,#DC2626)] hover:bg-[var(--ds-danger-bg,#FEF2F2)]">Overdue</Badge>
                                 ) : (
-                                    <Badge className="border-0 bg-[var(--ds-primary-soft,#ECFDF5)] text-[var(--ds-primary,#1F8A5B)] hover:bg-[var(--ds-primary-soft,#ECFDF5)]">Fully Paid</Badge>
+                                    <Badge className="whitespace-nowrap border-0 bg-[var(--ds-primary-soft,#ECFDF5)] text-[var(--ds-primary,#1F8A5B)] hover:bg-[var(--ds-primary-soft,#ECFDF5)]">Fully Paid</Badge>
                                 )}
                             </TableCell>
                             <TableCell className="px-5 py-3 text-right">
