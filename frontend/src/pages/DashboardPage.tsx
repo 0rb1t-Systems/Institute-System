@@ -22,15 +22,11 @@ import {
 import { formatCurrency } from '@/lib/utils';
 import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { DsPrimaryAction, DS_ICON_STROKE } from '@/components/ui/ds-actions';
 import { getUserMessage } from '@/lib/mapError';
 import { MESSAGES } from '@/lib/messages';
 import { getRegistrationFeeAmount } from '@/lib/institution';
 import { computeStudentBalance } from '@/lib/finance';
-import { getInstitutionGradeScale } from '@/lib/gradingScale';
-import { getExamScorePercent, getExamTotalMarks, getLetterGrade } from '@/lib/examPass';
-import { getPersonInitials, getStudentAvatarColor } from '@/lib/studentAvatar';
 import {
   BarChart,
   Bar,
@@ -46,6 +42,9 @@ import {
 } from 'recharts';
 
 const WEEKDAY_LABELS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri'] as const;
+
+/** Chart palette aligned with design-system.pen Admin Dashboard */
+const CHART_PALETTE = ['#2563EB', '#1F8A5B', '#F59E0B', '#8B5CF6', '#06B6D4'] as const;
 
 const isCompletedPayment = (p: { status?: string | null }) =>
   (p.status || 'completed') === 'completed';
@@ -68,7 +67,7 @@ const mondayOfWeek = (now = new Date()) => {
 
 /**
  * Administrator / Staff overview — visual layout from design-system.pen.
- * Admin: Institution KPIs + revenue mix + latest results.
+ * Admin: Institution KPIs + student distribution (pie) + class registration (column).
  * Staff: Operations KPIs + daily activity + priority queue (real data only).
  * Data fetching and business logic unchanged.
  */
@@ -79,11 +78,8 @@ const DashboardPage = () => {
     classes,
     payments,
     enrollments,
-    results,
-    exams,
     courses,
     diplomas,
-    gradebookEntries,
     generalRegistrations,
     loading,
     error,
@@ -92,7 +88,6 @@ const DashboardPage = () => {
   const isAdmin = user?.role === 'admin';
   const isStaff = user?.role === 'staff';
   const registrationFee = getRegistrationFeeAmount(institution);
-  const gradeScale = useMemo(() => getInstitutionGradeScale(institution), [institution]);
 
   const periodLabel = useMemo(
     () =>
@@ -362,79 +357,87 @@ const DashboardPage = () => {
     diplomaById,
   ]);
 
-  const chartData = useMemo(
-    () => [
-      { name: 'Tuition', amount: stats.tuition, fill: 'var(--ds-primary, #1F8A5B)' },
-      { name: 'Registration', amount: stats.registration, fill: 'var(--ds-accent, #1F8A5B)' },
-    ],
-    [stats.tuition, stats.registration],
+  const classById = useMemo(
+    () => Object.fromEntries((classes || []).map((c) => [c.id, c])),
+    [classes],
   );
 
-  const latestResults = useMemo(() => {
-    const examById = Object.fromEntries((exams || []).map((e) => [e.id, e]));
+  /** Student Distribution — donut by program (design-system.pen Admin lower section) */
+  const studentDistribution = useMemo(() => {
+    const counts = new Map<string, number>();
+    const activeStudentIds = new Set<string>();
 
-    const fromGradebook = [...(gradebookEntries || [])]
-      .filter((g) => g && g.final_mark != null)
-      .sort(
-        (a, b) =>
-          Number(new Date(b.synced_at || 0)) - Number(new Date(a.synced_at || 0)),
-      )
-      .slice(0, 5)
-      .map((g) => {
-        const student = studentById[g.student_id];
-        const course = courseById[g.course_id];
-        const percentage = Number(g.final_mark);
-        const letter =
-          g.letter_grade && g.letter_grade !== '-'
-            ? g.letter_grade
-            : getLetterGrade(percentage, gradeScale);
-        const name = student?.name || 'Unknown Student';
-        const parts = name.trim().split(/\s+/);
-        const initial =
-          parts.length >= 2
-            ? `${parts[0][0] || ''}${parts[parts.length - 1][0] || ''}`.toUpperCase()
-            : (name.trim()[0] || '?').toUpperCase();
-        return {
-          id: `gb-${g.id}`,
-          name,
-          initial,
-          subtitle: course?.name || 'Gradebook final',
-          scoreLabel: `${Math.round(percentage)}/100`,
-          letter,
-        };
+    for (const enrollment of enrollments || []) {
+      if (enrollment.status !== 'active') continue;
+      const cls = classById[enrollment.class_id];
+      let label = 'Unassigned';
+      if (cls?.course_id && courseById[cls.course_id]?.name) {
+        label = courseById[cls.course_id].name;
+      } else if (cls?.diploma_id && diplomaById[cls.diploma_id]?.name) {
+        label = diplomaById[cls.diploma_id].name;
+      } else if (cls?.name) {
+        label = cls.name;
+      }
+      counts.set(label, (counts.get(label) || 0) + 1);
+      if (enrollment.student_id) activeStudentIds.add(enrollment.student_id);
+    }
+
+    // Students without an active enrollment still count toward the total slice
+    for (const student of students || []) {
+      if (activeStudentIds.has(student.id)) continue;
+      const label = 'Not enrolled';
+      counts.set(label, (counts.get(label) || 0) + 1);
+    }
+
+    const sorted = [...counts.entries()].sort((a, b) => b[1] - a[1]);
+    const top = sorted.slice(0, 4);
+    const rest = sorted.slice(4);
+    const restTotal = rest.reduce((sum, [, n]) => sum + n, 0);
+    const rows =
+      restTotal > 0
+        ? [...top, ['Other', restTotal] as [string, number]]
+        : top;
+
+    const total = rows.reduce((sum, [, n]) => sum + n, 0) || stats.students || 0;
+    return {
+      total: stats.students || total,
+      slices: rows.map(([name, value], index) => ({
+        name,
+        value,
+        pct: total > 0 ? Math.round((value / total) * 1000) / 10 : 0,
+        fill: CHART_PALETTE[index % CHART_PALETTE.length],
+      })),
+    };
+  }, [enrollments, classById, courseById, diplomaById, students, stats.students]);
+
+  /** Class Registration — monthly new students (last 5 months) */
+  const monthlyRegistrations = useMemo(() => {
+    const now = new Date();
+    const months: { key: string; name: string; amount: number; fill: string }[] = [];
+    for (let i = 4; i >= 0; i -= 1) {
+      const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+      const key = `${d.getFullYear()}-${d.getMonth()}`;
+      months.push({
+        key,
+        name: d.toLocaleDateString('en-US', { month: 'short' }),
+        amount: 0,
+        fill: CHART_PALETTE[(4 - i) % CHART_PALETTE.length],
       });
-
-    if (fromGradebook.length > 0) return fromGradebook;
-
-    return [...(results || [])]
-      .sort(
-        (a, b) =>
-          Number(new Date(b.graded_at || b.created_at || 0)) -
-          Number(new Date(a.graded_at || a.created_at || 0)),
-      )
-      .slice(0, 5)
-      .map((r) => {
-        const student = studentById[r.student_id];
-        const exam = examById[r.exam_id];
-        const total = getExamTotalMarks(exam);
-        const percentage = getExamScorePercent(r.final_score ?? r.score, exam);
-        const letter = getLetterGrade(percentage, gradeScale);
-        const name = student?.name || 'Unknown Student';
-        const parts = name.trim().split(/\s+/);
-        const initial =
-          parts.length >= 2
-            ? `${parts[0][0] || ''}${parts[parts.length - 1][0] || ''}`.toUpperCase()
-            : (name.trim()[0] || '?').toUpperCase();
-        return {
-          id: `ex-${r.id}`,
-          name,
-          initial,
-          subtitle: exam?.title || 'Submitted exam',
-          scoreLabel: `${Math.round(Number(r.final_score ?? r.score ?? 0))}/${Math.round(total)}`,
-          letter,
-        };
-      });
-  }, [gradebookEntries, results, exams, studentById, courseById, gradeScale]);
+    }
+    const indexByKey = Object.fromEntries(months.map((m, i) => [m.key, i]));
+    for (const student of students || []) {
+      const d = new Date(student.registration_date || student.created_at || 0);
+      if (Number.isNaN(d.getTime())) continue;
+      const key = `${d.getFullYear()}-${d.getMonth()}`;
+      const idx = indexByKey[key];
+      if (idx != null) months[idx].amount += 1;
+    }
+    const rangeLabel =
+      months.length >= 2
+        ? `${months[0].name} – ${months[months.length - 1].name}`
+        : 'Last 5 months';
+    return { months, rangeLabel };
+  }, [students]);
 
   if (error) {
     return (
@@ -451,10 +454,12 @@ const DashboardPage = () => {
   }
 
   const v = (n) => (loading ? '…' : n);
-  const chartEmpty = !loading && stats.tuition === 0 && stats.registration === 0;
   const axisColor = 'var(--ds-text-secondary, #5B6B61)';
   const gridColor = 'var(--ds-border, #DDE5DF)';
   const activityEmpty = !loading && staffOps.activity.every((d) => d.amount === 0);
+  const distributionEmpty = !loading && studentDistribution.slices.length === 0;
+  const registrationsEmpty =
+    !loading && monthlyRegistrations.months.every((d) => d.amount === 0);
 
   /* ── Staff workspace (design-system.pen · Staff Dashboard) ── */
   if (isStaff) {
@@ -785,142 +790,168 @@ const DashboardPage = () => {
         )}
       </div>
 
-      <div className="grid gap-4 lg:grid-cols-5">
-        <Card className="border-slate-800 bg-slate-900/50 lg:col-span-3">
+      {/* Lower section — 2 columns: pie + column (design-system.pen) */}
+      <div className="grid gap-4 lg:grid-cols-2">
+        <Card className="border-slate-800 bg-slate-900/50">
           <CardHeader className="flex flex-row items-start justify-between gap-3 space-y-0 p-6 pb-2">
             <div className="min-w-0 space-y-1">
-              <CardTitle className="text-lg text-white">
-                Revenue mix
+              <CardTitle className="text-lg text-white [.tenant-shell_&]:text-[16px] [.tenant-shell_&]:font-bold [.tenant-shell_&]:text-[var(--ds-text-primary,#122018)]">
+                Student Distribution
               </CardTitle>
               <CardDescription className="text-slate-400 [.tenant-shell_&]:text-[12px]">
-                Tuition vs registration this term
+                By program enrollment
               </CardDescription>
             </div>
-            <span className="shrink-0 font-data text-[11px] font-semibold text-slate-500 [.tenant-shell_&]:text-[var(--ds-text-tertiary,#8A978E)]">
+            <span className="shrink-0 rounded-full bg-[var(--ds-surface-muted,#F7FAF8)] px-3 py-1.5 font-data text-[11px] font-semibold text-[var(--ds-text-tertiary,#8A978E)]">
               {periodLabel}
             </span>
           </CardHeader>
-          <CardContent className="h-[300px] px-6 pb-6 pt-2">
-            {showFinance ? (
-              loading ? (
-                <div className="flex h-full items-center justify-center text-sm text-slate-500 [.tenant-shell_&]:text-[var(--ds-text-tertiary,#8A978E)]">
-                  Loading revenue…
-                </div>
-              ) : chartEmpty ? (
-                <div className="flex h-full items-center justify-center text-sm text-slate-500 [.tenant-shell_&]:text-[var(--ds-text-tertiary,#8A978E)]">
-                  No completed payments yet this term.
-                </div>
-              ) : (
-                <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={chartData} margin={{ top: 28, right: 12, left: 0, bottom: 4 }}>
-                    <CartesianGrid strokeDasharray="0" stroke={gridColor} vertical={false} />
-                    <XAxis
-                      dataKey="name"
-                      stroke={axisColor}
-                      tick={{ fill: axisColor, fontSize: 12, fontWeight: 500 }}
-                      axisLine={false}
-                      tickLine={false}
-                    />
-                    <YAxis hide />
-                    <Tooltip
-                      cursor={{
-                        fill: 'color-mix(in srgb, var(--ds-primary, #1F8A5B) 10%, transparent)',
-                      }}
-                      contentStyle={{
-                        background: 'var(--ds-surface, #fff)',
-                        border: '1px solid var(--ds-border, #DDE5DF)',
-                        borderRadius: 8,
-                        color: 'var(--ds-text-primary, #122018)',
-                        fontSize: 13,
-                      }}
-                      formatter={(value) => [formatCurrency(Number(value)), 'Amount']}
-                    />
-                    <Bar dataKey="amount" radius={[10, 10, 10, 10]} maxBarSize={96}>
-                      {chartData.map((entry) => (
-                        <Cell key={entry.name} fill={entry.fill} />
-                      ))}
-                      <LabelList
-                        dataKey="amount"
-                        position="top"
-                        formatter={(value: number) => formatCurrency(Number(value))}
-                        style={{
-                          fill: 'var(--ds-text-primary, #122018)',
-                          fontSize: 12,
-                          fontWeight: 600,
-                          fontFamily: 'Arial, Helvetica, sans-serif',
-                        }}
-                      />
-                    </Bar>
-                  </BarChart>
-                </ResponsiveContainer>
-              )
+          <CardContent className="flex min-h-[300px] items-center px-6 pb-6 pt-2">
+            {loading ? (
+              <p className="w-full py-16 text-center text-sm text-slate-500 [.tenant-shell_&]:text-[var(--ds-text-tertiary,#8A978E)]">
+                Loading distribution…
+              </p>
+            ) : distributionEmpty ? (
+              <p className="w-full py-16 text-center text-sm text-slate-500 [.tenant-shell_&]:text-[var(--ds-text-tertiary,#8A978E)]">
+                No students to chart yet.
+              </p>
             ) : (
-              <div className="flex h-full items-center justify-center text-sm text-slate-500 [.tenant-shell_&]:text-[var(--ds-text-tertiary,#8A978E)]">
-                Finance metrics are available to admin and staff.
+              <div className="flex w-full flex-col items-center gap-6 sm:flex-row sm:items-center sm:gap-8">
+                <div className="relative h-[200px] w-[200px] shrink-0">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <PieChart>
+                      <Pie
+                        data={studentDistribution.slices}
+                        dataKey="value"
+                        nameKey="name"
+                        cx="50%"
+                        cy="50%"
+                        innerRadius={58}
+                        outerRadius={92}
+                        paddingAngle={3}
+                        strokeWidth={0}
+                      >
+                        {studentDistribution.slices.map((entry) => (
+                          <Cell key={entry.name} fill={entry.fill} />
+                        ))}
+                      </Pie>
+                      <Tooltip
+                        contentStyle={{
+                          background: 'var(--ds-surface, #fff)',
+                          border: '1px solid var(--ds-border, #DDE5DF)',
+                          borderRadius: 8,
+                          color: 'var(--ds-text-primary, #122018)',
+                          fontSize: 13,
+                        }}
+                        formatter={(value, name) => [`${Number(value)} students`, String(name)]}
+                      />
+                    </PieChart>
+                  </ResponsiveContainer>
+                  <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center">
+                    <span className="font-data text-[22px] font-bold leading-none text-white [.tenant-shell_&]:text-[var(--ds-text-primary,#122018)]">
+                      {studentDistribution.total}
+                    </span>
+                    <span className="mt-1 text-[11px] font-medium text-slate-500 [.tenant-shell_&]:text-[var(--ds-text-tertiary,#8A978E)]">
+                      Total Students
+                    </span>
+                  </div>
+                </div>
+                <div className="flex w-full min-w-0 flex-1 flex-col gap-5">
+                  {studentDistribution.slices.map((row) => (
+                    <div key={row.name} className="flex items-center gap-3">
+                      <span
+                        className="h-2.5 w-2.5 shrink-0 rounded-full"
+                        style={{ background: row.fill }}
+                      />
+                      <div className="min-w-0 flex-1">
+                        <p className="truncate text-[13px] font-semibold text-white [.tenant-shell_&]:text-[var(--ds-text-primary,#122018)]">
+                          {row.name}
+                        </p>
+                      </div>
+                      <div className="shrink-0 text-right">
+                        <p className="font-data text-[14px] font-semibold text-white [.tenant-shell_&]:text-[var(--ds-text-primary,#122018)]">
+                          {row.pct}%
+                        </p>
+                        <p className="text-[11px] text-slate-500 [.tenant-shell_&]:text-[var(--ds-text-tertiary,#8A978E)]">
+                          {row.value}
+                        </p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
               </div>
             )}
           </CardContent>
         </Card>
 
-        <Card className="border-slate-800 bg-slate-900/50 lg:col-span-2">
+        <Card className="border-slate-800 bg-slate-900/50">
           <CardHeader className="flex flex-row items-start justify-between gap-3 space-y-0 p-6 pb-2">
             <div className="min-w-0 space-y-1">
-              <CardTitle className="text-lg text-white">
-                Latest results
+              <CardTitle className="text-lg text-white [.tenant-shell_&]:text-[16px] [.tenant-shell_&]:font-bold [.tenant-shell_&]:text-[var(--ds-text-primary,#122018)]">
+                Class Registration
               </CardTitle>
               <CardDescription className="text-slate-400 [.tenant-shell_&]:text-[12px]">
-                Gradebook updates
+                Monthly new registrations
               </CardDescription>
             </div>
-            <Link
-              to="/gradebook"
-              className="shrink-0 text-[12px] font-semibold text-[var(--ds-accent,#1F8A5B)] transition-colors hover:text-[var(--ds-primary,#1F8A5B)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ds-focus-ring,#1F8A5B)]/40 rounded-sm"
-            >
-              View all
-            </Link>
+            <span className="shrink-0 rounded-full bg-[var(--ds-surface-muted,#F7FAF8)] px-3 py-1.5 font-data text-[11px] font-semibold text-[var(--ds-text-tertiary,#8A978E)]">
+              {monthlyRegistrations.rangeLabel}
+            </span>
           </CardHeader>
-          <CardContent className="space-y-0 px-6 pb-4 pt-2">
+          <CardContent className="h-[300px] px-6 pb-6 pt-2">
             {loading ? (
-              <p className="py-8 text-center text-sm text-slate-500 [.tenant-shell_&]:text-[var(--ds-text-tertiary,#8A978E)]">Loading results…</p>
-            ) : latestResults.length > 0 ? (
-              latestResults.map((item, index) => {
-                const avatarColor = getStudentAvatarColor(item.id || item.name || String(index))
-                return (
-                <div
-                  key={item.id}
-                  className="flex items-center gap-3 border-b border-slate-800 py-2.5 last:border-0 [.tenant-shell_&]:border-[var(--ds-border,#DDE5DF)]"
-                >
-                  <Avatar className="h-9 w-9 border-0">
-                    <AvatarFallback
-                      className="text-[12px] font-semibold"
-                      style={{ backgroundColor: avatarColor.bg, color: avatarColor.text }}
-                    >
-                      {item.initial || getPersonInitials(item.name)}
-                    </AvatarFallback>
-                  </Avatar>
-                  <div className="min-w-0 flex-1">
-                    <p className="truncate text-sm font-medium text-white [.tenant-shell_&]:text-[13px] [.tenant-shell_&]:font-semibold [.tenant-shell_&]:text-[var(--ds-text-primary,#122018)]">
-                      {item.name}
-                    </p>
-                    <p className="truncate text-xs text-slate-500 [.tenant-shell_&]:text-[11px] [.tenant-shell_&]:text-[var(--ds-text-tertiary,#8A978E)]">
-                      {item.subtitle}
-                    </p>
-                  </div>
-                  <div className="flex shrink-0 items-center gap-2">
-                    <span className="font-data text-[13px] font-bold tabular-nums text-emerald-400 [.tenant-shell_&]:text-[var(--ds-primary,#1F8A5B)]">
-                      {item.scoreLabel}
-                    </span>
-                    <span className="inline-flex min-w-[1.5rem] items-center justify-center rounded-md bg-slate-800 px-1.5 py-0.5 text-[11px] font-bold text-sky-300 [.tenant-shell_&]:bg-[var(--ds-primary-soft,#ECFDF5)] [.tenant-shell_&]:text-[var(--ds-accent,#0F766E)]">
-                      {item.letter}
-                    </span>
-                  </div>
-                </div>
-                );
-              })
+              <div className="flex h-full items-center justify-center text-sm text-slate-500 [.tenant-shell_&]:text-[var(--ds-text-tertiary,#8A978E)]">
+                Loading registrations…
+              </div>
+            ) : registrationsEmpty ? (
+              <div className="flex h-full items-center justify-center text-sm text-slate-500 [.tenant-shell_&]:text-[var(--ds-text-tertiary,#8A978E)]">
+                No new registrations in the last five months.
+              </div>
             ) : (
-              <p className="py-8 text-center text-sm text-slate-500 [.tenant-shell_&]:text-[var(--ds-text-tertiary,#8A978E)]">
-                No gradebook results yet. Marks appear here after exams and assignments are graded.
-              </p>
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart
+                  data={monthlyRegistrations.months}
+                  margin={{ top: 28, right: 12, left: 0, bottom: 4 }}
+                >
+                  <CartesianGrid strokeDasharray="0" stroke={gridColor} vertical={false} />
+                  <XAxis
+                    dataKey="name"
+                    stroke={axisColor}
+                    tick={{ fill: axisColor, fontSize: 12, fontWeight: 500 }}
+                    axisLine={false}
+                    tickLine={false}
+                  />
+                  <YAxis hide />
+                  <Tooltip
+                    cursor={{
+                      fill: 'color-mix(in srgb, var(--ds-primary, #1F8A5B) 10%, transparent)',
+                    }}
+                    contentStyle={{
+                      background: 'var(--ds-surface, #fff)',
+                      border: '1px solid var(--ds-border, #DDE5DF)',
+                      borderRadius: 8,
+                      color: 'var(--ds-text-primary, #122018)',
+                      fontSize: 13,
+                    }}
+                    formatter={(value) => [Number(value), 'Registrations']}
+                  />
+                  <Bar dataKey="amount" radius={[10, 10, 0, 0]} maxBarSize={56}>
+                    {monthlyRegistrations.months.map((entry) => (
+                      <Cell key={entry.key} fill={entry.fill} />
+                    ))}
+                    <LabelList
+                      dataKey="amount"
+                      position="top"
+                      style={{
+                        fill: 'var(--ds-text-primary, #122018)',
+                        fontSize: 12,
+                        fontWeight: 600,
+                        fontFamily: 'IBM Plex Mono, ui-monospace, monospace',
+                      }}
+                    />
+                  </Bar>
+                </BarChart>
+              </ResponsiveContainer>
             )}
           </CardContent>
         </Card>
