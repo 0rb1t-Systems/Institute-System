@@ -2546,11 +2546,24 @@ export const deleteEnrollment = async (id) => {
 
 // --- Payments ---
 export const getPayments = async () => {
-  const [{ data: payments, error }, { data: enrollments }] = await Promise.all([
-    supabase.from('payments').select('*').order('paid_at', { ascending: false }),
-    supabase.from('enrollments').select('id, student_id, class_id'),
+  // Must page past Supabase's ~1000-row cap. If enrollments are truncated,
+  // mapPayment loses student_id and Finance shows Reg. Fee as Pending even
+  // when a completed registration payment exists in the DB.
+  const [payments, enrollments] = await Promise.all([
+    fetchAllPaged(() =>
+      supabase
+        .from('payments')
+        .select('*')
+        .order('paid_at', { ascending: false })
+        .order('id', { ascending: false }),
+    ),
+    fetchAllPaged(() =>
+      supabase
+        .from('enrollments')
+        .select('id, student_id, class_id')
+        .order('id', { ascending: true }),
+    ),
   ])
-  if (error) throw error
   const byId = Object.fromEntries((enrollments || []).map((e) => [e.id, e]))
   return (payments || []).map((p) => mapPayment(p, byId))
 }
