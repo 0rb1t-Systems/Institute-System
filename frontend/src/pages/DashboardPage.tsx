@@ -856,13 +856,24 @@ const DashboardPage = () => {
                 </div>
                 <div className="flex w-full min-w-0 flex-1 flex-col gap-5">
                   {studentDistribution.slices.map((row) => (
-                    <div key={row.name} className="flex items-center gap-3">
+                    <div key={row.name} className="flex items-start gap-3">
                       <span
-                        className="h-2.5 w-2.5 shrink-0 rounded-full"
+                        className="mt-1.5 h-2.5 w-2.5 shrink-0 rounded-full"
                         style={{ background: row.fill }}
                       />
                       <div className="min-w-0 flex-1">
-                        <p className="truncate text-[13px] font-semibold text-white [.tenant-shell_&]:text-[var(--ds-text-primary,#122018)]">
+                        <p
+                          className="break-words font-semibold leading-snug text-white [.tenant-shell_&]:text-[var(--ds-text-primary,#122018)]"
+                          style={{
+                            fontSize:
+                              String(row.name || '').length > 22
+                                ? String(row.name || '').length > 34
+                                  ? '10px'
+                                  : '11px'
+                                : '13px',
+                          }}
+                          title={row.name}
+                        >
                           {row.name}
                         </p>
                       </div>

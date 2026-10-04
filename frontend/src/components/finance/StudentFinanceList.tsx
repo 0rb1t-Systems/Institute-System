@@ -4,34 +4,52 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Search, DollarSign, CreditCard, Pencil, ChevronLeft, ChevronRight } from 'lucide-react';
 import { DsIconButton, DsOutlineAction, DS_ICON_STROKE } from '@/components/ui/ds-actions';
 import { formatCurrency } from '@/lib/utils';
 import { Dialog, DialogContent, DialogTrigger } from '@/components/ui/dialog';
 import InvoiceView from './InvoiceView';
 
-const StudentFinanceList = ({ students, financials, onRecordPayment, onChargeBalance, onEditPayment, onSendReminder }) => {
+const StudentFinanceList = ({ students, financials, classes = [], onRecordPayment, onChargeBalance, onEditPayment, onSendReminder }) => {
   const [searchTerm, setSearchTerm] = useState('');
+  const [classFilter, setClassFilter] = useState('all');
   const [selectedStudent, setSelectedStudent] = useState(null);
   const [currentPage, setCurrentPage] = useState(1);
   const ITEMS_PER_PAGE = 10;
 
+  const classOptions = React.useMemo(() => {
+      return [...classes]
+          .filter((c) => c?.id)
+          .sort((a, b) => String(a.name || '').localeCompare(String(b.name || '')));
+  }, [classes]);
+
   const filteredData = React.useMemo(() => {
-      const filtered = financials.filter(f => {
-          const searchLower = searchTerm.toLowerCase();
-          return (
+      const searchLower = searchTerm.toLowerCase();
+      return financials.filter((f) => {
+          const matchesSearch =
+              !searchLower ||
               f.student.name.toLowerCase().includes(searchLower) ||
-              f.student.student_code.toLowerCase().includes(searchLower)
-          );
+              f.student.student_code.toLowerCase().includes(searchLower);
+          const matchesClass =
+              classFilter === 'all' ||
+              (classFilter === 'none'
+                  ? !f.activeClass
+                  : f.activeClass?.id === classFilter);
+          return matchesSearch && matchesClass;
       });
-      return filtered;
-  }, [financials, searchTerm]);
+  }, [financials, searchTerm, classFilter]);
 
   const totalPages = Math.ceil(filteredData.length / ITEMS_PER_PAGE);
   const currentData = filteredData.slice((currentPage - 1) * ITEMS_PER_PAGE, currentPage * ITEMS_PER_PAGE);
 
   const handleSearchChange = (e) => {
       setSearchTerm(e.target.value);
+      setCurrentPage(1);
+  };
+
+  const handleClassFilterChange = (value) => {
+      setClassFilter(value);
       setCurrentPage(1);
   };
 
@@ -42,14 +60,30 @@ const StudentFinanceList = ({ students, financials, onRecordPayment, onChargeBal
                <CardTitle className="text-base font-semibold">Student Billing Status</CardTitle>
                <p className="text-sm text-[var(--ds-text-secondary,#5B6B61)]">{filteredData.length} Students Found</p>
            </div>
-           <div className="relative w-full md:w-64">
-              <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-[var(--ds-text-tertiary,#8A978E)]" />
-              <Input 
-                placeholder="Search student..." 
-                className="h-9 pl-8" 
-                value={searchTerm}
-                onChange={handleSearchChange}
-              />
+           <div className="flex w-full flex-col gap-2 sm:flex-row sm:items-center md:w-auto">
+              <Select value={classFilter} onValueChange={handleClassFilterChange}>
+                <SelectTrigger className="h-9 w-full sm:w-[200px]">
+                  <SelectValue placeholder="Filter by class" />
+                </SelectTrigger>
+                <SelectContent className="max-h-60">
+                  <SelectItem value="all">All Classes</SelectItem>
+                  <SelectItem value="none">Not Enrolled</SelectItem>
+                  {classOptions.map((cls) => (
+                    <SelectItem key={cls.id} value={cls.id}>
+                      {cls.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <div className="relative w-full sm:w-64">
+                <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-[var(--ds-text-tertiary,#8A978E)]" />
+                <Input 
+                  placeholder="Search student..." 
+                  className="h-9 pl-8" 
+                  value={searchTerm}
+                  onChange={handleSearchChange}
+                />
+              </div>
            </div>
       </CardHeader>
       <CardContent className="p-0">
@@ -69,7 +103,7 @@ const StudentFinanceList = ({ students, financials, onRecordPayment, onChargeBal
                 </TableHeader>
                 <TableBody>
                     {currentData.length > 0 ? currentData.map((item) => (
-                        <TableRow key={item.student.id} className="border-[var(--ds-border,#DDE5DF)] transition-colors hover:bg-[var(--ds-surface-muted,#F7FAF8)]">
+                        <TableRow key={item.id || `${item.student.id}-${item.activeClass?.id || 'none'}`} className="border-[var(--ds-border,#DDE5DF)] transition-colors hover:bg-[var(--ds-surface-muted,#F7FAF8)]">
                             <TableCell className="px-5 py-3">
                                 <div className="font-medium text-[var(--ds-text-primary,#122018)]">{item.student.name}</div>
                                 <div className="text-xs font-medium text-[var(--ds-primary,#1F8A5B)]">{item.student.student_code}</div>
@@ -121,13 +155,13 @@ const StudentFinanceList = ({ students, financials, onRecordPayment, onChargeBal
                                     {item.balance > 0 && (
                                         <DsOutlineAction
                                           className="h-8 w-8 px-0"
-                                          onClick={() => onChargeBalance(item.student.id)}
+                                          onClick={() => onChargeBalance(item.student.id, item.activeClass?.id)}
                                           title="Create Charge/Invoice"
                                         >
                                             <CreditCard className="h-3.5 w-3.5" strokeWidth={DS_ICON_STROKE} />
                                         </DsOutlineAction>
                                     )}
-                                    <DsOutlineAction onClick={() => onRecordPayment(item.student.id)}>
+                                    <DsOutlineAction onClick={() => onRecordPayment(item.student.id, item.activeClass?.id)}>
                                         <DollarSign className="h-3.5 w-3.5" strokeWidth={DS_ICON_STROKE} />
                                         <span className="hidden md:inline">Pay</span>
                                     </DsOutlineAction>

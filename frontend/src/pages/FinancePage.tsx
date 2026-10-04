@@ -21,10 +21,10 @@ import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { formatCurrency, formatDate, getMonthsBetween } from '@/lib/utils';
 import { getRegistrationFeeAmount } from '@/lib/institution';
-import { computeStudentBalance, mustPayRegistrationFirst, remainingForBillingMonth } from '@/lib/finance';
+import { computeStudentBalance, mustPayRegistrationFirst, remainingForBillingMonth, hasCompletedRegistrationPayment } from '@/lib/finance';
 
 // --- Payment Form Component ---
-const PaymentForm = ({ closeDialog, preSelectedStudentId, existingPayment, financials, initialMode = 'payment' }) => {
+const PaymentForm = ({ closeDialog, preSelectedStudentId, preSelectedClassId, existingPayment, financials, initialMode = 'payment' }) => {
   const { students, classes, enrollments, addPayment, updatePaymentData, payments } = useData();
   const { institution } = useAuth();
   const { toast } = useToast();
@@ -32,9 +32,42 @@ const PaymentForm = ({ closeDialog, preSelectedStudentId, existingPayment, finan
   
   const isEditing = !!existingPayment;
   const targetStudentId = existingPayment ? existingPayment.student_id : preSelectedStudentId;
-  const studentFin = financials.find(f => f.student.id === targetStudentId);
-  const activeEnrollment = studentFin?.activeEnrollment;
-  const activeClass = classes.find(c => c.id === (existingPayment?.class_id || activeEnrollment?.class_id));
+
+  const initialClassId =
+    existingPayment?.class_id ||
+    preSelectedClassId ||
+    (targetStudentId
+      ? enrollments.find((e) => e.student_id === targetStudentId && e.status === 'active')?.class_id
+      : '') ||
+    '';
+
+  const [formData, setFormData] = useState({
+      student_id: targetStudentId || '',
+      class_id: initialClassId || '',
+      amount: existingPayment ? existingPayment.amount : '', 
+      method: existingPayment?.method || (initialMode === 'charge' ? 'other' : 'cash'),
+      month_paid: existingPayment?.month_paid || '',
+      type: existingPayment ? (existingPayment.is_registration_fee ? 'registration' : 'tuition') : 'tuition',
+      notes: existingPayment?.notes || '',
+      payment_date: existingPayment ? existingPayment.payment_date.slice(0, 10) : new Date().toISOString().slice(0, 10),
+      status: existingPayment?.status || (initialMode === 'charge' ? 'pending' : 'completed')
+  });
+
+  const selectedClassId = formData.class_id || existingPayment?.class_id || preSelectedClassId || '';
+  const activeClass = classes.find((c) => c.id === selectedClassId) || null;
+  const activeEnrollment =
+    enrollments.find(
+      (e) =>
+        e.student_id === (targetStudentId || formData.student_id) &&
+        e.class_id === selectedClassId &&
+        e.status === 'active'
+    ) ||
+    enrollments.find(
+      (e) =>
+        e.student_id === (targetStudentId || formData.student_id) &&
+        e.class_id === selectedClassId
+    ) ||
+    null;
 
   // Determine Monthly Discount
   const monthlyDiscount = activeEnrollment?.discount_amount ? Number(activeEnrollment.discount_amount) : 0;
@@ -49,18 +82,6 @@ const PaymentForm = ({ closeDialog, preSelectedStudentId, existingPayment, finan
 
   // Apply Discount to Monthly Fee
   const discountedMonthlyFee = Math.max(0, standardMonthlyFee - monthlyDiscount);
-  
-  const [formData, setFormData] = useState({
-      student_id: targetStudentId || '',
-      class_id: activeClass?.id || '',
-      amount: existingPayment ? existingPayment.amount : '', 
-      method: existingPayment?.method || (initialMode === 'charge' ? 'other' : 'cash'),
-      month_paid: existingPayment?.month_paid || '',
-      type: existingPayment ? (existingPayment.is_registration_fee ? 'registration' : 'tuition') : 'tuition',
-      notes: existingPayment?.notes || '',
-      payment_date: existingPayment ? existingPayment.payment_date.slice(0, 10) : new Date().toISOString().slice(0, 10),
-      status: existingPayment?.status || (initialMode === 'charge' ? 'pending' : 'completed')
-  });
 
   const studentClasses = useMemo(() => {
       if (!formData.student_id) return [];
@@ -769,65 +790,117 @@ const FinancePage = () => {
   const [isPayOpen, setIsPayOpen] = useState(false);
   const [paymentMode, setPaymentMode] = useState('payment'); // 'payment' or 'charge'
   const [preSelectedStudent, setPreSelectedStudent] = useState(null);
+  const [preSelectedClass, setPreSelectedClass] = useState(null);
   const [editingPayment, setEditingPayment] = useState(null);
   const { toast } = useToast();
 
   const financials = useMemo(() => {
-      return students.map(student => {
-          const enrollment = enrollments.find(e => e.student_id === student.id && e.status === 'active');
-          const activeClass = enrollment ? classes.find(c => c.id === enrollment.class_id) : null;
-          const studentPayments = payments.filter(p => p.student_id === student.id);
-          const bal = computeStudentBalance({
-            payments: studentPayments,
-            activeClass,
-            enrollment,
-            institution,
-            registrationFeeAmount: registrationFee,
-          });
+      const rows = [];
 
-          return {
-              student,
-              activeClass,
-              activeEnrollment: enrollment,
-              payments: studentPayments,
-              registrationPaid: bal.registrationPaid,
-              classFee: bal.classFee,
-              originalFee: bal.originalFee,
-              discountTotal: bal.discountTotal,
-              monthlyDiscount: bal.monthlyDiscount,
-              totalTuitionPaid: bal.totalTuitionPaid,
-              totalPending: bal.totalPending,
-              balance: bal.balance,
-              totalPaid: bal.totalPaid,
-          };
-      }).filter(f => f.activeClass || f.payments.length > 0);
+      students.forEach((student) => {
+          const studentPayments = payments.filter((p) => p.student_id === student.id);
+          const activeEnrollments = enrollments.filter(
+              (e) => e.student_id === student.id && (e.status === 'active' || !e.status)
+          );
+          const registrationPaid = hasCompletedRegistrationPayment(studentPayments);
+
+          if (activeEnrollments.length === 0) {
+              if (studentPayments.length === 0) return;
+              const bal = computeStudentBalance({
+                  payments: studentPayments,
+                  activeClass: null,
+                  enrollment: null,
+                  institution,
+                  registrationFeeAmount: registrationFee,
+              });
+              rows.push({
+                  id: `${student.id}-none`,
+                  student,
+                  activeClass: null,
+                  activeEnrollment: null,
+                  payments: studentPayments,
+                  registrationPaid,
+                  classFee: bal.classFee,
+                  originalFee: bal.originalFee,
+                  discountTotal: bal.discountTotal,
+                  monthlyDiscount: bal.monthlyDiscount,
+                  totalTuitionPaid: bal.totalTuitionPaid,
+                  totalPending: bal.totalPending,
+                  balance: bal.balance,
+                  totalPaid: bal.totalPaid,
+                  isPrimaryBillingRow: true,
+              });
+              return;
+          }
+
+          activeEnrollments.forEach((enrollment, index) => {
+              const activeClass = classes.find((c) => c.id === enrollment.class_id) || null;
+              const isPrimary = index === 0;
+              const scopedPayments = studentPayments.filter(
+                  (p) =>
+                      p.is_registration_fee === true ||
+                      (p.class_id && p.class_id === enrollment.class_id) ||
+                      (!p.class_id && p.is_registration_fee !== true && isPrimary)
+              );
+
+              const bal = computeStudentBalance({
+                  payments: scopedPayments,
+                  activeClass,
+                  enrollment,
+                  institution,
+                  // Registration fee is student-level — only attach unpaid reg to the primary class row
+                  registrationFeeAmount: isPrimary ? registrationFee : 0,
+              });
+
+              rows.push({
+                  id: `${student.id}-${enrollment.class_id}`,
+                  student,
+                  activeClass,
+                  activeEnrollment: enrollment,
+                  payments: scopedPayments,
+                  registrationPaid,
+                  classFee: bal.classFee,
+                  originalFee: bal.originalFee,
+                  discountTotal: bal.discountTotal,
+                  monthlyDiscount: bal.monthlyDiscount,
+                  totalTuitionPaid: bal.totalTuitionPaid,
+                  totalPending: bal.totalPending,
+                  balance: bal.balance,
+                  totalPaid: isPrimary ? bal.totalPaid : bal.totalTuitionPaid,
+                  isPrimaryBillingRow: isPrimary,
+              });
+          });
+      });
+
+      return rows;
   }, [students, enrollments, classes, payments, registrationFee, institution]);
 
   const stats = useMemo(() => {
-      const totalCollected = financials.reduce((sum: any, f: any) => sum + f.totalPaid, 0);
-      const totalOutstanding = financials.reduce((sum: any, f: any) => sum + f.balance, 0);
-      const totalPendingCharges = financials.reduce((sum: any, f: any) => sum + f.totalPending, 0);
-      const overdueCount = financials.filter(f => f.balance > 0).length;
-      const regCount = financials.filter(f => f.registrationPaid).length;
-      // Sum actual recorded registration-fee payment amounts (not a hard-coded fee × count)
-      const totalRegFees = financials.reduce((sum: any, f: any) => {
-          if (!f.registrationPaid) return sum;
+      const totalCollected = financials.reduce((sum, f) => sum + f.totalPaid, 0);
+      const totalOutstanding = financials.reduce((sum, f) => sum + f.balance, 0);
+      const totalPendingCharges = financials.reduce((sum, f) => sum + f.totalPending, 0);
+      const overdueCount = financials.filter((f) => f.balance > 0).length;
+      const regCount = financials.filter((f) => f.isPrimaryBillingRow && f.registrationPaid).length;
+      const totalRegFees = financials.reduce((sum, f) => {
+          if (!f.isPrimaryBillingRow || !f.registrationPaid) return sum;
           const regPay = f.payments.find((p) => p.is_registration_fee === true);
           return sum + Number(regPay?.amount || 0);
       }, 0);
-      
+
       return { totalCollected, totalOutstanding, overdueCount, regCount, totalRegFees, totalPendingCharges };
   }, [financials]);
 
-  const handleRecordPayment = (studentId) => {
+  const handleRecordPayment = (studentId, classId = null) => {
       setPreSelectedStudent(studentId);
+      setPreSelectedClass(classId);
       setEditingPayment(null);
       setPaymentMode('payment');
       setIsPayOpen(true);
   };
 
-  const handleChargeBalance = (studentId) => {
+  const handleChargeBalance = (studentId, classId = null) => {
       setPreSelectedStudent(studentId);
+      setPreSelectedClass(classId);
       setEditingPayment(null);
       setPaymentMode('charge');
       setIsPayOpen(true);
@@ -835,6 +908,7 @@ const FinancePage = () => {
 
   const handleEditPayment = (payment) => {
       setPreSelectedStudent(payment.student_id);
+      setPreSelectedClass(payment.class_id || null);
       setEditingPayment(payment);
       setPaymentMode('payment');
       setIsPayOpen(true);
@@ -861,12 +935,21 @@ const FinancePage = () => {
         subtitle="Manage student billing, payments, and withdrawals."
       />
 
-      <Dialog open={isPayOpen} onOpenChange={setIsPayOpen}>
+      <Dialog open={isPayOpen} onOpenChange={(open) => {
+          setIsPayOpen(open);
+          if (!open) {
+              setPreSelectedStudent(null);
+              setPreSelectedClass(null);
+              setEditingPayment(null);
+          }
+      }}>
           <DialogContent>
               <DialogHeader><DialogTitle>{editingPayment ? "Edit Record" : (paymentMode === 'charge' ? "Charge Balance" : "Record Payment")}</DialogTitle></DialogHeader>
               <PaymentForm 
+                  key={`${preSelectedStudent || 'none'}-${preSelectedClass || 'none'}-${editingPayment?.id || 'new'}-${paymentMode}`}
                   closeDialog={() => setIsPayOpen(false)} 
                   preSelectedStudentId={preSelectedStudent}
+                  preSelectedClassId={preSelectedClass}
                   existingPayment={editingPayment}
                   financials={financials}
                   initialMode={paymentMode}
@@ -886,6 +969,7 @@ const FinancePage = () => {
               <StudentFinanceList 
                   students={financials.map(f => f.student)} 
                   financials={financials}
+                  classes={classes}
                   onRecordPayment={handleRecordPayment}
                   onChargeBalance={handleChargeBalance}
                   onEditPayment={handleEditPayment}
