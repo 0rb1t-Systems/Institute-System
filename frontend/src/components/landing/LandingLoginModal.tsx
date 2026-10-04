@@ -7,7 +7,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { LandingLogo } from '@/components/landing/LandingShared'
-import { institutionLogoUrl, resolvePublicTenantSubdomain } from '@/lib/institution'
+import { institutionLogoUrl, resolvePublicTenantSubdomain, getAuthResetPasswordUrl } from '@/lib/institution'
 import { brandInitial } from '@/components/landing/types'
 import { usePlatformTheme } from '@/contexts/PlatformThemeContext'
 import { requestPasswordReset } from '@/lib/api'
@@ -89,7 +89,7 @@ export default function LandingLoginModal({
       await requestPasswordReset({
         identifier: id,
         subdomain: tenantSlug,
-        redirectTo: `${window.location.origin}/reset-password`,
+        redirectTo: getAuthResetPasswordUrl(tenantSlug),
       })
       setForgotSent(true)
     } catch (err) {

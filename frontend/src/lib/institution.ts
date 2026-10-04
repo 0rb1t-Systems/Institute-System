@@ -6,6 +6,13 @@ export type InstitutionBrand = {
   id?: string
   name?: string | null
   subdomain?: string | null
+  /** Active custom apex domain, e.g. hankaal.com */
+  custom_domain?: string | null
+  custom_domain_status?: string | null
+  custom_domain_www?: boolean | null
+  custom_domain_verification_token?: string | null
+  custom_domain_verified_at?: string | null
+  custom_domain_error?: string | null
   logo_url?: string | null
   description?: string | null
   email?: string | null
@@ -50,6 +57,78 @@ export type InstitutionBrand = {
   social_facebook?: string | null
   social_tiktok?: string | null
 } | null | undefined
+
+const CUSTOM_HOST_TENANT_KEY = 'brce_custom_host_tenant'
+
+/** True when institution has a verified custom domain. */
+export function hasActiveCustomDomain(institution?: InstitutionBrand): boolean {
+  const domain = String(institution?.custom_domain || '')
+    .trim()
+    .toLowerCase()
+  const status = String(institution?.custom_domain_status || '')
+    .trim()
+    .toLowerCase()
+  return Boolean(domain) && status === 'active'
+}
+
+export function getActiveCustomDomain(institution?: InstitutionBrand): string {
+  if (!hasActiveCustomDomain(institution)) return ''
+  return String(institution?.custom_domain || '')
+    .trim()
+    .toLowerCase()
+}
+
+export function cacheTenantForHost(host: string, subdomain: string): void {
+  if (typeof window === 'undefined') return
+  const h = String(host || '')
+    .trim()
+    .toLowerCase()
+    .split(':')[0]
+  const s = String(subdomain || '')
+    .trim()
+    .toLowerCase()
+  if (!h || !s) return
+  try {
+    sessionStorage.setItem(`${CUSTOM_HOST_TENANT_KEY}:${h}`, s)
+    rememberTenantSubdomain(s)
+  } catch {
+    /* ignore */
+  }
+}
+
+export function getCachedTenantForHost(host?: string | null): string {
+  if (typeof window === 'undefined') return ''
+  const h = String(host || window.location.hostname || '')
+    .trim()
+    .toLowerCase()
+    .split(':')[0]
+  if (!h) return ''
+  try {
+    return String(sessionStorage.getItem(`${CUSTOM_HOST_TENANT_KEY}:${h}`) || '')
+      .trim()
+      .toLowerCase()
+  } catch {
+    return ''
+  }
+}
+
+/** Host is neither platform deploy nor {slug}.{root} — may be a tenant custom domain. */
+export function isLikelyCustomTenantHost(host?: string | null): boolean {
+  if (typeof window === 'undefined' && !host) return false
+  const h = String(host || (typeof window !== 'undefined' ? window.location.hostname : '') || '')
+    .trim()
+    .toLowerCase()
+    .split(':')[0]
+  if (!h || h === 'localhost' || h === '127.0.0.1' || /^\d+\.\d+\.\d+\.\d+$/.test(h)) return false
+  if (isPlatformDeploymentHost(h)) return false
+  const root = String(import.meta.env.VITE_APP_ROOT_DOMAIN || '')
+    .trim()
+    .replace(/^https?:\/\//i, '')
+    .replace(/\/$/, '')
+    .toLowerCase()
+  if (root && (h === root || h === `www.${root}` || h.endsWith(`.${root}`))) return false
+  return true
+}
 
 const DEFAULT_PRIMARY = '#002147'
 const DEFAULT_ACCENT = '#D32F2F'
@@ -399,10 +478,12 @@ export function getInstitutionTertiary(institution?: InstitutionBrand): string {
 
 /**
  * Public tenant base URL.
- * Production: https://{subdomain}.{rootDomain}
+ * Prefer active custom domain → https://{custom_domain}
+ * Else production: https://{subdomain}.{rootDomain}
  * Localhost: current origin (subdomain routing not available in local Vite).
  */
 export function getTenantBaseUrl(institution?: InstitutionBrand): string {
+  const custom = getActiveCustomDomain(institution)
   const subdomain = String(institution?.subdomain || '').trim().toLowerCase()
   const root = getAppRootDomain()
   const isLocal =
@@ -410,13 +491,18 @@ export function getTenantBaseUrl(institution?: InstitutionBrand): string {
     root.startsWith('127.0.0.1') ||
     /^\d+\.\d+\.\d+\.\d+/.test(root)
 
+  const protocol =
+    typeof window !== 'undefined' && window.location.protocol === 'http:' ? 'http' : 'https'
+
+  if (custom && !(typeof window !== 'undefined' && isLocal)) {
+    return `${protocol}://${custom}`
+  }
+
   if (typeof window !== 'undefined' && isLocal) {
     return window.location.origin
   }
 
   if (subdomain && root) {
-    const protocol =
-      typeof window !== 'undefined' && window.location.protocol === 'http:' ? 'http' : 'https'
     return `${protocol}://${subdomain}.${root}`
   }
 
@@ -425,12 +511,54 @@ export function getTenantBaseUrl(institution?: InstitutionBrand): string {
 }
 
 /**
+ * Password-reset / auth callback URL — always platform tenant host, never custom domain.
+ * Keeps Supabase Auth Redirect URLs limited to https://*.{root}/** so tenants self-serve.
+ */
+export function getAuthResetPasswordUrl(institutionOrSubdomain?: InstitutionBrand | string): string {
+  const subdomain =
+    typeof institutionOrSubdomain === 'string'
+      ? String(institutionOrSubdomain || '')
+          .trim()
+          .toLowerCase()
+      : String(institutionOrSubdomain?.subdomain || '')
+          .trim()
+          .toLowerCase()
+
+  const root = getAppRootDomain()
+  const isLocal =
+    root.startsWith('localhost') ||
+    root.startsWith('127.0.0.1') ||
+    /^\d+\.\d+\.\d+\.\d+/.test(root)
+
+  if (typeof window !== 'undefined' && isLocal) {
+    return `${window.location.origin}/reset-password`
+  }
+
+  if (subdomain && root && usesTenantSubdomainHosts()) {
+    return `https://${subdomain}.${root}/reset-password`
+  }
+
+  if (typeof window !== 'undefined') {
+    const origin = window.location.origin
+    if (subdomain) return `${origin}/reset-password?tenant=${encodeURIComponent(subdomain)}`
+    return `${origin}/reset-password`
+  }
+
+  if (subdomain && root) return `https://${subdomain}.${root}/reset-password`
+  return `https://${root}/reset-password`
+}
+
+/**
  * Tenant login URL for emails and share links.
+ * Active custom domain → https://{domain}/login
  * Production: https://{sub}.{root}/login
  * Local / no root: https://origin/login?tenant={sub}
  */
 export function getTenantLoginUrl(institution?: InstitutionBrand): string {
   const subdomain = String(institution?.subdomain || '').trim().toLowerCase()
+  if (hasActiveCustomDomain(institution)) {
+    return `${getTenantBaseUrl(institution)}/login`
+  }
   if (usesTenantSubdomainHosts() && subdomain) {
     return `${getTenantBaseUrl({ subdomain })}/login`
   }
@@ -479,12 +607,24 @@ export function isOnTenantHost(subdomain?: string | null): boolean {
   return window.location.hostname.toLowerCase() === `${sub}.${root}`
 }
 
+/** True when the browser is on this institution's active custom domain (apex or www). */
+export function isOnCustomDomainHost(institution?: InstitutionBrand): boolean {
+  if (typeof window === 'undefined') return false
+  const custom = getActiveCustomDomain(institution)
+  if (!custom) return false
+  const host = window.location.hostname.toLowerCase()
+  return host === custom || host === `www.${custom}`
+}
+
 /**
- * Public institution portal URL (prefer subdomain on custom domain).
- * Localhost / no root domain → same origin with ?tenant=slug.
+ * Public institution portal URL.
+ * Prefer active custom domain, then {sub}.{root}, else ?tenant=slug.
  */
 export function getTenantPortalUrl(institution?: InstitutionBrand): string {
   const subdomain = String(institution?.subdomain || '').trim().toLowerCase()
+  if (hasActiveCustomDomain(institution)) {
+    return getTenantBaseUrl(institution)
+  }
   if (!subdomain) {
     if (typeof window !== 'undefined') return window.location.origin
     return '/'
@@ -499,7 +639,8 @@ export function getTenantPortalUrl(institution?: InstitutionBrand): string {
 
 /**
  * Where to send users after logout / “view landing”.
- * Custom domain → https://{sub}.{root} (or "/" if already there).
+ * Active custom domain → that host (or "/" if already there).
+ * Platform subdomain → https://{sub}.{root} (or "/" if already there).
  * Local / Vercel-only → /?tenant=slug (query fallback).
  */
 export function getTenantLandingPath(
@@ -509,6 +650,17 @@ export function getTenantLandingPath(
   if (role === 'super_admin') return '/login'
   const subdomain =
     String(institution?.subdomain || '').trim().toLowerCase() || getRememberedTenantSubdomain()
+  if (!subdomain && !hasActiveCustomDomain(institution)) return '/login'
+
+  if (hasActiveCustomDomain(institution)) {
+    const custom = getActiveCustomDomain(institution)
+    if (typeof window !== 'undefined') {
+      const host = window.location.hostname.toLowerCase()
+      if (host === custom || host === `www.${custom}`) return '/'
+    }
+    return getTenantBaseUrl(institution)
+  }
+
   if (!subdomain) return '/login'
   if (usesTenantSubdomainHosts()) {
     if (isOnTenantHost(subdomain)) return '/'
@@ -550,7 +702,7 @@ export function getVerificationUrl(
     const params = new URLSearchParams()
     if (id && id !== 'unknown' && id !== '---') params.set('id', id)
     // Query tenant only when not already on a dedicated tenant host URL
-    if (!usesTenantSubdomainHosts()) {
+    if (!usesTenantSubdomainHosts() && !hasActiveCustomDomain(institution)) {
       const tenant =
         String(institution?.subdomain || '').trim().toLowerCase() ||
         resolvePublicTenantSubdomain() ||
@@ -618,6 +770,10 @@ export function resolvePublicTenantSubdomain(): string {
         const parts = host.split('.')
         if (parts.length >= 3) return parts[0].toLowerCase()
       }
+
+      // Cached mapping from a prior get_public_institution_by_host lookup
+      const cached = getCachedTenantForHost(host)
+      if (cached) return cached
     }
   }
   return String(import.meta.env.VITE_DEFAULT_TENANT_SUBDOMAIN || '').trim().toLowerCase()

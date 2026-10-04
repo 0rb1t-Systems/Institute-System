@@ -45,3 +45,6 @@ verify_jwt = false
 
 [functions.reject-registration-inquiry]
 verify_jwt = true
+
+[functions.manage-custom-domain]
+verify_jwt = true

@@ -16,7 +16,7 @@ import {
   Wallet,
 } from 'lucide-react'
 import { useAuth } from '@/contexts/AuthContext'
-import { updateInstitution, uploadInstitutionAsset } from '@/lib/api'
+import { updateInstitution, uploadInstitutionAsset, getMyInstitution } from '@/lib/api'
 import {
   brandedImageSrc,
   getTenantBaseUrl,
@@ -42,6 +42,7 @@ import { getUserMessage } from '@/lib/mapError'
 import { MESSAGES } from '@/lib/messages'
 import GradingSystemSettings from '@/components/admin/GradingSystemSettings'
 import LogoBrandColorPicker from '@/components/admin/LogoBrandColorPicker'
+import CustomDomainSettings from '@/components/admin/CustomDomainSettings'
 import { extractLogoBrandPalette, normalizeHexColor } from '@/lib/logoBrandColors'
 const CURRENCY_OPTIONS = [
   { code: 'USD', symbol: '$', label: 'USD — US Dollar' },
@@ -456,9 +457,24 @@ const InstitutionSettingsForm = ({
     }
   }
 
-  const dashboardUrl = getTenantBaseUrl({ ...institution, subdomain: form.subdomain })
-  const loginUrl = getTenantLoginUrl({ ...institution, subdomain: form.subdomain })
-  const landingUrl = getTenantPortalUrl({ ...institution, subdomain: form.subdomain })
+  const dashboardUrl = getTenantBaseUrl({
+    ...institution,
+    subdomain: form.subdomain,
+    custom_domain: institution?.custom_domain,
+    custom_domain_status: institution?.custom_domain_status,
+  })
+  const loginUrl = getTenantLoginUrl({
+    ...institution,
+    subdomain: form.subdomain,
+    custom_domain: institution?.custom_domain,
+    custom_domain_status: institution?.custom_domain_status,
+  })
+  const landingUrl = getTenantPortalUrl({
+    ...institution,
+    subdomain: form.subdomain,
+    custom_domain: institution?.custom_domain,
+    custom_domain_status: institution?.custom_domain_status,
+  })
   const settingsComplete = isInstitutionSettingsComplete(institution)
 
   const certNext = useMemo(() => {
@@ -668,6 +684,14 @@ const InstitutionSettingsForm = ({
                 <span className="text-[var(--tenant-muted)]">Dashboard</span> {dashboardUrl}
               </p>
             </div>
+            <CustomDomainSettings
+              institution={institution}
+              onChanged={async () => {
+                await refreshUser?.()
+                const fresh = await getMyInstitution().catch(() => null)
+                if (fresh) onUpdated?.(fresh)
+              }}
+            />
         </SectionBlock>
 
         <SectionBlock id="settings-brand" icon={Palette} title="Branding">

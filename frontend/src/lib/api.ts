@@ -3,7 +3,7 @@
  * Document-request workflow remains out of v1 scope and throws FEATURE_UNAVAILABLE.
  */
 import { supabase, getSupabaseUrl } from '@/lib/supabaseClient'
-import { resolvePublicTenantSubdomain, getTenantLoginUrl } from '@/lib/institution'
+import { resolvePublicTenantSubdomain, getTenantLoginUrl, cacheTenantForHost, isLikelyCustomTenantHost } from '@/lib/institution'
 import { createDefaultUploadFieldLayout } from '@/lib/certificateBuilder'
 import { LANDING_TEMPLATE_IDS } from '@/lib/landingTemplates'
 import { landingContentForSave } from '@/lib/landingContent'
@@ -33,7 +33,7 @@ async function fetchAllPaged(buildQuery) {
 }
 
 const INST_SELECT =
-  'id, name, subdomain, logo_url, description, email, phone, address, website, motto, theme_primary, theme_accent, theme_tertiary, social_whatsapp, social_facebook, social_tiktok, status, created_at, affiliate_commission_rate, registration_fee_amount, default_instructor_commission_rate, currency, currency_symbol, signatory_left_title, signatory_right_title, signatory_left_name, signatory_right_name, seal_url, signature_url, certificate_footer_text, transcript_footer_text, transcript_narrative_text, invoice_footer_text, certificate_number_start, certificate_number_pad, certificate_number_last, student_id_prefix, student_id_start, student_id_pad, student_id_last, settings_completed_at, landing_template_id, hero_image_url, hero_headline, footer_text, landing_content, grading_scale, dashboard_theme'
+  'id, name, subdomain, custom_domain, custom_domain_www, custom_domain_status, custom_domain_verification_token, custom_domain_verified_at, custom_domain_error, logo_url, description, email, phone, address, website, motto, theme_primary, theme_accent, theme_tertiary, social_whatsapp, social_facebook, social_tiktok, status, created_at, affiliate_commission_rate, registration_fee_amount, default_instructor_commission_rate, currency, currency_symbol, signatory_left_title, signatory_right_title, signatory_left_name, signatory_right_name, seal_url, signature_url, certificate_footer_text, transcript_footer_text, transcript_narrative_text, invoice_footer_text, certificate_number_start, certificate_number_pad, certificate_number_last, student_id_prefix, student_id_start, student_id_pad, student_id_last, settings_completed_at, landing_template_id, hero_image_url, hero_headline, footer_text, landing_content, grading_scale, dashboard_theme'
 
 /** Short-lived profile cache — avoids N+1 profile round-trips in bulk flows. */
 let _myProfileCache: { at: number; userId: string; row: any } | null = null
@@ -4126,19 +4126,113 @@ export const setRegistrationFormPrograms = async ({
 
 export const getPublicInstitutionBySubdomain = async (subdomain) => {
   const slug = String(subdomain || resolvePublicTenantSubdomain() || '').trim()
-  if (!slug) return null
-  const { data, error } = await supabase.rpc('get_public_institution', { p_subdomain: slug })
+  if (slug) {
+    const { data, error } = await supabase.rpc('get_public_institution', { p_subdomain: slug })
+    if (error) throw error
+    const raw = Array.isArray(data) ? data[0] : data
+    if (!raw) return null
+    if (typeof raw === 'string') {
+      try {
+        return JSON.parse(raw)
+      } catch {
+        return null
+      }
+    }
+    return raw
+  }
+
+  // Custom domain host with no slug yet — resolve by hostname
+  if (typeof window !== 'undefined' && isLikelyCustomTenantHost(window.location.hostname)) {
+    return getPublicInstitutionByHost(window.location.hostname)
+  }
+  return null
+}
+
+/** Public institution lookup by verified custom domain host (apex or www). */
+export const getPublicInstitutionByHost = async (host) => {
+  const h = String(host || (typeof window !== 'undefined' ? window.location.hostname : '') || '')
+    .trim()
+    .toLowerCase()
+    .split(':')[0]
+  if (!h) return null
+  const { data, error } = await supabase.rpc('get_public_institution_by_host', { p_host: h })
   if (error) throw error
-  const raw = Array.isArray(data) ? data[0] : data
+  let raw = Array.isArray(data) ? data[0] : data
   if (!raw) return null
   if (typeof raw === 'string') {
     try {
-      return JSON.parse(raw)
+      raw = JSON.parse(raw)
     } catch {
       return null
     }
   }
+  if (raw?.subdomain) {
+    cacheTenantForHost(h, raw.subdomain)
+    if (h.startsWith('www.')) cacheTenantForHost(h.slice(4), raw.subdomain)
+    else cacheTenantForHost(`www.${h}`, raw.subdomain)
+  }
   return raw
+}
+
+/**
+ * Resolve tenant slug for public pages, including async custom-domain hosts.
+ */
+export const ensurePublicTenantSubdomain = async () => {
+  const sync = resolvePublicTenantSubdomain()
+  if (sync) return sync
+  if (typeof window === 'undefined') return ''
+  if (!isLikelyCustomTenantHost(window.location.hostname)) return ''
+  const inst = await getPublicInstitutionByHost(window.location.hostname)
+  return String(inst?.subdomain || '').trim().toLowerCase()
+}
+
+export type CustomDomainStatus = {
+  ok?: boolean
+  custom_domain?: string | null
+  custom_domain_www?: boolean
+  custom_domain_status?: string
+  custom_domain_verified_at?: string | null
+  custom_domain_error?: string | null
+  verification_token?: string | null
+  dns?: {
+    apex: string
+    www: string
+    records: Array<{
+      type: string
+      host: string
+      hostFull: string
+      value: string
+      note?: string
+    }>
+  } | null
+  fallback_subdomain?: string | null
+  verified?: boolean
+  message?: string
+  error?: string
+}
+
+/** Institution admin — manage custom domain via edge function (never client DB write). */
+export const manageCustomDomain = async (
+  action: 'start' | 'verify' | 'disconnect' | 'status',
+  domain?: string,
+): Promise<CustomDomainStatus> => {
+  const payload: Record<string, string> = { action }
+  if (domain) payload.domain = domain
+  const { data, error } = await supabase.functions.invoke('manage-custom-domain', {
+    body: payload,
+  })
+  if (error) throw error
+  if (data?.error && data.error !== 'RATE_LIMITED' && !data?.custom_domain_status) {
+    const err = new Error(data.message || data.error)
+    ;(err as any).code = data.error
+    throw err
+  }
+  if (data?.error === 'RATE_LIMITED') {
+    const err = new Error(data.message || 'RATE_LIMITED')
+    ;(err as any).code = 'RATE_LIMITED'
+    throw err
+  }
+  return data as CustomDomainStatus
 }
 
 /**

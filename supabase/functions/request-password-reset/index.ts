@@ -51,6 +51,11 @@ function isAllowedRedirect(raw: string): boolean {
   return /^[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?$/i.test(sub)
 }
 
+/**
+ * Auth redirects always use the platform tenant host ({slug}.{root}).
+ * Custom domains are NOT used here so each tenant can self-serve without
+ * adding Redirect URLs in Supabase Auth per domain.
+ */
 function fallbackRedirect(subdomain: string): string {
   const root = rootDomain()
   if (subdomain) return `https://${subdomain}.${root}/reset-password`
@@ -75,7 +80,6 @@ Deno.serve(async (req) => {
     let redirectTo = String(body.redirect_to || '').trim()
 
     if (!identifier) return json(GENERIC)
-    if (!isAllowedRedirect(redirectTo)) redirectTo = fallbackRedirect(subdomain)
 
     await new Promise((r) => setTimeout(r, 400))
 
@@ -96,6 +100,9 @@ Deno.serve(async (req) => {
       institutionId = inst.id
       institutionName = inst.name || institutionName
     }
+
+    // Never accept arbitrary custom-domain redirects — keep Auth allowlist on *.APP_ROOT_DOMAIN only.
+    if (!isAllowedRedirect(redirectTo)) redirectTo = fallbackRedirect(subdomain)
 
     let email: string | null = null
 

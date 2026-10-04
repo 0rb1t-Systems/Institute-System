@@ -10,7 +10,7 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Loader2, AlertCircle, LogIn, GraduationCap, ArrowLeft } from 'lucide-react';
 import { getUserMessage } from '@/lib/mapError';
 import { MESSAGES } from '@/lib/messages';
-import { getPublicInstitutionBySubdomain, requestPasswordReset } from '@/lib/api';
+import { getPublicInstitutionBySubdomain, requestPasswordReset, ensurePublicTenantSubdomain } from '@/lib/api';
 import ThemeToggle from '@/components/platform/ThemeToggle';
 import { usePlatformTheme } from '@/contexts/PlatformThemeContext';
 import { LandingLogo } from '@/components/landing/LandingShared';
@@ -23,6 +23,8 @@ import {
   mergeInstitutionWithPublishedBrand,
   coalesceLogoUrl,
   resolvePublicTenantSubdomain,
+  isLikelyCustomTenantHost,
+  getAuthResetPasswordUrl,
   subscribeInstitutionBrand,
 } from '@/lib/institution';
 
@@ -59,9 +61,31 @@ const LoginPage = ({ initialError = '' }) => {
   const tenantFromQuery =
     searchParams.get('tenant') || searchParams.get('subdomain') || '';
   // Subdomain host (dhambaal.tvetflow.online) counts; platform apex stays admin-only when no tenant.
-  const tenant = String(tenantFromQuery || resolvePublicTenantSubdomain() || '')
+  const syncTenant = String(tenantFromQuery || resolvePublicTenantSubdomain() || '')
     .trim()
     .toLowerCase();
+  const [asyncTenant, setAsyncTenant] = useState('');
+  const tenant = syncTenant || asyncTenant;
+
+  useEffect(() => {
+    if (syncTenant) {
+      setAsyncTenant('');
+      return undefined;
+    }
+    if (!isLikelyCustomTenantHost()) return undefined;
+    let cancelled = false;
+    ;(async () => {
+      try {
+        const slug = await ensurePublicTenantSubdomain();
+        if (!cancelled) setAsyncTenant(slug || '');
+      } catch {
+        if (!cancelled) setAsyncTenant('');
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [syncTenant]);
 
   useEffect(() => {
     if (tenant) {
@@ -155,7 +179,7 @@ const LoginPage = ({ initialError = '' }) => {
       await requestPasswordReset({
         identifier: trimmedIdentifier,
         subdomain: tenant,
-        redirectTo: `${window.location.origin}/reset-password`,
+        redirectTo: getAuthResetPasswordUrl(tenant || institution || undefined),
       });
       setForgotSent(true);
     } catch (err) {
