@@ -26,8 +26,8 @@ const DataContext = createContext<any>(null);
  *   useMemo in the app from recomputing after an unrelated mutation.
  */
 
-/** Routes that need the multi-thousand-row caches. */
-function heavyKeysForPath(pathname: string): string[] {
+/** Routes that need the multi-thousand-row caches. Tab-aware for /reports. */
+function heavyKeysForPath(pathname: string, search = ''): string[] {
   const p = String(pathname || '');
   if (
     p.startsWith('/gradebook') ||
@@ -40,8 +40,19 @@ function heavyKeysForPath(pathname: string): string[] {
   ) {
     return ['results', 'gradebookEntries'];
   }
-  if (p.startsWith('/reports') || p.startsWith('/admin/certificates')) {
-    return ['certificates', 'transcripts', 'gradebookEntries', 'results'];
+  if (p.startsWith('/admin/certificates')) {
+    return ['certificates'];
+  }
+  if (p.startsWith('/reports')) {
+    const params = new URLSearchParams(
+      search.startsWith('?') ? search.slice(1) : search,
+    );
+    const tab = params.get('tab') || '';
+    // Only pull the heavy slice the open report tab actually needs.
+    if (tab === 'certificates') return ['certificates'];
+    if (tab === 'transcripts') return ['transcripts', 'gradebookEntries'];
+    if (tab === 'exams') return ['results', 'gradebookEntries'];
+    return [];
   }
   return [];
 }
@@ -300,9 +311,10 @@ export const DataProvider = ({ children }) => {
         );
 
         // If the user landed directly on a heavy route, load those caches now
-        // (otherwise wait until they navigate — see pathname effect).
+        // (otherwise wait until they navigate — see pathname/search effect).
         const heavyNeeded = heavyKeysForPath(
           typeof window !== 'undefined' ? window.location.pathname : '',
+          typeof window !== 'undefined' ? window.location.search : '',
         ).filter((k) => !heavyLoadedKeysRef.current.has(k));
         if (heavyNeeded.length) {
           fetchKeys(heavyNeeded, generation, { force: true })
@@ -354,10 +366,10 @@ export const DataProvider = ({ children }) => {
     }
   }, [user?.id, user?.role, loadData]);
 
-  // Load heavy academic caches only when the open route needs them.
+  // Load heavy academic caches only when the open route/tab needs them.
   useEffect(() => {
     if (!user?.id || user.role === 'super_admin' || !hasLoadedOnceRef.current) return;
-    const needed = heavyKeysForPath(location.pathname);
+    const needed = heavyKeysForPath(location.pathname, location.search);
     const missing = needed.filter((k) => !heavyLoadedKeysRef.current.has(k));
     if (!missing.length) return;
     const generation = generationRef.current;
@@ -367,7 +379,7 @@ export const DataProvider = ({ children }) => {
         for (const k of missing) heavyLoadedKeysRef.current.add(k);
       })
       .catch((err) => console.warn('Heavy route data fetch failed', err));
-  }, [user?.id, user?.role, location.pathname, fetchKeys]);
+  }, [user?.id, user?.role, location.pathname, location.search, fetchKeys]);
 
   const calculateStudentFinancials = useCallback(() => {
     // Index payments/enrollments once instead of scanning the full arrays for

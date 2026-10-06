@@ -5,7 +5,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useData } from '@/contexts/DataContext';
 import AnimatedPage from '@/components/AnimatedPage';
 import PageHeader from '@/components/PageHeader';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { RefreshCw, AlertTriangle, Loader2, Award } from 'lucide-react';
@@ -151,14 +151,14 @@ const ReportsPage = () => {
             </TabsList>
             
             <div className="mt-6">
-            {showFinance && <TabsContent value="finance"><FinanceReport /></TabsContent>}
-            {showRevenue && <TabsContent value="revenue"><RevenueReport /></TabsContent>}
-            {showSettlement && <TabsContent value="settlement"><SettlementReport /></TabsContent>}
-            {showAttendance && <TabsContent value="attendance"><AttendanceReport /></TabsContent>}
-            {showExams && <TabsContent value="exams"><ExamReport /></TabsContent>}
-            {showTranscripts && <TabsContent value="transcripts"><TranscriptReport /></TabsContent>}
-            {showCertificates && <TabsContent value="certificates"><CertificateReport /></TabsContent>}
-            {showAffiliates && <TabsContent value="affiliates"><AffiliateReport /></TabsContent>}
+            {showFinance && activeTab === 'finance' && <FinanceReport />}
+            {showRevenue && activeTab === 'revenue' && <RevenueReport />}
+            {showSettlement && activeTab === 'settlement' && <SettlementReport />}
+            {showAttendance && activeTab === 'attendance' && <AttendanceReport />}
+            {showExams && activeTab === 'exams' && <ExamReport />}
+            {showTranscripts && activeTab === 'transcripts' && <TranscriptReport />}
+            {showCertificates && activeTab === 'certificates' && <CertificateReport />}
+            {showAffiliates && activeTab === 'affiliates' && <AffiliateReport />}
             </div>
         </Tabs>
       )}

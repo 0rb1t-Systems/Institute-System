@@ -4022,6 +4022,15 @@ export const deleteCertificate = async (id) => {
   return true
 }
 
+/** Hard-delete many certificates in one request (Report Center bulk action). */
+export const deleteCertificates = async (ids: string[]) => {
+  const list = Array.isArray(ids) ? [...new Set(ids.filter(Boolean))] : []
+  if (!list.length) return true
+  const { error } = await supabase.from('certificates').delete().in('id', list)
+  if (error) throw error
+  return true
+}
+
 export const verifyDocumentById = async (code) => {
   const { data, error } = await supabase.rpc('verify_credential', { p_code: code })
   if (error) throw error

@@ -6,7 +6,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Wand2, Loader2, CheckCircle, AlertCircle, Search, Layout, ChevronDown, Check } from 'lucide-react';
+import { BadgeCheck, Loader2, CheckCircle, AlertCircle, Search, Layout, ChevronDown, Check } from 'lucide-react';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -164,7 +164,7 @@ function CertificateThumb({ data }: { data: CertificateRenderData }) {
  */
 const CertificateAutoGenerate = ({ onGenerationComplete }) => {
   const { institution } = useAuth();
-  const { students: contextStudents, classes: contextClasses } = useData();
+  const { students: contextStudents, classes: contextClasses, enrollments: contextEnrollments = [] } = useData();
   const { toast } = useToast();
   const [showConfirmDialog, setShowConfirmDialog] = useState(false);
   const [generating, setGenerating] = useState(false);
@@ -224,7 +224,12 @@ const CertificateAutoGenerate = ({ onGenerationComplete }) => {
   );
   const [hydratedPreviewData, setHydratedPreviewData] = useState<CertificateRenderData | null>(null);
 
+  // Only hydrate / paint the heavy CertificateCanvas while the template menu is open.
   useEffect(() => {
+    if (!templateMenuOpen) {
+      setHydratedPreviewData(null);
+      return;
+    }
     let cancelled = false;
     setHydratedPreviewData(hoverPreviewData);
     ;(async () => {
@@ -238,7 +243,7 @@ const CertificateAutoGenerate = ({ onGenerationComplete }) => {
     return () => {
       cancelled = true;
     };
-  }, [hoverPreviewData]);
+  }, [templateMenuOpen, hoverPreviewData]);
 
   useEffect(() => {
     let cancelled = false;
@@ -327,10 +332,11 @@ const CertificateAutoGenerate = ({ onGenerationComplete }) => {
     setEligibilityRows(rows || []);
   };
 
+  // Debounce eligibility RPC so rapid class/student changes don't stack requests.
   useEffect(() => {
     let cancelled = false;
-    (async () => {
-      setLoadingMeta(true);
+    setLoadingMeta(true);
+    const timer = window.setTimeout(async () => {
       try {
         const rows = await listCertificateEligibleEnrollments({
           classId: selectedClass !== 'all' ? selectedClass : null,
@@ -339,13 +345,16 @@ const CertificateAutoGenerate = ({ onGenerationComplete }) => {
         if (cancelled) return;
         setEligibilityRows(rows || []);
       } catch (err) {
-        notify.error(err, { context: 'CertificateAutoGenerate - load', fallback: MESSAGES.LOAD_FAILED });
+        if (!cancelled) {
+          notify.error(err, { context: 'CertificateAutoGenerate - load', fallback: MESSAGES.LOAD_FAILED });
+        }
       } finally {
         if (!cancelled) setLoadingMeta(false);
       }
-    })();
+    }, 280);
     return () => {
       cancelled = true;
+      window.clearTimeout(timer);
     };
   }, [selectedClass, selectedStudent]);
 
@@ -357,6 +366,21 @@ const CertificateAutoGenerate = ({ onGenerationComplete }) => {
     () => Object.fromEntries((students || []).map((s) => [s.id, s])),
     [students],
   );
+
+  // Narrow the student dropdown when a class is chosen (avoids rendering hundreds of items).
+  const studentsForSelect = useMemo(() => {
+    if (selectedClass === 'all') {
+      // Avoid dumping the full roster into a Select — pick a class first when large.
+      if ((students || []).length > 80) return [];
+      return students || [];
+    }
+    const ids = new Set(
+      (contextEnrollments || [])
+        .filter((e) => e.class_id === selectedClass && e.status !== 'withdrawn')
+        .map((e) => e.student_id),
+    );
+    return (students || []).filter((s) => ids.has(s.id));
+  }, [students, contextEnrollments, selectedClass]);
 
   const eligibleEnrollments = useMemo(() => {
     return (eligibilityRows || []).filter((row) => {
@@ -463,14 +487,16 @@ const CertificateAutoGenerate = ({ onGenerationComplete }) => {
 
   return (
     <>
-      <Card>
-        <CardHeader className="pb-3">
-          <CardTitle className="flex items-center gap-2 text-lg">
-            <Wand2 className="h-5 w-5 text-[var(--ds-primary,#1F8A5B)]" />
+      <Card className="overflow-hidden border-[var(--ds-border,#DDE5DF)] shadow-sm">
+        <CardHeader className="border-b border-[var(--ds-border,#DDE5DF)] bg-gradient-to-br from-[var(--ds-surface,#fff)] to-[var(--ds-primary-soft,#ECFDF5)]/40 pb-4">
+          <CardTitle className="flex items-center gap-3 text-lg text-[var(--ds-text-primary,#122018)]">
+            <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-[var(--ds-primary,#1F8A5B)] text-white shadow-sm">
+              <BadgeCheck className="h-5 w-5" />
+            </span>
             Certificate Generation
           </CardTitle>
         </CardHeader>
-        <CardContent className="space-y-4">
+        <CardContent className="space-y-4 pt-5">
           <div className="flex flex-wrap gap-2">
             <Button
               type="button"
@@ -492,22 +518,12 @@ const CertificateAutoGenerate = ({ onGenerationComplete }) => {
 
           <div className="grid md:grid-cols-2 gap-2">
             <Select
-              value={selectedStudent || 'all'}
-              onValueChange={(v) => setSelectedStudent(v === 'all' ? '' : v)}
+              value={selectedClass}
+              onValueChange={(v) => {
+                setSelectedClass(v);
+                setSelectedStudent('');
+              }}
             >
-              <SelectTrigger>
-                <SelectValue placeholder="All students" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All students</SelectItem>
-                {students.map((s) => (
-                  <SelectItem key={s.id} value={s.id}>
-                    {s.name} ({s.student_code})
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            <Select value={selectedClass} onValueChange={setSelectedClass}>
               <SelectTrigger>
                 <SelectValue placeholder="All classes" />
               </SelectTrigger>
@@ -518,6 +534,28 @@ const CertificateAutoGenerate = ({ onGenerationComplete }) => {
                     {c.name}
                   </SelectItem>
                 ))}
+              </SelectContent>
+            </Select>
+            <Select
+              value={selectedStudent || 'all'}
+              onValueChange={(v) => setSelectedStudent(v === 'all' ? '' : v)}
+            >
+              <SelectTrigger>
+                <SelectValue placeholder="All students" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All students</SelectItem>
+                {selectedClass === 'all' && (students || []).length > 80 ? (
+                  <SelectItem value="__pick_class" disabled>
+                    Select a class first…
+                  </SelectItem>
+                ) : (
+                  studentsForSelect.map((s) => (
+                    <SelectItem key={s.id} value={s.id}>
+                      {s.name} ({s.student_code})
+                    </SelectItem>
+                  ))
+                )}
               </SelectContent>
             </Select>
           </div>
@@ -574,8 +612,10 @@ const CertificateAutoGenerate = ({ onGenerationComplete }) => {
                     <p className="mb-2 truncate text-xs text-[var(--ds-text-secondary,#5B6B61)]">
                       {previewLayoutLabel(hoveredTemplate, importedTemplates)}
                     </p>
-                    <div className="flex justify-center">
-                      <CertificateThumb data={hydratedPreviewData || hoverPreviewData} />
+                    <div className="flex min-h-[8rem] justify-center">
+                      {templateMenuOpen ? (
+                        <CertificateThumb data={hydratedPreviewData || hoverPreviewData} />
+                      ) : null}
                     </div>
                   </div>
                 </div>
@@ -659,7 +699,7 @@ const CertificateAutoGenerate = ({ onGenerationComplete }) => {
               </>
             ) : (
               <>
-                <Wand2 className="mr-2 h-4 w-4" />
+                <BadgeCheck className="mr-2 h-4 w-4" />
                 Generate
               </>
             )}
