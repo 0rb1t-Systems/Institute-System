@@ -169,6 +169,9 @@ Deno.serve(async (req) => {
         full_name: fullName,
         email,
         phone: inquiry.phone || null,
+        university: inquiry.university || null,
+        faculty: inquiry.faculty || null,
+        year_of_study: inquiry.year_of_study || null,
         affiliate_id: inquiry.affiliate_id || null,
       })
 
@@ -206,12 +209,21 @@ Deno.serve(async (req) => {
         return json({ error: short ? 'STUDENT_ID_TOO_SHORT' : 'STUDENT_PASSWORD_FAILED' }, 400)
       }
       tempPassword = studentCode
-    } else if (inquiry.affiliate_id) {
-      await admin
-        .from('profiles')
-        .update({ affiliate_id: inquiry.affiliate_id })
-        .eq('id', studentId)
-        .is('affiliate_id', null)
+    } else {
+      const educationPatch: Record<string, string | null> = {}
+      if (inquiry.university) educationPatch.university = inquiry.university
+      if (inquiry.faculty) educationPatch.faculty = inquiry.faculty
+      if (inquiry.year_of_study) educationPatch.year_of_study = inquiry.year_of_study
+      if (Object.keys(educationPatch).length) {
+        await admin.from('profiles').update(educationPatch).eq('id', studentId)
+      }
+      if (inquiry.affiliate_id) {
+        await admin
+          .from('profiles')
+          .update({ affiliate_id: inquiry.affiliate_id })
+          .eq('id', studentId)
+          .is('affiliate_id', null)
+      }
     }
 
     // No enrollment on approve — staff enrolls manually when ready.

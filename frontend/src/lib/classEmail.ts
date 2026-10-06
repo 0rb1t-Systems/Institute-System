@@ -1,4 +1,3 @@
-import { sendEmailJsMessage } from '@/lib/emailjs'
 import { supabase } from '@/lib/supabaseClient'
 import { formatDate } from '@/lib/utils'
 
@@ -53,6 +52,25 @@ export function applyClassEmailTemplate(
   })
 }
 
+/** A few at a time — faster than one-by-one, without flooding the provider. */
+async function mapPool<T, R>(
+  items: T[],
+  limit: number,
+  worker: (item: T, index: number) => Promise<R>,
+): Promise<R[]> {
+  const results = new Array<R>(items.length)
+  let cursor = 0
+  const runners = Array.from({ length: Math.min(limit, items.length) }, async () => {
+    while (cursor < items.length) {
+      const index = cursor
+      cursor += 1
+      results[index] = await worker(items[index], index)
+    }
+  })
+  await Promise.all(runners)
+  return results
+}
+
 async function sendViaResend(params: {
   to: string
   subject: string
@@ -80,8 +98,8 @@ async function sendViaResend(params: {
 }
 
 /**
- * EmailJS first; if EmailJS returns ok:false (or skipped), fall back to Resend.
- * Always attempts to place a copy in the sender inbox.
+ * One Resend email per student. The same address is never mailed twice.
+ * A single inbox copy goes to the sender, and only if that address is not already a student.
  */
 export async function sendClassStudentEmails(opts: {
   classId: string
@@ -92,6 +110,7 @@ export async function sendClassStudentEmails(opts: {
   copyToEmail?: string | null
   institutionName?: string | null
   institutionEmail?: string | null
+  onProgress?: (done: number, total: number) => void
 }): Promise<{
   sent: number
   failed: number
@@ -108,93 +127,67 @@ export async function sendClassStudentEmails(opts: {
 
   const copyTo = String(opts.copyToEmail || '').trim().toLowerCase()
   const replyTo = String(opts.institutionEmail || opts.copyToEmail || '').trim()
-  const institutionName = String(opts.institutionName || 'Training Center').trim()
 
-  const recipients = opts.students.filter((s) => {
-    const email = String(s.email || '').trim().toLowerCase()
-    return email.includes('@')
-  })
+  const seen = new Set<string>()
+  const recipients: ClassEmailStudent[] = []
+  for (const student of opts.students) {
+    const email = String(student.email || '').trim().toLowerCase()
+    if (!email.includes('@') || seen.has(email)) continue
+    seen.add(email)
+    recipients.push({ ...student, email })
+  }
   const skipped = opts.students.length - recipients.length
 
   let sent = 0
   let failed = 0
-  let viaEmailJs = 0
-  let viaResend = 0
   const errors: string[] = []
+  let done = 0
+  const total = recipients.length
 
-  for (const student of recipients) {
+  let copyOk = false
+  const copyPromise = (async () => {
+    if (!copyTo.includes('@') || seen.has(copyTo)) return false
+    const previewStudent = recipients[0] || { name: 'Admin' }
+    const previewMessage = [
+      `COPY — class email for "${opts.classData.name || ''}" (${recipients.length} student(s)).`,
+      ``,
+      applyClassEmailTemplate(template, previewStudent, opts.classData),
+    ].join('\n')
+    const copyResend = await sendViaResend({
+      to: copyTo,
+      subject: `[Copy] ${subject}`,
+      message: previewMessage,
+      replyTo,
+    })
+    if (!copyResend.ok && copyResend.error) errors.push(`Inbox copy: ${copyResend.error}`)
+    return copyResend.ok
+  })()
+
+  const results = await mapPool(recipients, 4, async (student) => {
     const toEmail = String(student.email || '').trim().toLowerCase()
     const toName = String(student.name || 'Student').trim()
     const message = applyClassEmailTemplate(template, student, opts.classData)
-
-    const emailJs = await sendEmailJsMessage({
-      toEmail,
-      toName,
-      subject,
-      message,
-      institutionName,
-      replyTo,
-      bccEmail: copyTo || undefined,
-    })
-
-    if (emailJs.ok) {
-      sent += 1
-      viaEmailJs += 1
-      continue
-    }
-
     const resend = await sendViaResend({
       to: toEmail,
       subject,
       message,
       classId: opts.classId,
-      bcc: copyTo ? [copyTo] : [],
       replyTo,
     })
+    done += 1
+    opts.onProgress?.(done, total)
+    if (resend.ok) return { ok: true as const }
+    return { ok: false as const, error: `${toName}: ${resend.error || 'failed'}` }
+  })
 
-    if (resend.ok) {
-      sent += 1
-      viaResend += 1
-    } else {
+  for (const result of results) {
+    if (result.ok) sent += 1
+    else {
       failed += 1
-      errors.push(`${toName}: ${resend.error || emailJs.error || 'failed'}`)
+      errors.push(result.error)
     }
   }
 
-  // Guaranteed inbox copy for the sender (same body, first student placeholders or class-level)
-  let copyOk = false
-  if (copyTo.includes('@')) {
-    const previewStudent = recipients[0] || { name: 'Admin' }
-    const previewMessage = [
-      `COPY — emailed to ${sent} student(s) in class "${opts.classData.name || ''}".`,
-      ``,
-      applyClassEmailTemplate(template, previewStudent, opts.classData),
-    ].join('\n')
-
-    const copyJs = await sendEmailJsMessage({
-      toEmail: copyTo,
-      toName: 'Admin',
-      subject: `[Copy] ${subject}`,
-      message: previewMessage,
-      institutionName,
-      replyTo,
-    })
-
-    if (copyJs.ok) {
-      copyOk = true
-    } else {
-      const copyResend = await sendViaResend({
-        to: copyTo,
-        subject: `[Copy] ${subject}`,
-        message: previewMessage,
-        replyTo,
-      })
-      copyOk = copyResend.ok
-      if (!copyResend.ok && copyResend.error) {
-        errors.push(`Inbox copy: ${copyResend.error}`)
-      }
-    }
-  }
-
-  return { sent, failed, skipped, viaEmailJs, viaResend, copyOk, errors }
+  copyOk = await copyPromise
+  return { sent, failed, skipped, viaEmailJs: 0, viaResend: sent, copyOk, errors }
 }

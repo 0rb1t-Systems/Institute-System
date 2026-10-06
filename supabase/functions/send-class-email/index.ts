@@ -1,6 +1,7 @@
 // =====================================================================
-//  Admin/staff: send a transactional email via Resend (EmailJS fallback).
-//  Body: { to, subject, message, bcc?, reply_to?, class_id? }
+//  Admin/staff: one Resend email to a single recipient.
+//  Body: { to, subject, message, reply_to?, class_id? }
+//  No automatic BCC — the caller sends at most one separate inbox copy.
 // =====================================================================
 import { createClient } from 'jsr:@supabase/supabase-js@2'
 import { escapeHtml, normalizeSecret, sendResendEmail } from '../_shared/resend.ts'
@@ -85,16 +86,6 @@ Deno.serve(async (req) => {
     const message = String(body.message || body.body || '').trim().slice(0, 8000)
     const classId = String(body.class_id || '').trim()
     const replyTo = String(body.reply_to || caller.email || callerInst.email || '').trim()
-    const bccRaw = Array.isArray(body.bcc) ? body.bcc : body.bcc ? [body.bcc] : []
-    const bcc = bccRaw
-      .map((e: unknown) => String(e || '').trim().toLowerCase())
-      .filter((e: string) => e.includes('@'))
-
-    // Always copy sender / institution inbox when possible
-    for (const copy of [caller.email, callerInst.email]) {
-      const e = String(copy || '').trim().toLowerCase()
-      if (e.includes('@') && e !== to && !bcc.includes(e)) bcc.push(e)
-    }
 
     if (!to.includes('@')) return json({ error: 'INVALID_TO' }, 400)
     if (!subject) return json({ error: 'SUBJECT_REQUIRED' }, 400)
@@ -130,7 +121,6 @@ Deno.serve(async (req) => {
       to,
       subject,
       html: toHtml(message),
-      bcc,
       replyTo,
     })
 

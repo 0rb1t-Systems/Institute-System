@@ -678,17 +678,14 @@ const ClassDetailsDialog = ({ classData, isOpen, onClose }) => {
     const { toast } = useToast();
     const [emailSubject, setEmailSubject] = useState('');
     const [emailMessage, setEmailMessage] = useState('');
-    const [emailReady, setEmailReady] = useState(false);
     const [sendingEmail, setSendingEmail] = useState(false);
+    const [emailProgress, setEmailProgress] = useState<{ done: number; total: number } | null>(null);
 
     useEffect(() => {
-        if (!classData || !isOpen) {
-            setEmailReady(false);
-            return;
-        }
+        if (!classData || !isOpen) return;
         setEmailSubject(`Update about ${classData.name || 'your class'}`);
         setEmailMessage(buildDefaultClassEmailMessage(classData));
-        setEmailReady(true);
+        setEmailProgress(null);
     }, [classData?.id, isOpen]);
 
     if (!classData) return null;
@@ -703,6 +700,12 @@ const ClassDetailsDialog = ({ classData, isOpen, onClose }) => {
                 id: s.id,
                 name: s.name,
                 email: s.email || null,
+                phone: s.phone || null,
+                university: s.university || s.university_name || null,
+                university_name: s.university_name || s.university || null,
+                faculty: s.faculty || null,
+                year: s.year || s.year_of_study || null,
+                year_of_study: s.year_of_study || s.year || null,
             };
         })
         .filter(Boolean);
@@ -729,24 +732,27 @@ const ClassDetailsDialog = ({ classData, isOpen, onClose }) => {
 
     const handleSendClassEmail = async () => {
         if (sendingEmail || studentsWithEmail.length === 0) return;
+        const subject = emailSubject;
+        const messageTemplate = emailMessage;
         setSendingEmail(true);
+        setEmailProgress({ done: 0, total: studentsWithEmail.length });
         try {
             const result = await sendClassStudentEmails({
                 classId: classData.id,
                 classData,
                 students: studentsWithEmail,
-                subject: emailSubject,
-                messageTemplate: emailMessage,
+                subject,
+                messageTemplate,
                 copyToEmail: user?.email || institution?.email || null,
                 institutionName: institution?.name || null,
                 institutionEmail: institution?.email || user?.email || null,
+                onProgress: (done, total) => setEmailProgress({ done, total }),
             });
 
             toast({
                 title: result.sent > 0 ? 'Emails sent' : 'No emails sent',
                 description: [
                     `${result.sent} sent`,
-                    result.viaEmailJs ? `${result.viaEmailJs} via EmailJS` : null,
                     result.viaResend ? `${result.viaResend} via Resend` : null,
                     result.failed ? `${result.failed} failed` : null,
                     result.skipped ? `${result.skipped} skipped (no email)` : null,
@@ -773,6 +779,7 @@ const ClassDetailsDialog = ({ classData, isOpen, onClose }) => {
             });
         } finally {
             setSendingEmail(false);
+            setEmailProgress(null);
         }
     };
 
@@ -843,8 +850,7 @@ const ClassDetailsDialog = ({ classData, isOpen, onClose }) => {
                                 Email class students
                             </CardTitle>
                             <p className="text-sm text-[var(--ds-text-secondary,#5B6B61)]">
-                                Use placeholders like {'{name}'}, {'{class}'}, {'{end_date}'}, {'{start_date}'}, {'{program}'}, {'{instructor}'}.
-                                Sends via EmailJS first; Resend if EmailJS fails. A copy goes to your inbox.
+                                Waxaad bedeli kartaa qoraalkan, ama Soomaali soo copy-gareyso oo halkaan ku dhaji. {'{name}'}, {'{class}'}, {'{end_date}'}, {'{start_date}'}, {'{program}'}, {'{instructor}'} waa la buuxiyaa arday kasta. Arday kasta wuxuu helaa hal email, Resend kaliya. Koobi keliya ayaa inbox-kaaga u tagaysa.
                             </p>
                         </CardHeader>
                         <CardContent className="space-y-3">
@@ -852,19 +858,28 @@ const ClassDetailsDialog = ({ classData, isOpen, onClose }) => {
                                 <Label htmlFor="class-email-subject">Subject</Label>
                                 <Input
                                     id="class-email-subject"
-                                    value={emailReady ? emailSubject : ''}
+                                    value={emailSubject}
                                     onChange={(e) => setEmailSubject(e.target.value)}
-                                    placeholder="Email subject"
+                                    placeholder="Subject — cinwaanka emailka"
+                                    disabled={sendingEmail}
+                                    autoComplete="off"
                                 />
                             </div>
                             <div className="space-y-2">
                                 <Label htmlFor="class-email-message">Message</Label>
                                 <Textarea
                                     id="class-email-message"
-                                    value={emailReady ? emailMessage : ''}
+                                    value={emailMessage}
                                     onChange={(e) => setEmailMessage(e.target.value)}
                                     rows={8}
-                                    placeholder={'Hello {name},\n\n...'}
+                                    disabled={sendingEmail}
+                                    spellCheck={false}
+                                    autoCorrect="off"
+                                    autoCapitalize="off"
+                                    dir="auto"
+                                    lang="so"
+                                    placeholder={'Ku qor ama ku dhaji fariintaada, Soomaali ama English.\n\nAsc {name},\n\nKoorsada aad iska diiwaangelisay ({class}) waxay furmayaa {end_date}.'}
+                                    className="min-h-[180px] resize-y whitespace-pre-wrap"
                                 />
                             </div>
                             <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
@@ -889,7 +904,9 @@ const ClassDetailsDialog = ({ classData, isOpen, onClose }) => {
                                     ) : (
                                         <Mail className="mr-2 h-4 w-4" />
                                     )}
-                                    {sendingEmail ? 'Sending...' : 'Send email'}
+                                    {sendingEmail
+                                        ? `Sending${emailProgress ? ` ${emailProgress.done}/${emailProgress.total}` : ''}...`
+                                        : 'Send email'}
                                 </Button>
                             </div>
                         </CardContent>

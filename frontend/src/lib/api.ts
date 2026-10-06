@@ -100,6 +100,11 @@ function mapStudent(p) {
     name: p.full_name,
     email: p.email,
     phone: p.phone ?? null,
+    university_name: p.university ?? p.university_name ?? null,
+    university: p.university ?? p.university_name ?? null,
+    faculty: p.faculty ?? null,
+    year: p.year_of_study ?? p.year ?? null,
+    year_of_study: p.year_of_study ?? p.year ?? null,
     address: '',
     registration_date: p.created_at,
     avatar_url: p.avatar_url ?? null,
@@ -825,10 +830,21 @@ export const createStudentWithAutoCode = async (data) => {
 
 export const registerManualStudent = async (data) => {
   let student = await createStudentWithAutoCode(data)
+  const educationUpdates: any = {}
+  if (data.university !== undefined || data.university_name !== undefined) {
+    educationUpdates.university = data.university ?? data.university_name ?? null
+  }
+  if (data.faculty !== undefined) educationUpdates.faculty = data.faculty || null
+  if (data.year !== undefined || data.year_of_study !== undefined) {
+    educationUpdates.year_of_study = data.year ?? data.year_of_study ?? null
+  }
   if (data.affiliate_id && data.affiliate_id !== 'none') {
+    educationUpdates.affiliate_id = data.affiliate_id
+  }
+  if (Object.keys(educationUpdates).length) {
     const { data: updated, error } = await supabase
       .from('profiles')
-      .update({ affiliate_id: data.affiliate_id })
+      .update(educationUpdates)
       .eq('id', student.id)
       .select('*')
       .single()
@@ -861,6 +877,13 @@ export const updateStudent = async (id, data) => {
   if (data.phone !== undefined) updates.phone = data.phone
   if (data.status) updates.status = data.status
   if (data.avatar_url !== undefined) updates.avatar_url = data.avatar_url
+  if (data.university !== undefined || data.university_name !== undefined) {
+    updates.university = data.university ?? data.university_name ?? null
+  }
+  if (data.faculty !== undefined) updates.faculty = data.faculty || null
+  if (data.year !== undefined || data.year_of_study !== undefined) {
+    updates.year_of_study = data.year ?? data.year_of_study ?? null
+  }
   // Prefer assignStudentAffiliate when commissions must resync; this keeps a simple path for callers that only set attribution.
   if (data.affiliate_id !== undefined) {
     updates.affiliate_id =
