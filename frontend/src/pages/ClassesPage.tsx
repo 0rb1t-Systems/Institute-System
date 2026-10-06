@@ -3,7 +3,7 @@ import { Helmet } from 'react-helmet';
 import AnimatedPage from '@/components/AnimatedPage';
 import PageHeader from '@/components/PageHeader';
 import { Button } from '@/components/ui/button';
-import { PlusCircle, Users, X, Search, ArrowRightLeft, Eye, FileSpreadsheet, Printer, Pencil, Trash2, CheckCircle2, XCircle, BookOpen, DollarSign, Clock, Percent, AlertTriangle, History, Loader2, ChevronLeft, ChevronRight } from 'lucide-react';
+import { PlusCircle, Users, X, Search, ArrowRightLeft, Eye, FileSpreadsheet, Pencil, Trash2, CheckCircle2, XCircle, BookOpen, DollarSign, Clock, Percent, AlertTriangle, History, Loader2, ChevronLeft, ChevronRight, Mail } from 'lucide-react';
 import { DsIconButton, DsOutlineAction, DsPrimaryAction, DS_ICON_STROKE } from '@/components/ui/ds-actions';
 import { useData } from '@/contexts/DataContext';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -22,6 +22,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Checkbox } from '@/components/ui/checkbox';
 import { useToast } from '@/components/ui/use-toast';
@@ -32,6 +33,8 @@ import { Badge } from '@/components/ui/badge';
 import { DatePickerField } from '@/components/ui/DateTimeFields';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import InstructorPaymentTransferLog from '@/components/instructor/InstructorPaymentTransferLog';
+import { exportClassStudentsToExcel } from '@/lib/ClassStudentsExcelExporter';
+import { buildDefaultClassEmailMessage, sendClassStudentEmails } from '@/lib/classEmail';
 
 const ClassCoursesDialog = ({ classData, isOpen, onClose }) => {
     const { courses, classCourses, addCourseToClass, removeCourseFromClass } = useData();
@@ -670,7 +673,108 @@ const ClassRosterDialog = ({ classData, isOpen, onClose }) => {
 };
 
 const ClassDetailsDialog = ({ classData, isOpen, onClose }) => {
+    const { students, enrollments } = useData();
+    const { user, institution } = useAuth();
+    const { toast } = useToast();
+    const [emailSubject, setEmailSubject] = useState('');
+    const [emailMessage, setEmailMessage] = useState('');
+    const [emailReady, setEmailReady] = useState(false);
+    const [sendingEmail, setSendingEmail] = useState(false);
+
+    useEffect(() => {
+        if (!classData || !isOpen) {
+            setEmailReady(false);
+            return;
+        }
+        setEmailSubject(`Update about ${classData.name || 'your class'}`);
+        setEmailMessage(buildDefaultClassEmailMessage(classData));
+        setEmailReady(true);
+    }, [classData?.id, isOpen]);
+
     if (!classData) return null;
+
+    const classStudents = enrollments
+        .filter((e) => e.class_id === classData.id && e.status !== 'inactive')
+        .sort((a, b) => Number(new Date(b.enrollment_date)) - Number(new Date(a.enrollment_date)))
+        .map((e) => {
+            const s = students.find((stu) => stu.id === e.student_id);
+            if (!s?.name) return null;
+            return {
+                id: s.id,
+                name: s.name,
+                email: s.email || null,
+            };
+        })
+        .filter(Boolean);
+
+    const studentsWithEmail = classStudents.filter((s) => String(s.email || '').includes('@'));
+
+    const handleExportExcel = () => {
+        try {
+            exportClassStudentsToExcel(classData, classStudents);
+            toast({
+                title: 'Exported',
+                description: `${classStudents.length} student(s) downloaded as Excel.`,
+            });
+        } catch (error) {
+            notify.error(error, {
+                context: 'ClassesPage - exportClassStudents',
+                fallback: {
+                    title: 'Export Failed',
+                    description: error?.message || 'Could not export class students.',
+                },
+            });
+        }
+    };
+
+    const handleSendClassEmail = async () => {
+        if (sendingEmail || studentsWithEmail.length === 0) return;
+        setSendingEmail(true);
+        try {
+            const result = await sendClassStudentEmails({
+                classId: classData.id,
+                classData,
+                students: studentsWithEmail,
+                subject: emailSubject,
+                messageTemplate: emailMessage,
+                copyToEmail: user?.email || institution?.email || null,
+                institutionName: institution?.name || null,
+                institutionEmail: institution?.email || user?.email || null,
+            });
+
+            toast({
+                title: result.sent > 0 ? 'Emails sent' : 'No emails sent',
+                description: [
+                    `${result.sent} sent`,
+                    result.viaEmailJs ? `${result.viaEmailJs} via EmailJS` : null,
+                    result.viaResend ? `${result.viaResend} via Resend` : null,
+                    result.failed ? `${result.failed} failed` : null,
+                    result.skipped ? `${result.skipped} skipped (no email)` : null,
+                    result.copyOk ? 'Copy delivered to your inbox' : null,
+                ].filter(Boolean).join(' · '),
+            });
+
+            if (result.failed && result.errors?.length) {
+                notify.error(new Error(result.errors[0]), {
+                    context: 'ClassesPage - classEmail partial',
+                    fallback: {
+                        title: 'Some emails failed',
+                        description: result.errors.slice(0, 2).join(' | '),
+                    },
+                });
+            }
+        } catch (error) {
+            notify.error(error, {
+                context: 'ClassesPage - sendClassEmail',
+                fallback: {
+                    title: 'Email Failed',
+                    description: error?.message || 'Could not send class emails.',
+                },
+            });
+        } finally {
+            setSendingEmail(false);
+        }
+    };
 
     return (
         <DialogContent className="sm:max-w-[900px] max-h-[90vh] overflow-y-auto">
@@ -690,8 +794,19 @@ const ClassDetailsDialog = ({ classData, isOpen, onClose }) => {
                 
                 <TabsContent value="overview" className="mt-4 space-y-4">
                     <Card>
-                        <CardHeader>
+                        <CardHeader className="flex flex-row items-start justify-between gap-3 space-y-0">
                             <CardTitle className="text-lg">Class Information</CardTitle>
+                            <Button
+                                type="button"
+                                variant="outline"
+                                size="sm"
+                                onClick={handleExportExcel}
+                                disabled={classStudents.length === 0}
+                                title={classStudents.length === 0 ? 'No students enrolled' : 'Download class students as Excel'}
+                            >
+                                <FileSpreadsheet className="mr-2 h-4 w-4" />
+                                Download Excel
+                            </Button>
                         </CardHeader>
                         <CardContent className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                             <div>
@@ -717,6 +832,65 @@ const ClassDetailsDialog = ({ classData, isOpen, onClose }) => {
                             <div>
                                 <Label className="text-xs uppercase text-[var(--ds-text-tertiary,#8A978E)]">End Date</Label>
                                 <p className="font-medium text-[var(--ds-text-primary,#122018)]">{formatDate(classData.end_date)}</p>
+                            </div>
+                        </CardContent>
+                    </Card>
+
+                    <Card>
+                        <CardHeader className="space-y-1">
+                            <CardTitle className="flex items-center gap-2 text-lg">
+                                <Mail className="h-4 w-4" />
+                                Email class students
+                            </CardTitle>
+                            <p className="text-sm text-[var(--ds-text-secondary,#5B6B61)]">
+                                Use placeholders like {'{name}'}, {'{class}'}, {'{end_date}'}, {'{start_date}'}, {'{program}'}, {'{instructor}'}.
+                                Sends via EmailJS first; Resend if EmailJS fails. A copy goes to your inbox.
+                            </p>
+                        </CardHeader>
+                        <CardContent className="space-y-3">
+                            <div className="space-y-2">
+                                <Label htmlFor="class-email-subject">Subject</Label>
+                                <Input
+                                    id="class-email-subject"
+                                    value={emailReady ? emailSubject : ''}
+                                    onChange={(e) => setEmailSubject(e.target.value)}
+                                    placeholder="Email subject"
+                                />
+                            </div>
+                            <div className="space-y-2">
+                                <Label htmlFor="class-email-message">Message</Label>
+                                <Textarea
+                                    id="class-email-message"
+                                    value={emailReady ? emailMessage : ''}
+                                    onChange={(e) => setEmailMessage(e.target.value)}
+                                    rows={8}
+                                    placeholder={'Hello {name},\n\n...'}
+                                />
+                            </div>
+                            <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                                <p className="text-xs text-[var(--ds-text-tertiary,#8A978E)]">
+                                    {studentsWithEmail.length} of {classStudents.length} students have email
+                                    {(user?.email || institution?.email)
+                                        ? ` · copy → ${user?.email || institution?.email}`
+                                        : ''}
+                                </p>
+                                <Button
+                                    type="button"
+                                    onClick={handleSendClassEmail}
+                                    disabled={
+                                        sendingEmail ||
+                                        studentsWithEmail.length === 0 ||
+                                        !emailSubject.trim() ||
+                                        !emailMessage.trim()
+                                    }
+                                >
+                                    {sendingEmail ? (
+                                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                    ) : (
+                                        <Mail className="mr-2 h-4 w-4" />
+                                    )}
+                                    {sendingEmail ? 'Sending...' : 'Send email'}
+                                </Button>
                             </div>
                         </CardContent>
                     </Card>

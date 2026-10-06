@@ -53,7 +53,7 @@ const PublicGeneralRegistrationPage = () => {
         university: '',
         faculty: '',
         year: '',
-        class_id: 'none',
+        class_id: '',
         affiliate_id: affiliateFromLink || '',
         subdomain: subdomain || '',
     });
@@ -111,12 +111,22 @@ const PublicGeneralRegistrationPage = () => {
             return;
         }
 
+        if (!formData.class_id || formData.class_id === 'none') {
+            setError('Please select a preferred program to continue.');
+            return;
+        }
+
+        const selected = programOptions.find((o) => String(o.id) === String(formData.class_id));
+        if (!selected) {
+            setError('Please select a valid program from the list.');
+            return;
+        }
+
         setSubmitting(true);
         try {
-            const selected = programOptions.find((o) => String(o.id) === String(formData.class_id));
             const result = await submitGeneralRegistration({
                 ...formData,
-                class_id: formData.class_id === 'none' ? 'none' : formData.class_id,
+                class_id: formData.class_id,
                 resolved_class_id: selected?.class_id || null,
                 subdomain,
                 affiliate_id: formData.affiliate_id || affiliateFromLink || null,
@@ -244,13 +254,14 @@ const PublicGeneralRegistrationPage = () => {
                             </div>
                         </div>
                         <div className="space-y-2">
-                            <Label className="text-slate-300">Preferred Program (optional)</Label>
-                            <Select value={formData.class_id || 'none'} onValueChange={handleClassChange}>
+                            <Label className="text-slate-300">
+                              Preferred Program <span className="text-red-400">*</span>
+                            </Label>
+                            <Select value={formData.class_id || undefined} onValueChange={handleClassChange} required>
                                 <SelectTrigger className="bg-slate-950 border-slate-800 text-white">
-                                    <SelectValue placeholder="Choose a program, or skip..." />
+                                    <SelectValue placeholder="Select a program..." />
                                 </SelectTrigger>
                                 <SelectContent className="bg-slate-900 border-slate-800 text-white">
-                                    <SelectItem value="none">Skip for now — register without a program</SelectItem>
                                     {programOptions.length === 0 ? (
                                       <div className="px-2 py-1.5 text-xs text-slate-500">
                                         No programs are open for this registration link right now.
@@ -271,12 +282,16 @@ const PublicGeneralRegistrationPage = () => {
                                 </SelectContent>
                             </Select>
                             <p className="text-xs text-slate-500">
-                              Programs chosen by the institution for this link are listed. You can skip and be enrolled later by staff.
+                              Choose one of the programs listed for this registration link. Program selection is required.
                             </p>
                         </div>
                     </CardContent>
                     <CardFooter className="border-t border-slate-800 pt-6">
-                        <Button type="submit" disabled={submitting || loading || !subdomain} className="w-full bg-indigo-600 hover:bg-indigo-500">
+                        <Button
+                          type="submit"
+                          disabled={submitting || loading || !subdomain || programOptions.length === 0 || !formData.class_id}
+                          className="w-full bg-indigo-600 hover:bg-indigo-500"
+                        >
                             {submitting ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
                             Submit Registration
                         </Button>

@@ -23,6 +23,8 @@ export async function sendResendEmail(opts: {
   to: string
   subject: string
   html: string
+  bcc?: string[]
+  replyTo?: string
 }): Promise<{ ok: true } | { ok: false; error: string }> {
   const apiKey = normalizeSecret(Deno.env.get('RESEND_API_KEY'))
   const from = normalizeSecret(Deno.env.get('RESEND_FROM_EMAIL'))
@@ -33,18 +35,28 @@ export async function sendResendEmail(opts: {
   const to = String(opts.to || '').trim().toLowerCase()
   if (!to || !to.includes('@')) return { ok: false, error: 'INVALID_TO' }
 
+  const bcc = (opts.bcc || [])
+    .map((e) => String(e || '').trim().toLowerCase())
+    .filter((e) => e.includes('@') && e !== to)
+
+  const replyTo = String(opts.replyTo || '').trim()
+
+  const payload: Record<string, unknown> = {
+    from,
+    to: [to],
+    subject: opts.subject,
+    html: opts.html,
+  }
+  if (bcc.length) payload.bcc = [...new Set(bcc)]
+  if (replyTo.includes('@')) payload.reply_to = replyTo
+
   const res = await fetch('https://api.resend.com/emails', {
     method: 'POST',
     headers: {
       Authorization: `Bearer ${apiKey}`,
       'Content-Type': 'application/json',
     },
-    body: JSON.stringify({
-      from,
-      to: [to],
-      subject: opts.subject,
-      html: opts.html,
-    }),
+    body: JSON.stringify(payload),
   })
 
   if (!res.ok) {

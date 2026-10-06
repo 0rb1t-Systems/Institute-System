@@ -135,9 +135,15 @@ export async function sendEmailJsMessage(params: {
   toName: string
   subject?: string
   message: string
+  institutionName?: string
+  replyTo?: string
+  bccEmail?: string
 }): Promise<{ ok: boolean; skipped?: boolean; error?: string }> {
   const cfg = getConfig()
   if (!cfg.ok) return { ok: false, skipped: true, error: cfg.error }
+
+  const institution = (params.institutionName || 'Training Center').trim()
+  const replyTo = (params.replyTo || params.bccEmail || '').trim()
 
   try {
     await emailjs.send(
@@ -151,14 +157,17 @@ export async function sendEmailJsMessage(params: {
         login_email: params.toEmail,
         welcome_message: params.message,
         message: params.message,
-        role: 'User',
+        role: 'Student',
         temporary_password: '-',
         login_url:
           typeof window !== 'undefined' ? `${window.location.origin}/login` : '/login',
-        institution_name: 'Training Center',
-        company_name: 'Training Center',
-        company_email: '',
-        reply_to: params.toEmail,
+        institution_name: institution,
+        company_name: institution,
+        company_email: replyTo || institution,
+        reply_to: replyTo || params.toEmail,
+        // Optional BCC — only works if EmailJS template is configured for it
+        bcc: params.bccEmail || '',
+        bcc_email: params.bccEmail || '',
         email: params.toEmail,
         name: params.toName,
       },
