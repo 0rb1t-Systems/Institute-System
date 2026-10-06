@@ -78,6 +78,7 @@ async function sendViaResend(params: {
   classId?: string
   bcc?: string[]
   replyTo?: string
+  fromName?: string | null
 }): Promise<{ ok: boolean; error?: string }> {
   const { data, error } = await supabase.functions.invoke('send-class-email', {
     body: {
@@ -87,6 +88,7 @@ async function sendViaResend(params: {
       class_id: params.classId || undefined,
       bcc: params.bcc || [],
       reply_to: params.replyTo || undefined,
+      from_name: params.fromName || undefined,
     },
   })
 
@@ -144,22 +146,21 @@ export async function sendClassStudentEmails(opts: {
   let done = 0
   const total = recipients.length
 
+  const fromName = String(opts.institutionName || '').trim() || null
+
   let copyOk = false
   const copyPromise = (async () => {
     if (!copyTo.includes('@') || seen.has(copyTo)) return false
     const previewStudent = recipients[0] || { name: 'Admin' }
-    const previewMessage = [
-      `COPY — class email for "${opts.classData.name || ''}" (${recipients.length} student(s)).`,
-      ``,
-      applyClassEmailTemplate(template, previewStudent, opts.classData),
-    ].join('\n')
+    const previewMessage = applyClassEmailTemplate(template, previewStudent, opts.classData)
     const copyResend = await sendViaResend({
       to: copyTo,
-      subject: `[Copy] ${subject}`,
+      subject,
       message: previewMessage,
       replyTo,
+      fromName,
     })
-    if (!copyResend.ok && copyResend.error) errors.push(`Inbox copy: ${copyResend.error}`)
+    if (!copyResend.ok && copyResend.error) errors.push(`Inbox: ${copyResend.error}`)
     return copyResend.ok
   })()
 
@@ -173,6 +174,7 @@ export async function sendClassStudentEmails(opts: {
       message,
       classId: opts.classId,
       replyTo,
+      fromName,
     })
     done += 1
     opts.onProgress?.(done, total)

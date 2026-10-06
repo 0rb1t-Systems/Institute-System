@@ -601,7 +601,7 @@ const InstitutionSettingsForm = ({
       ) : null}
 
       <form id="institution-settings-form" onSubmit={handleSave} className="space-y-0">
-        <SectionBlock id="settings-profile" icon={Building2} title="Profile">
+        <SectionBlock id="settings-profile" icon={Building2} title="Institution">
             <div className="grid gap-3 sm:grid-cols-2">
               <Field label="Institution name *" htmlFor="inst_name" className="sm:col-span-2">
                 <Input

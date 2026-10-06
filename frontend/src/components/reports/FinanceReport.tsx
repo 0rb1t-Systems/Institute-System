@@ -278,6 +278,17 @@ const FinanceReport = () => {
         }).length;
     }, [enrollments, classes, classFilter, month, tuitionPaidForMonth]);
 
+    const studentNumber = (s?: { phone?: string | null } | null) =>
+        String(s?.phone || '').trim() || '-';
+
+    const rowDate = (item: { type: string; data: any }) => {
+        if (item.type === 'paid') {
+            return formatDate(item.data.payment_date || item.data.paid_at);
+        }
+        // Unpaid dues: show the report reference date for this fee month
+        return formatDate(selectedDate);
+    };
+
     const generatePDF = () => {
         const doc = new jsPDF();
         doc.text(`Finance Status Report - ${monthLabel}`, 14, 20);
@@ -287,21 +298,24 @@ const FinanceReport = () => {
           14,
           28,
         );
+        doc.text(`Reference date: ${formatDate(selectedDate)}`, 14, 34);
         
         const tableRows = displayData.map(item => {
             if (item.type === 'paid') {
                 const s = students.find(st => st.id === item.data.student_id);
                 return [
-                    formatDate(item.data.payment_date),
+                    rowDate(item),
+                    studentNumber(s),
                     s?.name || 'Unknown',
                     paymentKindLabel(item.paymentKind),
                     'Paid',
-                    item.data.method,
+                    item.data.method || '-',
                     formatCurrency(item.data.amount)
                 ];
             }
             return [
-                '-',
+                rowDate(item),
+                studentNumber(item.data.student),
                 item.data.student.name,
                 paymentKindLabel(item.paymentKind),
                 'Unpaid',
@@ -311,8 +325,8 @@ const FinanceReport = () => {
         });
 
         doc.autoTable({
-            startY: 35,
-            head: [['Date', 'Student', 'Type', 'Status', 'Method', 'Amount']],
+            startY: 40,
+            head: [['Date', 'Student No.', 'Student', 'Type', 'Status', 'Method', 'Amount']],
             body: tableRows,
         });
         doc.save(`Finance_Status_${month}.pdf`);
@@ -540,6 +554,7 @@ const FinanceReport = () => {
                             <TableHeader>
                                 <TableRow className="border-[var(--ds-border,#DDE5DF)] bg-[var(--ds-surface-muted,#F7FAF8)] hover:bg-[var(--ds-surface-muted,#F7FAF8)]">
                                     <TableHead className="text-[11px] font-semibold uppercase tracking-wide text-[var(--ds-text-tertiary,#8A978E)]">Date</TableHead>
+                                    <TableHead className="text-[11px] font-semibold uppercase tracking-wide text-[var(--ds-text-tertiary,#8A978E)]">Student No.</TableHead>
                                     <TableHead className="text-[11px] font-semibold uppercase tracking-wide text-[var(--ds-text-tertiary,#8A978E)]">Student Name</TableHead>
                                     <TableHead className="text-[11px] font-semibold uppercase tracking-wide text-[var(--ds-text-tertiary,#8A978E)]">Class</TableHead>
                                     <TableHead className="text-[11px] font-semibold uppercase tracking-wide text-[var(--ds-text-tertiary,#8A978E)]">Type</TableHead>
@@ -560,8 +575,9 @@ const FinanceReport = () => {
                                             
                                             return (
                                                 <TableRow key={`p-${item.data.id}`} className="border-[var(--ds-border,#DDE5DF)] hover:bg-[var(--ds-surface-muted,#F7FAF8)]">
-                                                    <TableCell className="text-[var(--ds-text-secondary,#5B6B61)]">{formatDate(item.data.payment_date)}</TableCell>
-                  <TableCell className="font-medium text-[var(--ds-text-primary,#122018)]">{s?.name || 'Unknown'}</TableCell>
+                                                    <TableCell className="text-[var(--ds-text-secondary,#5B6B61)]">{rowDate(item)}</TableCell>
+                                                    <TableCell className="font-mono text-sm text-[var(--ds-text-secondary,#5B6B61)]">{studentNumber(s)}</TableCell>
+                                                    <TableCell className="font-medium text-[var(--ds-text-primary,#122018)]">{s?.name || 'Unknown'}</TableCell>
                                                     <TableCell className="text-[var(--ds-text-primary,#122018)]">{displayClass}</TableCell>
                                                     <TableCell>
                                                         <span className={`inline-flex items-center rounded-md border px-2 py-0.5 text-[11px] font-semibold ${kindBadgeClass(kind)}`}>
@@ -581,7 +597,8 @@ const FinanceReport = () => {
 
                                         return (
                                             <TableRow key={`u-${item.data.student.id}-${item.data.class.id}`} className="border-[var(--ds-border,#DDE5DF)] hover:bg-[var(--ds-surface-muted,#F7FAF8)]">
-                                                <TableCell className="text-[var(--ds-text-tertiary,#8A978E)]">-</TableCell>
+                                                <TableCell className="text-[var(--ds-text-secondary,#5B6B61)]">{rowDate(item)}</TableCell>
+                                                <TableCell className="font-mono text-sm text-[var(--ds-text-secondary,#5B6B61)]">{studentNumber(item.data.student)}</TableCell>
                                                 <TableCell className="font-medium text-[var(--ds-text-primary,#122018)]">{item.data.student.name}</TableCell>
                                                 <TableCell className="text-[var(--ds-text-primary,#122018)]">{item.data.class.name}</TableCell>
                                                 <TableCell>
@@ -601,7 +618,7 @@ const FinanceReport = () => {
                                     })
                                 ) : (
                                     <TableRow>
-                                        <TableCell colSpan={7} className="text-center py-4 text-[var(--ds-text-tertiary,#8A978E)]">No records found.</TableCell>
+                                        <TableCell colSpan={8} className="text-center py-4 text-[var(--ds-text-tertiary,#8A978E)]">No records found.</TableCell>
                                     </TableRow>
                                 )}
                             </TableBody>

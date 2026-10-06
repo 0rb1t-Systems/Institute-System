@@ -86,6 +86,7 @@ Deno.serve(async (req) => {
     const message = String(body.message || body.body || '').trim().slice(0, 8000)
     const classId = String(body.class_id || '').trim()
     const replyTo = String(body.reply_to || caller.email || callerInst.email || '').trim()
+    const fromName = String(body.from_name || callerInst.name || '').trim() || null
 
     if (!to.includes('@')) return json({ error: 'INVALID_TO' }, 400)
     if (!subject) return json({ error: 'SUBJECT_REQUIRED' }, 400)
@@ -99,9 +100,12 @@ Deno.serve(async (req) => {
       .eq('institution_id', caller.institution_id)
       .maybeSingle()
 
-    // Allow sending a personal inbox copy to the caller themselves
-    const isSelfCopy = to === String(caller.email || '').trim().toLowerCase()
-    if (!isSelfCopy) {
+    // Allow a personal inbox copy to the caller or institution email
+    const callerEmail = String(caller.email || '').trim().toLowerCase()
+    const institutionEmail = String(callerInst.email || '').trim().toLowerCase()
+    const isInboxCopy =
+      to === callerEmail || (institutionEmail.includes('@') && to === institutionEmail)
+    if (!isInboxCopy) {
       if (!recipient || recipient.role !== 'student') {
         return json({ error: 'RECIPIENT_NOT_STUDENT' }, 403)
       }
@@ -122,6 +126,7 @@ Deno.serve(async (req) => {
       subject,
       html: toHtml(message),
       replyTo,
+      fromName,
     })
 
     if (!sent.ok) {

@@ -19,18 +19,35 @@ export function escapeHtml(value: string): string {
     .replace(/'/g, '&#39;')
 }
 
+/** Build Resend `from` with an optional display name (e.g. institution). */
+export function buildResendFrom(displayName?: string | null): string {
+  const from = normalizeSecret(Deno.env.get('RESEND_FROM_EMAIL'))
+  const name = String(displayName || '').trim()
+  if (!from || !name) return from
+
+  const angle = from.match(/<([^>]+)>/)
+  const email = (angle ? angle[1] : from).trim()
+  if (!email.includes('@')) return from
+
+  const safe = name.replace(/\\/g, '\\\\').replace(/"/g, '\\"')
+  return `"${safe}" <${email}>`
+}
+
 export async function sendResendEmail(opts: {
   to: string
   subject: string
   html: string
   bcc?: string[]
   replyTo?: string
+  fromName?: string | null
 }): Promise<{ ok: true } | { ok: false; error: string }> {
   const apiKey = normalizeSecret(Deno.env.get('RESEND_API_KEY'))
-  const from = normalizeSecret(Deno.env.get('RESEND_FROM_EMAIL'))
-  if (!apiKey || !from) {
+  const fromRaw = normalizeSecret(Deno.env.get('RESEND_FROM_EMAIL'))
+  if (!apiKey || !fromRaw) {
     return { ok: false, error: 'RESEND_NOT_CONFIGURED' }
   }
+
+  const from = buildResendFrom(opts.fromName) || fromRaw
 
   const to = String(opts.to || '').trim().toLowerCase()
   if (!to || !to.includes('@')) return { ok: false, error: 'INVALID_TO' }

@@ -756,7 +756,7 @@ const ClassDetailsDialog = ({ classData, isOpen, onClose }) => {
                     result.viaResend ? `${result.viaResend} via Resend` : null,
                     result.failed ? `${result.failed} failed` : null,
                     result.skipped ? `${result.skipped} skipped (no email)` : null,
-                    result.copyOk ? 'Copy delivered to your inbox' : null,
+                    result.copyOk ? 'Also sent to your inbox' : null,
                 ].filter(Boolean).join(' · '),
             });
 
@@ -850,7 +850,7 @@ const ClassDetailsDialog = ({ classData, isOpen, onClose }) => {
                                 Email class students
                             </CardTitle>
                             <p className="text-sm text-[var(--ds-text-secondary,#5B6B61)]">
-                                Waxaad bedeli kartaa qoraalkan, ama Soomaali soo copy-gareyso oo halkaan ku dhaji. {'{name}'}, {'{class}'}, {'{end_date}'}, {'{start_date}'}, {'{program}'}, {'{instructor}'} waa la buuxiyaa arday kasta. Arday kasta wuxuu helaa hal email, Resend kaliya. Koobi keliya ayaa inbox-kaaga u tagaysa.
+                                Waxaad bedeli kartaa qoraalkan, ama Soomaali soo copy-gareyso oo halkaan ku dhaji. {'{name}'}, {'{class}'}, {'{end_date}'}, {'{start_date}'}, {'{program}'}, {'{instructor}'} waa la buuxiyaa arday kasta. Arday kasta wuxuu helaa hal email. Hal koobi ayaa inbox-kaaga u tagaysa (isla qoraalka, magaca institution-ka).
                             </p>
                         </CardHeader>
                         <CardContent className="space-y-3">
@@ -886,7 +886,7 @@ const ClassDetailsDialog = ({ classData, isOpen, onClose }) => {
                                 <p className="text-xs text-[var(--ds-text-tertiary,#8A978E)]">
                                     {studentsWithEmail.length} of {classStudents.length} students have email
                                     {(user?.email || institution?.email)
-                                        ? ` · copy → ${user?.email || institution?.email}`
+                                        ? ` · inbox → ${user?.email || institution?.email}`
                                         : ''}
                                 </p>
                                 <Button
