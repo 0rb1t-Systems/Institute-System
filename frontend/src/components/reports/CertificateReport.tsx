@@ -21,7 +21,7 @@ import {
   ChevronLeft,
   ChevronRight,
 } from 'lucide-react';
-import { deleteCertificate, deleteCertificates } from '@/lib/api';
+import { deleteCertificate, deleteCertificates, getCertificateById } from '@/lib/api';
 import { useToast } from '@/hooks/use-toast';
 import { notify, getUserMessage, MESSAGES } from '@/lib/notify';
 import { formatDate } from '@/lib/utils';
@@ -207,7 +207,9 @@ const CertificateReport = () => {
 
   const handleDownload = async (certificate) => {
     try {
-      await downloadCertificatePDF(buildCertificatePdfPayload(certificate));
+      // Fetch full row only when exporting — list stays light without snapshots
+      const full = (await getCertificateById(certificate.id)) || certificate;
+      await downloadCertificatePDF(buildCertificatePdfPayload(full));
       toast({
         title: 'Download successful',
         description: 'Full certificate PDF downloaded',
@@ -222,7 +224,8 @@ const CertificateReport = () => {
 
   const handlePrint = async (certificate) => {
     try {
-      await printCertificatePDF(buildCertificatePdfPayload(certificate));
+      const full = (await getCertificateById(certificate.id)) || certificate;
+      await printCertificatePDF(buildCertificatePdfPayload(full));
       toast({
         title: 'Print ready',
         description: 'Full certificate page sent to print',
@@ -308,7 +311,8 @@ const CertificateReport = () => {
     try {
       // Yield between prints so the browser stays responsive
       for (let i = 0; i < list.length; i += 1) {
-        await printCertificatePDF(buildCertificatePdfPayload(list[i]));
+        const full = (await getCertificateById(list[i].id)) || list[i];
+        await printCertificatePDF(buildCertificatePdfPayload(full));
         if (i < list.length - 1) {
           await new Promise((r) => setTimeout(r, 80));
         }
@@ -675,6 +679,7 @@ const CertificateReport = () => {
       <CertificateViewModal
         isOpen={isViewModalOpen}
         onClose={() => setIsViewModalOpen(false)}
+        certificateId={selectedCertificate?.id}
         certificate={selectedCertificate}
       />
     </div>

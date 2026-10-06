@@ -5,7 +5,6 @@ import {
   downloadCertificatePDF,
   hydrateCertificateRenderData,
   printCertificatePDF,
-  toCertificateRenderData,
 } from '@/lib/certificateGenerator'
 import { useToast } from '@/hooks/use-toast'
 import { notify, MESSAGES } from '@/lib/notify'
@@ -13,6 +12,31 @@ import { useAuth } from '@/contexts/AuthContext'
 import { getVerificationUrl, resolveDocumentBranding } from '@/lib/institution'
 import type { CertificateRenderData } from '@/lib/certificateTemplates'
 import CertificateCanvas from '@/components/certificates/CertificateCanvas'
+
+/** Reuse hydrated canvas data when reopening the same certificate in-session. */
+const hydratedPreviewCache = new Map<string, CertificateRenderData>()
+
+function previewCacheKey(parts: {
+  id?: string
+  certificateNumber?: string
+  verifyCode?: string
+  dateIssued?: string | null
+  studentName?: string
+  programName?: string
+  className?: string
+  brandKey?: string
+}) {
+  return [
+    parts.id || '',
+    parts.certificateNumber || '',
+    parts.verifyCode || '',
+    parts.dateIssued || '',
+    parts.studentName || '',
+    parts.programName || '',
+    parts.className || '',
+    parts.brandKey || '',
+  ].join('|')
+}
 
 const CertificatePreview = ({ certificate }) => {
   const { toast } = useToast()
@@ -40,6 +64,29 @@ const CertificatePreview = ({ certificate }) => {
   const verificationUrl = verifyCode
     ? getVerificationUrl(verifyCode, brand, 'certificate')
     : ''
+  const brandKey = [
+    brand?.id,
+    brand?.name,
+    brand?.logo_url,
+    brand?.theme_primary,
+    brand?.theme_accent,
+  ]
+    .filter(Boolean)
+    .join(':')
+
+  const cacheKey = previewCacheKey({
+    id: certificate?.id,
+    certificateNumber,
+    verifyCode,
+    dateIssued: dateIssued ? String(dateIssued) : null,
+    studentName,
+    programName,
+    className,
+    brandKey,
+  })
+  // Synchronous cache hit so reopen paints immediately (useEffect would flash a spinner).
+  const cachedRender = certificate ? hydratedPreviewCache.get(cacheKey) || null : null
+  const displayRender = cachedRender || renderData
 
   const buildPayload = () => ({
     institution: brand,
@@ -62,19 +109,36 @@ const CertificatePreview = ({ certificate }) => {
   })
 
   useEffect(() => {
+    if (!certificate) {
+      setRenderData(null)
+      return
+    }
+
+    if (hydratedPreviewCache.has(cacheKey)) {
+      setRenderData(hydratedPreviewCache.get(cacheKey) || null)
+      return
+    }
+
     let cancelled = false
-    const payload = buildPayload()
-    setRenderData(toCertificateRenderData(payload))
+    // Do not paint an incomplete first frame (default layout) then swap after hydrate —
+    // that was the blink. Wait for a single hydrated result.
+    setRenderData(null)
+
     ;(async () => {
-      const hydrated = await hydrateCertificateRenderData(payload)
-      if (!cancelled) setRenderData(hydrated)
+      const hydrated = await hydrateCertificateRenderData(buildPayload())
+      if (cancelled) return
+      hydratedPreviewCache.set(cacheKey, hydrated)
+      setRenderData(hydrated)
     })()
+
     return () => {
       cancelled = true
     }
+    // Primitive deps only — object identity from refetch must not re-trigger hydrate.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
-    brand,
+    cacheKey,
+    certificate?.id,
     studentName,
     studentId,
     programName,
@@ -83,12 +147,10 @@ const CertificatePreview = ({ certificate }) => {
     verifyCode,
     verificationUrl,
     dateIssued,
-    certificate?.template_snapshot,
-    certificate?.id,
-    certificate?.student,
-    certificate?.diploma,
-    certificate?.course,
-    certificate?.class,
+    brandKey,
+    certificate?.template_snapshot?.template?.layout_key ||
+      certificate?.template_snapshot?.layout_key ||
+      '',
   ])
 
   const handleDownload = async () => {
@@ -153,7 +215,13 @@ const CertificatePreview = ({ certificate }) => {
   return (
     <div className="space-y-4">
       <div id="printable-certificate" className="cert-print-sheet bg-white">
-        {renderData ? <CertificateCanvas data={renderData} /> : null}
+        {displayRender ? (
+          <CertificateCanvas data={displayRender} />
+        ) : (
+          <div className="w-full aspect-[210/297] bg-white flex items-center justify-center">
+            <Loader2 className="h-6 w-6 animate-spin text-slate-400" />
+          </div>
+        )}
       </div>
 
       <div className="flex gap-3 justify-center print-hide">

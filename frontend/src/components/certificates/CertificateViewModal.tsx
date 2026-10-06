@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -12,77 +12,132 @@ import { useAuth } from '@/contexts/AuthContext';
 import { getVerificationUrl, resolveDocumentBranding } from '@/lib/institution';
 import { normalizeCertificateLayoutKey } from '@/lib/certificateTemplates';
 
+/** Session cache so reopening the same certificate skips another network round-trip. */
+const certificateDetailCache = new Map<string, any>();
+
+/** List/enriched rows already have student + numbers; preview uses the live institution template. */
+function isCertificatePreviewReady(cert: any): boolean {
+  if (!cert?.id) return false;
+  return Boolean(
+    (cert.student || cert.certificate_number) &&
+      (cert.verification_code || cert.certificate_number || cert.serial_number),
+  );
+}
+
 const CertificateViewModal = ({ isOpen, onClose, certificateId, certificate: propCertificate }: any) => {
   const { toast } = useToast();
   const { institution } = useAuth();
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
   const [downloading, setDownloading] = useState(false);
   const [printing, setPrinting] = useState(false);
   const [certificate, setCertificate] = useState(propCertificate || null);
   const [error, setError] = useState(null);
+  const fetchGenRef = useRef(0);
+
+  const activeId = certificateId || propCertificate?.id || certificate?.id || null;
+  const cached = activeId ? certificateDetailCache.get(String(activeId)) : null;
+  // Prefer in-state row for the open id, then cache, then the list seed — never block on a refetch.
+  const displayCertificate =
+    (certificate && (!activeId || certificate.id === activeId) ? certificate : null) ||
+    cached ||
+    (propCertificate && (!activeId || propCertificate.id === activeId) ? propCertificate : null) ||
+    null;
+  const previewReady = isCertificatePreviewReady(displayCertificate);
+  const showLoading = Boolean(isOpen && loading && !previewReady && !error);
 
   useEffect(() => {
-    if (isOpen) {
-      if (propCertificate) {
-        setCertificate(propCertificate);
-        setLoading(false);
-      } else if (certificateId) {
-        fetchCertificateData();
-      }
-    }
-  }, [isOpen, certificateId, propCertificate]);
+    if (!isOpen) return;
 
-  const fetchCertificateData = async () => {
+    const id = certificateId || propCertificate?.id || null;
+    const cachedRow = id ? certificateDetailCache.get(String(id)) : null;
+    const seed = cachedRow || propCertificate || null;
+
+    setError(null);
+
+    if (isCertificatePreviewReady(seed)) {
+      setCertificate(seed);
+      setLoading(false);
+      // Report Center / any caller that already passed an enriched row: do not refetch.
+      // Preview renders from live active template + this row; no template_snapshot required.
+      return;
+    }
+
+    if (id) {
+      void fetchCertificateData(id);
+      return;
+    }
+
+    if (propCertificate) {
+      setCertificate(propCertificate);
+      setLoading(false);
+    }
+  }, [isOpen, certificateId, propCertificate?.id]);
+
+  const fetchCertificateData = async (id = certificateId) => {
+    if (!id) return;
+    const key = String(id);
+    const hit = certificateDetailCache.get(key);
+    if (isCertificatePreviewReady(hit)) {
+      setCertificate(hit);
+      setLoading(false);
+      setError(null);
+      return;
+    }
+
+    const gen = ++fetchGenRef.current;
     setLoading(true);
     setError(null);
-    
+
     try {
-      const data = await getCertificateById(certificateId);
-      
+      const data = await getCertificateById(id);
+
       if (!data) {
         throw new Error('Certificate not found');
       }
-      
+
+      certificateDetailCache.set(key, data);
+      if (gen !== fetchGenRef.current) return;
       setCertificate(data);
     } catch (err) {
+      if (gen !== fetchGenRef.current) return;
       const msg = getUserMessage(err, { context: 'CertificateViewModal - load', fallback: MESSAGES.LOAD_FAILED });
       setError(msg);
       notify.error(err, { context: 'CertificateViewModal - load', fallback: MESSAGES.LOAD_FAILED });
     } finally {
-      setLoading(false);
+      if (gen === fetchGenRef.current) setLoading(false);
     }
   };
 
-  const buildPdfPayload = () => {
-    const verifyCode = String(certificate?.verification_code || '').trim();
-    const brand = resolveDocumentBranding(institution, certificate?.template_snapshot);
+  const buildPdfPayload = (cert = displayCertificate) => {
+    const verifyCode = String(cert?.verification_code || '').trim();
+    const brand = resolveDocumentBranding(institution, cert?.template_snapshot);
     const verificationUrl = verifyCode
       ? getVerificationUrl(verifyCode, brand, 'certificate')
       : '';
     const layoutKey = normalizeCertificateLayoutKey(
-      certificate?.template_snapshot?.template?.layout_key ||
-        certificate?.template_snapshot?.layout_key,
+      cert?.template_snapshot?.template?.layout_key ||
+        cert?.template_snapshot?.layout_key,
     );
     return {
-      student: certificate.student,
-      course: certificate.course,
-      diploma: certificate.diploma,
-      class: certificate.class,
-      certificateNumber: certificate.certificate_number,
-      dateIssued: certificate.date_issued || certificate.issued_at,
+      student: cert.student,
+      course: cert.course,
+      diploma: cert.diploma,
+      class: cert.class,
+      certificateNumber: cert.certificate_number,
+      dateIssued: cert.date_issued || cert.issued_at,
       qrData: verificationUrl,
-      serialNumber: certificate.serial_number,
+      serialNumber: cert.serial_number,
       institution: brand,
       verificationUrl,
       layoutKey,
-      template_snapshot: certificate.template_snapshot,
+      template_snapshot: cert.template_snapshot,
       verification_code: verifyCode,
     };
   };
 
   const handleDownloadPDF = async () => {
-    if (!certificate) return;
-    const verifyCode = String(certificate.verification_code || '').trim();
+    if (!displayCertificate) return;
+    const verifyCode = String(displayCertificate.verification_code || '').trim();
     if (!verifyCode) {
       toast({
         title: 'Cannot download',
@@ -91,10 +146,10 @@ const CertificateViewModal = ({ isOpen, onClose, certificateId, certificate: pro
       });
       return;
     }
-    
+
     setDownloading(true);
     try {
-      await downloadCertificatePDF(buildPdfPayload());
+      await downloadCertificatePDF(buildPdfPayload(displayCertificate));
 
       toast({
         title: "Download successful",
@@ -108,8 +163,8 @@ const CertificateViewModal = ({ isOpen, onClose, certificateId, certificate: pro
   };
 
   const handlePrint = async () => {
-    if (!certificate) return;
-    const verifyCode = String(certificate.verification_code || '').trim();
+    if (!displayCertificate) return;
+    const verifyCode = String(displayCertificate.verification_code || '').trim();
     if (!verifyCode) {
       toast({
         title: 'Cannot print',
@@ -120,7 +175,7 @@ const CertificateViewModal = ({ isOpen, onClose, certificateId, certificate: pro
     }
     setPrinting(true);
     try {
-      await printCertificatePDF(buildPdfPayload());
+      await printCertificatePDF(buildPdfPayload(displayCertificate));
     } catch (error) {
       notify.error(error, {
         context: 'CertificateViewModal - print',
@@ -132,7 +187,7 @@ const CertificateViewModal = ({ isOpen, onClose, certificateId, certificate: pro
   };
 
   const handleShare = () => {
-    const verifyCode = String(certificate?.verification_code || '').trim();
+    const verifyCode = String(displayCertificate?.verification_code || '').trim();
     if (!verifyCode) {
       toast({
         title: 'Unavailable',
@@ -141,7 +196,7 @@ const CertificateViewModal = ({ isOpen, onClose, certificateId, certificate: pro
       });
       return;
     }
-    const brand = resolveDocumentBranding(institution, certificate?.template_snapshot);
+    const brand = resolveDocumentBranding(institution, displayCertificate?.template_snapshot);
     const verificationUrl = getVerificationUrl(verifyCode, brand, 'certificate');
     navigator.clipboard.writeText(verificationUrl);
     toast({
@@ -169,15 +224,15 @@ const CertificateViewModal = ({ isOpen, onClose, certificateId, certificate: pro
             <DialogTitle className="text-xl sm:text-2xl flex items-center gap-2 text-white">
               Certificate Preview
             </DialogTitle>
-            {certificate && (
-              <Badge variant="outline" className={getStatusColor(certificate.status)}>
-                {certificate.status?.toUpperCase()}
+            {displayCertificate && (
+              <Badge variant="outline" className={getStatusColor(displayCertificate.status)}>
+                {displayCertificate.status?.toUpperCase()}
               </Badge>
             )}
           </div>
         </DialogHeader>
 
-        {loading && (
+        {showLoading && (
           <div className="flex items-center justify-center py-20">
             <Loader2 className="h-8 w-8 animate-spin text-blue-500" />
             <span className="ml-3 text-slate-300">Loading certificate...</span>
@@ -190,7 +245,7 @@ const CertificateViewModal = ({ isOpen, onClose, certificateId, certificate: pro
             <p className="text-red-400 font-semibold mb-2">Failed to load certificate</p>
             <p className="text-red-300 text-sm mb-4">{error}</p>
             <div className="flex gap-3 justify-center">
-              <Button variant="outline" onClick={fetchCertificateData} className="border-red-500/20">
+              <Button variant="outline" onClick={() => fetchCertificateData()} className="border-red-500/20">
                 Try Again
               </Button>
               <Button variant="outline" onClick={onClose} className="border-slate-700">
@@ -200,28 +255,28 @@ const CertificateViewModal = ({ isOpen, onClose, certificateId, certificate: pro
           </div>
         )}
 
-        {!loading && !error && certificate && (
+        {!showLoading && !error && displayCertificate && (
           <div className="space-y-6">
             {/* Certificate Preview */}
             <div className="bg-white rounded-lg overflow-hidden shadow-xl print:shadow-none print:rounded-none">
-              <CertificatePreview certificate={certificate} />
+              <CertificatePreview certificate={displayCertificate} />
             </div>
 
             {/* Certificate Metadata (Hidden on print) */}
             <div className="grid md:grid-cols-3 gap-4 print-hide">
               <div className="bg-slate-800/50 border border-slate-700 rounded-lg p-4">
                 <p className="text-slate-400 text-sm mb-1">Serial Number</p>
-                <p className="text-white font-mono text-sm">{certificate.serial_number}</p>
+                <p className="text-white font-mono text-sm">{displayCertificate.serial_number}</p>
               </div>
 
               <div className="bg-slate-800/50 border border-slate-700 rounded-lg p-4">
                 <p className="text-slate-400 text-sm mb-1">Certificate Number</p>
-                <p className="text-white font-mono text-sm">{certificate.certificate_number}</p>
+                <p className="text-white font-mono text-sm">{displayCertificate.certificate_number}</p>
               </div>
 
               <div className="bg-slate-800/50 border border-slate-700 rounded-lg p-4">
                 <p className="text-slate-400 text-sm mb-1">Student ID</p>
-                <p className="text-white font-mono text-sm">{certificate.student?.student_code}</p>
+                <p className="text-white font-mono text-sm">{displayCertificate.student?.student_code}</p>
               </div>
             </div>
           </div>
@@ -232,20 +287,20 @@ const CertificateViewModal = ({ isOpen, onClose, certificateId, certificate: pro
             <X className="h-4 w-4 mr-2" />
             Close
           </Button>
-          <Button 
-            variant="outline" 
-            onClick={handleShare} 
+          <Button
+            variant="outline"
+            onClick={handleShare}
             className="border-slate-700"
-            disabled={loading || error}
+            disabled={showLoading || !!error || !displayCertificate}
           >
             <Share2 className="h-4 w-4 mr-2" />
             Share
           </Button>
-          <Button 
-            variant="outline" 
-            onClick={handlePrint} 
+          <Button
+            variant="outline"
+            onClick={handlePrint}
             className="border-slate-700"
-            disabled={loading || error || printing}
+            disabled={showLoading || !!error || printing || !displayCertificate}
           >
             {printing ? (
               <>
@@ -259,9 +314,9 @@ const CertificateViewModal = ({ isOpen, onClose, certificateId, certificate: pro
               </>
             )}
           </Button>
-          <Button 
-            onClick={handleDownloadPDF} 
-            disabled={downloading || loading || error}
+          <Button
+            onClick={handleDownloadPDF}
+            disabled={downloading || showLoading || !!error || !displayCertificate}
           >
             {downloading ? (
               <>

@@ -465,12 +465,19 @@ const CertificateAutoGenerate = ({ onGenerationComplete }) => {
         duration: 5000,
       });
 
-      await reloadEligibility();
       setSelectedEnrollmentIds([]);
+      setGenerating(false);
 
-      if (onGenerationComplete) {
-        onGenerationComplete(payload);
-      }
+      // Refresh list/eligibility in the background so the UI unlocks immediately
+      void (async () => {
+        try {
+          await reloadEligibility();
+        } catch {
+          /* ignore */
+        }
+        if (onGenerationComplete) onGenerationComplete(payload);
+      })();
+      return;
     } catch (error) {
       const mapped = notify.error(error, {
         context: 'CertificateAutoGenerate',
@@ -490,7 +497,7 @@ const CertificateAutoGenerate = ({ onGenerationComplete }) => {
       <Card className="overflow-hidden border-[var(--ds-border,#DDE5DF)] shadow-sm">
         <CardHeader className="border-b border-[var(--ds-border,#DDE5DF)] bg-gradient-to-br from-[var(--ds-surface,#fff)] to-[var(--ds-primary-soft,#ECFDF5)]/40 pb-4">
           <CardTitle className="flex items-center gap-3 text-lg text-[var(--ds-text-primary,#122018)]">
-            <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-[var(--ds-primary,#1F8A5B)] text-white shadow-sm">
+            <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[var(--ds-primary-soft,#ECFDF5)] text-[var(--ds-primary,#1F8A5B)]">
               <BadgeCheck className="h-5 w-5" />
             </span>
             Certificate Generation

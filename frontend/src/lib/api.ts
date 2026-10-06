@@ -1613,22 +1613,31 @@ function blobToDataUrl(blob) {
   })
 }
 
+/** Reuse resolved template assets within the session (preview reopen / PDF). */
+const _certTemplateDataUrlCache = new Map<string, string>()
+
 /**
  * Download a private certificate-templates object via the authenticated Storage API
  * and return a data URL. Avoids browser CORS failures that break <img crossOrigin>
  * when using short-lived signed URLs during generate / PDF capture.
  */
-export const downloadCertificateTemplateAsDataUrl = async (path) => {
+export const downloadCertificateTemplateAsDataUrl = async (path): Promise<string> => {
   const clean = String(path || '').trim()
   if (!clean || clean.includes('..')) throw new Error('INVALID_STORAGE_PATH')
   if (clean.startsWith('data:')) return clean
   if (clean.startsWith('http://') || clean.startsWith('https://') || clean.startsWith('blob:')) {
     return clean
   }
+  const hit = _certTemplateDataUrlCache.get(clean)
+  if (hit) return hit
   const { data, error } = await supabase.storage.from(CERT_TEMPLATE_BUCKET).download(clean)
   if (error) throw error
   if (!data) throw new Error('DOWNLOAD_EMPTY')
-  return blobToDataUrl(data)
+  const dataUrl = String((await blobToDataUrl(data)) || '')
+  if (dataUrl.startsWith('data:')) {
+    _certTemplateDataUrlCache.set(clean, dataUrl)
+  }
+  return dataUrl
 }
 
 export type DocumentTemplateType = 'certificate' | 'transcript' | 'invoice'
@@ -3080,6 +3089,40 @@ export const checkEnrollmentCertificateEligibility = async (enrollmentId) => {
   return data
 }
 
+/** Keep only light metadata in certificate snapshots.
+ * Full logo_builder / custom_upload designs are re-read from the live template at PDF time.
+ * Storing them on every row froze the browser when generating a class batch.
+ */
+function slimCertificateTemplateSnapshot(
+  snapshot: Record<string, any> | null | undefined,
+  layoutKeyOverride: string | null,
+  meta: Record<string, any>,
+) {
+  const snap = snapshot && typeof snapshot === 'object' ? snapshot : {}
+  const tpl = snap.template && typeof snap.template === 'object' ? snap.template : {}
+  const layoutKey =
+    layoutKeyOverride ||
+    tpl.layout_key ||
+    snap.layout_key ||
+    null
+
+  return {
+    layout_key: layoutKey,
+    template: layoutKey ? { layout_key: layoutKey } : {},
+    class_id: meta.class_id || null,
+    enrollment_id: meta.enrollment_id || null,
+    course_id: meta.course_id || null,
+    diploma_id: meta.diploma_id || null,
+    class_name: meta.class_name || null,
+    program_name: meta.program_name || null,
+    course_name: meta.course_name || null,
+    diploma_name: meta.diploma_name || null,
+  }
+}
+
+const CERT_INSERT_CHUNK = 8
+const yieldToBrowser = () => new Promise((resolve) => setTimeout(resolve, 0))
+
 /** Auto-generate certificates for eligible enrollments only (DB-gated). */
 export const autoGenerateCertificatesBatch = async (options: CertificateBatchOptions = {}) => {
   const enrollmentIds = Array.isArray(options.enrollmentIds)
@@ -3097,6 +3140,8 @@ export const autoGenerateCertificatesBatch = async (options: CertificateBatchOpt
     p_institution_id: me.institution_id,
   })
   if (!complete) throw new Error('INSTITUTION_SETTINGS_INCOMPLETE')
+
+  await yieldToBrowser()
 
   const eligibilityRows = await listCertificateEligibleEnrollments({
     classId,
@@ -3137,6 +3182,8 @@ export const autoGenerateCertificatesBatch = async (options: CertificateBatchOpt
     }
   }
 
+  await yieldToBrowser()
+
   // Resolve class / course / diploma names for real program data on certificates
   const classIds = [...new Set(toCreate.map((e) => e.class_id).filter(Boolean))]
   const { data: classRows } = classIds.length
@@ -3159,17 +3206,6 @@ export const autoGenerateCertificatesBatch = async (options: CertificateBatchOpt
   const courseById = Object.fromEntries((courses || []).map((c) => [c.id, c]))
   const diplomaById = Object.fromEntries((diplomas || []).map((d) => [d.id, d]))
 
-  const effectiveSnapshot =
-    layoutKeyOverride && snapshot && typeof snapshot === 'object'
-      ? {
-          ...snapshot,
-          template: {
-            ...(snapshot.template || {}),
-            layout_key: layoutKeyOverride,
-          },
-        }
-      : snapshot
-
   const items = toCreate.map((enr) => {
     const cls = classById[enr.class_id]
     const course = cls?.course_id ? courseById[cls.course_id] : null
@@ -3179,8 +3215,7 @@ export const autoGenerateCertificatesBatch = async (options: CertificateBatchOpt
       student_id: enr.student_id,
       class_id: enr.class_id,
       enrollment_id: enr.id,
-      template_snapshot: {
-        ...(effectiveSnapshot && typeof effectiveSnapshot === 'object' ? effectiveSnapshot : {}),
+      template_snapshot: slimCertificateTemplateSnapshot(snapshot, layoutKeyOverride, {
         class_id: enr.class_id,
         enrollment_id: enr.id,
         course_id: cls?.course_id || null,
@@ -3189,7 +3224,7 @@ export const autoGenerateCertificatesBatch = async (options: CertificateBatchOpt
         program_name: programName,
         course_name: course?.name || null,
         diploma_name: diploma?.name || null,
-      },
+      }),
     }
   })
 
@@ -3845,7 +3880,15 @@ export const getTranscriptEntries = async () => {
 }
 
 export const getAllCertificates = async () => {
-  const { data, error } = await supabase.from('certificates').select('*').order('issued_at', { ascending: false })
+  // Omit heavy template_snapshot jsonb — list/PDF use live institution template.
+  // Full snapshot is loaded on demand via getCertificateById (view/download).
+  // Note: certificates has no updated_at column.
+  const { data, error } = await supabase
+    .from('certificates')
+    .select(
+      'id, institution_id, student_id, enrollment_id, class_id, certificate_number, status, issued_at, issued_by, verification_code, created_at',
+    )
+    .order('issued_at', { ascending: false })
   if (error) throw error
   return enrichCertificates(data || [])
 }
@@ -3979,30 +4022,44 @@ export const generateCertificatesBatch = async (items) => {
   const numbers = Array.isArray(serials) ? serials.map((n) => String(n)) : []
   if (numbers.length !== pending.length) throw new Error('CERTIFICATE_NUMBER_EXHAUSTED')
 
-  const rows = pending.map((item, i) => ({
-    institution_id: me.institution_id,
-    student_id: item.student_id,
-    enrollment_id: item.enrollment_id || null,
-    class_id: item.class_id || null,
-    certificate_number: numbers[i],
-    status: 'issued',
-    issued_by: me.id,
-    template_snapshot: item.template_snapshot || item || {},
-  }))
-  const { data, error } = await supabase.from('certificates').insert(rows).select()
-  if (error) {
-    const msg = String(error.message || error.code || '')
-    if (/CERTIFICATE_ALREADY_ISSUED|uq_certificates_enrollment_issued|23505/i.test(msg)) {
-      throw new Error('CERTIFICATE_ALREADY_ISSUED')
+  const created = []
+  for (let offset = 0; offset < pending.length; offset += CERT_INSERT_CHUNK) {
+    const slice = pending.slice(offset, offset + CERT_INSERT_CHUNK)
+    const rows = slice.map((item, i) => ({
+      institution_id: me.institution_id,
+      student_id: item.student_id,
+      enrollment_id: item.enrollment_id || null,
+      class_id: item.class_id || null,
+      certificate_number: numbers[offset + i],
+      status: 'issued',
+      issued_by: me.id,
+      template_snapshot: item.template_snapshot || item || {},
+    }))
+    // Light select — avoid shipping fat jsonb back to the browser on every chunk
+    const { data, error } = await supabase
+      .from('certificates')
+      .insert(rows)
+      .select(
+        'id, institution_id, student_id, enrollment_id, class_id, certificate_number, status, issued_at, verification_code',
+      )
+    if (error) {
+      const msg = String(error.message || error.code || '')
+      if (/CERTIFICATE_ALREADY_ISSUED|uq_certificates_enrollment_issued|23505/i.test(msg)) {
+        throw new Error('CERTIFICATE_ALREADY_ISSUED')
+      }
+      if (/CLASS_NOT_FINISHED/i.test(msg)) throw new Error('CLASS_NOT_FINISHED')
+      if (/GRADES_INCOMPLETE/i.test(msg)) throw new Error('GRADES_INCOMPLETE')
+      if (/BALANCE_OUTSTANDING/i.test(msg)) throw new Error('BALANCE_OUTSTANDING')
+      if (/CERTIFICATE_ENROLLMENT_REQUIRED/i.test(msg)) throw new Error('CERTIFICATE_ENROLLMENT_REQUIRED')
+      if (/INSTITUTION_SETTINGS_INCOMPLETE/i.test(msg)) throw new Error('INSTITUTION_SETTINGS_INCOMPLETE')
+      throw error
     }
-    if (/CLASS_NOT_FINISHED/i.test(msg)) throw new Error('CLASS_NOT_FINISHED')
-    if (/GRADES_INCOMPLETE/i.test(msg)) throw new Error('GRADES_INCOMPLETE')
-    if (/BALANCE_OUTSTANDING/i.test(msg)) throw new Error('BALANCE_OUTSTANDING')
-    if (/CERTIFICATE_ENROLLMENT_REQUIRED/i.test(msg)) throw new Error('CERTIFICATE_ENROLLMENT_REQUIRED')
-    if (/INSTITUTION_SETTINGS_INCOMPLETE/i.test(msg)) throw new Error('INSTITUTION_SETTINGS_INCOMPLETE')
-    throw error
+    if (data?.length) created.push(...data)
+    if (offset + CERT_INSERT_CHUNK < pending.length) {
+      await yieldToBrowser()
+    }
   }
-  return data || []
+  return created
 }
 
 export const updateCertificateStatus = async (id, status) => {
