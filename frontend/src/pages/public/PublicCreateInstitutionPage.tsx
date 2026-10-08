@@ -1,6 +1,6 @@
-import React, { useMemo, useState } from 'react'
+import React, { useEffect, useMemo, useState } from 'react'
 import { Helmet } from 'react-helmet'
-import { Link } from 'react-router-dom'
+import { Link, useSearchParams } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -10,6 +10,7 @@ import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Loader2, ArrowLeft, ArrowRight, Eye, EyeOff } from 'lucide-react'
 import ThemeToggle from '@/components/platform/ThemeToggle'
 import { publicProvisionTenant } from '@/lib/publicTenantApi'
+import { peekPlanPurchase } from '@/lib/api'
 import { isValidEmail } from '@/lib/utils'
 import { MESSAGES } from '@/lib/messages'
 import { getUserMessage } from '@/lib/mapError'
@@ -63,9 +64,16 @@ async function fileToDataUrl(file: File | null): Promise<string | null> {
 }
 
 /**
- * Public self-service: admin → institution → landing template → create.
+ * Public self-service: requires prepaid plan purchase, then admin → institution → template.
  */
 const PublicCreateInstitutionPage = () => {
+  const [searchParams] = useSearchParams()
+  const purchaseToken = String(searchParams.get('purchase') || '').trim()
+
+  const [purchaseInfo, setPurchaseInfo] = useState<any>(null)
+  const [purchaseLoading, setPurchaseLoading] = useState(true)
+  const [purchaseError, setPurchaseError] = useState('')
+
   const [form, setForm] = useState(empty)
   const [slugTouched, setSlugTouched] = useState(false)
   const [step, setStep] = useState<'admin' | 'institution' | 'template'>('admin')
@@ -74,6 +82,40 @@ const PublicCreateInstitutionPage = () => {
   const [error, setError] = useState('')
   const [showPassword, setShowPassword] = useState(false)
   const [showConfirmPassword, setShowConfirmPassword] = useState(false)
+
+  useEffect(() => {
+    let cancelled = false
+    ;(async () => {
+      setPurchaseLoading(true)
+      setPurchaseError('')
+      if (!purchaseToken) {
+        setPurchaseError('PURCHASE_REQUIRED')
+        setPurchaseInfo(null)
+        setPurchaseLoading(false)
+        return
+      }
+      try {
+        const peek = await peekPlanPurchase(purchaseToken)
+        if (cancelled) return
+        if (!peek || peek.ok !== true) {
+          setPurchaseError(String(peek?.error || 'PURCHASE_INVALID'))
+          setPurchaseInfo(null)
+        } else {
+          setPurchaseInfo(peek)
+        }
+      } catch {
+        if (!cancelled) {
+          setPurchaseError('PURCHASE_INVALID')
+          setPurchaseInfo(null)
+        }
+      } finally {
+        if (!cancelled) setPurchaseLoading(false)
+      }
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [purchaseToken])
 
   const setField = (key, value) => {
     setForm((prev) => {
@@ -189,6 +231,7 @@ const PublicCreateInstitutionPage = () => {
       ])
 
       const result = await publicProvisionTenant({
+        purchase_claim_token: purchaseToken,
         institution_name: form.institution_name.trim(),
         institution_slug: form.institution_slug.trim().toLowerCase(),
         institution_email: form.institution_email.trim().toLowerCase(),
@@ -240,6 +283,45 @@ const PublicCreateInstitutionPage = () => {
   const fieldClass =
     'border-[var(--landing-line)] bg-[var(--landing-limewash)] text-[var(--landing-ink)] placeholder:text-[var(--landing-shadow)]'
 
+  if (purchaseLoading) {
+    return (
+      <div className="platform-public platform-landing relative flex min-h-screen items-center justify-center">
+        <Helmet>
+          <title>Create institution · TvetFlow</title>
+        </Helmet>
+        <p className="flex items-center gap-2 text-sm text-[var(--landing-muted)]">
+          <Loader2 className="h-4 w-4 animate-spin" /> Checking plan purchase…
+        </p>
+      </div>
+    )
+  }
+
+  if (!purchaseInfo?.ok) {
+    const msg =
+      purchaseError === 'PURCHASE_ALREADY_USED'
+        ? 'This plan purchase was already used. Buy a new plan to continue.'
+        : 'Buy a plan first, then create your institution.'
+    return (
+      <div className="platform-public platform-landing relative min-h-screen overflow-x-hidden">
+        <Helmet>
+          <title>Buy a plan first · TvetFlow</title>
+        </Helmet>
+        <div className="relative z-10 mx-auto max-w-lg px-4 py-16 text-center">
+          <h1 className="landing-display text-2xl font-extrabold text-[var(--landing-ink)]">
+            Plan payment required
+          </h1>
+          <p className="mt-3 text-sm text-[var(--landing-muted)]">{msg}</p>
+          <Button asChild className="landing-btn-primary mt-8">
+            <Link to="/plans">
+              Choose a plan
+              <ArrowRight className="ml-2 h-4 w-4" />
+            </Link>
+          </Button>
+        </div>
+      </div>
+    )
+  }
+
   return (
     <div className="platform-public platform-landing relative min-h-screen overflow-x-hidden">
       <Helmet>
@@ -260,6 +342,18 @@ const PublicCreateInstitutionPage = () => {
               </Link>
             </Button>
           </div>
+        </div>
+
+        <div
+          className="mb-6 border border-[var(--landing-line)] bg-[var(--landing-room)] px-4 py-3 text-sm text-[var(--landing-muted)]"
+          style={{ borderRadius: 'var(--landing-radius)' }}
+        >
+          Paid plan:{' '}
+          <span className="font-semibold text-[var(--landing-ink)]">{purchaseInfo.plan_name}</span>
+          {' · '}
+          <span className="capitalize">{purchaseInfo.billing_cycle}</span>
+          {' · $'}
+          {Number(purchaseInfo.amount || 0).toFixed(0)}
         </div>
 
         <div className="mb-10">

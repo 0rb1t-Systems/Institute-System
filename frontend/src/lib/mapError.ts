@@ -299,6 +299,34 @@ const CODE_MAP = {
     description:
       'Record student payments manually in Finance (cash, bank, or other). WaafiPay is reserved for platform Plans & Subscriptions.',
   },
+  WAAFIPAY_NOT_CONFIGURED: {
+    title: 'Payments unavailable',
+    description: 'Payment gateway is not configured. Contact platform support.',
+  },
+  WAAFIPAY_DECLINED: {
+    title: 'Payment declined',
+    description: 'Payment was declined. Check your balance and phone number, then try again.',
+  },
+  WAAFIPAY_NETWORK: {
+    title: 'Payment gateway unreachable',
+    description: 'Could not reach the payment gateway. Please try again in a moment.',
+  },
+  ADMIN_REQUIRED: {
+    title: 'Admin account required',
+    description: 'Only institution admins can purchase a platform plan.',
+  },
+  CONTACT_SALES: {
+    title: 'Contact sales',
+    description: 'This plan requires a custom quote. Please open Support.',
+  },
+  PLAN_REQUIRED: {
+    title: 'Plan required',
+    description: 'Select a plan to purchase.',
+  },
+  PHONE_REQUIRED: {
+    title: 'Phone required',
+    description: 'Enter a valid mobile number (e.g. 25261xxxxxxx).',
+  },
   VALIDATION: {
     title: 'Please check your input',
     description: MESSAGES.VALIDATION.INVALID_INPUT,
@@ -423,6 +451,34 @@ const MESSAGE_REWRITES = [
     mapped: {
       title: 'Institution required',
       description: 'Open verification from your institution link (?tenant=subdomain) or ID-card QR.',
+    },
+  },
+  {
+    test: /WAAFIPAY_NOT_CONFIGURED/i,
+    mapped: {
+      title: 'Payments unavailable',
+      description: 'Payment gateway is not configured. Contact platform support.',
+    },
+  },
+  {
+    test: /WAAFIPAY_DECLINED/i,
+    mapped: {
+      title: 'Payment declined',
+      description: 'Payment was declined. Check your balance and phone number, then try again.',
+    },
+  },
+  {
+    test: /WAAFIPAY_NETWORK/i,
+    mapped: {
+      title: 'Payment gateway unreachable',
+      description: 'Could not reach the payment gateway. Please try again in a moment.',
+    },
+  },
+  {
+    test: /CONTACT_SALES/i,
+    mapped: {
+      title: 'Contact sales',
+      description: 'This plan requires a custom quote. Please open Support.',
     },
   },
   {

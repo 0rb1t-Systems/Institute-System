@@ -122,7 +122,7 @@ const PlatformLayout = ({
               {t('logIn')}
             </Link>
             <Link
-              to="/create-institution"
+              to="/plans"
               className="landing-btn-primary hidden h-9 items-center px-4 text-sm sm:inline-flex"
             >
               {t('getStarted')}
@@ -181,7 +181,7 @@ const PlatformLayout = ({
                 {t('logIn')}
               </Link>
               <Link
-                to="/create-institution"
+                to="/plans"
                 onClick={() => setMenuOpen(false)}
                 className="landing-btn-primary mt-2 inline-flex h-11 items-center justify-center text-sm"
               >
@@ -269,7 +269,7 @@ const PlatformLayout = ({
               Open an admin account, then your institution portal.
             </p>
             <Link
-              to="/create-institution"
+              to="/plans"
               className="landing-btn-primary mt-4 inline-flex h-9 items-center gap-1.5 px-4 text-sm"
             >
               {t('createInstitution')}

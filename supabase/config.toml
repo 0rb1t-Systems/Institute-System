@@ -17,7 +17,7 @@ verify_jwt = true
 verify_jwt = true
 
 [functions.waafipay-charge]
-verify_jwt = true
+verify_jwt = false
 
 [functions.provision-tenant]
 verify_jwt = true

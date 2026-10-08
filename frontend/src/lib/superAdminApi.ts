@@ -448,6 +448,19 @@ export async function listSubscriptions() {
   return data || []
 }
 
+/** Platform plan purchases via WaafiPay (super admin). */
+export async function listPlatformSubscriptionPayments(limit = 100) {
+  const { data, error } = await supabase
+    .from('platform_subscription_payments')
+    .select(
+      'id, institution_id, plan_id, amount, currency, billing_cycle, payer_phone, reference_id, waafi_transaction_id, status, paid_at, created_at, platform_plans(id, name, slug)',
+    )
+    .order('created_at', { ascending: false })
+    .limit(limit)
+  if (error) throw error
+  return data || []
+}
+
 export async function assignSubscription({ institution_id, plan_id, status, billing_cycle, notes }) {
   const payload = {
     institution_id,

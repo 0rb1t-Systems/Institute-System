@@ -1,13 +1,18 @@
 /**
- * Welcome email via EmailJS (no custom domain required).
+ * EmailJS helpers (no custom domain required).
  *
- * Template placeholders (must match EmailJS template):
+ * Welcome template placeholders:
  *   {{to_email}} {{to_name}} {{full_name}} {{role}} {{login_email}}
  *   {{temporary_password}} {{login_url}} {{institution_name}}
  *   {{company_email}} {{subject}} {{welcome_message}} {{reply_to}}
  *
- * Tip in EmailJS dashboard: set Subject to {{subject}} and To Email to {{to_email}}.
- * Prefer connecting a normal Gmail/Outlook account as the EmailJS service sender.
+ * Class notification template (VITE_EMAILJS_CLASS_TEMPLATE_ID):
+ *   {{email}} {{name}} {{subject}} {{message}} {{class_name}}
+ *   {{institution_name}} {{domain_name}} {{reply_to}} {{from_name}}
+ *
+ * Tip: EmailJS Subject → {{subject}}, To Email → {{email}}, Reply To → {{reply_to}}.
+ * From Name → {{from_name}}. Body: <div style="white-space:pre-wrap">{{message}}</div>
+ * From address = the Gmail/Outlook connected to the EmailJS service (institution inbox).
  */
 import emailjs from '@emailjs/browser'
 
@@ -19,6 +24,19 @@ export type WelcomeEmailParams = {
   institutionName?: string
   institutionEmail?: string
   loginUrl?: string
+}
+
+export type ClassNotificationEmailParams = {
+  toEmail: string
+  toName: string
+  subject: string
+  /** Personalized plain-text body (user-written, any language). */
+  message: string
+  className?: string
+  institutionName?: string
+  /** Always reply / appear as the institution. */
+  institutionEmail?: string
+  domainName?: string
 }
 
 function getConfig() {
@@ -33,6 +51,41 @@ function getConfig() {
     }
   }
   return { ok: true as const, serviceId, templateId, publicKey }
+}
+
+function getClassTemplateConfig() {
+  const serviceId = import.meta.env.VITE_EMAILJS_SERVICE_ID
+  const templateId =
+    import.meta.env.VITE_EMAILJS_CLASS_TEMPLATE_ID || import.meta.env.VITE_EMAILJS_TEMPLATE_ID
+  const publicKey = import.meta.env.VITE_EMAILJS_PUBLIC_KEY
+  if (!serviceId || !templateId || !publicKey) {
+    return {
+      ok: false as const,
+      error:
+        'EmailJS class template is not configured. Set VITE_EMAILJS_SERVICE_ID, VITE_EMAILJS_CLASS_TEMPLATE_ID, and VITE_EMAILJS_PUBLIC_KEY.',
+    }
+  }
+  return { ok: true as const, serviceId, templateId, publicKey }
+}
+
+function escapeHtml(value: string) {
+  return String(value || '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;')
+}
+
+/** Optional HTML form of the message (for templates that use {{{message_html}}}). */
+export function plainMessageToHtml(message: string) {
+  const escaped = escapeHtml(message).replace(/\r\n/g, '\n').replace(/\r/g, '\n')
+  const paragraphs = escaped
+    .split(/\n{2,}/)
+    .map((block) => block.trim())
+    .filter(Boolean)
+    .map((block) => `<p style="margin:0 0 14px;">${block.replace(/\n/g, '<br>')}</p>`)
+  return paragraphs.join('') || `<p style="margin:0;">${escaped}</p>`
 }
 
 function roleLabel(role: string) {
@@ -176,6 +229,69 @@ export async function sendEmailJsMessage(params: {
     return { ok: true }
   } catch (err) {
     const error = err?.text || err?.message || 'EmailJS send failed'
+    return { ok: false, error: String(error) }
+  }
+}
+
+/**
+ * Class / course notification — uses the beautiful HTML EmailJS template.
+ * Admin writes plain text (any language); we wrap it and personalize per student.
+ * Reply-To is always the institution email when provided.
+ */
+export async function sendClassNotificationEmail(
+  params: ClassNotificationEmailParams,
+): Promise<{ ok: boolean; skipped?: boolean; error?: string }> {
+  const cfg = getClassTemplateConfig()
+  if (!cfg.ok) {
+    console.error('[emailjs]', cfg.error)
+    return { ok: false, skipped: true, error: cfg.error }
+  }
+
+  const toEmail = String(params.toEmail || '').trim()
+  const toName = String(params.toName || 'Student').trim()
+  const subject = String(params.subject || '').trim()
+  const institution = String(params.institutionName || 'Training Center').trim()
+  const className = String(params.className || '').trim()
+  const replyTo = String(params.institutionEmail || '').trim()
+  const domainName = String(params.domainName || '')
+    .trim()
+    .replace(/^https?:\/\//i, '')
+    .replace(/\/.*$/, '')
+  const messageHtml = plainMessageToHtml(params.message)
+
+  if (!toEmail.includes('@')) {
+    return { ok: false, error: 'Recipient email is missing' }
+  }
+  if (!subject) {
+    return { ok: false, error: 'Subject is required' }
+  }
+
+  try {
+    await emailjs.send(
+      cfg.serviceId,
+      cfg.templateId,
+      {
+        // Match EmailJS "Welcome" / course template field names
+        email: toEmail,
+        to_email: toEmail,
+        name: toName,
+        to_name: toName,
+        subject,
+        message: params.message,
+        message_html: messageHtml,
+        class_name: className,
+        institution_name: institution,
+        from_name: institution,
+        domain_name: domainName,
+        company_email: replyTo || institution,
+        reply_to: replyTo || toEmail,
+      },
+      { publicKey: cfg.publicKey },
+    )
+    return { ok: true }
+  } catch (err) {
+    const error = err?.text || err?.message || 'EmailJS send failed'
+    console.error('[emailjs] class notification failed', error)
     return { ok: false, error: String(error) }
   }
 }

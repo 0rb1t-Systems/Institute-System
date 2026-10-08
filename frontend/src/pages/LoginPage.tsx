@@ -507,7 +507,7 @@ const LoginPage = ({ initialError = '' }) => {
               </p>
               <p className="text-center text-sm text-[var(--pf-text)]">
                 New institution?{' '}
-                <Link to="/create-institution" className="font-semibold text-[var(--landing-sun)] hover:underline">
+                <Link to="/plans" className="font-semibold text-[var(--landing-sun)] hover:underline">
                   Create institution admin
                 </Link>
               </p>

@@ -95,7 +95,17 @@ function mapProvisionError(msg: string): { error: string; status: number } {
   if (m.includes('INSTITUTION_NAME_REQUIRED') || m.includes('INSTITUTION_SLUG_REQUIRED')) {
     return { error: 'Please complete all required fields.', status: 400 }
   }
+  if (m.includes('PURCHASE_REQUIRED') || m.includes('PURCHASE_INVALID') || m.includes('PURCHASE_ALREADY_USED')) {
+    return { error: 'Buy a plan on /plans before creating an institution.', status: 402 }
+  }
   return { error: 'Unable to create institution. Please try again.', status: 400 }
+}
+
+function addBillingPeriod(from: Date, cycle: 'monthly' | 'yearly'): Date {
+  const d = new Date(from.getTime())
+  if (cycle === 'yearly') d.setFullYear(d.getFullYear() + 1)
+  else d.setMonth(d.getMonth() + 1)
+  return d
 }
 
 function parseDataUrl(dataUrl: string): { bytes: Uint8Array; contentType: string; ext: string } | null {
@@ -163,6 +173,51 @@ Deno.serve(async (req) => {
     })
 
     const body = await req.json()
+    const purchase_claim_token = String(body.purchase_claim_token || body.claim_token || '').trim()
+    if (!purchase_claim_token) {
+      return json(
+        {
+          error: 'PURCHASE_REQUIRED',
+          message: 'Buy a plan on /plans first, then create your institution.',
+        },
+        402,
+      )
+    }
+
+    const { data: purchase, error: purchaseErr } = await admin
+      .from('platform_subscription_payments')
+      .select('id, plan_id, billing_cycle, status, claimed_at, institution_id, claim_token')
+      .eq('claim_token', purchase_claim_token)
+      .maybeSingle()
+
+    if (purchaseErr || !purchase) {
+      return json(
+        {
+          error: 'PURCHASE_INVALID',
+          message: 'This plan purchase is invalid. Please buy a plan again.',
+        },
+        402,
+      )
+    }
+    if (purchase.status !== 'completed') {
+      return json(
+        {
+          error: 'PURCHASE_INVALID',
+          message: 'Payment is not completed yet.',
+        },
+        402,
+      )
+    }
+    if (purchase.claimed_at || purchase.institution_id) {
+      return json(
+        {
+          error: 'PURCHASE_ALREADY_USED',
+          message: 'This plan purchase was already used to create an institution.',
+        },
+        402,
+      )
+    }
+
     const institution_name = String(body.institution_name || '').trim()
     const institution_slug = slugify(String(body.institution_slug || body.subdomain || ''))
     const institution_email = String(body.institution_email || '').trim().toLowerCase()
@@ -299,6 +354,47 @@ Deno.serve(async (req) => {
       console.error('[public-provision-tenant] branding update failed', brandErr.message)
     }
 
+    // Claim prepaid plan purchase and activate subscription
+    const now = new Date()
+    const billingCycle =
+      purchase.billing_cycle === 'yearly' ? 'yearly' : 'monthly'
+    const endsAt = addBillingPeriod(now, billingCycle)
+
+    const { data: claimed, error: claimErr } = await admin
+      .from('platform_subscription_payments')
+      .update({
+        institution_id: instId,
+        claimed_at: now.toISOString(),
+        updated_at: now.toISOString(),
+      })
+      .eq('id', purchase.id)
+      .is('claimed_at', null)
+      .is('institution_id', null)
+      .select('id')
+      .maybeSingle()
+
+    if (claimErr || !claimed) {
+      console.error('[public-provision-tenant] purchase claim failed', claimErr?.message)
+      // Institution already created — do not roll back; admin can fix subscription manually
+    } else {
+      const { error: subErr } = await admin.from('tenant_subscriptions').upsert(
+        {
+          institution_id: instId,
+          plan_id: purchase.plan_id,
+          status: 'active',
+          billing_cycle: billingCycle,
+          started_at: now.toISOString(),
+          ends_at: endsAt.toISOString(),
+          notes: `Prepaid claim ${purchase.claim_token}`,
+          updated_at: now.toISOString(),
+        },
+        { onConflict: 'institution_id' },
+      )
+      if (subErr) {
+        console.error('[public-provision-tenant] subscription upsert failed', subErr.message)
+      }
+    }
+
     await admin.from('audit_logs').insert({
       actor_id: adminUid,
       action: 'tenant.self_provisioned',
@@ -311,6 +407,8 @@ Deno.serve(async (req) => {
         admin_id: adminUid,
         source: 'public_self_service',
         landing_template_id,
+        purchase_id: purchase.id,
+        plan_id: purchase.plan_id,
       },
     })
 

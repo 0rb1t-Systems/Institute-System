@@ -24,13 +24,10 @@ function bearerToken(authHeader: string): string | null {
   return m ? m[1].trim() : null
 }
 
+/** Plain message only — same look as a normal inbox email (no dashboard/layout template). */
 function toHtml(message: string): string {
   const escaped = escapeHtml(message).replace(/\r\n|\r|\n/g, '<br/>')
-  return `
-    <div style="font-family:system-ui,sans-serif;max-width:560px;margin:0 auto;padding:24px;color:#0f172a;line-height:1.55">
-      ${escaped}
-    </div>
-  `
+  return `<div style="font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;font-size:15px;line-height:1.55;color:#0f172a;max-width:560px;margin:0;padding:8px 0;white-space:normal">${escaped}</div>`
 }
 
 Deno.serve(async (req) => {
@@ -86,7 +83,8 @@ Deno.serve(async (req) => {
     const message = String(body.message || body.body || '').trim().slice(0, 8000)
     const classId = String(body.class_id || '').trim()
     const replyTo = String(body.reply_to || caller.email || callerInst.email || '').trim()
-    const fromName = String(body.from_name || callerInst.name || '').trim() || null
+    const fromName =
+      String(body.from_name || body.institution_name || callerInst.name || '').trim() || null
 
     if (!to.includes('@')) return json({ error: 'INVALID_TO' }, 400)
     if (!subject) return json({ error: 'SUBJECT_REQUIRED' }, 400)
@@ -121,6 +119,7 @@ Deno.serve(async (req) => {
       }
     }
 
+    // Resend delivery + plain HTML body (no Resend dashboard template)
     const sent = await sendResendEmail({
       to,
       subject,
@@ -134,7 +133,12 @@ Deno.serve(async (req) => {
       return json({ ok: false, error: sent.error, provider: 'resend' }, 502)
     }
 
-    return json({ ok: true, provider: 'resend', emailed: true })
+    return json({
+      ok: true,
+      provider: 'resend',
+      emailed: true,
+      via_template: false,
+    })
   } catch (err) {
     console.error('[send-class-email]', err)
     return json({ error: 'SEND_FAILED' }, 500)

@@ -28,6 +28,9 @@ function friendlyError(payload, error) {
     EMAIL_IN_USE: 'An account with this email already exists. Please use a different email or sign in.',
     USER_ACCOUNT_EXISTS: 'An account with this email already exists. Please use a different email or sign in.',
     INSTITUTION_SLUG_EXISTS: 'That institution slug is already in use. Please choose another.',
+    PURCHASE_REQUIRED: 'Buy a plan on Plans first, then create your institution.',
+    PURCHASE_INVALID: 'This plan purchase is invalid. Please buy a plan again.',
+    PURCHASE_ALREADY_USED: 'This plan purchase was already used. Buy a new plan to continue.',
     VALIDATION: 'Please check your details and try again.',
     FORBIDDEN: 'You do not have permission to perform this action.',
   }
@@ -48,6 +51,7 @@ function friendlyError(payload, error) {
 export async function publicProvisionTenant(form) {
   const { data: result, error } = await supabase.functions.invoke('public-provision-tenant', {
     body: {
+      purchase_claim_token: form.purchase_claim_token,
       institution_name: form.institution_name,
       institution_slug: form.institution_slug,
       institution_email: form.institution_email,

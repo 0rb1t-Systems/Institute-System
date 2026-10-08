@@ -34,7 +34,14 @@ import { DatePickerField } from '@/components/ui/DateTimeFields';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import InstructorPaymentTransferLog from '@/components/instructor/InstructorPaymentTransferLog';
 import { exportClassStudentsToExcel } from '@/lib/ClassStudentsExcelExporter';
-import { buildDefaultClassEmailMessage, sendClassStudentEmails } from '@/lib/classEmail';
+import {
+  buildDefaultClassEmailMessage,
+  loadClassEmailSendRecord,
+  resolveInstitutionDomain,
+  saveClassEmailSendRecord,
+  sendClassStudentEmails,
+  type ClassEmailSendRecord,
+} from '@/lib/classEmail';
 
 const ClassCoursesDialog = ({ classData, isOpen, onClose }) => {
     const { courses, classCourses, addCourseToClass, removeCourseFromClass } = useData();
@@ -680,11 +687,19 @@ const ClassDetailsDialog = ({ classData, isOpen, onClose }) => {
     const [emailMessage, setEmailMessage] = useState('');
     const [sendingEmail, setSendingEmail] = useState(false);
     const [emailProgress, setEmailProgress] = useState<{ done: number; total: number } | null>(null);
+    const [lastEmailSend, setLastEmailSend] = useState<ClassEmailSendRecord | null>(null);
 
     useEffect(() => {
         if (!classData || !isOpen) return;
-        setEmailSubject(`Update about ${classData.name || 'your class'}`);
-        setEmailMessage(buildDefaultClassEmailMessage(classData));
+        const saved = loadClassEmailSendRecord(classData.id);
+        setLastEmailSend(saved);
+        if (saved) {
+            setEmailSubject(saved.subject);
+            setEmailMessage(saved.message);
+        } else {
+            setEmailSubject(`Update about ${classData.name || 'your class'}`);
+            setEmailMessage(buildDefaultClassEmailMessage(classData));
+        }
         setEmailProgress(null);
     }, [classData?.id, isOpen]);
 
@@ -732,8 +747,11 @@ const ClassDetailsDialog = ({ classData, isOpen, onClose }) => {
 
     const handleSendClassEmail = async () => {
         if (sendingEmail || studentsWithEmail.length === 0) return;
-        const subject = emailSubject;
-        const messageTemplate = emailMessage;
+
+        const subject = String(emailSubject || '').trim();
+        const messageTemplate = String(emailMessage || '').trim();
+        if (!subject || !messageTemplate) return;
+
         setSendingEmail(true);
         setEmailProgress({ done: 0, total: studentsWithEmail.length });
         try {
@@ -746,14 +764,29 @@ const ClassDetailsDialog = ({ classData, isOpen, onClose }) => {
                 copyToEmail: user?.email || institution?.email || null,
                 institutionName: institution?.name || null,
                 institutionEmail: institution?.email || user?.email || null,
+                domainName: resolveInstitutionDomain({
+                    website: institution?.website,
+                    subdomain: institution?.subdomain,
+                    customDomain: institution?.custom_domain,
+                }),
                 onProgress: (done, total) => setEmailProgress({ done, total }),
             });
+
+            if (result.sent > 0) {
+                const next: ClassEmailSendRecord = {
+                    subject,
+                    message: messageTemplate,
+                    sentAt: new Date().toISOString(),
+                    resendUsed: true,
+                };
+                saveClassEmailSendRecord(classData.id, next);
+                setLastEmailSend(next);
+            }
 
             toast({
                 title: result.sent > 0 ? 'Emails sent' : 'No emails sent',
                 description: [
-                    `${result.sent} sent`,
-                    result.viaResend ? `${result.viaResend} via Resend` : null,
+                    `${result.sent} of ${studentsWithEmail.length} students`,
                     result.failed ? `${result.failed} failed` : null,
                     result.skipped ? `${result.skipped} skipped (no email)` : null,
                     result.copyOk ? 'Also sent to your inbox' : null,
@@ -850,7 +883,7 @@ const ClassDetailsDialog = ({ classData, isOpen, onClose }) => {
                                 Email class students
                             </CardTitle>
                             <p className="text-sm text-[var(--ds-text-secondary,#5B6B61)]">
-                                Waxaad bedeli kartaa qoraalkan, ama Soomaali soo copy-gareyso oo halkaan ku dhaji. {'{name}'}, {'{class}'}, {'{end_date}'}, {'{start_date}'}, {'{program}'}, {'{instructor}'} waa la buuxiyaa arday kasta. Arday kasta wuxuu helaa hal email. Hal koobi ayaa inbox-kaaga u tagaysa (isla qoraalka, magaca institution-ka).
+                                Ku qor fariinta (Soomaali ama English). Waxa Message-ka ku jira ayaa ardayda loo diraa — wax kale lama daro. Waxaa loo diraa Resend.
                             </p>
                         </CardHeader>
                         <CardContent className="space-y-3">
@@ -878,10 +911,15 @@ const ClassDetailsDialog = ({ classData, isOpen, onClose }) => {
                                     autoCapitalize="off"
                                     dir="auto"
                                     lang="so"
-                                    placeholder={'Ku qor ama ku dhaji fariintaada, Soomaali ama English.\n\nAsc {name},\n\nKoorsada aad iska diiwaangelisay ({class}) waxay furmayaa {end_date}.'}
+                                    placeholder={'Tusaale:\n\nKoorsada aad iska diiwaangelisay waxay furmayaa bisha soo socota.\nFadlan diyaar ahow.'}
                                     className="min-h-[180px] resize-y whitespace-pre-wrap"
                                 />
                             </div>
+                            {lastEmailSend ? (
+                                <p className="text-xs text-[var(--ds-text-secondary,#5B6B61)]">
+                                    Fariintan waa la diray ardayda.
+                                </p>
+                            ) : null}
                             <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                                 <p className="text-xs text-[var(--ds-text-tertiary,#8A978E)]">
                                     {studentsWithEmail.length} of {classStudents.length} students have email

@@ -10,7 +10,7 @@ import {
   Plus,
   GraduationCap,
   Award,
-  Activity,
+  Wallet,
 } from 'lucide-react'
 import {
   ResponsiveContainer,
@@ -174,6 +174,11 @@ const SuperAdminDashboardPage = () => {
 
   const v = (n: number | undefined) => (loading ? '…' : fmt(n))
 
+  const moneyFmt = (n?: number | null) =>
+    n == null || Number.isNaN(Number(n))
+      ? '—'
+      : `$${Number(n).toLocaleString(undefined, { maximumFractionDigits: 0 })}`
+
   const kpiItems = [
     {
       title: 'Institutions',
@@ -197,11 +202,11 @@ const SuperAdminDashboardPage = () => {
       to: '/super-admin/analytics',
     },
     {
-      title: 'Activity',
-      value: v(kpis.activity_period),
-      hint: `${fmt(kpis.registrations_period)} regs`,
-      icon: Activity,
-      to: '/super-admin/audit-logs',
+      title: 'Plan revenue',
+      value: loading ? '…' : moneyFmt(kpis.platform_subscription_revenue_period),
+      hint: `${fmt(kpis.platform_subscription_payments_period)} WaafiPay`,
+      icon: Wallet,
+      to: '/super-admin/plans',
     },
   ]
 

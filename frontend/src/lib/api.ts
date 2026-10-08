@@ -2760,10 +2760,133 @@ export const deletePayment = async (id) => {
   return true
 }
 
-/** @deprecated Tenant WaafiPay charging is disabled — institutions use manual Finance payments.
- *  Platform Plans & Subscriptions billing is deferred to super-admin (no tenant enrollment charges). */
+/** Tenant student WaafiPay is disabled — institutions use manual Finance payments. */
 export const chargeWaafiPay = async (_args?: { enrollment_id?: string; amount?: number; phone?: string }) => {
   throw new Error('WAAFIPAY_TENANT_DISABLED')
+}
+
+/**
+ * Institution admin: renew a platform plan via WaafiPay.
+ * Secrets live only on the edge function (sandbox fallbacks for testing).
+ */
+export async function purchasePlatformPlanViaWaafiPay({
+  plan_id,
+  billing_cycle = 'monthly',
+  phone,
+}: {
+  plan_id: string
+  billing_cycle?: 'monthly' | 'yearly'
+  phone: string
+}) {
+  const {
+    data: { session },
+  } = await supabase.auth.getSession()
+  if (!session?.access_token) throw new Error('Unauthorized')
+
+  const { data: result, error } = await supabase.functions.invoke('waafipay-charge', {
+    headers: { Authorization: `Bearer ${session.access_token}` },
+    body: { plan_id, billing_cycle, phone },
+  })
+
+  let payload = result
+  if (error) {
+    try {
+      const ctx = (error as any).context
+      if (ctx && typeof ctx.json === 'function') {
+        payload = await ctx.json()
+      } else if (ctx && typeof ctx.text === 'function') {
+        const text = await ctx.text()
+        payload = text ? JSON.parse(text) : null
+      }
+    } catch {
+      /* keep original */
+    }
+  }
+
+  if (payload?.ok) return payload
+
+  const code = payload?.error || (error as any)?.message || 'PAYMENT_FAILED'
+  const msg = payload?.message || String(code)
+  const err = new Error(typeof code === 'string' && /^[A-Z0-9_]+$/.test(code) ? `${code}: ${msg}` : msg)
+  ;(err as any).code = code
+  ;(err as any).payload = payload
+  throw err
+}
+
+/**
+ * Guest pay-first: buy a plan before creating an institution.
+ * Returns claim_token for /create-institution?purchase=
+ */
+export async function purchasePlatformPlanPublic({
+  plan_id,
+  billing_cycle = 'monthly',
+  phone,
+}: {
+  plan_id: string
+  billing_cycle?: 'monthly' | 'yearly'
+  phone: string
+}) {
+  const { data: result, error } = await supabase.functions.invoke('waafipay-charge', {
+    body: { public_purchase: true, plan_id, billing_cycle, phone },
+  })
+
+  let payload = result
+  if (error) {
+    try {
+      const ctx = (error as any).context
+      if (ctx && typeof ctx.json === 'function') {
+        payload = await ctx.json()
+      } else if (ctx && typeof ctx.text === 'function') {
+        const text = await ctx.text()
+        payload = text ? JSON.parse(text) : null
+      }
+    } catch {
+      /* keep */
+    }
+  }
+
+  if (payload?.ok && payload?.claim_token) return payload
+
+  const code = payload?.error || (error as any)?.message || 'PAYMENT_FAILED'
+  const msg = payload?.message || String(code)
+  const err = new Error(typeof code === 'string' && /^[A-Z0-9_]+$/.test(code) ? `${code}: ${msg}` : msg)
+  ;(err as any).code = code
+  ;(err as any).payload = payload
+  throw err
+}
+
+/** Validate an unclaimed prepaid plan purchase (for create-institution gate). */
+export async function peekPlanPurchase(claimToken: string) {
+  const { data, error } = await supabase.rpc('peek_plan_purchase', {
+    p_token: claimToken,
+  })
+  if (error) throw error
+  return data
+}
+
+/** Active platform plans (public RLS). */
+export async function listActivePlatformPlans() {
+  const { data, error } = await supabase
+    .from('platform_plans')
+    .select(
+      'id, name, slug, description, price_monthly, price_yearly, max_students, features, is_active, sort_order',
+    )
+    .eq('is_active', true)
+    .order('sort_order', { ascending: true })
+  if (error) throw error
+  return data || []
+}
+
+/** Current institution subscription (tenant admin RLS). */
+export async function getMyTenantSubscription() {
+  const { data, error } = await supabase
+    .from('tenant_subscriptions')
+    .select(
+      'id, institution_id, plan_id, status, billing_cycle, started_at, ends_at, notes, platform_plans(id, name, slug, price_monthly, price_yearly)',
+    )
+    .maybeSingle()
+  if (error) throw error
+  return data
 }
 
 // --- Attendance ---

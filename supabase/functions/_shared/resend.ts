@@ -36,7 +36,13 @@ export function buildResendFrom(displayName?: string | null): string {
 export async function sendResendEmail(opts: {
   to: string
   subject: string
-  html: string
+  /** Inline HTML — ignored when `template` is set (Resend forbids both). */
+  html?: string
+  /** Published Resend dashboard template. */
+  template?: {
+    id: string
+    variables?: Record<string, string | number>
+  }
   bcc?: string[]
   replyTo?: string
   fromName?: string | null
@@ -52,6 +58,10 @@ export async function sendResendEmail(opts: {
   const to = String(opts.to || '').trim().toLowerCase()
   if (!to || !to.includes('@')) return { ok: false, error: 'INVALID_TO' }
 
+  const templateId = String(opts.template?.id || '').trim()
+  const html = String(opts.html || '').trim()
+  if (!templateId && !html) return { ok: false, error: 'HTML_OR_TEMPLATE_REQUIRED' }
+
   const bcc = (opts.bcc || [])
     .map((e) => String(e || '').trim().toLowerCase())
     .filter((e) => e.includes('@') && e !== to)
@@ -62,8 +72,17 @@ export async function sendResendEmail(opts: {
     from,
     to: [to],
     subject: opts.subject,
-    html: opts.html,
   }
+
+  if (templateId) {
+    payload.template = {
+      id: templateId,
+      variables: opts.template?.variables || {},
+    }
+  } else {
+    payload.html = html
+  }
+
   if (bcc.length) payload.bcc = [...new Set(bcc)]
   if (replyTo.includes('@')) payload.reply_to = replyTo
 
