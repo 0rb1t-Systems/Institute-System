@@ -2767,16 +2767,18 @@ export const chargeWaafiPay = async (_args?: { enrollment_id?: string; amount?: 
 
 /**
  * Institution admin: renew a platform plan via WaafiPay.
- * Secrets live only on the edge function (sandbox fallbacks for testing).
+ * Secrets live only on the edge function / platform_runtime_secrets (sandbox by default).
  */
 export async function purchasePlatformPlanViaWaafiPay({
   plan_id,
   billing_cycle = 'monthly',
   phone,
+  payer_name,
 }: {
   plan_id: string
   billing_cycle?: 'monthly' | 'yearly'
   phone: string
+  payer_name: string
 }) {
   const {
     data: { session },
@@ -2785,7 +2787,7 @@ export async function purchasePlatformPlanViaWaafiPay({
 
   const { data: result, error } = await supabase.functions.invoke('waafipay-charge', {
     headers: { Authorization: `Bearer ${session.access_token}` },
-    body: { plan_id, billing_cycle, phone },
+    body: { plan_id, billing_cycle, phone, payer_name },
   })
 
   let payload = result
@@ -2821,13 +2823,15 @@ export async function purchasePlatformPlanPublic({
   plan_id,
   billing_cycle = 'monthly',
   phone,
+  payer_name,
 }: {
   plan_id: string
   billing_cycle?: 'monthly' | 'yearly'
   phone: string
+  payer_name: string
 }) {
   const { data: result, error } = await supabase.functions.invoke('waafipay-charge', {
-    body: { public_purchase: true, plan_id, billing_cycle, phone },
+    body: { public_purchase: true, plan_id, billing_cycle, phone, payer_name },
   })
 
   let payload = result
@@ -2859,6 +2863,15 @@ export async function purchasePlatformPlanPublic({
 export async function peekPlanPurchase(claimToken: string) {
   const { data, error } = await supabase.rpc('peek_plan_purchase', {
     p_token: claimToken,
+  })
+  if (error) throw error
+  return data
+}
+
+/** Public/authenticated payment invoice lookup by receipt or claim token. */
+export async function getPlatformPaymentReceipt(token: string) {
+  const { data, error } = await supabase.rpc('get_platform_payment_receipt', {
+    p_token: token,
   })
   if (error) throw error
   return data

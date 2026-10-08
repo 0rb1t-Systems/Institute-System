@@ -8,7 +8,6 @@ import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Loader2, ArrowLeft, ArrowRight, Eye, EyeOff } from 'lucide-react'
-import ThemeToggle from '@/components/platform/ThemeToggle'
 import { publicProvisionTenant } from '@/lib/publicTenantApi'
 import { peekPlanPurchase } from '@/lib/api'
 import { isValidEmail } from '@/lib/utils'
@@ -333,15 +332,12 @@ const PublicCreateInstitutionPage = () => {
           <Link to="/" className="landing-display text-lg font-extrabold tracking-tight text-[var(--landing-ink)]">
             Tvet<span className="text-[var(--landing-sun)]">Flow</span>
           </Link>
-          <div className="flex items-center gap-2">
-            <ThemeToggle />
-            <Button asChild variant="ghost" size="sm" className="text-[var(--pf-muted)] hover:bg-[var(--pf-hover)] hover:text-[var(--pf-text)]">
-              <Link to="/login">
-                <ArrowLeft className="mr-1 h-4 w-4" />
-                Sign in
-              </Link>
-            </Button>
-          </div>
+          <Button asChild variant="ghost" size="sm" className="text-[var(--pf-muted)] hover:bg-[var(--pf-hover)] hover:text-[var(--pf-text)]">
+            <Link to="/login">
+              <ArrowLeft className="mr-1 h-4 w-4" />
+              Sign in
+            </Link>
+          </Button>
         </div>
 
         <div

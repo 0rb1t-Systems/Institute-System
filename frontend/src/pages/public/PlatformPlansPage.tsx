@@ -59,6 +59,7 @@ const PlatformPlansPage = () => {
   const [buyOpen, setBuyOpen] = useState(false)
   const [selectedPlan, setSelectedPlan] = useState<any>(null)
   const [billingCycle, setBillingCycle] = useState<'monthly' | 'yearly'>('monthly')
+  const [payerName, setPayerName] = useState('')
   const [phone, setPhone] = useState('')
   const [paying, setPaying] = useState(false)
 
@@ -98,6 +99,7 @@ const PlatformPlansPage = () => {
     if (monthly <= 0 && yearly <= 0) return
     setSelectedPlan(plan)
     setBillingCycle(monthly > 0 ? 'monthly' : 'yearly')
+    setPayerName('')
     setPhone('')
     setBuyOpen(true)
   }
@@ -112,33 +114,41 @@ const PlatformPlansPage = () => {
   const onPay = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!selectedPlan?.id || chargeAmount <= 0) return
+    if (!payerName.trim()) return
     setPaying(true)
     try {
       if (isTenantAdmin) {
-        await purchasePlatformPlanViaWaafiPay({
+        const result = await purchasePlatformPlanViaWaafiPay({
           plan_id: selectedPlan.id,
           billing_cycle: billingCycle,
           phone,
+          payer_name: payerName.trim(),
         })
         toast({
           title: 'Payment successful',
-          description: `${selectedPlan.name} is now active on your institution.`,
+          description: `${selectedPlan.name} is now active. Your invoice is ready.`,
         })
         setBuyOpen(false)
-        await load()
+        const receiptToken = String(result.receipt_token || '')
+        if (receiptToken) {
+          navigate(`/payment-receipt?token=${encodeURIComponent(receiptToken)}`)
+        } else {
+          await load()
+        }
       } else {
         const result = await purchasePlatformPlanPublic({
           plan_id: selectedPlan.id,
           billing_cycle: billingCycle,
           phone,
+          payer_name: payerName.trim(),
         })
-        const token = String(result.claim_token || '')
+        const receiptToken = String(result.receipt_token || result.claim_token || '')
         toast({
           title: 'Payment successful',
-          description: 'Next: create your institution admin account.',
+          description: 'Invoice saved. Continue to create your institution.',
         })
         setBuyOpen(false)
-        navigate(`/create-institution?purchase=${encodeURIComponent(token)}`)
+        navigate(`/payment-receipt?token=${encodeURIComponent(receiptToken)}`)
       }
     } catch (err) {
       const mapped = mapError(err)
@@ -180,7 +190,7 @@ const PlatformPlansPage = () => {
           className="mt-4 max-w-xl text-[var(--landing-muted)]"
         >
           {isTenantAdmin
-            ? 'Renew or change your plan with WaafiPay (EVC / Zaad).'
+            ? 'Renew or change your plan with WaafiPay.'
             : 'Buy a plan with WaafiPay first. After payment you can create your institution and admin account.'}
         </motion.p>
 
@@ -311,9 +321,9 @@ const PlatformPlansPage = () => {
                     >
                       {isTenantAdmin
                         ? isCurrent
-                          ? 'Renew with WaafiPay'
-                          : 'Buy with WaafiPay'
-                        : 'Buy plan then create institution'}
+                          ? 'Renew plan'
+                          : 'Buy plan'
+                        : 'Get started'}
                       <ArrowRight className="ml-2 h-4 w-4" />
                     </Button>
                   ) : (
@@ -339,142 +349,160 @@ const PlatformPlansPage = () => {
         </p>
       </section>
 
-      <Dialog open={buyOpen} onOpenChange={setBuyOpen}>
+      <Dialog open={buyOpen} onOpenChange={(open) => !paying && setBuyOpen(open)}>
         <DialogContent
           className={cn(
-            'platform-landing flex max-h-[min(92vh,40rem)] max-w-[26rem] flex-col gap-0 overflow-hidden border-[var(--landing-line)] bg-[var(--landing-room)] p-0 text-[var(--landing-ink)] shadow-[0_24px_64px_rgba(15,23,42,0.18)]',
+            'platform-landing !max-h-none max-w-[24rem] gap-0 overflow-visible border-[var(--landing-line)] bg-[var(--landing-room)] p-0 text-[var(--landing-ink)] shadow-[0_24px_64px_rgba(15,23,42,0.18)]',
             '[&>button]:z-20 [&>button]:rounded-[var(--landing-radius)] [&>button]:text-[var(--landing-muted)] [&>button]:hover:bg-[var(--landing-room-dim)] [&>button]:hover:text-[var(--landing-ink)] [&>button]:focus:ring-[var(--landing-sun)]',
           )}
           style={{ borderRadius: 'calc(var(--landing-radius) + 6px)' }}
         >
-          <div className="shrink-0 border-b border-[var(--landing-line)] bg-[var(--landing-limewash)] px-6 pb-5 pt-6 pr-12">
-            <div className="mb-3 inline-flex items-center gap-2 rounded-[var(--landing-radius)] bg-[var(--landing-sun-soft)] px-2.5 py-1 text-[11px] font-bold uppercase tracking-wide text-[var(--landing-sun)]">
+          <div className="border-b border-[var(--landing-line)] bg-[var(--landing-limewash)] px-5 pb-4 pt-5 pr-11">
+            <div className="mb-2 inline-flex items-center gap-2 rounded-[var(--landing-radius)] bg-[var(--landing-sun-soft)] px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-[var(--landing-sun)]">
               WaafiPay
             </div>
-            <DialogHeader className="space-y-1.5 text-left">
-              <DialogTitle className="landing-display text-xl font-extrabold tracking-tight text-[var(--landing-ink)]">
+            <DialogHeader className="space-y-1 text-left">
+              <DialogTitle className="landing-display text-lg font-extrabold tracking-tight text-[var(--landing-ink)]">
                 Pay with WaafiPay
               </DialogTitle>
-              <DialogDescription className="text-sm leading-relaxed text-[var(--landing-muted)]">
+              <DialogDescription className="text-sm leading-snug text-[var(--landing-muted)]">
                 {selectedPlan
                   ? isTenantAdmin
-                    ? `Renew ${selectedPlan.name} — approve the prompt on your phone.`
+                    ? `Renew ${selectedPlan.name} — approve on your phone.`
                     : `Buy ${selectedPlan.name}, then create your institution.`
                   : 'Complete payment on your phone.'}
               </DialogDescription>
             </DialogHeader>
           </div>
 
-          <form onSubmit={onPay} className="flex min-h-0 flex-1 flex-col">
-            <div className="min-h-0 flex-1 space-y-5 overflow-y-auto px-6 py-5">
-              <div
-                className="flex items-end justify-between gap-3 border border-[var(--landing-line)] bg-[var(--landing-limewash)] px-4 py-3"
-                style={{ borderRadius: 'var(--landing-radius)' }}
-              >
-                <div>
-                  <p className="text-[11px] font-semibold uppercase tracking-wide text-[var(--landing-shadow)]">
-                    Amount due
-                  </p>
-                  <p className="landing-display mt-0.5 text-2xl font-extrabold tabular-nums text-[var(--landing-ink)]">
-                    {money(chargeAmount)}
-                    <span className="ml-1 text-sm font-medium text-[var(--landing-muted)]">USD</span>
-                  </p>
-                </div>
-                {selectedPlan ? (
-                  <p className="text-right text-sm font-semibold text-[var(--landing-ink)]">
-                    {selectedPlan.name}
-                    <span className="mt-0.5 block text-xs font-medium capitalize text-[var(--landing-muted)]">
-                      {billingCycle}
-                    </span>
-                  </p>
-                ) : null}
-              </div>
-
-              <div className="space-y-2.5">
-                <Label className="text-xs font-semibold uppercase tracking-wide text-[var(--landing-muted)]">
-                  Billing cycle
-                </Label>
-                <div className="grid grid-cols-2 gap-2.5">
-                  {(
-                    [
-                      { id: 'monthly' as const, label: 'Monthly', price: selectedPlan?.price_monthly },
-                      { id: 'yearly' as const, label: 'Yearly', price: selectedPlan?.price_yearly },
-                    ] as const
-                  ).map((opt) => {
-                    const enabled = Number(opt.price) > 0
-                    const active = billingCycle === opt.id
-                    return (
-                      <button
-                        key={opt.id}
-                        type="button"
-                        disabled={!selectedPlan || !enabled}
-                        onClick={() => setBillingCycle(opt.id)}
-                        className={cn(
-                          'flex flex-col items-start gap-0.5 border px-3.5 py-3 text-left transition disabled:cursor-not-allowed disabled:opacity-40',
-                          active
-                            ? 'border-[var(--landing-sun)] bg-[var(--landing-sun)] text-[var(--landing-on-sun)] shadow-[0_10px_22px_color-mix(in_srgb,var(--landing-sun)_28%,transparent)]'
-                            : 'border-[var(--landing-line)] bg-[var(--landing-room)] text-[var(--landing-ink)] hover:border-[var(--landing-sun)]/50 hover:bg-[var(--landing-sun-soft)]/40',
-                        )}
-                        style={{ borderRadius: 'var(--landing-radius)' }}
-                      >
-                        <span className="text-sm font-bold">{opt.label}</span>
-                        <span
-                          className={cn(
-                            'text-xs font-medium tabular-nums',
-                            active ? 'text-[var(--landing-on-sun)]/80' : 'text-[var(--landing-muted)]',
-                          )}
-                        >
-                          {money(opt.price)}
-                        </span>
-                      </button>
-                    )
-                  })}
-                </div>
-              </div>
-
-              <div className="space-y-2.5">
-                <Label
-                  htmlFor="waafi-phone"
-                  className="text-xs font-semibold uppercase tracking-wide text-[var(--landing-muted)]"
-                >
-                  Mobile (EVC / Zaad)
-                </Label>
-                <Input
-                  id="waafi-phone"
-                  inputMode="tel"
-                  placeholder="25261xxxxxxx"
-                  value={phone}
-                  onChange={(e) => setPhone(e.target.value)}
-                  required
-                  className="h-12 border-[var(--landing-line)] bg-[var(--landing-limewash)] text-[var(--landing-ink)] placeholder:text-[var(--landing-shadow)] focus-visible:ring-[var(--landing-sun)]"
-                  style={{ borderRadius: 'var(--landing-radius)' }}
-                />
-                <p className="text-xs leading-relaxed text-[var(--landing-shadow)]">
-                  International format without +. Approve the charge on your phone.
+          <form onSubmit={onPay} className="space-y-4 px-5 py-4">
+            <div
+              className="flex items-end justify-between gap-3 border border-[var(--landing-line)] bg-[var(--landing-limewash)] px-3.5 py-2.5"
+              style={{ borderRadius: 'var(--landing-radius)' }}
+            >
+              <div>
+                <p className="text-[10px] font-semibold uppercase tracking-wide text-[var(--landing-shadow)]">
+                  Amount due
                 </p>
+                <p className="landing-display text-2xl font-extrabold tabular-nums text-[var(--landing-ink)]">
+                  {money(chargeAmount)}
+                  <span className="ml-1 text-sm font-medium text-[var(--landing-muted)]">USD</span>
+                </p>
+              </div>
+              {selectedPlan ? (
+                <p className="text-right text-sm font-semibold text-[var(--landing-ink)]">
+                  {selectedPlan.name}
+                  <span className="mt-0.5 block text-xs font-medium capitalize text-[var(--landing-muted)]">
+                    {billingCycle}
+                  </span>
+                </p>
+              ) : null}
+            </div>
+
+            <div className="space-y-2">
+              <Label className="text-[10px] font-semibold uppercase tracking-wide text-[var(--landing-muted)]">
+                Billing cycle
+              </Label>
+              <div className="grid grid-cols-2 gap-2">
+                {(
+                  [
+                    { id: 'monthly' as const, label: 'Monthly', price: selectedPlan?.price_monthly },
+                    { id: 'yearly' as const, label: 'Yearly', price: selectedPlan?.price_yearly },
+                  ] as const
+                ).map((opt) => {
+                  const enabled = Number(opt.price) > 0
+                  const active = billingCycle === opt.id
+                  return (
+                    <button
+                      key={opt.id}
+                      type="button"
+                      disabled={!selectedPlan || !enabled || paying}
+                      onClick={() => setBillingCycle(opt.id)}
+                      className={cn(
+                        'flex flex-col items-start gap-0.5 border px-3 py-2.5 text-left transition disabled:cursor-not-allowed disabled:opacity-40',
+                        active
+                          ? 'border-[var(--landing-sun)] bg-[var(--landing-sun)] text-[var(--landing-on-sun)] shadow-[0_8px_18px_color-mix(in_srgb,var(--landing-sun)_28%,transparent)]'
+                          : 'border-[var(--landing-line)] bg-[var(--landing-room)] text-[var(--landing-ink)] hover:border-[var(--landing-sun)]/50 hover:bg-[var(--landing-sun-soft)]/40',
+                      )}
+                      style={{ borderRadius: 'var(--landing-radius)' }}
+                    >
+                      <span className="text-sm font-bold">{opt.label}</span>
+                      <span
+                        className={cn(
+                          'text-xs font-medium tabular-nums',
+                          active ? 'text-[var(--landing-on-sun)]/80' : 'text-[var(--landing-muted)]',
+                        )}
+                      >
+                        {money(opt.price)}
+                      </span>
+                    </button>
+                  )
+                })}
               </div>
             </div>
 
-            <div className="shrink-0 border-t border-[var(--landing-line)] bg-[var(--landing-room)] px-6 py-4">
-              <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end sm:gap-3">
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={() => setBuyOpen(false)}
-                  disabled={paying}
-                  className="h-11 w-full border-[var(--landing-line)] bg-transparent text-[var(--landing-ink)] hover:bg-[var(--landing-room-dim)] hover:text-[var(--landing-ink)] sm:w-auto"
-                  style={{ borderRadius: 'var(--landing-radius)' }}
-                >
-                  Cancel
-                </Button>
-                <Button
-                  type="submit"
-                  disabled={paying || chargeAmount <= 0}
-                  className="landing-btn-primary h-11 w-full text-sm sm:min-w-[8.5rem] sm:w-auto"
-                >
-                  {paying ? <Loader2 className="h-4 w-4 animate-spin" /> : `Pay ${money(chargeAmount)}`}
-                </Button>
-              </div>
+            <div className="space-y-2">
+              <Label
+                htmlFor="waafi-payer-name"
+                className="text-[10px] font-semibold uppercase tracking-wide text-[var(--landing-muted)]"
+              >
+                Full name
+              </Label>
+              <Input
+                id="waafi-payer-name"
+                autoComplete="name"
+                placeholder="Name on the invoice"
+                value={payerName}
+                onChange={(e) => setPayerName(e.target.value)}
+                required
+                disabled={paying}
+                className="h-11 border-[var(--landing-line)] bg-[var(--landing-limewash)] text-[var(--landing-ink)] placeholder:text-[var(--landing-shadow)] focus-visible:ring-[var(--landing-sun)]"
+                style={{ borderRadius: 'var(--landing-radius)' }}
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label
+                htmlFor="waafi-phone"
+                className="text-[10px] font-semibold uppercase tracking-wide text-[var(--landing-muted)]"
+              >
+                Mobile number
+              </Label>
+              <Input
+                id="waafi-phone"
+                inputMode="tel"
+                autoComplete="tel"
+                placeholder="25261xxxxxxx"
+                value={phone}
+                onChange={(e) => setPhone(e.target.value)}
+                required
+                disabled={paying}
+                className="h-11 border-[var(--landing-line)] bg-[var(--landing-limewash)] text-[var(--landing-ink)] placeholder:text-[var(--landing-shadow)] focus-visible:ring-[var(--landing-sun)]"
+                style={{ borderRadius: 'var(--landing-radius)' }}
+              />
+              <p className="text-[11px] leading-snug text-[var(--landing-shadow)]">
+                Approve the charge on your phone. An invoice is saved after payment.
+              </p>
+            </div>
+
+            <div className="flex flex-col-reverse gap-2 border-t border-[var(--landing-line)] pt-4 sm:flex-row sm:justify-end sm:gap-2.5">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setBuyOpen(false)}
+                disabled={paying}
+                className="h-10 w-full border-[var(--landing-line)] bg-transparent text-[var(--landing-ink)] hover:bg-[var(--landing-room-dim)] hover:text-[var(--landing-ink)] sm:w-auto"
+                style={{ borderRadius: 'var(--landing-radius)' }}
+              >
+                Cancel
+              </Button>
+              <Button
+                type="submit"
+                disabled={paying || chargeAmount <= 0}
+                className="landing-btn-primary h-10 w-full text-sm sm:min-w-[8rem] sm:w-auto"
+              >
+                {paying ? <Loader2 className="h-4 w-4 animate-spin" /> : `Pay ${money(chargeAmount)}`}
+              </Button>
             </div>
           </form>
         </DialogContent>

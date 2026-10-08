@@ -43,6 +43,7 @@ import PlatformFeaturesPage from '@/pages/public/PlatformFeaturesPage';
 import PlatformAboutPage from '@/pages/public/PlatformAboutPage';
 import PlatformContactPage from '@/pages/public/PlatformContactPage';
 import PlatformPlansPage from '@/pages/public/PlatformPlansPage';
+import PlatformPaymentReceiptPage from '@/pages/public/PlatformPaymentReceiptPage';
 import PlatformSupportPage from '@/pages/public/PlatformSupportPage';
 import NotFoundPage from '@/pages/NotFoundPage';
 import DashboardPage from '@/pages/DashboardPage';
@@ -263,6 +264,7 @@ const App = () => {
           <Route path="/" element={<WelcomePage />} />
           <Route path="/features" element={<PlatformFeaturesPage />} />
           <Route path="/plans" element={<PlatformPlansPage />} />
+          <Route path="/payment-receipt" element={<PlatformPaymentReceiptPage />} />
           <Route path="/support" element={<PlatformSupportPage />} />
           <Route path="/about" element={<PlatformAboutPage />} />
           <Route path="/contact" element={<PlatformContactPage />} />

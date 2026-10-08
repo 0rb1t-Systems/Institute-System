@@ -15,7 +15,6 @@ import {
   LifeBuoy,
   ArrowRight,
 } from 'lucide-react'
-import ThemeToggle from '@/components/platform/ThemeToggle'
 import LanguageSwitcher from '@/components/platform/LanguageSwitcher'
 import PlatformSocialLinks, {
   PLATFORM_SOCIAL,
@@ -114,7 +113,6 @@ const PlatformLayout = ({
 
           <div className="flex items-center gap-2">
             <LanguageSwitcher />
-            <ThemeToggle className="hidden sm:inline-flex !rounded-[2px]" />
             <Link
               to="/login"
               className="landing-btn-outline hidden h-9 items-center px-4 text-sm sm:inline-flex"
@@ -170,9 +168,6 @@ const PlatformLayout = ({
                   {t('verifyId')}
                 </button>
               ) : null}
-              <div className="mt-2 flex items-center gap-2 px-1 sm:hidden">
-                <ThemeToggle className="!rounded-[2px]" />
-              </div>
               <Link
                 to="/login"
                 onClick={() => setMenuOpen(false)}

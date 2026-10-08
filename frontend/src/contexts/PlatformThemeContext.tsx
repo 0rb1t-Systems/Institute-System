@@ -1,4 +1,4 @@
-import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react'
+import React, { createContext, useCallback, useContext, useEffect, useMemo } from 'react'
 
 export type PlatformThemeMode = 'dark' | 'light'
 
@@ -13,54 +13,37 @@ type PlatformThemeContextValue = {
 
 const PlatformThemeContext = createContext<PlatformThemeContextValue | null>(null)
 
-function readStoredMode(): PlatformThemeMode {
-  try {
-    const stored = localStorage.getItem(STORAGE_KEY)
-    if (stored === 'dark' || stored === 'light') return stored
-    return 'light'
-  } catch {
-    return 'light'
-  }
-}
-
 function applyMode(mode: PlatformThemeMode) {
   document.documentElement.setAttribute('data-platform-theme', mode)
 }
 
+/** Platform marketing site is light-only (dark toggle removed). */
 export function PlatformThemeProvider({ children }: { children: React.ReactNode }) {
-  const [preference, setPreference] = useState<PlatformThemeMode>(() => {
-    if (typeof window === 'undefined') return 'light'
-    return readStoredMode()
-  })
-
   useEffect(() => {
-    applyMode(preference)
-  }, [preference])
-
-  useEffect(() => {
+    applyMode('light')
     try {
-      localStorage.setItem(STORAGE_KEY, preference)
+      localStorage.setItem(STORAGE_KEY, 'light')
     } catch {
       /* ignore */
     }
-  }, [preference])
+  }, [])
 
-  const setMode = useCallback((next: PlatformThemeMode) => {
-    setPreference(next)
+  const setMode = useCallback((_next: PlatformThemeMode) => {
+    applyMode('light')
   }, [])
 
   const toggle = useCallback(() => {
-    setPreference((prev) => (prev === 'dark' ? 'light' : 'dark'))
+    applyMode('light')
   }, [])
 
   const value = useMemo(
     () => ({
-      mode: preference,
-      preference,
+      mode: 'light' as PlatformThemeMode,
+      preference: 'light' as PlatformThemeMode,
       setMode,
       toggle,
     }),
-    [preference, setMode, toggle],
+    [setMode, toggle],
   )
 
   return <PlatformThemeContext.Provider value={value}>{children}</PlatformThemeContext.Provider>

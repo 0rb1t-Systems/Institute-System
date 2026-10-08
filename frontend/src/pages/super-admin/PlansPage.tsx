@@ -255,15 +255,21 @@ const PlansPage = () => {
       </div>
 
       <h2 className="mb-3 mt-10 text-sm font-semibold text-[var(--pf-text)]">Platform payments (WaafiPay)</h2>
+      <p className="mb-3 text-xs text-[var(--pf-muted)]">
+        Sandbox charges from Plans checkout appear here. Prepaid rows stay unclaimed until the buyer creates an institution.
+      </p>
       <div className="mb-8 overflow-hidden rounded-xl border border-[var(--pf-line)] bg-[var(--pf-surface)]">
         <Table>
           <TableHeader>
             <TableRow className="border-slate-800 hover:bg-transparent">
               <TableHead>Tenant</TableHead>
+              <TableHead>Invoice</TableHead>
+              <TableHead>Payer</TableHead>
               <TableHead>Plan</TableHead>
               <TableHead>Amount</TableHead>
               <TableHead>Cycle</TableHead>
               <TableHead>Phone</TableHead>
+              <TableHead>Env</TableHead>
               <TableHead>Status</TableHead>
               <TableHead>Waafi Tx</TableHead>
               <TableHead>Date</TableHead>
@@ -272,56 +278,89 @@ const PlansPage = () => {
           <TableBody>
             {loading ? (
               <TableRow>
-                <TableCell colSpan={8} className="py-8 text-center text-slate-500">
+                <TableCell colSpan={11} className="py-8 text-center text-slate-500">
                   Loading…
                 </TableCell>
               </TableRow>
             ) : payments.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={8} className="py-8 text-center text-slate-500">
+                <TableCell colSpan={11} className="py-8 text-center text-slate-500">
                   No platform subscription payments yet.
                 </TableCell>
               </TableRow>
             ) : (
-              payments.map((pay) => (
-                <TableRow key={pay.id} className="border-slate-800">
-                  <TableCell className="text-slate-100">
-                    {tenantName[pay.institution_id] || pay.institution_id}
-                  </TableCell>
-                  <TableCell className="text-slate-300">
-                    {pay.platform_plans?.name || '—'}
-                  </TableCell>
-                  <TableCell className="tabular-nums text-slate-100">
-                    ${Number(pay.amount || 0).toFixed(2)} {pay.currency || 'USD'}
-                  </TableCell>
-                  <TableCell className="capitalize text-slate-400">{pay.billing_cycle}</TableCell>
-                  <TableCell className="font-mono text-xs text-slate-400">
-                    {pay.payer_phone || '—'}
-                  </TableCell>
-                  <TableCell>
-                    <Badge
-                      variant="outline"
-                      className={
-                        pay.status === 'completed'
-                          ? 'border-emerald-700/60 text-emerald-500 capitalize'
-                          : pay.status === 'failed'
-                            ? 'border-rose-700/60 text-rose-400 capitalize'
-                            : 'border-slate-700 text-slate-300 capitalize'
-                      }
-                    >
-                      {pay.status}
-                    </Badge>
-                  </TableCell>
-                  <TableCell className="max-w-[120px] truncate font-mono text-xs text-slate-500">
-                    {pay.waafi_transaction_id || '—'}
-                  </TableCell>
-                  <TableCell className="text-sm text-slate-500">
-                    {pay.paid_at || pay.created_at
-                      ? new Date(pay.paid_at || pay.created_at).toLocaleString()
-                      : '—'}
-                  </TableCell>
-                </TableRow>
-              ))
+              payments.map((pay) => {
+                const prepaid = !pay.institution_id
+                const claimed = Boolean(pay.claimed_at)
+                const tenantLabel = prepaid
+                  ? claimed
+                    ? 'Prepaid (claimed)'
+                    : 'Prepaid (unclaimed)'
+                  : tenantName[pay.institution_id] || pay.institution_id || '—'
+                const env = String(pay.gateway_env || 'sandbox')
+                return (
+                  <TableRow key={pay.id} className="border-slate-800">
+                    <TableCell className="text-slate-100">{tenantLabel}</TableCell>
+                    <TableCell className="font-mono text-xs text-slate-300">
+                      {pay.receipt_token ? (
+                        <Link
+                          to={`/payment-receipt?token=${encodeURIComponent(pay.receipt_token)}`}
+                          className="text-[var(--pf-accent)] hover:underline"
+                        >
+                          {pay.invoice_number || 'Receipt'}
+                        </Link>
+                      ) : (
+                        pay.invoice_number || '—'
+                      )}
+                    </TableCell>
+                    <TableCell className="text-slate-200">{pay.payer_name || '—'}</TableCell>
+                    <TableCell className="text-slate-300">
+                      {pay.platform_plans?.name || '—'}
+                    </TableCell>
+                    <TableCell className="tabular-nums text-slate-100">
+                      ${Number(pay.amount || 0).toFixed(2)} {pay.currency || 'USD'}
+                    </TableCell>
+                    <TableCell className="capitalize text-slate-400">{pay.billing_cycle}</TableCell>
+                    <TableCell className="font-mono text-xs text-slate-400">
+                      {pay.payer_phone || '—'}
+                    </TableCell>
+                    <TableCell>
+                      <Badge
+                        variant="outline"
+                        className={
+                          env === 'live'
+                            ? 'border-sky-700/60 text-sky-400 capitalize'
+                            : 'border-amber-700/60 text-amber-400 capitalize'
+                        }
+                      >
+                        {env}
+                      </Badge>
+                    </TableCell>
+                    <TableCell>
+                      <Badge
+                        variant="outline"
+                        className={
+                          pay.status === 'completed'
+                            ? 'border-emerald-700/60 text-emerald-500 capitalize'
+                            : pay.status === 'failed'
+                              ? 'border-rose-700/60 text-rose-400 capitalize'
+                              : 'border-slate-700 text-slate-300 capitalize'
+                        }
+                      >
+                        {pay.status}
+                      </Badge>
+                    </TableCell>
+                    <TableCell className="max-w-[120px] truncate font-mono text-xs text-slate-500">
+                      {pay.waafi_transaction_id || '—'}
+                    </TableCell>
+                    <TableCell className="text-sm text-slate-500">
+                      {pay.paid_at || pay.created_at
+                        ? new Date(pay.paid_at || pay.created_at).toLocaleString()
+                        : '—'}
+                    </TableCell>
+                  </TableRow>
+                )
+              })
             )}
           </TableBody>
         </Table>

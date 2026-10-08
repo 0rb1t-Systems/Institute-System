@@ -453,7 +453,7 @@ export async function listPlatformSubscriptionPayments(limit = 100) {
   const { data, error } = await supabase
     .from('platform_subscription_payments')
     .select(
-      'id, institution_id, plan_id, amount, currency, billing_cycle, payer_phone, reference_id, waafi_transaction_id, status, paid_at, created_at, platform_plans(id, name, slug)',
+      'id, institution_id, plan_id, amount, currency, billing_cycle, payer_name, payer_phone, invoice_number, reference_id, waafi_transaction_id, status, gateway_env, claim_token, claimed_at, receipt_token, paid_at, created_at, platform_plans(id, name, slug)',
     )
     .order('created_at', { ascending: false })
     .limit(limit)

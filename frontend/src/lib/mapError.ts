@@ -327,6 +327,10 @@ const CODE_MAP = {
     title: 'Phone required',
     description: 'Enter a valid mobile number (e.g. 25261xxxxxxx).',
   },
+  PAYER_NAME_REQUIRED: {
+    title: 'Name required',
+    description: 'Enter the full name for the payment invoice.',
+  },
   VALIDATION: {
     title: 'Please check your input',
     description: MESSAGES.VALIDATION.INVALID_INPUT,
