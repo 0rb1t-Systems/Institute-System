@@ -14,7 +14,12 @@ const cors = {
 const VERCEL_A = '76.76.21.21'
 const VERCEL_CNAME = 'cname.vercel-dns.com'
 const TXT_PREFIX = 'tvetflow-verify='
-const VERIFY_COOLDOWN_MS = 60_000
+/** Short cooldown so admins can retry soon after fixing registrar DNS. */
+const VERIFY_COOLDOWN_MS = 20_000
+const DOH_ENDPOINTS = [
+  'https://cloudflare-dns.com/dns-query',
+  'https://dns.google/resolve',
+] as const
 
 function json(body: unknown, status = 200) {
   return new Response(JSON.stringify(body), {
@@ -109,65 +114,170 @@ function dnsInstructions(apex: string, token: string) {
   }
 }
 
-async function resolveDns(name: string, type: 'A' | 'AAAA' | 'CNAME' | 'TXT'): Promise<string[]> {
-  try {
-    const records = await Deno.resolveDns(name, type)
-    if (type === 'CNAME' || type === 'TXT') {
-      return (records as string[]).map((r) => String(r).replace(/\.$/, '').toLowerCase().replace(/^"|"$/g, ''))
-    }
-    return (records as string[]).map((r) => String(r).toLowerCase())
-  } catch {
-    // Fallback: Cloudflare DNS-over-HTTPS
+function normalizeDnsValue(raw: string, type: string): string {
+  let v = String(raw || '')
+    .replace(/\.$/, '')
+    .toLowerCase()
+    .trim()
+  // DoH TXT answers often arrive as "\"value\"" or quoted chunks.
+  v = v.replace(/^"+|"+$/g, '').replace(/\\"/g, '"').trim()
+  if (type === 'TXT') {
+    v = v.replace(/^"+|"+$/g, '').trim()
+  }
+  return v
+}
+
+async function resolveDnsDoh(
+  name: string,
+  type: 'A' | 'AAAA' | 'CNAME' | 'TXT' | 'NS',
+  endpoint: string,
+): Promise<string[]> {
+  const url = `${endpoint}?name=${encodeURIComponent(name)}&type=${type}`
+  const res = await fetch(url, {
+    headers: { Accept: 'application/dns-json' },
+    signal: AbortSignal.timeout(8_000),
+  })
+  if (!res.ok) return []
+  const data = await res.json()
+  const answers = Array.isArray(data?.Answer) ? data.Answer : []
+  return answers
+    .map((a: { data?: string }) => normalizeDnsValue(String(a.data || ''), type))
+    .filter(Boolean)
+}
+
+async function resolveDns(name: string, type: 'A' | 'AAAA' | 'CNAME' | 'TXT' | 'NS'): Promise<string[]> {
+  const collected = new Set<string>()
+
+  // Prefer public DoH first — more consistent on Supabase Edge than Deno.resolveDns.
+  const dohResults = await Promise.all(
+    DOH_ENDPOINTS.map((ep) => resolveDnsDoh(name, type, ep).catch(() => [] as string[])),
+  )
+  for (const list of dohResults) {
+    for (const v of list) collected.add(v)
+  }
+
+  if (collected.size === 0 && type !== 'NS') {
     try {
-      const url = `https://cloudflare-dns.com/dns-query?name=${encodeURIComponent(name)}&type=${type}`
-      const res = await fetch(url, { headers: { Accept: 'application/dns-json' } })
-      if (!res.ok) return []
-      const data = await res.json()
-      const answers = Array.isArray(data?.Answer) ? data.Answer : []
-      return answers
-        .map((a: { data?: string }) =>
-          String(a.data || '')
-            .replace(/\.$/, '')
-            .toLowerCase()
-            .replace(/^"|"$/g, ''),
-        )
-        .filter(Boolean)
+      const records = await Deno.resolveDns(name, type)
+      for (const r of records as string[]) {
+        collected.add(normalizeDnsValue(String(r), type))
+      }
     } catch {
-      return []
+      /* ignore */
     }
   }
+
+  return [...collected]
+}
+
+function looksLikeHostingerNs(ns: string[]): boolean {
+  return ns.some(
+    (n) =>
+      n.includes('dns-parking.com') ||
+      n.includes('hostinger') ||
+      n.includes('hostinger-dns') ||
+      n.includes('njd.') ||
+      /^ns[12]\.dns-parking\.com$/.test(n),
+  )
 }
 
 async function checkDns(apex: string, token: string) {
-  const txt = await resolveDns(apex, 'TXT')
-  const txtOk = txt.some((v) => v.includes(token.toLowerCase()) || v === token.toLowerCase())
-  const a = await resolveDns(apex, 'A')
+  const tokenLc = token.toLowerCase()
+  const [txt, a, cname, ns] = await Promise.all([
+    resolveDns(apex, 'TXT'),
+    resolveDns(apex, 'A'),
+    resolveDns(`www.${apex}`, 'CNAME'),
+    resolveDns(apex, 'NS'),
+  ])
+
+  const txtOk = txt.some((v) => v.includes(tokenLc) || v === tokenLc)
   const aOk = a.includes(VERCEL_A)
-  const cname = await resolveDns(`www.${apex}`, 'CNAME')
-  const cnameOk = cname.some(
-    (v) => v === VERCEL_CNAME || v.endsWith('.vercel-dns.com') || v.includes('vercel-dns'),
-  )
+  // www may be CNAME→vercel, or A→vercel (some registrars flatten CNAMEs).
+  const wwwA = cname.length === 0 ? await resolveDns(`www.${apex}`, 'A') : []
+  const cnameOk =
+    cname.some(
+      (v) => v === VERCEL_CNAME || v.endsWith('.vercel-dns.com') || v.includes('vercel-dns'),
+    ) || wwwA.includes(VERCEL_A)
+
   const issues: string[] = []
-  if (!txtOk) issues.push('TXT verification record not found on apex (or not propagated yet).')
-  if (!aOk) issues.push(`Apex A record must point to ${VERCEL_A}.`)
-  if (!cnameOk) issues.push(`www CNAME must point to ${VERCEL_CNAME}.`)
-  return { ok: txtOk && aOk && cnameOk, txtOk, aOk, cnameOk, issues, observed: { txt, a, cname } }
+  const nsList = ns.length ? ns.join(', ') : 'unknown'
+
+  // Wrong panel is the #1 failure: records added at Hostinger while NS still point elsewhere.
+  if (ns.length > 0 && !looksLikeHostingerNs(ns)) {
+    issues.push(
+      `Nameservers are ${nsList} — DNS records must be added in THAT provider’s DNS panel (or change nameservers at your registrar to Hostinger first). Records only in Hostinger will never go live.`,
+    )
+  }
+
+  if (!txtOk) {
+    issues.push(
+      txt.length
+        ? `TXT verification missing (found: ${txt.slice(0, 3).join(' | ')}).`
+        : 'TXT verification record not found on apex (or not propagated yet).',
+    )
+  }
+  if (!aOk) {
+    issues.push(
+      a.length
+        ? `Apex A must be ${VERCEL_A} (currently: ${a.join(', ')}).`
+        : `Apex A record must point to ${VERCEL_A}.`,
+    )
+  }
+  if (!cnameOk) {
+    const wwwObs = cname.length ? cname.join(', ') : wwwA.length ? `A ${wwwA.join(', ')}` : 'none'
+    issues.push(`www must CNAME to ${VERCEL_CNAME} (currently: ${wwwObs}).`)
+  }
+
+  return {
+    ok: txtOk && aOk && cnameOk,
+    txtOk,
+    aOk,
+    cnameOk,
+    issues,
+    observed: { txt, a, cname, wwwA, ns },
+  }
 }
 
-function vercelConfig() {
-  const token = normalizeSecret(Deno.env.get('VERCEL_TOKEN'))
-  const projectId = normalizeSecret(Deno.env.get('VERCEL_PROJECT_ID'))
-  const teamId = normalizeSecret(Deno.env.get('VERCEL_TEAM_ID'))
+type AdminClient = ReturnType<typeof createClient>
+
+async function loadRuntimeSecret(admin: AdminClient, key: string): Promise<string> {
+  try {
+    const { data } = await admin
+      .from('platform_runtime_secrets')
+      .select('value')
+      .eq('key', key)
+      .maybeSingle()
+    return normalizeSecret(data?.value)
+  } catch {
+    return ''
+  }
+}
+
+async function vercelConfig(admin: AdminClient) {
+  const token =
+    normalizeSecret(Deno.env.get('VERCEL_TOKEN')) ||
+    (await loadRuntimeSecret(admin, 'VERCEL_TOKEN'))
+  const projectId =
+    normalizeSecret(Deno.env.get('VERCEL_PROJECT_ID')) ||
+    (await loadRuntimeSecret(admin, 'VERCEL_PROJECT_ID')) ||
+    'prj_AkiKI9NoCmtHbPb5AmCLE2Mr9f5w'
+  const teamId =
+    normalizeSecret(Deno.env.get('VERCEL_TEAM_ID')) ||
+    (await loadRuntimeSecret(admin, 'VERCEL_TEAM_ID')) ||
+    'team_oPNhVsDUu843Wnwmdo6FuFKw'
   return { token, projectId, teamId }
 }
 
-async function vercelAddDomain(name: string): Promise<{ ok: boolean; error?: string }> {
-  const { token, projectId, teamId } = vercelConfig()
+async function vercelAddDomain(
+  admin: AdminClient,
+  name: string,
+): Promise<{ ok: boolean; error?: string }> {
+  const { token, projectId, teamId } = await vercelConfig(admin)
   if (!token || !projectId) {
     return {
       ok: false,
       error:
-        'Platform Vercel secrets are not configured (VERCEL_TOKEN, VERCEL_PROJECT_ID). Contact platform support.',
+        'Platform is still wiring Vercel domain attach. DNS can be verified; retry Verify in a minute.',
     }
   }
   const qs = teamId ? `?teamId=${encodeURIComponent(teamId)}` : ''
@@ -192,8 +302,8 @@ async function vercelAddDomain(name: string): Promise<{ ok: boolean; error?: str
   return { ok: false, error: msg }
 }
 
-async function vercelRemoveDomain(name: string): Promise<void> {
-  const { token, projectId, teamId } = vercelConfig()
+async function vercelRemoveDomain(admin: AdminClient, name: string): Promise<void> {
+  const { token, projectId, teamId } = await vercelConfig(admin)
   if (!token || !projectId) return
   const qs = teamId ? `?teamId=${encodeURIComponent(teamId)}` : ''
   try {
@@ -335,10 +445,11 @@ Deno.serve(async (req) => {
         ? new Date(String(inst.custom_domain_last_check_at)).getTime()
         : 0
       if (last && Date.now() - last < VERIFY_COOLDOWN_MS) {
+        const waitSec = Math.ceil((VERIFY_COOLDOWN_MS - (Date.now() - last)) / 1000)
         return json(
           {
             error: 'RATE_LIMITED',
-            message: 'Wait about a minute before checking DNS again.',
+            message: `Wait about ${waitSec}s before checking DNS again.`,
             ...statusPayload(inst),
           },
           429,
@@ -356,11 +467,13 @@ Deno.serve(async (req) => {
 
       if (!dns.ok) {
         const errMsg = dns.issues.join(' ')
+        // Keep DB error readable but capped (UI shows full dns_check).
+        const storedErr = errMsg.length > 900 ? errMsg.slice(0, 897) + '…' : errMsg
         const { data: updated } = await admin
           .from('institutions')
           .update({
             custom_domain_status: 'pending',
-            custom_domain_error: errMsg,
+            custom_domain_error: storedErr,
           })
           .eq('id', institutionId)
           .select(
@@ -375,7 +488,7 @@ Deno.serve(async (req) => {
         })
       }
 
-      const addApex = await vercelAddDomain(apex)
+      const addApex = await vercelAddDomain(admin, apex)
       if (!addApex.ok) {
         const { data: updated } = await admin
           .from('institutions')
@@ -398,7 +511,7 @@ Deno.serve(async (req) => {
         )
       }
 
-      const addWww = await vercelAddDomain(`www.${apex}`)
+      const addWww = await vercelAddDomain(admin, `www.${apex}`)
       if (!addWww.ok) {
         const { data: updated } = await admin
           .from('institutions')
@@ -445,8 +558,8 @@ Deno.serve(async (req) => {
     if (action === 'disconnect') {
       const apex = inst.custom_domain ? String(inst.custom_domain) : null
       if (apex) {
-        await vercelRemoveDomain(apex)
-        await vercelRemoveDomain(`www.${apex}`)
+        await vercelRemoveDomain(admin, apex)
+        await vercelRemoveDomain(admin, `www.${apex}`)
       }
       const { data: updated, error: upErr } = await admin
         .from('institutions')

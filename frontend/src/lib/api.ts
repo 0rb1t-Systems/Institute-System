@@ -4417,6 +4417,20 @@ export type CustomDomainStatus = {
       note?: string
     }>
   } | null
+  dns_check?: {
+    ok: boolean
+    txtOk: boolean
+    aOk: boolean
+    cnameOk: boolean
+    issues: string[]
+    observed: {
+      txt: string[]
+      a: string[]
+      cname: string[]
+      wwwA?: string[]
+      ns?: string[]
+    }
+  }
   fallback_subdomain?: string | null
   verified?: boolean
   message?: string
