@@ -3381,12 +3381,34 @@ export const generateCertificatesForEnrollments = async (enrollmentIds) => {
 
 export const getInstructorPaymentTransferLog = async (classId) => {
   const { data, error } = await supabase
-    .from('instructor_settlements')
-    .select('*')
+    .from('instructor_payment_transfer_log')
+    .select(
+      `
+      id, class_id, amount, status, reason, error_message, created_at,
+      from_instructor:profiles!instructor_payment_transfer_log_from_instructor_id_fkey(id, full_name),
+      to_instructor:profiles!instructor_payment_transfer_log_to_instructor_id_fkey(id, full_name)
+    `,
+    )
     .eq('class_id', classId)
     .order('created_at', { ascending: false })
   if (error) throw error
-  return data || []
+  return (data || []).map((row) => ({
+    ...row,
+    from_instructor: row.from_instructor
+      ? {
+          id: row.from_instructor.id,
+          name: row.from_instructor.full_name,
+          full_name: row.from_instructor.full_name,
+        }
+      : null,
+    to_instructor: row.to_instructor
+      ? {
+          id: row.to_instructor.id,
+          name: row.to_instructor.full_name,
+          full_name: row.to_instructor.full_name,
+        }
+      : null,
+  }))
 }
 
 // --- Phase 2 Academic Ops ---

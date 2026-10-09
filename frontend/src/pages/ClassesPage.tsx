@@ -148,10 +148,13 @@ const ClassForm = ({ classInfo, onSave, closeDialog }: any) => {
     const [name, setName] = useState(classInfo?.name || '');
     const [type, setType] = useState(classInfo?.diploma_id ? 'diploma' : 'course');
     const [selectedId, setSelectedId] = useState(classInfo?.diploma_id || classInfo?.course_id || '');
-    const [instructor_id, setInstructorId] = useState(classInfo?.instructor_id || '');
+    const [instructor_id, setInstructorId] = useState(classInfo?.instructor_id || 'none');
 
     const selectedInstructor = useMemo(
-      () => instructors.find((i) => i.id === instructor_id) || null,
+      () =>
+        instructor_id && instructor_id !== 'none'
+          ? instructors.find((i) => i.id === instructor_id) || null
+          : null,
       [instructors, instructor_id]
     );
     const uniqueInstructorRate =
@@ -189,7 +192,7 @@ const ClassForm = ({ classInfo, onSave, closeDialog }: any) => {
     
     // Prefill settlement model from instructor defaults when instructor changes (new class or switch)
     useEffect(() => {
-      if (!instructor_id) return;
+      if (!instructor_id || instructor_id === 'none') return;
       const instructor = instructors.find((i) => i.id === instructor_id);
       if (!instructor) return;
       // Keep existing class values when editing same instructor
@@ -201,9 +204,13 @@ const ClassForm = ({ classInfo, onSave, closeDialog }: any) => {
       );
     }, [instructor_id, instructors, classInfo]);
 
-    // NEW: Track instructor change
+    // NEW: Track instructor change (including first assign / unassign)
     const [showInstructorWarning, setShowInstructorWarning] = useState(false);
-    const instructorChanged = classInfo && instructor_id && instructor_id !== classInfo.instructor_id;
+    const resolvedInstructorId = instructor_id && instructor_id !== 'none' ? instructor_id : null;
+    const instructorChanged =
+      !!classInfo &&
+      resolvedInstructorId !== (classInfo.instructor_id || null) &&
+      !!resolvedInstructorId;
 
     // Calculate payment count for instructor change warning
     const classPaymentCount = useMemo(() => {
@@ -233,8 +240,8 @@ const ClassForm = ({ classInfo, onSave, closeDialog }: any) => {
 
     const handleSubmit = async (e) => {
         e.preventDefault();
-        if (!selectedId || !instructor_id) {
-            notify.validation('Please select a program and instructor.');
+        if (!selectedId) {
+            notify.validation('Please select a program.');
             return;
         }
 
@@ -270,7 +277,11 @@ const ClassForm = ({ classInfo, onSave, closeDialog }: any) => {
             return;
         }
 
-        if (settlementModel === 'fixed_fee' && Number(instructorFixedFee) <= 0) {
+        if (
+          resolvedInstructorId &&
+          settlementModel === 'fixed_fee' &&
+          Number(instructorFixedFee) <= 0
+        ) {
           notify.validation('Enter a fixed fee amount greater than 0 for this instructor.');
           return;
         }
@@ -278,7 +289,7 @@ const ClassForm = ({ classInfo, onSave, closeDialog }: any) => {
         try {
             const payload = { 
                 name: name.trim(), 
-                instructor_id, 
+                instructor_id: resolvedInstructorId, 
                 start_date: startDate, 
                 end_date: endDate,
                 course_id: type === 'course' ? selectedId : null,
@@ -286,19 +297,25 @@ const ClassForm = ({ classInfo, onSave, closeDialog }: any) => {
                 duration_months: Number(duration_months),
                 fee: Number(fee),
                 commission_rate: effectiveCommissionRate,
-                settlement_model: settlementModel === 'fixed_fee' ? 'fixed_fee' : 'commission',
+                settlement_model:
+                  resolvedInstructorId && settlementModel === 'fixed_fee' ? 'fixed_fee' : 'commission',
                 instructor_fixed_fee:
-                  settlementModel === 'fixed_fee' ? Math.max(0, Number(instructorFixedFee) || 0) : 0,
+                  resolvedInstructorId && settlementModel === 'fixed_fee'
+                    ? Math.max(0, Number(instructorFixedFee) || 0)
+                    : 0,
             };
             
             if (classInfo) {
                 await updateClassData(classInfo.id, payload);
                 
-                // Show success with transfer info if instructor changed
+                // Show success with transfer / first-assign info if instructor changed
                 if (instructorChanged && classPaymentCount > 0) {
+                    const wasUnassigned = !classInfo.instructor_id;
                     toast({ 
                         title: "Class Updated Successfully", 
-                        description: `Instructor payment shares are being automatically transferred for ${classPaymentCount} payment(s). Check the Transfer Log tab for details.`,
+                        description: wasUnassigned
+                          ? `Instructor assigned. Earnings will be created for ${classPaymentCount} completed payment(s).`
+                          : `Instructor payment shares are being automatically transferred for ${classPaymentCount} payment(s). Check the Transfer Log tab for details.`,
                         duration: 6000
                     });
                 } else {
@@ -322,7 +339,15 @@ const ClassForm = ({ classInfo, onSave, closeDialog }: any) => {
                     <Alert className="mt-4 border-[var(--ds-warning,#C2410C)]/30 bg-[var(--ds-warning,#C2410C)]/10">
                         <AlertTriangle className="h-4 w-4 text-[var(--ds-warning,#C2410C)]" />
                         <AlertDescription className="text-[var(--ds-warning,#C2410C)]">
-                            <strong>Instructor Change Detected:</strong> Payment shares for {classPaymentCount} completed payment(s) will be automatically transferred to the new instructor. Previous instructor's shares will only be transferred if they haven't already withdrawn their earnings.
+                            {classInfo?.instructor_id ? (
+                              <>
+                                <strong>Instructor Change Detected:</strong> Payment shares for {classPaymentCount} completed payment(s) will be automatically transferred to the new instructor. Previous instructor&apos;s shares will only be transferred if they haven&apos;t already withdrawn their earnings.
+                              </>
+                            ) : (
+                              <>
+                                <strong>Assigning instructor:</strong> Earnings will be created for {classPaymentCount} completed payment(s) that happened while this class had no instructor.
+                              </>
+                            )}
                         </AlertDescription>
                     </Alert>
                 )}
@@ -359,9 +384,10 @@ const ClassForm = ({ classInfo, onSave, closeDialog }: any) => {
 
                 <div className="grid grid-cols-1 sm:grid-cols-4 items-center gap-4">
                     <Label htmlFor="instructor" className="text-left sm:text-right">Instructor</Label>
-                     <Select value={instructor_id} onValueChange={setInstructorId}>
-                        <SelectTrigger className="col-span-3"><SelectValue placeholder="Select an instructor" /></SelectTrigger>
+                     <Select value={instructor_id || 'none'} onValueChange={setInstructorId}>
+                        <SelectTrigger className="col-span-3"><SelectValue placeholder="Not assigned" /></SelectTrigger>
                         <SelectContent>
+                            <SelectItem value="none">Not assigned</SelectItem>
                             {instructors.length > 0 ? (
                                 instructors.map(i => <SelectItem key={i.id} value={i.id}>{i.name || i.email || 'Unknown'}</SelectItem>)
                             ) : (
@@ -405,64 +431,75 @@ const ClassForm = ({ classInfo, onSave, closeDialog }: any) => {
                     <Input id="fee" type="number" min="0" value={fee} onChange={e => setFee(e.target.value)} className="col-span-3" required />
                 </div>
 
-                <div className="grid grid-cols-1 sm:grid-cols-4 items-center gap-4">
-                    <Label className="text-left sm:text-right">Instructor pay</Label>
-                    <Select
-                      value={settlementModel}
-                      onValueChange={(val) => {
-                        setSettlementModel(val);
-                        if (val === 'commission') setInstructorFixedFee(0);
-                      }}
-                    >
-                      <SelectTrigger className="col-span-3">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="commission">Commission (% of each payment)</SelectItem>
-                        <SelectItem value="fixed_fee">Fixed fee (one amount for this class)</SelectItem>
-                      </SelectContent>
-                    </Select>
-                </div>
-
-                {settlementModel === 'commission' ? (
-                  <div className="grid grid-cols-1 sm:grid-cols-4 items-center gap-4">
-                      <Label htmlFor="commission" className="text-left sm:text-right">Instructor %</Label>
-                      <div className="col-span-3 space-y-1">
-                        <Input
-                          id="commission"
-                          type="number"
-                          min="0"
-                          max="100"
-                          step="0.1"
-                          value={effectiveCommissionPct}
-                          readOnly
-                          className="bg-[var(--ds-surface-muted,#F7FAF8)] text-[var(--ds-text-secondary,#5B6B61)]"
-                        />
-                        <p className="text-xs text-[var(--ds-text-tertiary,#8A978E)]">
-                          {hasUniqueCommission
-                            ? `Unique rate for this instructor (${effectiveCommissionPct}%). Set on Instructors — Institution Settings will not override it.`
-                            : `Institution default (${defaultCommissionPct}%). Set a unique % on Instructors if this person should keep a different rate.`}
-                        </p>
-                      </div>
-                  </div>
-                ) : (
-                  <div className="grid grid-cols-1 sm:grid-cols-4 items-center gap-4">
-                      <Label htmlFor="fixed_fee" className="text-left sm:text-right">Fixed fee</Label>
-                      <div className="col-span-3 space-y-1">
-                        <Input
-                          id="fixed_fee"
-                          type="number"
-                          min="0"
-                          step="0.01"
-                          value={instructorFixedFee}
-                          onChange={(e) => setInstructorFixedFee(e.target.value)}
-                          required
-                        />
-                        <p className="text-xs text-[var(--ds-text-tertiary,#8A978E)]">
-                          One-time instructor pay for this class. Accrues when the class is saved — not per student payment.
-                        </p>
-                      </div>
+                {resolvedInstructorId ? (
+                  <>
+                    <div className="grid grid-cols-1 sm:grid-cols-4 items-center gap-4">
+                        <Label className="text-left sm:text-right">Instructor pay</Label>
+                        <Select
+                          value={settlementModel}
+                          onValueChange={(val) => {
+                            setSettlementModel(val);
+                            if (val === 'commission') setInstructorFixedFee(0);
+                          }}
+                        >
+                          <SelectTrigger className="col-span-3">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="commission">Commission (% of each payment)</SelectItem>
+                            <SelectItem value="fixed_fee">Fixed fee (one amount for this class)</SelectItem>
+                          </SelectContent>
+                        </Select>
                     </div>
+
+                    {settlementModel === 'commission' ? (
+                      <div className="grid grid-cols-1 sm:grid-cols-4 items-center gap-4">
+                          <Label htmlFor="commission" className="text-left sm:text-right">Instructor %</Label>
+                          <div className="col-span-3 space-y-1">
+                            <Input
+                              id="commission"
+                              type="number"
+                              min="0"
+                              max="100"
+                              step="0.1"
+                              value={effectiveCommissionPct}
+                              readOnly
+                              className="bg-[var(--ds-surface-muted,#F7FAF8)] text-[var(--ds-text-secondary,#5B6B61)]"
+                            />
+                            <p className="text-xs text-[var(--ds-text-tertiary,#8A978E)]">
+                              {hasUniqueCommission
+                                ? `Unique rate for this instructor (${effectiveCommissionPct}%). Set on Instructors — Institution Settings will not override it.`
+                                : `Institution default (${defaultCommissionPct}%). Set a unique % on Instructors if this person should keep a different rate.`}
+                            </p>
+                          </div>
+                      </div>
+                    ) : (
+                      <div className="grid grid-cols-1 sm:grid-cols-4 items-center gap-4">
+                          <Label htmlFor="fixed_fee" className="text-left sm:text-right">Fixed fee</Label>
+                          <div className="col-span-3 space-y-1">
+                            <Input
+                              id="fixed_fee"
+                              type="number"
+                              min="0"
+                              step="0.01"
+                              value={instructorFixedFee}
+                              onChange={(e) => setInstructorFixedFee(e.target.value)}
+                              required
+                            />
+                            <p className="text-xs text-[var(--ds-text-tertiary,#8A978E)]">
+                              One-time instructor pay for this class. Accrues when the class is saved — not per student payment.
+                            </p>
+                          </div>
+                        </div>
+                    )}
+                  </>
+                ) : (
+                  <div className="grid grid-cols-1 sm:grid-cols-4 items-start gap-4">
+                    <Label className="text-left sm:text-right pt-2">Instructor pay</Label>
+                    <p className="col-span-3 text-sm text-[var(--ds-text-tertiary,#8A978E)]">
+                      Assign an instructor later to set commission or fixed fee. Payments made before then will not create instructor earnings until someone is assigned.
+                    </p>
+                  </div>
                 )}
 
                  {duration_months > 0 && fee > 0 && (
@@ -851,7 +888,7 @@ const ClassDetailsDialog = ({ classData, isOpen, onClose }) => {
                         <CardContent className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                             <div>
                                 <Label className="text-xs uppercase text-[var(--ds-text-tertiary,#8A978E)]">Instructor</Label>
-                                <p className="font-medium text-[var(--ds-text-primary,#122018)]">{classData.instructorName || 'Unassigned'}</p>
+                                <p className="font-medium text-[var(--ds-text-primary,#122018)]">{classData.instructorName || 'Not assigned'}</p>
                             </div>
                             <div>
                                 <Label className="text-xs uppercase text-[var(--ds-text-tertiary,#8A978E)]">Duration</Label>
@@ -1138,7 +1175,7 @@ const ClassesPage = () => {
                                 <div className="flex flex-col items-end gap-2">
                                     <div className="flex items-center gap-2 text-sm font-medium text-[var(--ds-text-secondary,#5B6B61)]">
                                         <span className="text-xs uppercase tracking-wider text-[var(--ds-text-tertiary,#8A978E)]">Instructor:</span>
-                                        {c.instructorName || 'Unassigned'}
+                                        {c.instructorName || 'Not assigned'}
                                     </div>
                                     <div className="mt-2 flex items-center gap-2">
                                         {(user.role === 'admin' || user.role === 'staff') && (
