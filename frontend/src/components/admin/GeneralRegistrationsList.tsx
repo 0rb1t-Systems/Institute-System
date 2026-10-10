@@ -343,7 +343,7 @@ const GeneralRegistrationsList = () => {
                             <TableHead className="px-5 py-3 text-[11px] font-semibold uppercase tracking-wide text-[var(--ds-text-tertiary,#8A978E)]">Program</TableHead>
                             <TableHead className="px-5 py-3 text-[11px] font-semibold uppercase tracking-wide text-[var(--ds-text-tertiary,#8A978E)]">Affiliate</TableHead>
                             <TableHead className="px-5 py-3 text-[11px] font-semibold uppercase tracking-wide text-[var(--ds-text-tertiary,#8A978E)]">Date</TableHead>
-                            <TableHead className="px-5 py-3 text-right text-[11px] font-semibold uppercase tracking-wide text-[var(--ds-text-tertiary,#8A978E)]">Actions</TableHead>
+                            <TableHead className="min-w-[200px] px-5 py-3 text-right text-[11px] font-semibold uppercase tracking-wide text-[var(--ds-text-tertiary,#8A978E)]">Actions</TableHead>
                         </TableRow>
                     </TableHeader>
                     <TableBody>
@@ -380,14 +380,14 @@ const GeneralRegistrationsList = () => {
                                         {resolveAffiliateName(reg.affiliate_id) || '—'}
                                     </TableCell>
                                     <TableCell className="px-5 text-xs text-[var(--ds-text-secondary,#5B6B61)]">{formatDate(reg.submitted_at)}</TableCell>
-                                    <TableCell className="px-5 text-right">
-                                        <div className="flex flex-wrap justify-end gap-2">
-                                            <Button size="sm" variant="ghost" className="text-[var(--ds-danger,#DC2626)] hover:bg-[var(--ds-danger-bg,#FEF2F2)] hover:text-[var(--ds-danger,#DC2626)]" onClick={() => handleRejectClick(reg)}>
+                                    <TableCell className="px-5 text-right whitespace-nowrap">
+                                        <div className="inline-flex flex-nowrap items-center justify-end gap-3">
+                                            <Button size="sm" variant="ghost" className="shrink-0 text-[var(--ds-danger,#DC2626)] hover:bg-[var(--ds-danger-bg,#FEF2F2)] hover:text-[var(--ds-danger,#DC2626)]" onClick={() => handleRejectClick(reg)}>
                                                 <XCircle className="h-4 w-4 mr-1" /> Reject
                                             </Button>
                                             <Button 
                                                 size="sm" 
-                                                className="bg-[var(--ds-success,#059669)] text-[var(--ds-text-on-primary,#fff)] hover:opacity-90" 
+                                                className="shrink-0 bg-[var(--ds-success,#059669)] text-[var(--ds-text-on-primary,#fff)] hover:opacity-90" 
                                                 onClick={() => handleApprove(reg)}
                                                 disabled={loadingId === reg.id}
                                             >
