@@ -306,7 +306,7 @@ const InstructorDashboard = () => {
       <EarningsHistoryTable
         earnings={filteredEarnings}
         students={students}
-        classes={myClasses}
+        classes={classes || []}
         payments={payments}
         selectedDate={selectedDate}
       />

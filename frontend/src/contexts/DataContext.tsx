@@ -119,7 +119,8 @@ const MUTATION_SCOPES = {
   studentEnrolled: ['students', 'enrollments', 'generalRegistrations'],
   course: ['courses', 'diplomaCourses', 'diplomaSemesters'],
   diploma: ['diplomas', 'courses', 'diplomaCourses', 'diplomaSemesters'],
-  class: ['classes', 'classCourses'],
+  // Instructor change triggers settlement transfer + may cancel pending withdrawals
+  class: ['classes', 'classCourses', 'instructorEarnings', 'withdrawalRequests'],
   // Plain enroll / soft-unenroll: roster only (fast).
   enrollment: ['enrollments'],
   // Transfer moves class_id and may copy grades — refresh academic slices.

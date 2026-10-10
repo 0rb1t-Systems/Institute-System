@@ -341,7 +341,7 @@ const ClassForm = ({ classInfo, onSave, closeDialog }: any) => {
                         <AlertDescription className="text-[var(--ds-warning,#C2410C)]">
                             {classInfo?.instructor_id ? (
                               <>
-                                <strong>Instructor Change Detected:</strong> Payment shares for {classPaymentCount} completed payment(s) will be automatically transferred to the new instructor. Previous instructor&apos;s shares will only be transferred if they haven&apos;t already withdrawn their earnings.
+                                <strong>Instructor Change Detected:</strong> All earnings for {classPaymentCount} completed payment(s) will move to the new instructor. The previous instructor will no longer see this class or its money. Their pending withdrawal requests are cancelled.
                               </>
                             ) : (
                               <>
