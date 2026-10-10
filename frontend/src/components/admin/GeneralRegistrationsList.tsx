@@ -5,13 +5,14 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { useData } from '@/contexts/DataContext';
 import { useAuth } from '@/contexts/AuthContext';
-import { CheckCircle2, XCircle, Search, Loader2, ChevronLeft, ChevronRight, UserCheck } from 'lucide-react';
+import { CheckCircle2, XCircle, Search, Loader2, ChevronLeft, ChevronRight, UserCheck, FileDown } from 'lucide-react';
 import { useToast } from '@/components/ui/use-toast';
 import { formatDate } from '@/lib/utils';
 import { Input } from '@/components/ui/input';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Textarea } from '@/components/ui/textarea';
 import { notify, MESSAGES } from '@/lib/notify';
+import { downloadPendingRegistrationsRosterPdf } from '@/lib/registrationInquiryPdf';
 
 const GeneralRegistrationsList = () => {
   const {
@@ -23,7 +24,7 @@ const GeneralRegistrationsList = () => {
     courses,
     diplomas,
   } = useData();
-  const { user } = useAuth();
+  const { user, institution } = useAuth();
   const { toast } = useToast();
   const [searchTerm, setSearchTerm] = useState('');
   const [rejectDialog, setRejectDialog] = useState(null); // { id, name }
@@ -70,14 +71,19 @@ const GeneralRegistrationsList = () => {
       (reg.preferred_course_id ? courseNameById.get(reg.preferred_course_id) : null) ||
       reg.preferred_diploma?.name ||
       (reg.preferred_diploma_id ? diplomaNameById.get(reg.preferred_diploma_id) : null) ||
+      reg.class?.course?.name ||
+      reg.class?.diploma?.name ||
       (reg.class?.course_id ? courseNameById.get(reg.class.course_id) : null) ||
       (reg.class?.diploma_id ? diplomaNameById.get(reg.class.diploma_id) : null) ||
+      reg.class?.name ||
       null;
     if (!name) return null;
     const type =
       reg.program_type ||
       (reg.preferred_course || reg.preferred_course_id ? 'course' : null) ||
       (reg.preferred_diploma || reg.preferred_diploma_id ? 'diploma' : null) ||
+      (reg.class?.course ? 'course' : null) ||
+      (reg.class?.diploma ? 'diploma' : null) ||
       reg.class?.program_type ||
       null;
     const typeLabel = type === 'diploma' ? 'Diploma' : type === 'course' ? 'Course' : null;
@@ -87,10 +93,10 @@ const GeneralRegistrationsList = () => {
   const digitsOnly = (value) => String(value || '').replace(/\D/g, '');
 
   // Categorize Registrations (pending searchable by name or phone)
-  const { pending, history, pendingTotal } = useMemo(() => {
+  const { pending, allPending, history, pendingTotal } = useMemo(() => {
     const p = [];
+    const allPending = [];
     const h = [];
-    let pendingTotal = 0;
     const query = searchTerm.trim().toLowerCase();
     const queryDigits = digitsOnly(searchTerm);
 
@@ -101,7 +107,7 @@ const GeneralRegistrationsList = () => {
       }
       if (reg.status !== 'pending') return;
 
-      pendingTotal += 1;
+      allPending.push(reg);
       const name = String(reg.student_name || '').toLowerCase();
       const phone = String(reg.student_phone || '').toLowerCase();
       const phoneDigits = digitsOnly(reg.student_phone);
@@ -116,8 +122,9 @@ const GeneralRegistrationsList = () => {
     // Newest first
     const byDateDesc = (x, y) => Number(new Date(y.submitted_at)) - Number(new Date(x.submitted_at));
     p.sort(byDateDesc);
+    allPending.sort(byDateDesc);
     h.sort(byDateDesc);
-    return { pending: p, history: h, pendingTotal };
+    return { pending: p, allPending, history: h, pendingTotal: allPending.length };
   }, [generalRegistrations, searchTerm]);
 
   // Pagination Logic
@@ -209,6 +216,39 @@ const GeneralRegistrationsList = () => {
       }
   };
 
+  const handleDownloadAllPendingPdf = () => {
+      if (!allPending.length) {
+          toast({
+              title: 'Nothing to export',
+              description: 'There are no pending applications.',
+          });
+          return;
+      }
+      try {
+          downloadPendingRegistrationsRosterPdf({
+              institutionName: institution?.name,
+              rows: allPending.map((reg) => {
+                  const program = resolveProgramLabel(reg);
+                  return {
+                      name: reg.student_name || reg.full_name || '',
+                      phone: reg.student_phone || reg.phone || '',
+                      university: reg.university || '',
+                      program: program?.name || '',
+                  };
+              }),
+          });
+          toast({
+              title: 'Downloaded',
+              description: `${allPending.length} pending applicant(s) saved in one PDF.`,
+          });
+      } catch (error) {
+          notify.error(error, {
+              context: 'GeneralRegistrationsList.downloadAllPendingPdf',
+              fallback: { title: 'Download Failed', description: 'Could not generate the roster PDF.' },
+          });
+      }
+  };
+
   return (
     <div className="space-y-8">
         {/* Credentials Modal */}
@@ -256,16 +296,29 @@ const GeneralRegistrationsList = () => {
         {/* SECTION 1: PENDING REGISTRATIONS */}
         <Card className="border-l-4 border-l-[var(--ds-warning,#C2410C)]">
             <CardHeader className="space-y-4">
-                <div className="flex items-center justify-between gap-4">
+                <div className="flex flex-wrap items-center justify-between gap-3">
                     <div>
                         <CardTitle className="text-[var(--ds-warning,#C2410C)]">Pending Applications</CardTitle>
                         <CardDescription>New registrations waiting for review and approval.</CardDescription>
                     </div>
-                    <Badge className="shrink-0 bg-[var(--ds-warning,#C2410C)] text-[var(--ds-text-on-primary,#fff)]">
-                      {searchTerm.trim() && pending.length !== pendingTotal
-                        ? `${pending.length} of ${pendingTotal} Pending`
-                        : `${pendingTotal} Pending`}
-                    </Badge>
+                    <div className="flex shrink-0 items-center gap-2">
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="border-[var(--ds-border,#DDE5DF)]"
+                        onClick={handleDownloadAllPendingPdf}
+                        disabled={!allPending.length}
+                        title="Download all pending applicants on one PDF roster"
+                      >
+                        <FileDown className="mr-1 h-4 w-4" />
+                        Download all PDF
+                      </Button>
+                      <Badge className="bg-[var(--ds-warning,#C2410C)] text-[var(--ds-text-on-primary,#fff)]">
+                        {searchTerm.trim() && pending.length !== pendingTotal
+                          ? `${pending.length} of ${pendingTotal} Pending`
+                          : `${pendingTotal} Pending`}
+                      </Badge>
+                    </div>
                 </div>
                 <div className="relative max-w-md">
                     <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[var(--ds-text-tertiary,#8A978E)]" />
@@ -328,7 +381,7 @@ const GeneralRegistrationsList = () => {
                                     </TableCell>
                                     <TableCell className="px-5 text-xs text-[var(--ds-text-secondary,#5B6B61)]">{formatDate(reg.submitted_at)}</TableCell>
                                     <TableCell className="px-5 text-right">
-                                        <div className="flex justify-end gap-2">
+                                        <div className="flex flex-wrap justify-end gap-2">
                                             <Button size="sm" variant="ghost" className="text-[var(--ds-danger,#DC2626)] hover:bg-[var(--ds-danger-bg,#FEF2F2)] hover:text-[var(--ds-danger,#DC2626)]" onClick={() => handleRejectClick(reg)}>
                                                 <XCircle className="h-4 w-4 mr-1" /> Reject
                                             </Button>

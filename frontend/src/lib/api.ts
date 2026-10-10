@@ -4274,7 +4274,15 @@ export const getGeneralRegistrations = async () => {
     .from('registration_inquiries')
     .select(`
       *,
-      class:classes(id, name, program_type, course_id, diploma_id),
+      class:classes(
+        id,
+        name,
+        program_type,
+        course_id,
+        diploma_id,
+        course:courses(id, name),
+        diploma:diplomas(id, name)
+      ),
       preferred_course:courses!preferred_course_id(id, name),
       preferred_diploma:diplomas!preferred_diploma_id(id, name)
     `)
@@ -4284,13 +4292,24 @@ export const getGeneralRegistrations = async () => {
     const preferredCourse = row.preferred_course || null
     const preferredDiploma = row.preferred_diploma || null
     const classRow = row.class || null
+    const classCourse = classRow?.course || null
+    const classDiploma = classRow?.diploma || null
     const programName =
-      preferredCourse?.name || preferredDiploma?.name || null
+      preferredCourse?.name ||
+      preferredDiploma?.name ||
+      classCourse?.name ||
+      classDiploma?.name ||
+      classRow?.name ||
+      null
     const programType = preferredCourse
       ? 'course'
       : preferredDiploma
         ? 'diploma'
-        : classRow?.program_type || null
+        : classCourse
+          ? 'course'
+          : classDiploma
+            ? 'diploma'
+            : classRow?.program_type || null
     return {
       ...mapRegistrationInquiry(row),
       class: classRow,

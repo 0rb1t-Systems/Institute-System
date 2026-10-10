@@ -601,6 +601,7 @@ const ClassRosterDialog = ({ classData, isOpen, onClose }) => {
     const { toast } = useToast();
     const [selectedStudentIds, setSelectedStudentIds] = useState([]);
     const [searchQuery, setSearchQuery] = useState("");
+    const [rosterSearchQuery, setRosterSearchQuery] = useState("");
     const [transferEnrollment, setTransferEnrollment] = useState(null);
     const [discountEnrollment, setDiscountEnrollment] = useState(null);
     const [enrolling, setEnrolling] = useState(false);
@@ -613,6 +614,16 @@ const ClassRosterDialog = ({ classData, isOpen, onClose }) => {
         .sort((a, b) => Number(new Date(b.enrollment_date)) - Number(new Date(a.enrollment_date)));
     const enrolledStudentIds = classEnrollments.map(e => e.student_id);
     const availableStudents = students.filter(s => !enrolledStudentIds.includes(s.id) && s.name.toLowerCase().includes(searchQuery.toLowerCase()));
+    const rosterQuery = rosterSearchQuery.trim().toLowerCase();
+    const filteredClassEnrollments = rosterQuery
+        ? classEnrollments.filter((e) => {
+            const s = students.find((stu) => stu.id === e.student_id);
+            if (!s) return false;
+            const name = String(s.name || '').toLowerCase();
+            const code = String(s.student_code || '').toLowerCase();
+            return name.includes(rosterQuery) || code.includes(rosterQuery);
+          })
+        : classEnrollments;
 
     const handleEnroll = async () => {
         if (selectedStudentIds.length === 0 || enrolling) return;
@@ -654,7 +665,7 @@ const ClassRosterDialog = ({ classData, isOpen, onClose }) => {
                     <ManageDiscountDialog enrollment={discountEnrollment} onClose={() => setDiscountEnrollment(null)} />
                 </Dialog>
             )}
-            <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-hidden pt-4 md:flex-row md:gap-6">
+            <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-hidden px-1 pt-4 md:flex-row md:gap-6">
                 <div className="flex w-full max-h-[40vh] shrink-0 flex-col gap-3 border-[var(--ds-border,#DDE5DF)] md:max-h-none md:w-1/3 md:gap-4 md:border-r md:pr-6">
                     <Input placeholder="Search students..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)}/>
                     <div className="min-h-0 flex-1 space-y-1 overflow-y-auto rounded-md border border-[var(--ds-border,#DDE5DF)] p-2">
@@ -672,7 +683,13 @@ const ClassRosterDialog = ({ classData, isOpen, onClose }) => {
                       {enrolling ? 'Enrolling...' : 'Enroll'}
                     </Button>
                 </div>
-                <div className="flex min-h-0 min-w-0 flex-1 flex-col gap-4">
+                <div className="flex min-h-0 min-w-0 flex-1 flex-col gap-3 md:gap-4">
+                    <Input
+                        placeholder="Search enrolled students..."
+                        value={rosterSearchQuery}
+                        onChange={(e) => setRosterSearchQuery(e.target.value)}
+                        className="shrink-0"
+                    />
                     <div className="min-h-0 flex-1 overflow-auto rounded-md border border-[var(--ds-border,#DDE5DF)]">
                         <Table>
                             <TableHeader>
@@ -684,7 +701,13 @@ const ClassRosterDialog = ({ classData, isOpen, onClose }) => {
                                 </TableRow>
                             </TableHeader>
                             <TableBody>
-                                {classEnrollments.map(e => {
+                                {filteredClassEnrollments.length === 0 ? (
+                                    <TableRow className="border-[var(--ds-border,#DDE5DF)] hover:bg-transparent">
+                                        <TableCell colSpan={4} className="py-8 text-center text-sm text-[var(--ds-text-tertiary,#8A978E)]">
+                                            {rosterQuery ? 'No enrolled students match your search.' : 'No students enrolled yet.'}
+                                        </TableCell>
+                                    </TableRow>
+                                ) : filteredClassEnrollments.map(e => {
                                     const s = students.find(stu => stu.id === e.student_id);
                                     return s ? (
                                         <TableRow key={e.id} className="border-[var(--ds-border,#DDE5DF)] hover:bg-[var(--ds-surface-muted,#F7FAF8)]">
