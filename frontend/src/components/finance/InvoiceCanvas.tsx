@@ -13,6 +13,7 @@ type Props = {
 
 /**
  * Shared invoice layout renderer for live invoices + template library previews.
+ * Designed for on-screen preview and A4 print / PDF export.
  */
 const InvoiceCanvas = ({ data, compact = false, className = '', id }: Props) => {
   const chrome = getInvoiceLayoutChrome(data.layoutKey)
@@ -24,6 +25,7 @@ const InvoiceCanvas = ({ data, compact = false, className = '', id }: Props) => 
   const nameSize = compact ? 'text-[7px]' : 'text-2xl'
   const hasLogo = showLogo && Boolean(String(data.logoUrl || '').trim())
   const brandName = hasLogo ? '' : data.institutionName || ''
+  const showSummary = Boolean(data.amountPaidLabel || data.balanceLabel)
 
   const logo = hasLogo ? (
     <img
@@ -40,6 +42,17 @@ const InvoiceCanvas = ({ data, compact = false, className = '', id }: Props) => 
   const contact = showContact && data.contactLine ? (
     <div className={`${compact ? 'text-[4px] mt-0.5' : 'text-sm mt-2'} text-slate-500`}>{data.contactLine}</div>
   ) : null
+
+  const paidSeal =
+    data.isPaid && !compact ? (
+      <div
+        className="pointer-events-none absolute right-10 top-28 rotate-[-12deg] select-none rounded-md border-[3px] px-4 py-1 text-sm font-black uppercase tracking-[0.2em] opacity-80"
+        style={{ borderColor: '#059669', color: '#059669' }}
+        aria-hidden
+      >
+        Paid
+      </div>
+    ) : null
 
   const headerStandard = (
     <div className={`flex justify-between items-start ${compact ? 'mb-2' : 'mb-8'} ${chrome.headerBorder}`}>
@@ -60,7 +73,7 @@ const InvoiceCanvas = ({ data, compact = false, className = '', id }: Props) => 
         {contact}
       </div>
       <div className="text-right">
-        <h2 className={`${titleSize} font-bold text-slate-200 ${compact ? 'mb-0.5' : 'mb-2'}`}>INVOICE</h2>
+        <h2 className={`${titleSize} font-bold text-slate-900 ${compact ? 'mb-0.5' : 'mb-2'}`}>INVOICE</h2>
         <div className={`${compact ? 'text-[4px]' : 'text-sm'} font-medium text-slate-600`}>
           Invoice #: {data.invoiceNumber}
         </div>
@@ -198,7 +211,8 @@ const InvoiceCanvas = ({ data, compact = false, className = '', id }: Props) => 
       style={compact ? { aspectRatio: '210 / 297' } : undefined}
     >
       {cornerMarks}
-      <div className={compact ? 'p-2' : 'p-8'}>
+      {paidSeal}
+      <div className={compact ? 'p-2' : 'p-8 sm:p-10'}>
         {header}
 
         <div className={`grid grid-cols-2 ${compact ? 'gap-2 mb-2' : 'gap-8 mb-8'}`}>
@@ -216,7 +230,7 @@ const InvoiceCanvas = ({ data, compact = false, className = '', id }: Props) => 
           </div>
         </div>
 
-        <table className={`w-full ${compact ? 'mb-2' : 'mb-8'}`}>
+        <table className={`w-full ${compact ? 'mb-2' : 'mb-6'}`}>
           <thead>
             <tr className={chrome.tableHead}>
               <th className={`text-left ${compact ? 'py-0.5' : 'py-3'} font-bold text-slate-500`}>Description</th>
@@ -227,24 +241,57 @@ const InvoiceCanvas = ({ data, compact = false, className = '', id }: Props) => 
             {data.lineItems.map((item, i) => (
               <tr key={`${item.description}-${i}`} className={chrome.tableRow}>
                 <td className={`${compact ? 'py-0.5' : 'py-3'} text-slate-700`}>{item.description}</td>
-                <td className={`${compact ? 'py-0.5' : 'py-3'} text-right font-medium`}>{item.amountLabel}</td>
+                <td className={`${compact ? 'py-0.5' : 'py-3'} text-right font-medium tabular-nums`}>
+                  {item.amountLabel}
+                </td>
               </tr>
             ))}
           </tbody>
-          <tfoot>
-            <tr>
-              <td className={`${compact ? 'pt-1' : 'pt-4'} text-right font-bold text-slate-900 pr-2`}>
-                Total Due:
-              </td>
-              <td
-                className={`${compact ? 'pt-1 text-[7px]' : 'pt-4 text-xl'} text-right font-bold`}
+        </table>
+
+        <div
+          className={`ml-auto ${compact ? 'mb-2 w-[55%] space-y-0.5' : 'mb-8 w-full max-w-xs space-y-2'}`}
+        >
+          <div className="flex justify-between gap-4 text-slate-700">
+            <span className="font-medium">Total Due</span>
+            <span className={`font-bold tabular-nums ${compact ? 'text-[7px]' : 'text-base'}`} style={{ color: totalColor }}>
+              {data.totalDueLabel}
+            </span>
+          </div>
+          {showSummary ? (
+            <>
+              {data.amountPaidLabel ? (
+                <div className="flex justify-between gap-4 text-slate-600">
+                  <span>Amount Paid</span>
+                  <span className="font-semibold tabular-nums text-emerald-700">-{data.amountPaidLabel}</span>
+                </div>
+              ) : null}
+              {data.balanceLabel ? (
+                <div
+                  className={`flex justify-between gap-4 border-t border-slate-200 ${compact ? 'pt-0.5' : 'pt-2'}`}
+                >
+                  <span className="font-bold text-slate-900">Balance</span>
+                  <span
+                    className={`font-bold tabular-nums ${compact ? 'text-[7px]' : 'text-xl'}`}
+                    style={{ color: data.isPaid ? '#059669' : totalColor }}
+                  >
+                    {data.balanceLabel}
+                  </span>
+                </div>
+              ) : null}
+            </>
+          ) : (
+            <div className="flex justify-between gap-4 border-t border-slate-200 pt-2">
+              <span className="font-bold text-slate-900">Amount</span>
+              <span
+                className={`font-bold tabular-nums ${compact ? 'text-[7px]' : 'text-xl'}`}
                 style={{ color: totalColor }}
               >
                 {data.totalDueLabel}
-              </td>
-            </tr>
-          </tfoot>
-        </table>
+              </span>
+            </div>
+          )}
+        </div>
 
         <div className={`${chrome.historyBox} ${compact ? 'p-1.5 mb-2' : 'p-4 mb-8'}`}>
           <h4 className={`font-bold text-slate-700 ${compact ? 'mb-1 text-[5px]' : 'mb-3 text-sm'}`}>
@@ -263,7 +310,7 @@ const InvoiceCanvas = ({ data, compact = false, className = '', id }: Props) => 
                       {p.note}
                     </div>
                   </div>
-                  <span className="font-bold text-green-600 shrink-0">-{p.amountLabel}</span>
+                  <span className="font-bold text-emerald-600 shrink-0 tabular-nums">-{p.amountLabel}</span>
                 </div>
               ))}
             </div>

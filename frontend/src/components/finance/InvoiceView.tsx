@@ -298,6 +298,12 @@ const InvoiceView = ({ student, payments, enrollment, activeClass, onEditPayment
 
       totalDueLabel: formatCurrency(totalDue),
 
+      amountPaidLabel: formatCurrency(amountPaid),
+
+      balanceLabel: formatCurrency(balance),
+
+      isPaid: balance <= 0 && amountPaid > 0,
+
       payments: sortedPayments.map((p) => ({
 
         id: p.id,
@@ -355,6 +361,10 @@ const InvoiceView = ({ student, payments, enrollment, activeClass, onEditPayment
     isRegPaid,
 
     totalDue,
+
+    amountPaid,
+
+    balance,
 
     sortedPayments,
 

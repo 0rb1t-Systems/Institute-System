@@ -4480,6 +4480,7 @@ export type CustomDomainStatus = {
     observed: {
       txt: string[]
       a: string[]
+      apexCname?: string[]
       cname: string[]
       wwwA?: string[]
       ns?: string[]

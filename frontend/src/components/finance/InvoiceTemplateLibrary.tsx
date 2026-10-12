@@ -88,6 +88,9 @@ const InvoiceTemplateLibrary = () => {
         },
       ],
       totalDueLabel: formatCurrency(175),
+      amountPaidLabel: formatCurrency(150),
+      balanceLabel: formatCurrency(25),
+      isPaid: false,
       payments: [
         {
           id: 'sample-1',

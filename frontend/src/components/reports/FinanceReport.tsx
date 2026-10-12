@@ -299,34 +299,68 @@ const FinanceReport = () => {
           28,
         );
         doc.text(`Reference date: ${formatDate(selectedDate)}`, 14, 34);
-        
-        const tableRows = displayData.map(item => {
-            if (item.type === 'paid') {
-                const s = students.find(st => st.id === item.data.student_id);
-                return [
-                    rowDate(item),
-                    studentNumber(s),
-                    s?.name || 'Unknown',
-                    paymentKindLabel(item.paymentKind),
-                    'Paid',
-                    item.data.method || '-',
-                    formatCurrency(item.data.amount)
-                ];
+
+        // One row per student + status: name, number, type, date, status, amount
+        // Paid rows keep payment type + summed amount; unpaid rows are included too.
+        const byStudent = new Map();
+        displayData.forEach((item) => {
+            const s =
+                item.type === 'paid'
+                    ? students.find((st) => st.id === item.data.student_id)
+                    : item.data.student;
+            const studentId =
+                s?.id ||
+                (item.type === 'paid' ? item.data.student_id : item.data.student?.id) ||
+                `unknown-${byStudent.size}`;
+            const key = `${studentId}:${item.type}`;
+            if (!byStudent.has(key)) {
+                byStudent.set(key, {
+                    name: s?.name || 'Unknown',
+                    number: studentNumber(s),
+                    status: item.type === 'paid' ? 'Paid' : 'Unpaid',
+                    types: new Set(),
+                    dateEntries: [],
+                    amount: 0,
+                });
             }
-            return [
-                rowDate(item),
-                studentNumber(item.data.student),
-                item.data.student.name,
-                paymentKindLabel(item.paymentKind),
-                'Unpaid',
-                '-',
-                formatCurrency(item.data.amount)
-            ];
+            const row = byStudent.get(key);
+            row.types.add(paymentKindLabel(item.paymentKind));
+            row.amount += Number(
+                item.type === 'paid' ? item.data.amount : item.data.amount || 0,
+            );
+            const raw =
+                item.type === 'paid'
+                    ? String(item.data.payment_date || item.data.paid_at || selectedDate)
+                    : selectedDate;
+            const label = rowDate(item);
+            if (!row.dateEntries.some((d) => d.label === label)) {
+                row.dateEntries.push({ raw, label });
+            }
         });
+
+        const tableRows = Array.from(byStudent.values())
+            .map((row) => {
+                const dates = [...row.dateEntries]
+                    .sort((a, b) => String(a.raw).localeCompare(String(b.raw)))
+                    .map((d) => d.label);
+                return [
+                    row.name,
+                    row.number,
+                    Array.from(row.types).join(', '),
+                    dates.join(', ') || '-',
+                    row.status,
+                    formatCurrency(row.amount),
+                ];
+            })
+            .sort((a, b) => {
+                // Paid first, then unpaid; name within each group
+                if (a[4] !== b[4]) return a[4] === 'Paid' ? -1 : 1;
+                return String(a[0]).localeCompare(String(b[0]));
+            });
 
         doc.autoTable({
             startY: 40,
-            head: [['Date', 'Student No.', 'Student', 'Type', 'Status', 'Method', 'Amount']],
+            head: [['Student Name', 'Student No.', 'Type', 'Date', 'Status', 'Amount']],
             body: tableRows,
         });
         doc.save(`Finance_Status_${month}.pdf`);

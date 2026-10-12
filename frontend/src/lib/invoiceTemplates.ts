@@ -152,6 +152,11 @@ export type InvoiceRenderData = {
   monthlyFeeLabel: string
   lineItems: InvoiceLineItem[]
   totalDueLabel: string
+  /** Optional summary totals for print-ready invoices */
+  amountPaidLabel?: string
+  balanceLabel?: string
+  /** When true, shows a paid seal on the document */
+  isPaid?: boolean
   payments: InvoicePaymentRow[]
   footerText?: string
 }
