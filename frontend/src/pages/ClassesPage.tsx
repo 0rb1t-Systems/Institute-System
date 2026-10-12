@@ -3,7 +3,7 @@ import { Helmet } from 'react-helmet';
 import AnimatedPage from '@/components/AnimatedPage';
 import PageHeader from '@/components/PageHeader';
 import { Button } from '@/components/ui/button';
-import { PlusCircle, Users, X, Search, ArrowRightLeft, Eye, FileSpreadsheet, Pencil, Trash2, CheckCircle2, XCircle, BookOpen, DollarSign, Clock, Percent, AlertTriangle, History, Loader2, ChevronLeft, ChevronRight, Mail } from 'lucide-react';
+import { PlusCircle, Users, X, Search, ArrowRightLeft, Eye, FileSpreadsheet, Pencil, Trash2, CheckCircle2, XCircle, BookOpen, DollarSign, Clock, Percent, AlertTriangle, History, Loader2, ChevronLeft, ChevronRight, Mail, Pin } from 'lucide-react';
 import { DsIconButton, DsOutlineAction, DsPrimaryAction, DS_ICON_STROKE } from '@/components/ui/ds-actions';
 import { useData } from '@/contexts/DataContext';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -739,10 +739,12 @@ const ClassRosterDialog = ({ classData, isOpen, onClose }) => {
     );
 };
 
-const ClassDetailsDialog = ({ classData, isOpen, onClose }) => {
+const ClassDetailsDialog = ({ classData, isOpen, onClose, onTogglePin }) => {
     const { students, enrollments } = useData();
     const { user, institution } = useAuth();
     const { toast } = useToast();
+    const canPin = user?.role === 'admin' || user?.role === 'staff';
+    const [pinBusy, setPinBusy] = useState(false);
     const [emailSubject, setEmailSubject] = useState('');
     const [emailMessage, setEmailMessage] = useState('');
     const [sendingEmail, setSendingEmail] = useState(false);
@@ -879,8 +881,33 @@ const ClassDetailsDialog = ({ classData, isOpen, onClose }) => {
     return (
         <DialogContent className="sm:max-w-[900px] max-h-[90vh] overflow-y-auto">
             <DialogHeader>
-                <DialogTitle className="text-2xl">{classData.name}</DialogTitle>
-                <DialogDescription className="text-[var(--ds-text-secondary,#5B6B61)]">{classData.displayProgram}</DialogDescription>
+                <div className="flex flex-wrap items-start justify-between gap-3 pr-8">
+                    <div className="space-y-1">
+                        <DialogTitle className="text-2xl">{classData.name}</DialogTitle>
+                        <DialogDescription className="text-[var(--ds-text-secondary,#5B6B61)]">{classData.displayProgram}</DialogDescription>
+                    </div>
+                    {canPin ? (
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        disabled={pinBusy}
+                        onClick={async () => {
+                          if (!onTogglePin || pinBusy) return;
+                          setPinBusy(true);
+                          try {
+                            await onTogglePin(classData);
+                          } finally {
+                            setPinBusy(false);
+                          }
+                        }}
+                        title={classData.is_pinned ? 'Unpin from top of Classes list' : 'Pin to top of Classes list'}
+                      >
+                        {pinBusy ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Pin className="mr-2 h-4 w-4" />}
+                        {classData.is_pinned ? 'Unpin' : 'Pin to top'}
+                      </Button>
+                    ) : null}
+                </div>
             </DialogHeader>
             
             <Tabs defaultValue="overview" className="mt-4 w-full">
@@ -1068,12 +1095,20 @@ const ClassesPage = () => {
 
     const filteredClasses = useMemo(() => {
         const q = searchTerm.trim().toLowerCase();
-        if (!q) return classesWithDetails;
-        return classesWithDetails.filter((c) =>
-            c.name?.toLowerCase().includes(q) ||
-            c.displayProgram?.toLowerCase().includes(q) ||
-            c.instructorName?.toLowerCase().includes(q)
-        );
+        const list = !q
+          ? [...classesWithDetails]
+          : classesWithDetails.filter((c) =>
+              c.name?.toLowerCase().includes(q) ||
+              c.displayProgram?.toLowerCase().includes(q) ||
+              c.instructorName?.toLowerCase().includes(q)
+            );
+        // Pinned classes stay at the top of the list.
+        list.sort((a, b) => {
+          const pinDiff = Number(Boolean(b.is_pinned)) - Number(Boolean(a.is_pinned));
+          if (pinDiff !== 0) return pinDiff;
+          return String(a.name || '').localeCompare(String(b.name || ''));
+        });
+        return list;
     }, [classesWithDetails, searchTerm]);
 
     const totalPages = Math.max(1, Math.ceil(filteredClasses.length / ITEMS_PER_PAGE));
@@ -1110,6 +1145,25 @@ const ClassesPage = () => {
     const toggleStatus = async (classData) => {
         try { await updateClassData(classData.id, { is_active: !classData.is_active }); }
         catch (error) { notify.error(error, { context: 'ClassesPage - toggleStatus', fallback: MESSAGES.UPDATE_FAILED }); }
+    };
+
+    const togglePinned = async (classData) => {
+        const next = !classData.is_pinned;
+        try {
+            await updateClassData(classData.id, { is_pinned: next });
+            setSelectedClass((prev) =>
+              prev?.id === classData.id ? { ...prev, is_pinned: next } : prev
+            );
+            toast({
+              title: next ? 'Class pinned' : 'Pin removed',
+              description: next
+                ? 'This class will stay at the top of the list.'
+                : 'Class returned to normal order.',
+            });
+            if (next) setCurrentPage(1);
+        } catch (error) {
+            notify.error(error, { context: 'ClassesPage - togglePinned', fallback: MESSAGES.UPDATE_FAILED });
+        }
     };
 
     return (
@@ -1150,7 +1204,12 @@ const ClassesPage = () => {
                 <ClassCoursesDialog classData={selectedClass} isOpen={coursesDialogOpen} onClose={() => setCoursesDialogOpen(false)} />
             </Dialog>
             <Dialog open={detailsDialogOpen} onOpenChange={setDetailsDialogOpen}>
-                <ClassDetailsDialog classData={selectedClass} isOpen={detailsDialogOpen} onClose={() => setDetailsDialogOpen(false)} />
+                <ClassDetailsDialog
+                  classData={selectedClass}
+                  isOpen={detailsDialogOpen}
+                  onClose={() => setDetailsDialogOpen(false)}
+                  onTogglePin={togglePinned}
+                />
             </Dialog>
 
             <AlertDialog open={deleteAlertOpen} onOpenChange={setDeleteAlertOpen}>
@@ -1174,7 +1233,7 @@ const ClassesPage = () => {
                         <CardContent className="p-6">
                             <div className="flex flex-col justify-between gap-4 md:flex-row md:items-center">
                                 <div className="flex-1">
-                                    <div className="mb-2 flex items-center gap-3">
+                                    <div className="mb-2 flex flex-wrap items-center gap-3">
                                         <h3 className="cursor-pointer text-xl font-bold text-[var(--ds-text-primary,#122018)] transition-colors hover:text-[var(--ds-primary,#1F8A5B)]" onClick={() => openDetailsDialog(c)}>{c.name}</h3>
                                         <Badge variant={c.is_active ? "default" : "secondary"} className={c.is_active ? "bg-[var(--ds-primary-soft,#ECFDF5)] text-[var(--ds-primary,#1F8A5B)] hover:bg-[var(--ds-primary-soft,#ECFDF5)]" : ""}>{c.is_active ? "Active" : "Inactive"}</Badge>
                                     </div>

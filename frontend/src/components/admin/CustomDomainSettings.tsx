@@ -4,7 +4,16 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Badge } from '@/components/ui/badge'
-import { Loader2, Copy, CheckCircle2, AlertCircle, Globe, Unplug } from 'lucide-react'
+import {
+  Loader2,
+  Copy,
+  CheckCircle2,
+  AlertCircle,
+  Globe,
+  Unplug,
+  XCircle,
+  MinusCircle,
+} from 'lucide-react'
 import {
   manageCustomDomain,
   type CustomDomainStatus,
@@ -64,6 +73,27 @@ function statusBadge(status?: string | null) {
       Not connected
     </Badge>
   )
+}
+
+function recordCheckStatus(
+  type: string,
+  dnsCheck: DnsCheck | null,
+): 'ok' | 'fail' | 'unknown' {
+  if (!dnsCheck) return 'unknown'
+  if (type === 'TXT') return dnsCheck.txtOk ? 'ok' : 'fail'
+  if (type === 'A') return dnsCheck.aOk ? 'ok' : 'fail'
+  if (type === 'CNAME') return dnsCheck.cnameOk ? 'ok' : 'fail'
+  return 'unknown'
+}
+
+function RecordStatusIcon({ status }: { status: 'ok' | 'fail' | 'unknown' }) {
+  if (status === 'ok') {
+    return <CheckCircle2 className="h-3.5 w-3.5 text-emerald-400 shrink-0" aria-hidden />
+  }
+  if (status === 'fail') {
+    return <XCircle className="h-3.5 w-3.5 text-red-400 shrink-0" aria-hidden />
+  }
+  return <MinusCircle className="h-3.5 w-3.5 text-[var(--tenant-muted)] shrink-0" aria-hidden />
 }
 
 function withTimeout<T>(promise: Promise<T>, ms: number, label: string): Promise<T> {
@@ -192,9 +222,13 @@ export default function CustomDomainSettings({ institution, onChanged }: Props) 
           description: data.message || 'SSL may take a few minutes.',
         })
       } else {
+        const issueCount = data.dns_check?.issues?.length
         toast({
           title: 'DNS not ready yet',
-          description: data.message || data.custom_domain_error || 'Fix the records below, then try again.',
+          description:
+            issueCount && issueCount > 0
+              ? `${issueCount} issue${issueCount > 1 ? 's' : ''} — see checklist below.`
+              : data.message || data.custom_domain_error || 'Fix the records below, then try again.',
           variant: 'destructive',
         })
       }
@@ -266,6 +300,11 @@ export default function CustomDomainSettings({ institution, onChanged }: Props) 
       : records
 
   const nsObserved = dnsCheck?.observed?.ns?.length ? dnsCheck.observed.ns.join(', ') : null
+  const verifyIssues = dnsCheck?.issues?.length
+    ? dnsCheck.issues
+    : errorText
+      ? [errorText]
+      : []
 
   return (
     <div className="mt-5 rounded-lg border border-[var(--tenant-line)] bg-[var(--tenant-bg-2)] p-3 sm:p-4 space-y-3">
@@ -342,11 +381,16 @@ export default function CustomDomainSettings({ institution, onChanged }: Props) 
             </div>
           )}
 
-          {errorText && status !== 'active' ? (
-            <Alert className="border-amber-600/40 bg-amber-950/20 py-2">
-              <AlertCircle className="h-4 w-4 text-amber-400" />
-              <AlertDescription className="text-xs text-amber-200/90 whitespace-pre-wrap break-words">
-                {errorText}
+          {verifyIssues.length > 0 && status !== 'active' ? (
+            <Alert className="border-red-500/30 bg-red-950/15 py-2.5">
+              <AlertCircle className="h-4 w-4 text-red-400" />
+              <AlertDescription className="text-xs text-red-100/90 space-y-2">
+                <p className="font-medium text-[var(--tenant-text)]">What we see on the public internet</p>
+                <ul className="list-disc pl-4 space-y-1.5 break-words">
+                  {verifyIssues.map((issue) => (
+                    <li key={issue.slice(0, 48)}>{issue}</li>
+                  ))}
+                </ul>
               </AlertDescription>
             </Alert>
           ) : null}
@@ -366,6 +410,9 @@ export default function CustomDomainSettings({ institution, onChanged }: Props) 
                 <table className="w-full text-[11px] text-left">
                   <thead className="bg-[var(--tenant-bg)] text-[var(--tenant-muted)]">
                     <tr>
+                      {dnsCheck ? (
+                        <th className="px-2 py-1.5 font-medium w-8" aria-label="Check status" />
+                      ) : null}
                       <th className="px-2 py-1.5 font-medium">Type</th>
                       <th className="px-2 py-1.5 font-medium">Host</th>
                       <th className="px-2 py-1.5 font-medium">Value</th>
@@ -373,31 +420,46 @@ export default function CustomDomainSettings({ institution, onChanged }: Props) 
                     </tr>
                   </thead>
                   <tbody className="text-[var(--tenant-text)]">
-                    {fallbackRecords.map((r) => (
-                      <tr key={`${r.type}-${r.host}-${r.value}`} className="border-t border-[var(--tenant-line)]">
-                        <td className="px-2 py-1.5 font-mono">{r.type}</td>
-                        <td className="px-2 py-1.5 font-mono">{r.host}</td>
-                        <td className="px-2 py-1.5 font-mono break-all max-w-[220px]">{r.value}</td>
-                        <td className="px-1 py-1">
-                          <button
-                            type="button"
-                            className="p-1 rounded hover:bg-[var(--tenant-bg)] text-[var(--tenant-muted)]"
-                            onClick={() => copy(r.value)}
-                            aria-label={`Copy ${r.type} value`}
-                          >
-                            <Copy className="h-3.5 w-3.5" />
-                          </button>
-                        </td>
-                      </tr>
-                    ))}
+                    {fallbackRecords.map((r) => {
+                      const rowStatus = recordCheckStatus(r.type, dnsCheck)
+                      return (
+                        <tr
+                          key={`${r.type}-${r.host}-${r.value}`}
+                          className={cn(
+                            'border-t border-[var(--tenant-line)]',
+                            rowStatus === 'fail' && 'bg-red-500/5',
+                            rowStatus === 'ok' && 'bg-emerald-500/5',
+                          )}
+                        >
+                          {dnsCheck ? (
+                            <td className="px-2 py-1.5">
+                              <RecordStatusIcon status={rowStatus} />
+                            </td>
+                          ) : null}
+                          <td className="px-2 py-1.5 font-mono">{r.type}</td>
+                          <td className="px-2 py-1.5 font-mono">{r.host}</td>
+                          <td className="px-2 py-1.5 font-mono break-all max-w-[220px]">{r.value}</td>
+                          <td className="px-1 py-1">
+                            <button
+                              type="button"
+                              className="p-1 rounded hover:bg-[var(--tenant-bg)] text-[var(--tenant-muted)]"
+                              onClick={() => copy(r.value)}
+                              aria-label={`Copy ${r.type} value`}
+                            >
+                              <Copy className="h-3.5 w-3.5" />
+                            </button>
+                          </td>
+                        </tr>
+                      )
+                    })}
                   </tbody>
                 </table>
               </div>
-              <p className="text-[10px] text-[var(--tenant-muted)]">
-                Hostinger tip: if nameservers are not Hostinger&apos;s, change NS to Hostinger first — or
-                edit DNS in Contabo/Cloudflare/wherever NS currently point. Cloudflare proxy must be DNS
-                only (grey cloud). Propagation: minutes to 48h after NS change; record-only edits are
-                usually faster.
+              <p className="text-[10px] text-[var(--tenant-muted)] leading-relaxed">
+                <span className="font-medium text-[var(--tenant-text)]">Important:</span> edit DNS where
+                your live nameservers point (see list above after Verify). Hostinger panel alone is not
+                enough if NS are uk2.net, Cloudflare, etc. Cloudflare orange proxy must be off (DNS only).
+                After changes, wait a few minutes, then Verify again.
               </p>
               <Button
                 type="button"

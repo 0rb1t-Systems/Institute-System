@@ -170,6 +170,16 @@ async function resolveDns(name: string, type: 'A' | 'AAAA' | 'CNAME' | 'TXT' | '
   return [...collected]
 }
 
+function isVercelCnameTarget(raw: string): boolean {
+  const v = normalizeDnsValue(raw, 'CNAME')
+  return v === VERCEL_CNAME || v.endsWith('.vercel-dns.com') || v.includes('vercel-dns')
+}
+
+function isVercelApexTarget(a: string[], cname: string[]): boolean {
+  if (a.includes(VERCEL_A)) return true
+  return cname.some(isVercelCnameTarget)
+}
+
 function looksLikeHostingerNs(ns: string[]): boolean {
   return ns.some(
     (n) =>
@@ -183,27 +193,50 @@ function looksLikeHostingerNs(ns: string[]): boolean {
 
 async function checkDns(apex: string, token: string) {
   const tokenLc = token.toLowerCase()
-  const [txt, a, cname, ns] = await Promise.all([
+  const [txt, a, apexCname, wwwCname, ns] = await Promise.all([
     resolveDns(apex, 'TXT'),
     resolveDns(apex, 'A'),
+    resolveDns(apex, 'CNAME'),
     resolveDns(`www.${apex}`, 'CNAME'),
     resolveDns(apex, 'NS'),
   ])
 
   const txtOk = txt.some((v) => v.includes(tokenLc) || v === tokenLc)
-  const aOk = a.includes(VERCEL_A)
-  // www may be CNAME→vercel, or A→vercel (some registrars flatten CNAMEs).
-  const wwwA = cname.length === 0 ? await resolveDns(`www.${apex}`, 'A') : []
-  const cnameOk =
-    cname.some(
-      (v) => v === VERCEL_CNAME || v.endsWith('.vercel-dns.com') || v.includes('vercel-dns'),
-    ) || wwwA.includes(VERCEL_A)
+  const aOk = isVercelApexTarget(a, apexCname)
+  // www may be CNAME→vercel, CNAME→apex (flattened), or A→vercel.
+  let wwwA: string[] = []
+  if (wwwCname.length === 0) {
+    wwwA = await resolveDns(`www.${apex}`, 'A')
+  }
+  let cnameOk =
+    wwwCname.some(isVercelCnameTarget) ||
+    wwwA.includes(VERCEL_A) ||
+    (wwwCname.some((v) => v === apex || v.replace(/\.$/, '') === apex) && aOk)
+
+  if (!cnameOk && wwwCname.length > 0) {
+    for (const target of wwwCname) {
+      const host = target.replace(/\.$/, '')
+      if (host === apex) {
+        if (aOk) cnameOk = true
+        break
+      }
+      const [chainA, chainC] = await Promise.all([
+        resolveDns(host, 'A'),
+        resolveDns(host, 'CNAME'),
+      ])
+      if (isVercelApexTarget(chainA, chainC)) {
+        cnameOk = true
+        break
+      }
+    }
+  }
 
   const issues: string[] = []
   const nsList = ns.length ? ns.join(', ') : 'unknown'
+  const dnsNotReady = !txtOk || !aOk || !cnameOk
 
   // Wrong panel is the #1 failure: records added at Hostinger while NS still point elsewhere.
-  if (ns.length > 0 && !looksLikeHostingerNs(ns)) {
+  if (ns.length > 0 && !looksLikeHostingerNs(ns) && dnsNotReady) {
     issues.push(
       `Nameservers are ${nsList} — DNS records must be added in THAT provider’s DNS panel (or change nameservers at your registrar to Hostinger first). Records only in Hostinger will never go live.`,
     )
@@ -224,7 +257,11 @@ async function checkDns(apex: string, token: string) {
     )
   }
   if (!cnameOk) {
-    const wwwObs = cname.length ? cname.join(', ') : wwwA.length ? `A ${wwwA.join(', ')}` : 'none'
+    const wwwObs = wwwCname.length
+      ? wwwCname.join(', ')
+      : wwwA.length
+        ? `A ${wwwA.join(', ')}`
+        : 'none'
     issues.push(`www must CNAME to ${VERCEL_CNAME} (currently: ${wwwObs}).`)
   }
 
@@ -234,7 +271,7 @@ async function checkDns(apex: string, token: string) {
     aOk,
     cnameOk,
     issues,
-    observed: { txt, a, cname, wwwA, ns },
+    observed: { txt, a, apexCname, cname: wwwCname, wwwA, ns },
   }
 }
 
@@ -299,6 +336,13 @@ async function vercelAddDomain(
     `Vercel rejected domain ${name} (${res.status}).`
   // Domain already on project
   if (/already|exist/i.test(msg)) return { ok: true }
+  if (body?.error?.invalidToken || /not authorized/i.test(msg)) {
+    return {
+      ok: false,
+      error:
+        'Vercel API token is invalid or expired. Platform admin must refresh VERCEL_TOKEN (Settings → Tokens), then retry Verify.',
+    }
+  }
   return { ok: false, error: msg }
 }
 

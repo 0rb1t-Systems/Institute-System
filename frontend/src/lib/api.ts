@@ -147,6 +147,7 @@ function mapClass(row) {
         ? { id: row.instructor_id, name: instructorName, full_name: instructorName }
         : null,
     instructorName: instructorName || null,
+    is_pinned: Boolean(row.is_pinned),
   }
 }
 
@@ -2389,6 +2390,7 @@ export const updateClass = async (id, data) => {
   if (data.transcript_narrative_text !== undefined) {
     updates.transcript_narrative_text = String(data.transcript_narrative_text || '').trim() || null
   }
+  if (data.is_pinned !== undefined) updates.is_pinned = Boolean(data.is_pinned)
   // Keep fee at 0 when switching back to commission
   if (updates.settlement_model === 'commission' && data.instructor_fixed_fee === undefined) {
     updates.instructor_fixed_fee = 0

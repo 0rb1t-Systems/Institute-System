@@ -9,10 +9,12 @@ import { CheckCircle2, XCircle, Search, Loader2, ChevronLeft, ChevronRight, User
 import { useToast } from '@/components/ui/use-toast';
 import { formatDate } from '@/lib/utils';
 import { Input } from '@/components/ui/input';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Textarea } from '@/components/ui/textarea';
 import { notify, MESSAGES } from '@/lib/notify';
 import { downloadPendingRegistrationsRosterPdf } from '@/lib/registrationInquiryPdf';
+import { DatePickerField } from '@/components/ui/DateTimeFields';
 
 const GeneralRegistrationsList = () => {
   const {
@@ -27,6 +29,10 @@ const GeneralRegistrationsList = () => {
   const { user, institution } = useAuth();
   const { toast } = useToast();
   const [searchTerm, setSearchTerm] = useState('');
+  const [pendingProgram, setPendingProgram] = useState('all');
+  const [pendingDate, setPendingDate] = useState('');
+  const [historyProgram, setHistoryProgram] = useState('all');
+  const [historyDate, setHistoryDate] = useState('');
   const [rejectDialog, setRejectDialog] = useState(null); // { id, name }
   const [rejectReason, setRejectReason] = useState('');
   const [loadingId, setLoadingId] = useState(null);
@@ -92,17 +98,58 @@ const GeneralRegistrationsList = () => {
 
   const digitsOnly = (value) => String(value || '').replace(/\D/g, '');
 
-  // Categorize Registrations (pending searchable by name or phone)
-  const { pending, allPending, history, pendingTotal } = useMemo(() => {
+  const toLocalYmd = (value) => {
+    if (!value) return '';
+    const d = new Date(value);
+    if (Number.isNaN(d.getTime())) {
+      const m = String(value).match(/^(\d{4}-\d{2}-\d{2})/);
+      return m ? m[1] : '';
+    }
+    const pad = (n) => String(n).padStart(2, '0');
+    return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+  };
+
+  const matchesProgramFilter = (reg, programFilter) => {
+    if (!programFilter || programFilter === 'all') return true;
+    const program = resolveProgramLabel(reg);
+    return program?.name === programFilter;
+  };
+
+  const matchesDateFilter = (reg, dateFilter) => {
+    if (!dateFilter) return true;
+    return toLocalYmd(reg.submitted_at) === dateFilter;
+  };
+
+  const programOptions = useMemo(() => {
+    const names = new Set();
+    for (const c of courses || []) {
+      if (c?.name) names.add(c.name);
+    }
+    for (const d of diplomas || []) {
+      if (d?.name) names.add(d.name);
+    }
+    for (const reg of generalRegistrations || []) {
+      const program = resolveProgramLabel(reg);
+      if (program?.name) names.add(program.name);
+    }
+    return Array.from(names).sort((a, b) => a.localeCompare(b));
+  }, [courses, diplomas, generalRegistrations, courseNameById, diplomaNameById]);
+
+  // Categorize Registrations (pending searchable by name or phone; both tables filter by program + date)
+  const { pending, allPending, history, pendingTotal, historyTotal } = useMemo(() => {
     const p = [];
     const allPending = [];
     const h = [];
+    let historyTotal = 0;
     const query = searchTerm.trim().toLowerCase();
     const queryDigits = digitsOnly(searchTerm);
 
     generalRegistrations.forEach((reg) => {
       if (reg.status === 'approved' || reg.status === 'rejected') {
-        h.push(reg);
+        historyTotal += 1;
+        if (matchesProgramFilter(reg, historyProgram) && matchesDateFilter(reg, historyDate)) {
+          h.push(reg);
+        }
         return;
       }
       if (reg.status !== 'pending') return;
@@ -111,21 +158,46 @@ const GeneralRegistrationsList = () => {
       const name = String(reg.student_name || '').toLowerCase();
       const phone = String(reg.student_phone || '').toLowerCase();
       const phoneDigits = digitsOnly(reg.student_phone);
-      const matches =
+      const matchesSearch =
         !query ||
         name.includes(query) ||
         phone.includes(query) ||
         (queryDigits.length > 0 && phoneDigits.includes(queryDigits));
 
-      if (matches) p.push(reg);
+      if (
+        matchesSearch &&
+        matchesProgramFilter(reg, pendingProgram) &&
+        matchesDateFilter(reg, pendingDate)
+      ) {
+        p.push(reg);
+      }
     });
     // Newest first
     const byDateDesc = (x, y) => Number(new Date(y.submitted_at)) - Number(new Date(x.submitted_at));
     p.sort(byDateDesc);
     allPending.sort(byDateDesc);
     h.sort(byDateDesc);
-    return { pending: p, allPending, history: h, pendingTotal: allPending.length };
-  }, [generalRegistrations, searchTerm]);
+    return {
+      pending: p,
+      allPending,
+      history: h,
+      pendingTotal: allPending.length,
+      historyTotal,
+    };
+  }, [
+    generalRegistrations,
+    searchTerm,
+    pendingProgram,
+    pendingDate,
+    historyProgram,
+    historyDate,
+    courseNameById,
+    diplomaNameById,
+  ]);
+
+  const pendingFiltersActive =
+    Boolean(searchTerm.trim()) || pendingProgram !== 'all' || Boolean(pendingDate);
+  const historyFiltersActive = historyProgram !== 'all' || Boolean(historyDate);
 
   // Pagination Logic
   const totalHistoryPages = Math.max(1, Math.ceil(history.length / ITEMS_PER_PAGE));
@@ -314,24 +386,55 @@ const GeneralRegistrationsList = () => {
                         Download all PDF
                       </Button>
                       <Badge className="bg-[var(--ds-warning,#C2410C)] text-[var(--ds-text-on-primary,#fff)]">
-                        {searchTerm.trim() && pending.length !== pendingTotal
+                        {pendingFiltersActive && pending.length !== pendingTotal
                           ? `${pending.length} of ${pendingTotal} Pending`
                           : `${pendingTotal} Pending`}
                       </Badge>
                     </div>
                 </div>
-                <div className="relative max-w-md">
-                    <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[var(--ds-text-tertiary,#8A978E)]" />
-                    <Input
-                        placeholder="Search by name or phone..."
-                        className="pl-9"
-                        value={searchTerm}
-                        onChange={(e) => {
-                          setSearchTerm(e.target.value);
-                          setPendingPage(1);
-                        }}
-                        aria-label="Search pending applications by name or phone"
-                    />
+                <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-end">
+                    <div className="relative min-w-[200px] flex-1 sm:max-w-md">
+                        <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[var(--ds-text-tertiary,#8A978E)]" />
+                        <Input
+                            placeholder="Search by name or phone..."
+                            className="pl-9"
+                            value={searchTerm}
+                            onChange={(e) => {
+                              setSearchTerm(e.target.value);
+                              setPendingPage(1);
+                            }}
+                            aria-label="Search pending applications by name or phone"
+                        />
+                    </div>
+                    <div className="w-full sm:w-[200px]">
+                        <Select
+                          value={pendingProgram}
+                          onValueChange={(val) => {
+                            setPendingProgram(val);
+                            setPendingPage(1);
+                          }}
+                        >
+                          <SelectTrigger aria-label="Filter pending by program">
+                            <SelectValue placeholder="All programs" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="all">All programs</SelectItem>
+                            {programOptions.map((name) => (
+                              <SelectItem key={name} value={name}>{name}</SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                    </div>
+                    <div className="w-full sm:w-[200px]">
+                        <DatePickerField
+                          id="pending-date-filter"
+                          value={pendingDate}
+                          onChange={(ymd) => {
+                            setPendingDate(ymd);
+                            setPendingPage(1);
+                          }}
+                        />
+                    </div>
                 </div>
             </CardHeader>
             <CardContent>
@@ -404,8 +507,8 @@ const GeneralRegistrationsList = () => {
                                     <div className="flex flex-col items-center gap-2">
                                         <CheckCircle2 className="h-8 w-8 opacity-40" />
                                         <span>
-                                          {searchTerm.trim()
-                                            ? 'No pending applications match that name or phone.'
+                                          {pendingFiltersActive
+                                            ? 'No pending applications match your filters.'
                                             : "No pending applications. You're all caught up!"}
                                         </span>
                                     </div>
@@ -438,15 +541,50 @@ const GeneralRegistrationsList = () => {
 
         {/* SECTION 2: APPROVED + REJECTED HISTORY (mixed) */}
         <Card>
-            <CardHeader>
-                <div className="flex items-center justify-between">
+            <CardHeader className="space-y-4">
+                <div className="flex flex-wrap items-center justify-between gap-3">
                     <div>
                         <CardTitle className="flex items-center gap-2 text-[var(--ds-text-primary,#122018)]">
                             <UserCheck className="h-5 w-5 text-[var(--ds-success,#059669)]" /> Registration History
                         </CardTitle>
                         <CardDescription>Approved and rejected online registrations, newest first.</CardDescription>
                     </div>
-                    <Badge variant="outline" className="border-[var(--ds-border,#DDE5DF)] text-[var(--ds-text-secondary,#5B6B61)]">{history.length} Total</Badge>
+                    <Badge variant="outline" className="border-[var(--ds-border,#DDE5DF)] text-[var(--ds-text-secondary,#5B6B61)]">
+                      {historyFiltersActive && history.length !== historyTotal
+                        ? `${history.length} of ${historyTotal} Total`
+                        : `${historyTotal} Total`}
+                    </Badge>
+                </div>
+                <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-end">
+                    <div className="w-full sm:w-[220px]">
+                        <Select
+                          value={historyProgram}
+                          onValueChange={(val) => {
+                            setHistoryProgram(val);
+                            setHistoryPage(1);
+                          }}
+                        >
+                          <SelectTrigger aria-label="Filter history by program">
+                            <SelectValue placeholder="All programs" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="all">All programs</SelectItem>
+                            {programOptions.map((name) => (
+                              <SelectItem key={`history-${name}`} value={name}>{name}</SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                    </div>
+                    <div className="w-full sm:w-[200px]">
+                        <DatePickerField
+                          id="history-date-filter"
+                          value={historyDate}
+                          onChange={(ymd) => {
+                            setHistoryDate(ymd);
+                            setHistoryPage(1);
+                          }}
+                        />
+                    </div>
                 </div>
             </CardHeader>
             <CardContent>
@@ -516,7 +654,11 @@ const GeneralRegistrationsList = () => {
                             ))
                         ) : (
                             <TableRow>
-                                <TableCell colSpan={5} className="py-8 text-center text-[var(--ds-text-tertiary,#8A978E)]">No registration history yet.</TableCell>
+                                <TableCell colSpan={5} className="py-8 text-center text-[var(--ds-text-tertiary,#8A978E)]">
+                                  {historyFiltersActive
+                                    ? 'No registration history matches your filters.'
+                                    : 'No registration history yet.'}
+                                </TableCell>
                             </TableRow>
                         )}
                     </TableBody>
