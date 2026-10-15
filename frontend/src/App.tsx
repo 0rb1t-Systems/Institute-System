@@ -45,6 +45,7 @@ import PlatformContactPage from '@/pages/public/PlatformContactPage';
 import PlatformPlansPage from '@/pages/public/PlatformPlansPage';
 import PlatformPaymentReceiptPage from '@/pages/public/PlatformPaymentReceiptPage';
 import PlatformSupportPage from '@/pages/public/PlatformSupportPage';
+import TenantPublicGate from '@/components/landing/TenantPublicGate';
 import NotFoundPage from '@/pages/NotFoundPage';
 import DashboardPage from '@/pages/DashboardPage';
 import CoursesPage from '@/pages/CoursesPage';
@@ -266,8 +267,18 @@ const App = () => {
           <Route path="/plans" element={<PlatformPlansPage />} />
           <Route path="/payment-receipt" element={<PlatformPaymentReceiptPage />} />
           <Route path="/support" element={<PlatformSupportPage />} />
-          <Route path="/about" element={<PlatformAboutPage />} />
-          <Route path="/contact" element={<PlatformContactPage />} />
+          <Route
+            path="/about"
+            element={<TenantPublicGate page="about" platform={<PlatformAboutPage />} />}
+          />
+          <Route
+            path="/programs"
+            element={<TenantPublicGate page="programs" platform={null} redirectIfNoTenant />}
+          />
+          <Route
+            path="/contact"
+            element={<TenantPublicGate page="contact" platform={<PlatformContactPage />} />}
+          />
           <Route path="/login" element={<PlatformLoginRoute />} />
           <Route path="/reset-password" element={<ResetPasswordPage />} />
           <Route path="/signup" element={user ? <Navigate to={getRootRedirect()} replace /> : <SignupPage />} />

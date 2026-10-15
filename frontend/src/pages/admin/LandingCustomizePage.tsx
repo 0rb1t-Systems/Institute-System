@@ -56,6 +56,7 @@ const LandingCustomizePage = () => {
           logoFile: null,
           heroFile: null,
           programImageFiles: {},
+          teamImageFiles: {},
           landing_content: sanitizeLandingContent(data?.landing_content),
         })
       } catch (err) {
@@ -128,6 +129,15 @@ const LandingCustomizePage = () => {
         if (url) programs[i].image_url = url
       }
 
+      const team = (landing.landing_content.team || []).map((row) => ({ ...row }))
+      const pendingTeamFiles = landing.teamImageFiles || {}
+      for (let i = 0; i < team.length; i += 1) {
+        const file = pendingTeamFiles[i]
+        if (!file) continue
+        const url = await uploadInstitutionAsset(file, 'team')
+        if (url) team[i].photo_url = url
+      }
+
       const updated = await updateInstitution({
         landing_template_id: landing.landing_template_id,
         hero_headline: landing.hero_headline.trim() || null,
@@ -140,7 +150,7 @@ const LandingCustomizePage = () => {
           : null,
         logo_url: logo_url || null,
         hero_image_url: hero_image_url || null,
-        landing_content: { ...landing.landing_content, programs },
+        landing_content: { ...landing.landing_content, programs, team },
         social_whatsapp: landing.social_whatsapp.trim() || null,
         social_facebook: landing.social_facebook.trim() || null,
         social_tiktok: landing.social_tiktok.trim() || null,
@@ -152,9 +162,12 @@ const LandingCustomizePage = () => {
         logoFile: null,
         heroFile: null,
         programImageFiles: {},
+        teamImageFiles: {},
         logoPreviewUrl: updated?.logo_url || prev.logoPreviewUrl,
         heroPreviewUrl: updated?.hero_image_url || prev.heroPreviewUrl,
-        landing_content: sanitizeLandingContent(updated?.landing_content || { ...prev.landing_content, programs }),
+        landing_content: sanitizeLandingContent(
+          updated?.landing_content || { ...prev.landing_content, programs, team },
+        ),
       }))
       await refreshUser?.()
       publishInstitutionBrand({

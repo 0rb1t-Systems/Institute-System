@@ -1,7 +1,7 @@
 import React from 'react'
 import { LandingCtas, LandingHeaderBar, SharedLandingFooter } from '@/components/landing/LandingShared'
 import LandingHeroSocials from '@/components/landing/LandingHeroSocials'
-import { LandingContentSections } from '@/components/landing/LandingSections'
+import { LandingTemplateMain } from '@/components/landing/LandingSitePages'
 import { landingIsLight, type LandingTemplateProps } from '@/components/landing/types'
 
 /** Soft light glass — floating nav, rounded portrait hero. */
@@ -20,6 +20,7 @@ export default function AuroraTemplate(p: LandingTemplateProps) {
     onOpenLogin,
     preview,
     onChangeTemplate,
+    page = 'home',
   } = p
   const light = landingIsLight(p.themeMode)
   const tone = light ? 'light' : 'dark'
@@ -66,63 +67,67 @@ export default function AuroraTemplate(p: LandingTemplateProps) {
         </header>
       </div>
 
-      <section
-        id="home"
-        className="relative z-10 mx-auto grid max-w-6xl scroll-mt-24 items-center gap-8 px-4 py-10 sm:gap-10 sm:px-6 sm:py-12 lg:grid-cols-2 lg:gap-14 lg:py-16"
-      >
-        <div className="space-y-5 sm:space-y-6">
-          <p className={`text-[11px] font-semibold uppercase tracking-[0.2em] ${light ? 'text-slate-500' : 'text-slate-400'}`}>
-            {institution.name}
-          </p>
-          <h1 className={`max-w-lg break-words font-display text-2xl font-bold leading-[1.12] tracking-tight sm:text-4xl lg:text-[2.65rem] ${light ? 'text-slate-800' : 'text-white'}`}>
-            {headline}
-          </h1>
-          <p className={`max-w-md text-[15px] leading-relaxed ${light ? 'text-slate-600' : 'text-slate-300'}`}>{tagline}</p>
-          <LandingCtas
-            primary={primary}
-            verifyHref={verifyHref}
-            sameTenant={sameTenant}
-            userRole={userRole}
-            onOpenLogin={onOpenLogin}
-            preview={preview}
-            size="default"
-            solidClassName="rounded-full px-6 shadow-md shadow-slate-900/10"
-            outlineClassName={
-              light
-                ? 'rounded-full border-slate-200 bg-white px-6 text-slate-800'
-                : 'rounded-full border-white/20 bg-white/5 px-6 text-white'
-            }
-          />
-          <LandingHeroSocials
-            institution={institution}
-            primary={primary}
-            tone={tone}
-            preview={preview}
-          />
-        </div>
-
-        <div className="relative mx-auto w-full max-w-md lg:max-w-none">
-          <div
-            className="relative overflow-hidden shadow-2xl shadow-slate-900/15"
-            style={{ borderRadius: '1.75rem' }}
-          >
-            <img src={heroImage} alt="" className="aspect-[4/3] max-h-[55vh] w-full object-cover sm:aspect-[5/5] sm:max-h-none" />
-            <div
-              className="pointer-events-none absolute inset-0"
-              style={{ background: `linear-gradient(160deg, ${primary}28, transparent 45%)` }}
-              aria-hidden
-            />
-          </div>
-        </div>
-      </section>
-
-      <LandingContentSections
+      <LandingTemplateMain
+        page={page}
         institution={institution}
         primary={primary}
         accent={accent}
         tagline={tagline}
         tone={tone}
         preview={preview}
+        verifyHref={verifyHref}
+        sameTenant={sameTenant}
+        userRole={userRole}
+        onOpenLogin={onOpenLogin}
+        heroImage={heroImage}
+        hero={
+          <section className="relative z-10 mx-auto grid max-w-6xl scroll-mt-24 items-center gap-8 px-4 py-10 sm:gap-10 sm:px-6 sm:py-12 lg:grid-cols-2 lg:gap-14 lg:py-16">
+            <div className="space-y-5 sm:space-y-6">
+              <p className={`text-[11px] font-semibold uppercase tracking-[0.2em] ${light ? 'text-slate-500' : 'text-slate-400'}`}>
+                {institution.name}
+              </p>
+              <h1 className={`max-w-lg break-words font-display text-2xl font-bold leading-[1.12] tracking-tight sm:text-4xl lg:text-[2.65rem] ${light ? 'text-slate-800' : 'text-white'}`}>
+                {headline}
+              </h1>
+              <p className={`max-w-md text-[15px] leading-relaxed ${light ? 'text-slate-600' : 'text-slate-300'}`}>{tagline}</p>
+              <LandingCtas
+                primary={primary}
+                verifyHref={verifyHref}
+                sameTenant={sameTenant}
+                userRole={userRole}
+                onOpenLogin={onOpenLogin}
+                preview={preview}
+                size="default"
+                solidClassName="rounded-full px-6 shadow-md shadow-slate-900/10"
+                outlineClassName={
+                  light
+                    ? 'rounded-full border-slate-200 bg-white px-6 text-slate-800'
+                    : 'rounded-full border-white/20 bg-white/5 px-6 text-white'
+                }
+              />
+              <LandingHeroSocials
+                institution={institution}
+                primary={primary}
+                tone={tone}
+                preview={preview}
+              />
+            </div>
+
+            <div className="relative mx-auto w-full max-w-md lg:max-w-none">
+              <div
+                className="relative overflow-hidden shadow-2xl shadow-slate-900/15"
+                style={{ borderRadius: '1.75rem' }}
+              >
+                <img src={heroImage} alt="" className="aspect-[4/3] max-h-[55vh] w-full object-cover sm:aspect-[5/5] sm:max-h-none" />
+                <div
+                  className="pointer-events-none absolute inset-0"
+                  style={{ background: `linear-gradient(160deg, ${primary}28, transparent 45%)` }}
+                  aria-hidden
+                />
+              </div>
+            </div>
+          </section>
+        }
       />
       <SharedLandingFooter
         institution={institution}

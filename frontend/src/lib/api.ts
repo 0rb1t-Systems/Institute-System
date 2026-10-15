@@ -1242,6 +1242,7 @@ const ALLOWED_ASSET_KINDS = new Set([
   'hero',
   'grading_key',
   'program',
+  'team',
   'cert_builder',
 ])
 const ALLOWED_IMAGE_MIME = new Set(['image/png', 'image/jpeg', 'image/webp', 'image/svg+xml'])
@@ -1260,11 +1261,15 @@ export const uploadInstitutionAsset = async (file, kind = 'logo') => {
   if (file.size > MAX_ASSET_BYTES) throw new Error('FILE_TOO_LARGE')
   const mime = String(file.type || '').toLowerCase()
   if (mime && !ALLOWED_IMAGE_MIME.has(mime)) throw new Error('INVALID_FILE_TYPE')
-  if ((assetKind === 'hero' || assetKind === 'program') && mime === 'image/svg+xml') throw new Error('INVALID_FILE_TYPE')
+  if ((assetKind === 'hero' || assetKind === 'program' || assetKind === 'team') && mime === 'image/svg+xml') {
+    throw new Error('INVALID_FILE_TYPE')
+  }
 
   const ext = String(file.name || 'png').split('.').pop()?.toLowerCase() || 'png'
   const safeExt = ['png', 'jpg', 'jpeg', 'webp', 'svg'].includes(ext) ? ext : 'png'
-  if ((assetKind === 'hero' || assetKind === 'program') && safeExt === 'svg') throw new Error('INVALID_FILE_TYPE')
+  if ((assetKind === 'hero' || assetKind === 'program' || assetKind === 'team') && safeExt === 'svg') {
+    throw new Error('INVALID_FILE_TYPE')
+  }
   const path = `${me.institution_id}/${assetKind}-${Date.now()}.${safeExt}`
 
   const { error } = await supabase.storage.from('institution-assets').upload(path, file, {

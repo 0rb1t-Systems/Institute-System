@@ -11,7 +11,19 @@ import {
   filledAboutHighlights,
   filledLandingPrograms,
   sanitizeLandingContent,
+  type LandingProgramIconId,
 } from '@/lib/landingContent'
+
+const FALLBACK_PROGRAM_ICONS: LandingProgramIconId[] = [
+  'graduation',
+  'book',
+  'code',
+  'palette',
+  'briefcase',
+  'laptop',
+  'award',
+  'users',
+]
 
 export {
   LANDING_NAV_ITEMS,
@@ -159,7 +171,7 @@ export function LandingContentSections({
               <div className="mt-8 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
                 {programs.map((p, i) => {
                   const Icon = landingProgramIcon(
-                    p.icon || (['graduation', 'book', 'code', 'palette', 'briefcase', 'laptop', 'award', 'users'][i % 8] as const),
+                    p.icon || FALLBACK_PROGRAM_ICONS[i % FALLBACK_PROGRAM_ICONS.length],
                   )
                   const palette = [primary, accent, String(institution.theme_tertiary || '').trim() || accent]
                   const color = palette[i % palette.length]

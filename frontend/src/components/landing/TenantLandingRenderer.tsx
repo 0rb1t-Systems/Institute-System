@@ -13,6 +13,7 @@ import {
 import { applyInstitutionBrandCss } from '@/lib/logoBrandColors'
 import { usePlatformTheme } from '@/contexts/PlatformThemeContext'
 import type { LandingInstitution, LandingTemplateProps } from '@/components/landing/types'
+import type { TenantLandingPage } from '@/lib/tenantLandingRoutes'
 import ClassicTemplate from '@/components/landing/templates/ClassicTemplate'
 import AuroraTemplate from '@/components/landing/templates/AuroraTemplate'
 import CampusTemplate from '@/components/landing/templates/CampusTemplate'
@@ -42,6 +43,7 @@ type Props = {
   preview?: boolean
   onChangeTemplate?: () => void
   templateId?: string | null
+  page?: TenantLandingPage
 }
 
 export default function TenantLandingRenderer({
@@ -53,6 +55,7 @@ export default function TenantLandingRenderer({
   preview = false,
   onChangeTemplate,
   templateId,
+  page = 'home',
 }: Props) {
   const { mode } = usePlatformTheme()
   const meta = getLandingTemplate(templateId || institution.landing_template_id)
@@ -99,6 +102,7 @@ export default function TenantLandingRenderer({
         preview={preview}
         onChangeTemplate={preview ? undefined : onChangeTemplate}
         themeMode={mode}
+        page={preview ? 'home' : page}
       />
     </div>
   )

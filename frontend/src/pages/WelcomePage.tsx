@@ -5,7 +5,6 @@ import { motion } from 'framer-motion'
 import { ArrowRight } from 'lucide-react'
 import { Dialog, DialogContent } from '@/components/ui/dialog'
 import { isLikelyCustomTenantHost, resolvePublicTenantSubdomain } from '@/lib/institution'
-import { ensurePublicTenantSubdomain } from '@/lib/api'
 import TenantHomePage from '@/pages/public/TenantHomePage'
 import StudentIdentityVerify from '@/components/public/StudentIdentityVerify'
 import PlatformLayout from '@/components/platform/PlatformLayout'
@@ -47,43 +46,14 @@ const WelcomePage = () => {
   const heroSrc = mode === 'light' ? HERO_LIGHT : HERO_DARK
   const [verifyOpen, setVerifyOpen] = useState(false)
   const [trusted, setTrusted] = useState<SiteTrustedItem[]>([])
-  const syncTenant =
+  const tenant =
     searchParams.get('tenant') ||
     searchParams.get('subdomain') ||
     resolvePublicTenantSubdomain()
-  const [asyncTenant, setAsyncTenant] = useState('')
-  const [hostResolving, setHostResolving] = useState(
-    () => !syncTenant && typeof window !== 'undefined' && isLikelyCustomTenantHost(),
-  )
-  const tenant = syncTenant || asyncTenant
+  const onCustomHost = isLikelyCustomTenantHost()
 
   useEffect(() => {
-    if (syncTenant) {
-      setHostResolving(false)
-      return
-    }
-    if (!isLikelyCustomTenantHost()) {
-      setHostResolving(false)
-      return
-    }
-    let cancelled = false
-    setHostResolving(true)
-    ;(async () => {
-      try {
-        const slug = await ensurePublicTenantSubdomain()
-        if (!cancelled) setAsyncTenant(slug || '')
-      } catch {
-        if (!cancelled) setAsyncTenant('')
-      } finally {
-        if (!cancelled) setHostResolving(false)
-      }
-    })()
-    return () => {
-      cancelled = true
-    }
-  }, [syncTenant])
-
-  useEffect(() => {
+    if (tenant || onCustomHost) return
     let cancelled = false
     ;(async () => {
       try {
@@ -97,18 +67,11 @@ const WelcomePage = () => {
     return () => {
       cancelled = true
     }
-  }, [])
+  }, [tenant, onCustomHost])
 
-  if (hostResolving) {
-    return (
-      <div className="flex min-h-[40vh] items-center justify-center bg-[var(--landing-limewash)] text-sm text-[var(--landing-muted)]">
-        Loading…
-      </div>
-    )
-  }
-
-  if (tenant) {
-    return <TenantHomePage subdomain={tenant} />
+  // Custom domain: load institution by host inside TenantHomePage — no intermediate spinner.
+  if (tenant || onCustomHost) {
+    return <TenantHomePage subdomain={tenant || undefined} />
   }
 
   return (

@@ -774,6 +774,9 @@ export function resolvePublicTenantSubdomain(): string {
       // Cached mapping from a prior get_public_institution_by_host lookup
       const cached = getCachedTenantForHost(host)
       if (cached) return cached
+
+      // Custom domain: never invent a platform default slug — resolve by host instead.
+      if (isLikelyCustomTenantHost(host)) return ''
     }
   }
   return String(import.meta.env.VITE_DEFAULT_TENANT_SUBDOMAIN || '').trim().toLowerCase()

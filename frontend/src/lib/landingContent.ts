@@ -1,5 +1,5 @@
 /**
- * Institution landing page copy (About / Programs).
+ * Institution landing page copy (About / Programs / Team).
  * Plain text only — never render as HTML.
  */
 
@@ -31,8 +31,19 @@ export type LandingProgramItem = {
   icon: LandingProgramIconId | ''
 }
 
+export type LandingTeamMember = {
+  name: string
+  role: string
+  bio: string
+  photo_url: string
+}
+
 export function emptyLandingProgram(): LandingProgramItem {
   return { title: '', description: '', image_url: '', icon: '' }
+}
+
+export function emptyLandingTeamMember(): LandingTeamMember {
+  return { name: '', role: '', bio: '', photo_url: '' }
 }
 
 export function isLandingProgramIconId(value: string): value is LandingProgramIconId {
@@ -62,6 +73,7 @@ export type LandingContent = {
   about_highlights: string[]
   programs_intro: string
   programs: LandingProgramItem[]
+  team: LandingTeamMember[]
 }
 
 export const EMPTY_LANDING_CONTENT: LandingContent = {
@@ -70,6 +82,7 @@ export const EMPTY_LANDING_CONTENT: LandingContent = {
   about_highlights: ['', '', '', ''],
   programs_intro: '',
   programs: [emptyLandingProgram(), emptyLandingProgram()],
+  team: [],
 }
 
 const LIMITS = {
@@ -79,8 +92,12 @@ const LIMITS = {
   programs_intro: 400,
   program_title: 80,
   program_description: 280,
+  team_name: 80,
+  team_role: 80,
+  team_bio: 280,
   max_highlights: 4,
   max_programs: 8,
+  max_team: 8,
 }
 
 /** Strip tags/control chars so public pages cannot run injected markup. */
@@ -97,6 +114,7 @@ export function sanitizeLandingContent(raw?: unknown): LandingContent {
   const src = raw && typeof raw === 'object' ? (raw as Record<string, unknown>) : {}
   const highlightsIn = Array.isArray(src.about_highlights) ? src.about_highlights : []
   const programsIn = Array.isArray(src.programs) ? src.programs : []
+  const teamIn = Array.isArray(src.team) ? src.team : []
 
   const about_highlights = highlightsIn
     .slice(0, LIMITS.max_highlights)
@@ -116,12 +134,23 @@ export function sanitizeLandingContent(raw?: unknown): LandingContent {
 
   while (programs.length < 2) programs.push(emptyLandingProgram())
 
+  const team = teamIn.slice(0, LIMITS.max_team).map((row) => {
+    const item = row && typeof row === 'object' ? (row as Record<string, unknown>) : {}
+    return {
+      name: sanitizePlainText(item.name, LIMITS.team_name),
+      role: sanitizePlainText(item.role, LIMITS.team_role),
+      bio: sanitizePlainText(item.bio, LIMITS.team_bio),
+      photo_url: sanitizeProgramImageUrl(item.photo_url, true),
+    }
+  })
+
   return {
     about_title: sanitizePlainText(src.about_title, LIMITS.about_title),
     about_body: sanitizePlainText(src.about_body, LIMITS.about_body),
     about_highlights,
     programs_intro: sanitizePlainText(src.programs_intro, LIMITS.programs_intro),
     programs,
+    team,
   }
 }
 
@@ -134,6 +163,10 @@ export function landingContentForSave(content: LandingContent): LandingContent {
       .map((p) => ({ ...p, image_url: sanitizeProgramImageUrl(p.image_url, false) }))
       .filter((p) => p.title || p.description || p.image_url)
       .slice(0, LIMITS.max_programs),
+    team: clean.team
+      .map((m) => ({ ...m, photo_url: sanitizeProgramImageUrl(m.photo_url, false) }))
+      .filter((m) => m.name || m.role || m.bio || m.photo_url)
+      .slice(0, LIMITS.max_team),
   }
 }
 
@@ -156,18 +189,33 @@ export function filledLandingPrograms(content: LandingContent): LandingProgramIt
   )
 }
 
+export function filledLandingTeam(content: LandingContent): LandingTeamMember[] {
+  return content.team.filter(
+    (m) =>
+      String(m.name || '').trim() ||
+      String(m.role || '').trim() ||
+      String(m.bio || '').trim() ||
+      String(m.photo_url || '').trim(),
+  )
+}
+
 /** About block is optional — only render what the institution actually wrote. */
 export function landingAboutVisible(content: LandingContent): boolean {
   return Boolean(
     String(content.about_title || '').trim() ||
       String(content.about_body || '').trim() ||
-      filledAboutHighlights(content).length,
+      filledAboutHighlights(content).length ||
+      filledLandingTeam(content).length,
   )
 }
 
 /** Programs block is optional — skipped copy stays off the public page. */
 export function landingProgramsVisible(content: LandingContent): boolean {
   return Boolean(String(content.programs_intro || '').trim() || filledLandingPrograms(content).length)
+}
+
+export function landingTeamVisible(content: LandingContent): boolean {
+  return filledLandingTeam(content).length > 0
 }
 
 export const DEFAULT_PROGRAMS: LandingProgramItem[] = [

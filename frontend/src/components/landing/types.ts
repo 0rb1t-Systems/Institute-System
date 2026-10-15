@@ -1,5 +1,6 @@
 import type { LandingTemplateId } from '@/lib/landingTemplates'
 import type { LandingContent } from '@/lib/landingContent'
+import type { TenantLandingPage } from '@/lib/tenantLandingRoutes'
 
 export type LandingInstitution = {
   id?: string
@@ -43,6 +44,8 @@ export type LandingTemplateProps = {
   onChangeTemplate?: () => void
   /** Visitor light/dark preference — chrome follows branding colors. */
   themeMode?: 'light' | 'dark'
+  /** Which public site page to render (home shows hero). */
+  page?: TenantLandingPage
 }
 
 export { hasInstitutionLogo, institutionLogoUrl } from '@/lib/institution'

@@ -18,6 +18,7 @@ import { uploadInstitutionAsset } from '@/lib/api'
 import {
   EMPTY_LANDING_CONTENT,
   emptyLandingProgram,
+  emptyLandingTeamMember,
   sanitizeLandingContent,
   type LandingContent,
   type LandingProgramIconId,
@@ -43,6 +44,7 @@ export type LandingCustomizeValues = {
   logoFile: File | null
   heroFile: File | null
   programImageFiles: Record<number, File>
+  teamImageFiles: Record<number, File>
   landing_content: LandingContent
 }
 
@@ -77,6 +79,7 @@ export default function LandingTemplatePicker({ baseInstitution, values, onChang
   const [logoSwatches, setLogoSwatches] = useState<string[]>([])
   const [detectingColors, setDetectingColors] = useState(false)
   const [uploadingProgram, setUploadingProgram] = useState<number | null>(null)
+  const [uploadingTeam, setUploadingTeam] = useState<number | null>(null)
   const content = sanitizeLandingContent(values.landing_content)
 
   const setContent = (patch: Partial<LandingContent>) => {
@@ -321,7 +324,7 @@ export default function LandingTemplatePicker({ baseInstitution, values, onChang
         <div>
           <h3 className={`text-sm font-semibold ${titleCls}`}>About page</h3>
           <p className={`mt-1 text-xs ${mutedCls}`}>
-            Optional. Leave blank to hide the About section on the public landing page.
+            Shown on the public About page (and as a short preview on Home). Add leadership photos below.
           </p>
         </div>
         <div className="space-y-2">
@@ -362,11 +365,213 @@ export default function LandingTemplatePicker({ baseInstitution, values, onChang
             </div>
           ))}
         </div>
+        <div className="space-y-3">
+          <div className="flex items-start justify-between gap-3">
+            <div>
+              <p className={`text-sm font-semibold ${titleCls}`}>Leadership &amp; management</p>
+              <p className={`mt-1 text-xs ${mutedCls}`}>
+                Optional. Up to 8 people with photo, name, role, and short bio on the About page.
+              </p>
+            </div>
+            <Button
+              type="button"
+              size="sm"
+              variant="outline"
+              className="border-[var(--tenant-line)] bg-transparent text-[var(--tenant-text)] [.platform-public_&]:border-[var(--pf-line)] [.platform-public_&]:text-[var(--pf-text)]"
+              disabled={content.team.length >= 8}
+              onClick={() =>
+                setContent({
+                  team: [...content.team, emptyLandingTeamMember()],
+                })
+              }
+            >
+              <Plus className="mr-1 h-3.5 w-3.5" />
+              Add
+            </Button>
+          </div>
+          {content.team.length === 0 ? (
+            <p className={`text-xs ${mutedCls}`}>No team members yet. Add directors, principals, or staff.</p>
+          ) : null}
+          <div className="space-y-3">
+            {content.team.map((member, i) => (
+              <div
+                key={i}
+                className="rounded-xl border border-[var(--tenant-line)] bg-[var(--tenant-bg)] p-3 [.platform-public_&]:border-[var(--pf-line)] [.platform-public_&]:bg-[var(--pf-bg)]"
+              >
+                <div className="flex items-start justify-between gap-2">
+                  <p className={`text-xs font-medium ${mutedCls}`}>Member {i + 1}</p>
+                  <Button
+                    type="button"
+                    size="icon"
+                    variant="ghost"
+                    className={`h-8 w-8 hover:text-red-500 ${mutedCls}`}
+                    onClick={() => {
+                      const nextTeam = content.team.filter((_, idx) => idx !== i)
+                      const nextFiles = { ...(values.teamImageFiles || {}) }
+                      delete nextFiles[i]
+                      const remapped: Record<number, File> = {}
+                      Object.entries(nextFiles).forEach(([k, file]) => {
+                        const idx = Number(k)
+                        if (idx > i) remapped[idx - 1] = file
+                        else if (idx < i) remapped[idx] = file
+                      })
+                      onChange({
+                        landing_content: { ...content, team: nextTeam },
+                        teamImageFiles: remapped,
+                      })
+                    }}
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
+                </div>
+                <div className="mt-2 grid gap-3 sm:grid-cols-[minmax(0,9rem)_1fr]">
+                  <div className="space-y-2">
+                    <div className="relative aspect-[4/5] overflow-hidden rounded-lg border border-dashed border-[var(--tenant-line)] bg-[var(--tenant-surface)] [.platform-public_&]:border-[var(--pf-line)] [.platform-public_&]:bg-[var(--pf-surface)]">
+                      {member.photo_url ? (
+                        <img
+                          src={brandedImageSrc(member.photo_url)}
+                          alt=""
+                          className="h-full w-full object-cover"
+                        />
+                      ) : (
+                        <div className={`flex h-full flex-col items-center justify-center gap-1 px-2 text-center text-[11px] ${mutedCls}`}>
+                          <ImagePlus className="h-5 w-5" />
+                          Photo
+                        </div>
+                      )}
+                      {uploadingTeam === i ? (
+                        <div className="absolute inset-0 flex items-center justify-center bg-black/40">
+                          <Loader2 className="h-5 w-5 animate-spin text-white" />
+                        </div>
+                      ) : null}
+                    </div>
+                    <Label
+                      htmlFor={`team-photo-${i}`}
+                      className="inline-flex w-full cursor-pointer items-center justify-center gap-1 rounded-md border border-[var(--tenant-line)] px-2 py-1 text-[11px] font-medium text-[var(--tenant-text)] [.platform-public_&]:border-[var(--pf-line)] [.platform-public_&]:text-[var(--pf-text)]"
+                    >
+                      <Upload className="h-3 w-3" />
+                      {member.photo_url ? 'Replace' : 'Upload'}
+                      <input
+                        id={`team-photo-${i}`}
+                        type="file"
+                        accept="image/png,image/jpeg,image/webp"
+                        className="hidden"
+                        disabled={uploadingTeam !== null}
+                        onChange={async (e) => {
+                          const file = e.target.files?.[0]
+                          e.target.value = ''
+                          if (!file) return
+                          const prev = member.photo_url
+                          if (prev?.startsWith('blob:')) URL.revokeObjectURL(prev)
+                          const preview = URL.createObjectURL(file)
+                          const nextTeam = content.team.map((row, idx) =>
+                            idx === i ? { ...row, photo_url: preview } : row,
+                          )
+                          onChange({
+                            landing_content: { ...content, team: nextTeam },
+                            teamImageFiles: { ...(values.teamImageFiles || {}), [i]: file },
+                          })
+                          setUploadingTeam(i)
+                          try {
+                            const url = await uploadInstitutionAsset(file, 'team')
+                            if (!url) throw new Error('UPLOAD_FAILED')
+                            URL.revokeObjectURL(preview)
+                            const saved = content.team.map((row, idx) =>
+                              idx === i ? { ...row, photo_url: url } : row,
+                            )
+                            const pending = { ...(values.teamImageFiles || {}) }
+                            delete pending[i]
+                            onChange({
+                              landing_content: { ...content, team: saved },
+                              teamImageFiles: pending,
+                            })
+                          } catch (err) {
+                            toast({
+                              title: 'Photo upload failed',
+                              description: getUserMessage(err, {
+                                context: 'TeamPhotoUpload',
+                                fallback: MESSAGES.UNEXPECTED,
+                              }),
+                              variant: 'destructive',
+                            })
+                          } finally {
+                            setUploadingTeam(null)
+                          }
+                        }}
+                      />
+                    </Label>
+                    {member.photo_url ? (
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="ghost"
+                        className={`h-7 px-2 text-[11px] ${mutedCls}`}
+                        onClick={() => {
+                          if (member.photo_url?.startsWith('blob:')) URL.revokeObjectURL(member.photo_url)
+                          const next = content.team.map((row, idx) =>
+                            idx === i ? { ...row, photo_url: '' } : row,
+                          )
+                          const pending = { ...(values.teamImageFiles || {}) }
+                          delete pending[i]
+                          onChange({
+                            landing_content: { ...content, team: next },
+                            teamImageFiles: pending,
+                          })
+                        }}
+                      >
+                        Remove photo
+                      </Button>
+                    ) : null}
+                  </div>
+                  <div className="space-y-2">
+                    <Input
+                      value={member.name}
+                      maxLength={80}
+                      onChange={(e) => {
+                        const next = content.team.map((row, idx) =>
+                          idx === i ? { ...row, name: e.target.value } : row,
+                        )
+                        setContent({ team: next })
+                      }}
+                      placeholder="Full name"
+                      className={fieldCls}
+                    />
+                    <Input
+                      value={member.role}
+                      maxLength={80}
+                      onChange={(e) => {
+                        const next = content.team.map((row, idx) =>
+                          idx === i ? { ...row, role: e.target.value } : row,
+                        )
+                        setContent({ team: next })
+                      }}
+                      placeholder="Role (e.g. Principal)"
+                      className={fieldCls}
+                    />
+                    <Textarea
+                      value={member.bio}
+                      maxLength={280}
+                      onChange={(e) => {
+                        const next = content.team.map((row, idx) =>
+                          idx === i ? { ...row, bio: e.target.value } : row,
+                        )
+                        setContent({ team: next })
+                      }}
+                      placeholder="Short bio (optional)"
+                      className={`min-h-[72px] ${fieldCls}`}
+                    />
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+
         <div className="space-y-3 rounded-xl border border-[var(--tenant-line)] bg-[var(--tenant-bg)] p-4 [.platform-public_&]:border-[var(--pf-line)] [.platform-public_&]:bg-[var(--pf-bg)]">
           <div>
             <p className={`text-sm font-semibold ${titleCls}`}>Social media icons</p>
             <p className={`mt-1 text-xs ${mutedCls}`}>
-              Add your links. Animated icons appear on the About section, hero, and footer of every landing template. Leave blank to hide.
+              Add your links. Animated icons appear on the About page, hero, and footer. Leave blank to hide.
             </p>
           </div>
           <div className="grid gap-3 sm:grid-cols-3">
@@ -409,7 +614,7 @@ export default function LandingTemplatePicker({ baseInstitution, values, onChang
           <div>
             <h3 className={`text-sm font-semibold ${titleCls}`}>Programs page</h3>
             <p className={`mt-1 text-xs ${mutedCls}`}>
-              Optional. Add up to 8 programs with a photo and icon. Leave empty to hide Programs on the landing page.
+              Optional. Up to 8 programs with photo and icon on the public Programs page (previewed on Home).
             </p>
           </div>
           <Button
@@ -641,6 +846,7 @@ export function emptyLandingCustomize(templateId: LandingTemplateId = 'aurora'):
     logoFile: null,
     heroFile: null,
     programImageFiles: {},
+    teamImageFiles: {},
     landing_content: { ...EMPTY_LANDING_CONTENT },
   }
 }

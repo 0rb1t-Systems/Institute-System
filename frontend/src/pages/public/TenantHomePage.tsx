@@ -1,12 +1,12 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Helmet } from 'react-helmet';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
-import { Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { getPublicInstitutionBySubdomain, setLandingTemplate } from '@/lib/api';
 import { supabase } from '@/lib/supabaseClient';
 import {
   resolvePublicTenantSubdomain,
+  isLikelyCustomTenantHost,
   getInstitutionPrimary,
   institutionLogoUrl,
   pickLiveLogoUrl,
@@ -29,21 +29,31 @@ import {
   type LandingTemplateId,
 } from '@/lib/landingTemplates';
 
+import type { TenantLandingPage } from '@/lib/tenantLandingRoutes';
+
 /**
- * Public tenant landing — loads saved default template; admins can switch & persist.
+ * Public tenant site — home + About / Programs / Contact pages.
  */
-const TenantHomePage = ({ subdomain: subdomainProp }) => {
+const TenantHomePage = ({
+  subdomain: subdomainProp,
+  page = 'home',
+}: {
+  subdomain?: string
+  page?: TenantLandingPage
+}) => {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const { user, login, refreshUser, institution: authInstitution } = useAuth();
+  const onCustomHost = isLikelyCustomTenantHost();
   const subdomain =
     subdomainProp ||
     searchParams.get('tenant') ||
     searchParams.get('subdomain') ||
     resolvePublicTenantSubdomain();
+  const canLoad = Boolean(subdomain) || onCustomHost;
 
   const [institution, setInstitution] = useState(null);
-  const [loading, setLoading] = useState(!!subdomain);
+  const [loading, setLoading] = useState(canLoad);
   const [error, setError] = useState(null);
 
   const [loginOpen, setLoginOpen] = useState(false);
@@ -62,14 +72,15 @@ const TenantHomePage = ({ subdomain: subdomainProp }) => {
 
   const loadInstitution = useCallback(
     async (opts?: { silent?: boolean }) => {
-      if (!subdomain) {
+      if (!subdomain && !onCustomHost) {
         setLoading(false);
         setError('missing');
         return;
       }
       if (!opts?.silent) setLoading(true);
       try {
-        const inst = await getPublicInstitutionBySubdomain(subdomain);
+        // Empty slug on custom domain → API resolves by hostname.
+        const inst = await getPublicInstitutionBySubdomain(subdomain || '');
         if (!inst) {
           setError('not_found');
           setInstitution(null);
@@ -104,7 +115,7 @@ const TenantHomePage = ({ subdomain: subdomainProp }) => {
         if (!opts?.silent) setLoading(false);
       }
     },
-    [subdomain],
+    [subdomain, onCustomHost],
   );
 
   useEffect(() => {
@@ -188,8 +199,9 @@ const TenantHomePage = ({ subdomain: subdomainProp }) => {
     };
   }, [loginOpen]);
 
-  const q = encodeURIComponent(subdomain || '');
-  const verifyHref = `/verify-credential?tenant=${q}`;
+  const tenantSlug = String(institution?.subdomain || subdomain || '').trim();
+  const q = encodeURIComponent(tenantSlug);
+  const verifyHref = q ? `/verify-credential?tenant=${q}` : '/verify-credential';
   const sameTenant =
     user &&
     institution &&
@@ -395,11 +407,8 @@ const TenantHomePage = ({ subdomain: subdomainProp }) => {
   };
 
   if (loading) {
-    return (
-      <div className="flex min-h-screen items-center justify-center bg-[#0a1628] text-slate-300">
-        <Loader2 className="h-8 w-8 animate-spin" style={{ color: primary }} />
-      </div>
-    );
+    // No spinner — blank paint while the public institution loads (esp. custom domains).
+    return <div className="min-h-screen bg-white" aria-busy="true" aria-label="Loading" />;
   }
 
   if (!institution) {
@@ -423,7 +432,15 @@ const TenantHomePage = ({ subdomain: subdomainProp }) => {
   return (
     <>
       <Helmet>
-        <title>{landingInstitution.name}</title>
+        <title>
+          {page === 'about'
+            ? `About — ${landingInstitution.name}`
+            : page === 'programs'
+              ? `Programs — ${landingInstitution.name}`
+              : page === 'contact'
+                ? `Contact — ${landingInstitution.name}`
+                : landingInstitution.name}
+        </title>
       </Helmet>
 
       <TenantLandingRenderer
@@ -433,6 +450,7 @@ const TenantHomePage = ({ subdomain: subdomainProp }) => {
         sameTenant={!!sameTenant}
         userRole={user?.role}
         onOpenLogin={openLogin}
+        page={page}
       />
 
       <LandingTemplateSwitcher

@@ -10,12 +10,9 @@ import {
   type LandingInstitution,
 } from '@/components/landing/types'
 import { brandedImageSrc, institutionLogoUrl } from '@/lib/institution'
-import {
-  LandingPageNav,
-  landingNavItemsFor,
-  scrollToLandingSection,
-} from '@/components/landing/LandingNav'
+import { LandingPageNav, landingNavItemsFor } from '@/components/landing/LandingNav'
 import LandingHeroSocials from '@/components/landing/LandingHeroSocials'
+import { tenantLandingHref } from '@/lib/tenantLandingRoutes'
 
 const HEADER_LOGO_CLASS =
   'h-8 w-auto max-w-[6.75rem] object-contain sm:h-12 sm:max-w-[14rem] md:h-14 md:max-w-[18rem]'
@@ -167,6 +164,7 @@ export function LandingHeaderBar({
           primary={navColor}
           preview={preview}
           tone={tone}
+          activePage={preview ? 'home' : undefined}
           className="col-start-2 row-start-1 hidden justify-center md:flex"
         />
         <div className="col-start-2 justify-self-end md:col-start-3">
@@ -188,6 +186,7 @@ export function LandingHeaderBar({
         preview={preview}
         tone={tone}
         variant="tabs"
+        activePage={preview ? 'home' : undefined}
         className="md:hidden"
       />
     </div>
@@ -367,7 +366,7 @@ export function SharedLandingFooter({
   const bar = dark ? 'border-white/5 text-slate-500' : 'border-slate-100 text-slate-400'
 
   return (
-    <footer id="contact" className={`relative z-10 scroll-mt-24 ${wrap}`}>
+    <footer className={`relative z-10 ${wrap}`}>
       <div className="mx-auto grid max-w-6xl gap-6 px-4 py-7 sm:px-6 md:grid-cols-[1.2fr_1fr_1fr] md:px-8">
         <div className="min-w-0">
           <div className="flex min-w-0 items-center gap-2.5">
@@ -391,9 +390,16 @@ export function SharedLandingFooter({
           <ul className="mt-3 space-y-2 text-sm">
             {landingNavItemsFor(institution).map((item) => (
               <li key={item.id}>
-                <button type="button" onClick={() => scrollToLandingSection(item.id, preview)} className={linkHover}>
-                  {item.label}
-                </button>
+                {preview ? (
+                  <span className={linkHover}>{item.label}</span>
+                ) : (
+                  <Link
+                    to={tenantLandingHref(item.id, { tenant: institution.subdomain })}
+                    className={linkHover}
+                  >
+                    {item.label}
+                  </Link>
+                )}
               </li>
             ))}
             <li>
