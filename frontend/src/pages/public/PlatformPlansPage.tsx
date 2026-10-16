@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useState } from 'react'
 import { Helmet } from 'react-helmet'
 import { Link, useNavigate } from 'react-router-dom'
-import { motion } from 'framer-motion'
+import { motion, useReducedMotion } from 'framer-motion'
 import { Check, ArrowRight, Loader2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -51,6 +51,7 @@ const PlatformPlansPage = () => {
   const { user } = useAuth()
   const { toast } = useToast()
   const navigate = useNavigate()
+  const reduceMotion = useReducedMotion()
   const isTenantAdmin = user?.role === 'admin' && Boolean(user?.institution_id)
 
   const [plans, setPlans] = useState<any[]>([])
@@ -162,191 +163,220 @@ const PlatformPlansPage = () => {
     }
   }
 
+  const planCount = plans.length
+  const dualLayout = planCount === 2
+
   return (
     <PlatformLayout>
       <Helmet>
         <title>Plans & Subscriptions — TvetFlow</title>
       </Helmet>
-      <section className="mx-auto max-w-6xl px-5 py-14 sm:px-8 sm:py-20">
-        <motion.p
-          initial={{ opacity: 0, y: 8 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="text-sm font-semibold text-[var(--landing-sun)]"
-        >
-          Plans & Subscriptions
-        </motion.p>
-        <motion.h1
-          initial={{ opacity: 0, y: 14 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.05, duration: 0.45, ease: easeOut }}
-          className="landing-display mt-2 max-w-2xl text-3xl font-extrabold text-[var(--landing-ink)] sm:text-4xl"
-        >
-          Pick a plan when the institution is ready
-        </motion.h1>
-        <motion.p
-          initial={{ opacity: 0, y: 14 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.1, duration: 0.45, ease: easeOut }}
-          className="mt-4 max-w-xl text-[var(--landing-muted)]"
-        >
-          {isTenantAdmin
-            ? 'Renew or change your plan with WaafiPay.'
-            : 'Buy a plan with WaafiPay first. After payment you can create your institution and admin account.'}
-        </motion.p>
 
-        {subscription?.platform_plans?.name ? (
-          <div
-            className="mt-6 border border-[var(--landing-line)] bg-[var(--landing-room)] px-4 py-3 text-sm text-[var(--landing-muted)]"
-            style={{ borderRadius: 'var(--landing-radius)' }}
-          >
-            Current plan:{' '}
-            <span className="font-semibold text-[var(--landing-ink)]">
-              {subscription.platform_plans.name}
-            </span>
-            {' · '}
-            <span className="capitalize">{subscription.status}</span>
-            {subscription.billing_cycle ? (
-              <>
-                {' · '}
-                <span className="capitalize">{subscription.billing_cycle}</span>
-              </>
-            ) : null}
-            {subscription.ends_at ? (
-              <> · renews / ends {new Date(subscription.ends_at).toLocaleDateString()}</>
-            ) : null}
+      <section className="relative overflow-hidden">
+        {/* Soft desk atmosphere — stays within Ops Desk tokens */}
+        <div
+          aria-hidden
+          className="pointer-events-none absolute inset-0 bg-[var(--landing-limewash)]"
+        />
+        <div
+          aria-hidden
+          className="pointer-events-none absolute -left-24 top-0 h-[28rem] w-[28rem] rounded-full bg-[var(--landing-sun)]/[0.07] blur-3xl"
+        />
+        <div
+          aria-hidden
+          className="pointer-events-none absolute -right-16 top-32 h-[22rem] w-[22rem] rounded-full bg-[var(--landing-sun)]/[0.05] blur-3xl"
+        />
+
+        <div className="relative mx-auto max-w-5xl px-5 py-14 sm:px-8 sm:py-20">
+          <div className="mx-auto max-w-2xl text-center">
+            <motion.h1
+              initial={reduceMotion ? false : { opacity: 0, y: 16 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.5, ease: easeOut }}
+              className="landing-display text-3xl font-extrabold tracking-tight text-[var(--landing-ink)] sm:text-5xl sm:leading-[1.1]"
+            >
+              TvetFlow plans
+            </motion.h1>
+            <motion.p
+              initial={reduceMotion ? false : { opacity: 0, y: 12 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.08, duration: 0.45, ease: easeOut }}
+              className="mx-auto mt-4 max-w-lg text-base leading-relaxed text-[var(--landing-muted)] sm:text-lg"
+            >
+              {isTenantAdmin
+                ? 'Renew or change your institution plan with WaafiPay.'
+                : 'Choose a plan, pay with WaafiPay, then create your institution.'}
+            </motion.p>
           </div>
-        ) : null}
 
-        <div className="mt-12 grid items-stretch gap-5 md:grid-cols-3 md:gap-6">
-          {loading ? (
-            <p className="col-span-full flex items-center gap-2 text-sm text-[var(--landing-muted)]">
-              <Loader2 className="h-4 w-4 animate-spin" /> Loading plans…
-            </p>
-          ) : plans.length === 0 ? (
-            <p className="col-span-full text-sm text-[var(--landing-muted)]">
-              No plans are published yet. Check back soon or{' '}
-              <Link to="/support" className="font-semibold text-[var(--landing-sun)] hover:underline">
-                contact Support
-              </Link>
-              .
-            </p>
-          ) : (
-            plans.map((plan, i) => {
-              const monthly = Number(plan.price_monthly) || 0
-              const yearly = Number(plan.price_yearly) || 0
-              const payable = monthly > 0 || yearly > 0
-              const featured = i === 1
-              const points = featureList(plan.features)
-              if (plan.max_students != null) {
-                points.unshift(`Up to ${plan.max_students} students`)
-              } else if (!points.some((p) => /unlimited/i.test(p))) {
-                points.unshift('Unlimited students')
-              }
-              const isCurrent = subscription?.plan_id === plan.id
+          {subscription?.platform_plans?.name ? (
+            <motion.div
+              initial={reduceMotion ? false : { opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.12, duration: 0.4, ease: easeOut }}
+              className="mx-auto mt-8 flex max-w-md items-center justify-center gap-2 border border-[var(--landing-line)] bg-[var(--landing-room)] px-4 py-2.5 text-sm text-[var(--landing-muted)]"
+              style={{ borderRadius: 'var(--landing-radius)' }}
+            >
+              <span>Current</span>
+              <span className="font-semibold text-[var(--landing-ink)]">
+                {subscription.platform_plans.name}
+              </span>
+              <span className="text-[var(--landing-shadow)]">·</span>
+              <span className="capitalize">{subscription.status}</span>
+            </motion.div>
+          ) : null}
 
-              return (
-                <motion.article
-                  key={plan.id}
-                  initial={{ opacity: 0, y: 48, scale: 0.94, rotate: i === 1 ? 0 : i === 0 ? -1.2 : 1.2 }}
-                  whileInView={{ opacity: 1, y: 0, scale: 1, rotate: 0 }}
-                  viewport={{ once: true, margin: '-20px' }}
-                  transition={{ duration: 0.65, delay: i * 0.12, ease: easeOut }}
-                  whileHover={{ y: -10, scale: 1.02, transition: { duration: 0.22 } }}
-                  className={`relative flex min-h-[440px] flex-col overflow-hidden border p-7 pt-10 sm:min-h-[480px] sm:p-8 sm:pt-11 ${
-                    featured
-                      ? 'border-[var(--landing-sun)] bg-[var(--landing-room)] shadow-[0_20px_48px_rgba(234,179,8,0.18)]'
-                      : 'border-[var(--landing-line)] bg-[var(--landing-room)] shadow-[0_12px_32px_rgba(15,23,42,0.06)]'
-                  }`}
-                  style={{ borderRadius: 'calc(var(--landing-radius) + 4px)' }}
-                >
-                  {featured ? (
-                    <motion.div
-                      initial={{ opacity: 0, scale: 0.6, rotate: 45 }}
-                      whileInView={{ opacity: 1, scale: 1, rotate: 45 }}
-                      viewport={{ once: true }}
-                      transition={{ delay: 0.35 + i * 0.1, type: 'spring', stiffness: 260, damping: 18 }}
-                      className="landing-plan-ribbon landing-plan-ribbon--featured pointer-events-none absolute -right-11 top-6 z-10 w-[9.75rem] py-2 text-center"
-                      aria-label="Popular"
-                    >
-                      <span className="landing-plan-ribbon__label">POPULAR</span>
-                    </motion.div>
-                  ) : null}
+          <div
+            className={cn(
+              'mt-12 sm:mt-14',
+              dualLayout
+                ? 'mx-auto grid max-w-3xl grid-cols-1 items-stretch gap-6 sm:gap-7 md:grid-cols-2'
+                : planCount === 1
+                  ? 'mx-auto grid max-w-md grid-cols-1'
+                  : 'mx-auto grid max-w-5xl grid-cols-1 items-stretch gap-6 md:grid-cols-3 md:gap-5',
+            )}
+          >
+            {loading ? (
+              <p className="col-span-full flex items-center justify-center gap-2 py-16 text-sm text-[var(--landing-muted)]">
+                <Loader2 className="h-4 w-4 animate-spin" /> Loading plans…
+              </p>
+            ) : plans.length === 0 ? (
+              <p className="col-span-full text-center text-sm text-[var(--landing-muted)]">
+                No plans are published yet. Check back soon or{' '}
+                <Link to="/support" className="font-semibold text-[var(--landing-sun)] hover:underline">
+                  contact Support
+                </Link>
+                .
+              </p>
+            ) : (
+              plans.map((plan, i) => {
+                const monthly = Number(plan.price_monthly) || 0
+                const yearly = Number(plan.price_yearly) || 0
+                const payable = monthly > 0 || yearly > 0
+                const featured =
+                  String(plan.slug || '').toLowerCase() === 'enterprise' ||
+                  (dualLayout && i === 1)
+                const points = featureList(plan.features)
+                if (plan.max_students != null) {
+                  points.unshift(`Up to ${plan.max_students} students`)
+                } else if (!points.some((p) => /unlimited/i.test(p))) {
+                  points.unshift('Unlimited students')
+                }
+                const isCurrent = subscription?.plan_id === plan.id
 
-                  <div className="pr-10">
-                    <h2 className="landing-display text-xl font-extrabold text-[var(--landing-ink)]">
-                      {plan.name}
-                    </h2>
-                    <p className="mt-2 text-sm leading-relaxed text-[var(--landing-muted)]">
-                      {plan.description || 'Platform subscription for your institution.'}
-                    </p>
-                  </div>
-
-                  <p className="landing-display mt-8 text-3xl font-extrabold tracking-tight text-[var(--landing-ink)]">
-                    {payable ? (
-                      <>
-                        {money(monthly > 0 ? monthly : yearly)}
-                        <span className="text-base font-medium text-[var(--landing-shadow)]">
-                          {monthly > 0 ? ' / month' : ' / year'}
-                        </span>
-                      </>
-                    ) : (
-                      'Talk to us'
+                return (
+                  <motion.article
+                    key={plan.id}
+                    initial={reduceMotion ? false : { opacity: 0, y: 28 }}
+                    whileInView={{ opacity: 1, y: 0 }}
+                    viewport={{ once: true, margin: '-40px' }}
+                    transition={{ duration: 0.5, delay: reduceMotion ? 0 : i * 0.1, ease: easeOut }}
+                    className={cn(
+                      'relative flex flex-col border bg-[var(--landing-room)] p-7 sm:p-8',
+                      featured
+                        ? 'border-[var(--landing-sun)] shadow-[0_18px_44px_rgba(234,179,8,0.16)] md:-mt-2 md:mb-0 md:min-h-[28rem]'
+                        : 'border-[var(--landing-line)] shadow-[0_10px_28px_rgba(15,23,42,0.05)] md:min-h-[26rem]',
                     )}
-                  </p>
-                  {payable && yearly > 0 && monthly > 0 ? (
-                    <p className="mt-1 text-xs text-[var(--landing-shadow)]">
-                      or {money(yearly)} / year
-                    </p>
-                  ) : null}
+                    style={{ borderRadius: 'calc(var(--landing-radius) + 6px)' }}
+                  >
+                    {featured ? (
+                      <span
+                        className="mb-5 inline-flex w-fit items-center bg-[var(--landing-sun)] px-2.5 py-1 text-[11px] font-bold tracking-wide text-[var(--landing-on-sun)]"
+                        style={{ borderRadius: 'var(--landing-radius)' }}
+                      >
+                        Best value
+                      </span>
+                    ) : (
+                      <span className="mb-5 block h-[1.625rem]" aria-hidden />
+                    )}
 
-                  <ul className="mt-8 flex-1 space-y-3.5 text-sm text-[var(--landing-muted)]">
-                    {points.map((p) => (
-                      <li key={p} className="flex gap-2.5">
-                        <span
-                          className="mt-0.5 inline-flex h-5 w-5 shrink-0 items-center justify-center bg-[var(--landing-sun)] text-[var(--landing-on-sun)]"
-                          style={{ borderRadius: 'var(--landing-radius)' }}
-                        >
-                          <Check className="h-3 w-3" strokeWidth={3} />
-                        </span>
-                        {p}
-                      </li>
-                    ))}
-                  </ul>
+                    <header>
+                      <h2 className="landing-display text-2xl font-extrabold text-[var(--landing-ink)]">
+                        {plan.name}
+                      </h2>
+                      <p className="mt-2 min-h-[2.75rem] text-sm leading-relaxed text-[var(--landing-muted)]">
+                        {plan.description || 'Platform subscription for your institution.'}
+                      </p>
+                    </header>
 
-                  {payable ? (
-                    <Button
-                      type="button"
-                      className="landing-btn-primary mt-8 h-12 w-full text-sm"
-                      onClick={() => openBuy(plan)}
-                    >
-                      {isTenantAdmin
-                        ? isCurrent
-                          ? 'Renew plan'
-                          : 'Buy plan'
-                        : 'Get started'}
-                      <ArrowRight className="ml-2 h-4 w-4" />
-                    </Button>
-                  ) : (
-                    <Button asChild className="landing-btn-primary mt-8 h-12 w-full text-sm">
-                      <Link to="/support">
-                        Contact Support
+                    <div className="mt-6 border-t border-[var(--landing-line)] pt-6">
+                      <p className="landing-display text-4xl font-extrabold tracking-tight text-[var(--landing-ink)]">
+                        {payable ? (
+                          <>
+                            {money(monthly > 0 ? monthly : yearly)}
+                            <span className="ml-1 text-base font-medium text-[var(--landing-shadow)]">
+                              {monthly > 0 ? '/mo' : '/yr'}
+                            </span>
+                          </>
+                        ) : (
+                          'Talk to us'
+                        )}
+                      </p>
+                      {payable && yearly > 0 && monthly > 0 ? (
+                        <p className="mt-1.5 text-sm text-[var(--landing-shadow)]">
+                          or {money(yearly)} billed yearly
+                        </p>
+                      ) : (
+                        <p className="mt-1.5 h-5" aria-hidden />
+                      )}
+                    </div>
+
+                    <ul className="mt-7 flex-1 space-y-3 text-sm text-[var(--landing-muted)]">
+                      {points.map((p) => (
+                        <li key={p} className="flex gap-2.5">
+                          <span
+                            className={cn(
+                              'mt-0.5 inline-flex h-5 w-5 shrink-0 items-center justify-center',
+                              featured
+                                ? 'bg-[var(--landing-sun)] text-[var(--landing-on-sun)]'
+                                : 'bg-[var(--landing-sun-soft)] text-[var(--landing-sun)]',
+                            )}
+                            style={{ borderRadius: 'var(--landing-radius)' }}
+                          >
+                            <Check className="h-3 w-3" strokeWidth={3} />
+                          </span>
+                          <span className="leading-snug">{p}</span>
+                        </li>
+                      ))}
+                    </ul>
+
+                    {payable ? (
+                      <Button
+                        type="button"
+                        className={cn(
+                          'mt-8 h-12 w-full text-sm font-semibold',
+                          featured ? 'landing-btn-primary' : 'landing-btn-primary opacity-95',
+                        )}
+                        onClick={() => openBuy(plan)}
+                      >
+                        {isTenantAdmin
+                          ? isCurrent
+                            ? 'Renew plan'
+                            : 'Buy plan'
+                          : 'Get started'}
                         <ArrowRight className="ml-2 h-4 w-4" />
-                      </Link>
-                    </Button>
-                  )}
-                </motion.article>
-              )
-            })
-          )}
-        </div>
+                      </Button>
+                    ) : (
+                      <Button asChild className="landing-btn-primary mt-8 h-12 w-full text-sm">
+                        <Link to="/support">
+                          Contact Support
+                          <ArrowRight className="ml-2 h-4 w-4" />
+                        </Link>
+                      </Button>
+                    )}
+                  </motion.article>
+                )
+              })
+            )}
+          </div>
 
-        <p className="mt-10 text-sm text-[var(--landing-shadow)]">
-          Need a change of plan after you are live?{' '}
-          <Link to="/support" className="font-semibold text-[var(--landing-sun)] hover:underline">
-            Open Support
-          </Link>
-          .
-        </p>
+          <p className="mt-12 text-center text-sm text-[var(--landing-shadow)]">
+            Need a change after you are live?{' '}
+            <Link to="/support" className="font-semibold text-[var(--landing-sun)] hover:underline">
+              Open Support
+            </Link>
+          </p>
+        </div>
       </section>
 
       <Dialog open={buyOpen} onOpenChange={(open) => !paying && setBuyOpen(open)}>

@@ -5,6 +5,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useData } from '@/contexts/DataContext';
 import AnimatedPage from '@/components/AnimatedPage';
 import PageHeader from '@/components/PageHeader';
+import PlanUpgradeNotice from '@/components/PlanUpgradeNotice';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
@@ -18,6 +19,7 @@ import AffiliateReport from '@/components/reports/AffiliateReport';
 import SettlementReport from '@/components/reports/SettlementReport';
 import TranscriptReport from '@/components/reports/TranscriptReport';
 import CertificateReport from '@/components/reports/CertificateReport';
+import { usePlanEntitlements } from '@/hooks/usePlanEntitlements';
 import { getUserMessage, MESSAGES } from '@/lib/notify';
 
 const VALID_TABS = new Set([
@@ -34,9 +36,11 @@ const VALID_TABS = new Set([
 const ReportsPage = () => {
   const { user } = useAuth();
   const { loading, error, refreshData } = useData();
+  const { canUseTranscriptsCertificates, loading: entitlementsLoading } = usePlanEntitlements();
   const [searchParams, setSearchParams] = useSearchParams();
   const [activeTab, setActiveTab] = useState('finance');
   const [isRetrying, setIsRetrying] = useState(false);
+  const [upgradeHint, setUpgradeHint] = useState(false);
 
   const isAdmin = user?.role === 'admin';
   const isStaff = user?.role === 'staff';
@@ -49,8 +53,8 @@ const ReportsPage = () => {
   const showAffiliates = isAdmin || isStaff;
   const showAttendance = isAdmin || isStaff || isInstructor;
   const showExams = isAdmin || isStaff || isInstructor;
-  const showTranscripts = isAdmin || isStaff;
-  const showCertificates = isAdmin || isStaff;
+  const showTranscripts = (isAdmin || isStaff) && canUseTranscriptsCertificates;
+  const showCertificates = (isAdmin || isStaff) && canUseTranscriptsCertificates;
 
   const defaultTab = isInstructor ? 'attendance' : 'finance';
 
@@ -68,13 +72,33 @@ const ReportsPage = () => {
 
   // Deep-link support: /reports?tab=certificates | affiliates (no separate menu items)
   useEffect(() => {
+    if (entitlementsLoading) return;
     const tab = searchParams.get('tab');
+    if (
+      (tab === 'transcripts' || tab === 'certificates') &&
+      (isAdmin || isStaff) &&
+      !canUseTranscriptsCertificates
+    ) {
+      setUpgradeHint(true);
+      setActiveTab(defaultTab);
+      setSearchParams({}, { replace: true });
+      return;
+    }
+    setUpgradeHint(false);
     if (tab && VALID_TABS.has(tab) && canAccessTab(tab)) {
       setActiveTab(tab);
       return;
     }
     setActiveTab(defaultTab);
-  }, [searchParams, defaultTab, isAdmin, isStaff, isInstructor]);
+  }, [
+    searchParams,
+    defaultTab,
+    isAdmin,
+    isStaff,
+    isInstructor,
+    canUseTranscriptsCertificates,
+    entitlementsLoading,
+  ]);
 
   const handleTabChange = (value) => {
     if (!canAccessTab(value)) return;
@@ -133,7 +157,13 @@ const ReportsPage = () => {
       )}
 
       {!loading && !error && (
-        <Tabs value={activeTab} onValueChange={handleTabChange} className="w-full">
+        <>
+          {upgradeHint && (
+            <div className="mb-6">
+              <PlanUpgradeNotice />
+            </div>
+          )}
+          <Tabs value={activeTab} onValueChange={handleTabChange} className="w-full">
             <TabsList className="flex h-auto w-full flex-wrap justify-start gap-1 rounded-[var(--ds-radius-xl,16px)] border border-[var(--ds-border,#DDE5DF)] bg-[var(--ds-surface-muted,#F7FAF8)] p-1.5">
             {showFinance && <TabsTrigger value="finance" className="data-[state=active]:bg-[var(--ds-surface,#fff)] data-[state=active]:shadow-sm">Fees / Finance</TabsTrigger>}
             {showRevenue && <TabsTrigger value="revenue" className="data-[state=active]:bg-[var(--ds-surface,#fff)] data-[state=active]:shadow-sm">Revenue</TabsTrigger>}
@@ -160,7 +190,8 @@ const ReportsPage = () => {
             {showCertificates && activeTab === 'certificates' && <CertificateReport />}
             {showAffiliates && activeTab === 'affiliates' && <AffiliateReport />}
             </div>
-        </Tabs>
+          </Tabs>
+        </>
       )}
     </AnimatedPage>
   );

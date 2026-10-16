@@ -5,7 +5,7 @@ import MainLayout from '@/components/layout/MainLayout';
 import { Loader2, AlertCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import ErrorBoundary from '@/components/ui/ErrorBoundary';
-import { isInstitutionSettingsComplete, getTenantLandingPath } from '@/lib/institution';
+import { isInstitutionSettingsComplete, getTenantLandingPath, isLikelyCustomTenantHost } from '@/lib/institution';
 
 function TenantLandingRedirect({
   institution,
@@ -46,6 +46,7 @@ import PlatformPlansPage from '@/pages/public/PlatformPlansPage';
 import PlatformPaymentReceiptPage from '@/pages/public/PlatformPaymentReceiptPage';
 import PlatformSupportPage from '@/pages/public/PlatformSupportPage';
 import TenantPublicGate from '@/components/landing/TenantPublicGate';
+import RequireTranscriptsCertificates from '@/components/RequireTranscriptsCertificates';
 import NotFoundPage from '@/pages/NotFoundPage';
 import DashboardPage from '@/pages/DashboardPage';
 import CoursesPage from '@/pages/CoursesPage';
@@ -239,8 +240,10 @@ const ProtectedRoute = ({ children, roles }) => {
 
 const App = () => {
   const { user, initializing } = useAuth();
+  // Custom domains: skip the dark platform boot screen so the tenant site paints immediately.
+  const skipPlatformBoot = isLikelyCustomTenantHost();
 
-  if (initializing) {
+  if (initializing && !skipPlatformBoot) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-slate-950">
         <div className="flex flex-col items-center gap-4">
@@ -326,9 +329,9 @@ const App = () => {
             <Route path="/admin/instructors" element={<ProtectedRoute roles={['admin', 'staff']}><InstructorsPage /></ProtectedRoute>} />
             <Route path="/admin/profile" element={<ProtectedRoute roles={['admin']}><Lazy><AdminProfilePage /></Lazy></ProtectedRoute>} />
             <Route path="/admin/settings" element={<ProtectedRoute roles={['admin']}><Lazy><InstitutionSettingsPage /></Lazy></ProtectedRoute>} />
-            <Route path="/admin/certificates/upload" element={<ProtectedRoute roles={['admin']}><Lazy><CertificateImportPage /></Lazy></ProtectedRoute>} />
+            <Route path="/admin/certificates/upload" element={<ProtectedRoute roles={['admin']}><RequireTranscriptsCertificates><Lazy><CertificateImportPage /></Lazy></RequireTranscriptsCertificates></ProtectedRoute>} />
             <Route path="/admin/landing" element={<ProtectedRoute roles={['admin']}><Lazy><LandingCustomizePage /></Lazy></ProtectedRoute>} />
-            <Route path="/admin/certificates" element={<ProtectedRoute roles={['admin', 'staff']}><Navigate to="/reports?tab=certificates" replace /></ProtectedRoute>} />
+            <Route path="/admin/certificates" element={<ProtectedRoute roles={['admin', 'staff']}><RequireTranscriptsCertificates fallbackTo="/reports"><Navigate to="/reports?tab=certificates" replace /></RequireTranscriptsCertificates></ProtectedRoute>} />
             <Route path="/admin/grading" element={<ProtectedRoute roles={['admin', 'staff']}><Lazy><AdminExamMarkingPage /></Lazy></ProtectedRoute>} />
 
             <Route path="/instructor/dashboard" element={<ProtectedRoute roles={['instructor']}><InstructorDashboard /></ProtectedRoute>} />
@@ -362,7 +365,7 @@ const App = () => {
             <Route path="/reports" element={<ProtectedRoute roles={['admin', 'staff']}><Lazy><ReportsPage /></Lazy></ProtectedRoute>} />
             <Route path="/attendance" element={<ProtectedRoute roles={['admin', 'instructor', 'staff']}><AttendancePage /></ProtectedRoute>} />
             <Route path="/attendance/reports" element={<ProtectedRoute roles={['admin', 'instructor', 'staff']}><Lazy><AttendanceReportsPage /></Lazy></ProtectedRoute>} />
-            <Route path="/certificate/:certificateId" element={<ProtectedRoute roles={['admin', 'instructor', 'staff']}><Lazy><CertificatePage /></Lazy></ProtectedRoute>} />
+            <Route path="/certificate/:certificateId" element={<ProtectedRoute roles={['admin', 'instructor', 'staff']}><RequireTranscriptsCertificates><Lazy><CertificatePage /></Lazy></RequireTranscriptsCertificates></ProtectedRoute>} />
 
             <Route path="/student/dashboard" element={<ProtectedRoute roles={['student']}><StudentDashboard /></ProtectedRoute>} />
             <Route path="/student/profile" element={<ProtectedRoute roles={['student']}><StudentProfilePage /></ProtectedRoute>} />

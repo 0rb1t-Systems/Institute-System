@@ -61,10 +61,24 @@ export function resolveSettingsGroup(pathname: string, groupParam: string | null
   return 'institution'
 }
 
-export function AdminSettingsGroupNav({ active }: { active: SettingsGroupId }) {
+export function AdminSettingsGroupNav({
+  active,
+  showDocuments = true,
+}: {
+  active: SettingsGroupId
+  showDocuments?: boolean
+}) {
+  const groups = showDocuments
+    ? SETTINGS_GROUPS
+    : SETTINGS_GROUPS.filter((g) => g.id !== 'documents')
+
+  const colClass = showDocuments
+    ? 'sm:grid-cols-2 lg:grid-cols-5'
+    : 'sm:grid-cols-2 lg:grid-cols-4'
+
   return (
-    <nav className={cn(settingsPrimaryListClass, 'sm:grid-cols-2 lg:grid-cols-5')} aria-label="Institution settings">
-      {SETTINGS_GROUPS.map(({ id, to, icon: Icon, title, hint }) => {
+    <nav className={cn(settingsPrimaryListClass, colClass)} aria-label="Institution settings">
+      {groups.map(({ id, to, icon: Icon, title, hint }) => {
         const isActive = id === active
         return (
           <Link
@@ -93,14 +107,16 @@ export function AdminSettingsGroupNav({ active }: { active: SettingsGroupId }) {
 export function AdminSettingsShell({
   active,
   children,
+  showDocuments = true,
 }: {
   active: SettingsGroupId
   children: React.ReactNode
+  showDocuments?: boolean
 }) {
   return (
     <div className={settingsShellClass}>
       <div className="p-1.5 sm:p-2">
-        <AdminSettingsGroupNav active={active} />
+        <AdminSettingsGroupNav active={active} showDocuments={showDocuments} />
       </div>
       <div className="border-t border-[var(--ds-border,var(--tenant-line))]">{children}</div>
     </div>

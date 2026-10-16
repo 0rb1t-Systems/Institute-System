@@ -1,8 +1,9 @@
-import React from 'react'
+import React, { useMemo } from 'react'
 import { Helmet } from 'react-helmet'
 import { Navigate, useSearchParams } from 'react-router-dom'
 import AnimatedPage from '@/components/AnimatedPage'
 import PageHeader from '@/components/PageHeader'
+import PlanUpgradeNotice from '@/components/PlanUpgradeNotice'
 import InstitutionSettingsForm from '@/components/admin/InstitutionSettingsForm'
 import CertificateManagementPanel from '@/components/certificates/CertificateManagementPanel'
 import TranscriptManagementPanel from '@/components/transcripts/TranscriptManagementPanel'
@@ -10,6 +11,7 @@ import InvoiceManagementPanel from '@/components/finance/InvoiceManagementPanel'
 import { AdminSettingsShell, resolveSettingsGroup } from '@/components/admin/AdminSettingsShell'
 import { settingsSubListClass, settingsSubTriggerClass } from '@/components/admin/settingsNav'
 import { useAuth } from '@/contexts/AuthContext'
+import { usePlanEntitlements } from '@/hooks/usePlanEntitlements'
 import { getInstitutionDisplayName } from '@/lib/institution'
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { GraduationCap, Receipt, ScrollText, Wallet } from 'lucide-react'
@@ -34,11 +36,27 @@ const SUBTITLES = {
 
 const InstitutionSettingsPage = () => {
   const { institution, refreshUser } = useAuth()
+  const { canUseTranscriptsCertificates, loading: entitlementsLoading } = usePlanEntitlements()
   const [searchParams, setSearchParams] = useSearchParams()
   const rawGroup = searchParams.get('group')
-  const group = resolveSettingsGroup('/admin/settings', rawGroup === 'transcripts' ? 'academic' : rawGroup)
+  const group = resolveSettingsGroup(
+    '/admin/settings',
+    rawGroup === 'transcripts' ? 'academic' : rawGroup,
+  )
   const institutionName = getInstitutionDisplayName(institution)
   const tabParam = searchParams.get('tab')
+
+  const academicTabs = useMemo(() => {
+    if (canUseTranscriptsCertificates) return GROUP_TABS.academic
+    return GROUP_TABS.academic.filter((item) => item.value !== 'transcripts')
+  }, [canUseTranscriptsCertificates])
+
+  const tabs = group === 'academic' ? academicTabs : GROUP_TABS[group] || null
+  const tab = tabs?.some((item) => item.value === tabParam) ? tabParam : tabs?.[0]?.value
+
+  const setTab = (next: string) => {
+    setSearchParams({ group, tab: next }, { replace: true })
+  }
 
   if (group === 'landing') {
     return <Navigate to="/admin/landing" replace />
@@ -60,11 +78,17 @@ const InstitutionSettingsPage = () => {
     return <Navigate to="/admin/settings?group=institution" replace />
   }
 
-  const tabs = GROUP_TABS[group] || null
-  const tab = tabs?.some((item) => item.value === tabParam) ? tabParam : tabs?.[0].value
+  if (!entitlementsLoading && group === 'documents' && !canUseTranscriptsCertificates) {
+    return <Navigate to="/admin/settings?group=institution" replace />
+  }
 
-  const setTab = (next: string) => {
-    setSearchParams({ group, tab: next }, { replace: true })
+  if (
+    !entitlementsLoading &&
+    group === 'academic' &&
+    tabParam === 'transcripts' &&
+    !canUseTranscriptsCertificates
+  ) {
+    return <Navigate to="/admin/settings?group=academic&tab=grading" replace />
   }
 
   return (
@@ -76,7 +100,10 @@ const InstitutionSettingsPage = () => {
       <div className="mx-auto max-w-6xl">
         <PageHeader title="Institution Settings" subtitle={SUBTITLES[group]} />
 
-        <AdminSettingsShell active={group}>
+        <AdminSettingsShell
+          active={group}
+          showDocuments={entitlementsLoading || canUseTranscriptsCertificates}
+        >
           {tabs ? (
             <Tabs value={tab} onValueChange={setTab} className="w-full">
               <div className="border-b border-[var(--ds-border,#DDE5DF)] px-2 sm:px-3">
@@ -97,10 +124,19 @@ const InstitutionSettingsPage = () => {
           ) : null}
 
           {group === 'academic' && tab === 'grading' ? (
-            <InstitutionSettingsForm section="grading" onUpdated={() => refreshUser?.()} />
+            <>
+              <InstitutionSettingsForm section="grading" onUpdated={() => refreshUser?.()} />
+              {!canUseTranscriptsCertificates && !entitlementsLoading ? (
+                <div className="mt-6 px-2 sm:px-3">
+                  <PlanUpgradeNotice feature="Transcript templates" />
+                </div>
+              ) : null}
+            </>
           ) : null}
 
-          {group === 'academic' && tab === 'transcripts' ? <TranscriptManagementPanel /> : null}
+          {group === 'academic' && tab === 'transcripts' && canUseTranscriptsCertificates ? (
+            <TranscriptManagementPanel />
+          ) : null}
 
           {group === 'finance' && tab === 'fees' ? (
             <InstitutionSettingsForm section="finance" onUpdated={() => refreshUser?.()} />
@@ -108,7 +144,9 @@ const InstitutionSettingsPage = () => {
 
           {group === 'finance' && tab === 'invoices' ? <InvoiceManagementPanel /> : null}
 
-          {group === 'documents' ? <CertificateManagementPanel /> : null}
+          {group === 'documents' && canUseTranscriptsCertificates ? (
+            <CertificateManagementPanel />
+          ) : null}
         </AdminSettingsShell>
       </div>
     </AnimatedPage>

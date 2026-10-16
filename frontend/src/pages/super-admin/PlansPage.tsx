@@ -47,6 +47,7 @@ const emptyPlan = {
   price_yearly: 0,
   max_students: '',
   features: '',
+  entitlements_transcripts_certificates: false,
   is_active: true,
   sort_order: 0,
 }
@@ -107,6 +108,8 @@ const PlansPage = () => {
   }
 
   const openEditPlan = (plan) => {
+    const entitlements =
+      plan.entitlements && typeof plan.entitlements === 'object' ? plan.entitlements : {}
     setPlanForm({
       id: plan.id,
       name: plan.name || '',
@@ -116,6 +119,7 @@ const PlansPage = () => {
       price_yearly: plan.price_yearly ?? 0,
       max_students: plan.max_students ?? '',
       features: Array.isArray(plan.features) ? plan.features.join('\n') : '',
+      entitlements_transcripts_certificates: entitlements.transcripts_certificates === true,
       is_active: plan.is_active !== false,
       sort_order: plan.sort_order ?? 0,
     })
@@ -136,6 +140,11 @@ const PlansPage = () => {
           .split('\n')
           .map((f) => f.trim())
           .filter(Boolean),
+        entitlements: {
+          ...(planForm.entitlements_transcripts_certificates
+            ? { transcripts_certificates: true }
+            : {}),
+        },
       })
       toast({ title: 'Success', description: MESSAGES.SUCCESS.UPDATED })
       setPlanOpen(false)
@@ -244,6 +253,12 @@ const PlansPage = () => {
                 <div className="flex justify-between text-[var(--pf-muted)]">
                   <span>Max students</span>
                   <span>{plan.max_students ?? 'Unlimited'}</span>
+                </div>
+                <div className="flex justify-between text-[var(--pf-muted)]">
+                  <span>Transcripts &amp; Certificates</span>
+                  <span>
+                    {plan.entitlements?.transcripts_certificates === true ? 'Included' : '—'}
+                  </span>
                 </div>
                 <Button variant="ghost" size="sm" className="px-0 font-semibold text-[var(--pf-accent)] hover:text-[var(--pf-accent)] hover:opacity-80" onClick={() => openEditPlan(plan)}>
                   Edit plan
@@ -509,6 +524,19 @@ const PlansPage = () => {
                 className="w-full min-h-[80px] rounded-md bg-slate-950 border border-slate-800 px-3 py-2 text-sm"
               />
             </div>
+            <label className="flex items-center gap-2 text-sm text-slate-300">
+              <input
+                type="checkbox"
+                checked={planForm.entitlements_transcripts_certificates}
+                onChange={(e) =>
+                  setPlanForm((f) => ({
+                    ...f,
+                    entitlements_transcripts_certificates: e.target.checked,
+                  }))
+                }
+              />
+              Entitlement: Transcripts &amp; Certificates
+            </label>
             <label className="flex items-center gap-2 text-sm text-slate-300">
               <input
                 type="checkbox"

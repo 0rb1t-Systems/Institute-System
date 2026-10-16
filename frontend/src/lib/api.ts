@@ -2889,7 +2889,7 @@ export async function listActivePlatformPlans() {
   const { data, error } = await supabase
     .from('platform_plans')
     .select(
-      'id, name, slug, description, price_monthly, price_yearly, max_students, features, is_active, sort_order',
+      'id, name, slug, description, price_monthly, price_yearly, max_students, features, entitlements, is_active, sort_order',
     )
     .eq('is_active', true)
     .order('sort_order', { ascending: true })
@@ -2897,12 +2897,12 @@ export async function listActivePlatformPlans() {
   return data || []
 }
 
-/** Current institution subscription (tenant admin RLS). */
+/** Current institution subscription (tenant member RLS). */
 export async function getMyTenantSubscription() {
   const { data, error } = await supabase
     .from('tenant_subscriptions')
     .select(
-      'id, institution_id, plan_id, status, billing_cycle, started_at, ends_at, notes, platform_plans(id, name, slug, price_monthly, price_yearly)',
+      'id, institution_id, plan_id, status, billing_cycle, started_at, ends_at, notes, platform_plans(id, name, slug, price_monthly, price_yearly, features, entitlements)',
     )
     .maybeSingle()
   if (error) throw error

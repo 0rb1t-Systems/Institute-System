@@ -323,6 +323,11 @@ const CODE_MAP = {
     title: 'Plan required',
     description: 'Select a plan to purchase.',
   },
+  PLAN_ENTITLEMENT_REQUIRED: {
+    title: 'Enterprise plan required',
+    description:
+      'Transcripts & Certificates are available on the Enterprise plan. Upgrade from Plans & Subscriptions.',
+  },
   PHONE_REQUIRED: {
     title: 'Phone required',
     description: 'Enter a valid mobile number (e.g. 25261xxxxxxx).',
@@ -638,6 +643,9 @@ export const mapError = (error, options: any = {}) => {
       title: MESSAGES.DELETE_FAILED.title,
       description: MESSAGES.DOMAIN.DELETION_DEPENDENCIES,
     });
+  }
+  if (/PLAN_ENTITLEMENT_REQUIRED/i.test(raw)) {
+    return asFeedback(CODE_MAP.PLAN_ENTITLEMENT_REQUIRED);
   }
   if (pgCode === '42501' || pgCode === 'PGRST301' || /row-level security|RLS/i.test(raw)) {
     return asFeedback(MESSAGES.ACCESS.DENIED_ACTION);

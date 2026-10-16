@@ -404,6 +404,10 @@ export async function listPlans() {
 }
 
 export async function upsertPlan(plan) {
+  const entitlements =
+    plan.entitlements && typeof plan.entitlements === 'object' && !Array.isArray(plan.entitlements)
+      ? plan.entitlements
+      : {}
   const payload = {
     name: plan.name?.trim(),
     slug: plan.slug?.trim()?.toLowerCase(),
@@ -412,6 +416,7 @@ export async function upsertPlan(plan) {
     price_yearly: Number(plan.price_yearly) || 0,
     max_students: plan.max_students === '' || plan.max_students == null ? null : Number(plan.max_students),
     features: Array.isArray(plan.features) ? plan.features : [],
+    entitlements,
     is_active: plan.is_active !== false,
     sort_order: Number(plan.sort_order) || 0,
     updated_at: new Date().toISOString(),

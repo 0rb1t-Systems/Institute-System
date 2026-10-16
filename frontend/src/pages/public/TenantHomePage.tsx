@@ -407,8 +407,18 @@ const TenantHomePage = ({
   };
 
   if (loading) {
-    // No spinner — blank paint while the public institution loads (esp. custom domains).
-    return <div className="min-h-screen bg-white" aria-busy="true" aria-label="Loading" />;
+    // Quiet shell while host→institution resolves (custom domains). No platform copy.
+    return (
+      <div
+        className="flex min-h-screen items-center justify-center bg-[#f4f5f3]"
+        aria-busy="true"
+        aria-label="Loading"
+      >
+        <div className="h-0.5 w-16 overflow-hidden rounded-full bg-black/[0.06]">
+          <div className="h-full w-1/2 animate-pulse rounded-full bg-black/20" />
+        </div>
+      </div>
+    );
   }
 
   if (!institution) {
