@@ -10,12 +10,12 @@ import {
   type LandingInstitution,
 } from '@/components/landing/types'
 import { brandedImageSrc, institutionLogoUrl } from '@/lib/institution'
-import { LandingPageNav, landingNavItemsFor } from '@/components/landing/LandingNav'
+import { LandingMobileMenu, LandingPageNav, landingNavItemsFor } from '@/components/landing/LandingNav'
 import LandingHeroSocials from '@/components/landing/LandingHeroSocials'
 import { tenantLandingHref } from '@/lib/tenantLandingRoutes'
 
 const HEADER_LOGO_CLASS =
-  'h-8 w-auto max-w-[6.75rem] object-contain sm:h-12 sm:max-w-[14rem] md:h-14 md:max-w-[18rem]'
+  'h-8 w-auto max-w-[6.5rem] object-contain sm:h-11 sm:max-w-[11rem] md:h-12 md:max-w-[14rem] lg:h-14 lg:max-w-[18rem]'
 
 /** Same logo file + size for header, login form, and footer. */
 export function LandingLogo({
@@ -35,7 +35,7 @@ export function LandingLogo({
       key={logoUrl}
       src={brandedImageSrc(logoUrl)}
       alt={name || 'Institution'}
-      className={`${className} ${align === 'center' ? 'mx-auto object-center' : 'object-left'}`}
+      className={`landing-logo ${className} ${align === 'center' ? 'mx-auto object-center' : 'object-left'}`}
       crossOrigin="anonymous"
     />
   )
@@ -61,7 +61,12 @@ export function BrandMark({
       <span
         className={`inline-flex ${dim} ${radius} shrink-0 items-center justify-center bg-white p-1.5 shadow-sm ring-1 ring-black/5`}
       >
-        <img key={logoUrl} src={brandedImageSrc(logoUrl)} alt="" className="h-full w-full object-contain" />
+        <img
+          key={logoUrl}
+          src={brandedImageSrc(logoUrl)}
+          alt=""
+          className="landing-logo h-full w-full object-contain"
+        />
       </span>
     )
   }
@@ -115,7 +120,7 @@ export function LandingHeaderBrand({
   )
 }
 
-/** Logo left, tabs centered, actions right. On mobile: logo + buttons one row, tabs bar below. */
+/** Logo left, links centered (md+), actions + hamburger menu on mobile. */
 export function LandingHeaderBar({
   institution,
   primary,
@@ -147,48 +152,44 @@ export function LandingHeaderBar({
 }) {
   const navColor = navPrimary ?? primary
   return (
-    <div className="flex w-full min-w-0 flex-col gap-2.5">
-      <div className="grid w-full min-w-0 grid-cols-[minmax(0,1fr)_auto] items-center gap-x-2 sm:gap-x-3 md:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)]">
-        <div className="min-w-0 justify-self-start">
-          <LandingHeaderBrand
-            institution={institution}
-            primary={primary}
-            className="min-w-0"
-            nameClassName={brandNameClassName}
-            tagline={brandTagline}
-            tone={tone}
-          />
-        </div>
-        <LandingPageNav
+    <div className="grid w-full min-w-0 grid-cols-[minmax(0,1fr)_auto] items-center gap-x-2 sm:gap-x-3 md:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)]">
+      <div className="min-w-0 justify-self-start">
+        <LandingHeaderBrand
           institution={institution}
-          primary={navColor}
-          preview={preview}
+          primary={primary}
+          className="min-w-0"
+          nameClassName={brandNameClassName}
+          tagline={brandTagline}
           tone={tone}
-          activePage={preview ? 'home' : undefined}
-          className="col-start-2 row-start-1 hidden justify-center md:flex"
         />
-        <div className="col-start-2 justify-self-end md:col-start-3">
-          <LandingHeaderActions
-            primary={primary}
-            verifyHref={verifyHref}
-            sameTenant={sameTenant}
-            userRole={userRole}
-            onOpenLogin={onOpenLogin}
-            preview={preview}
-            solidClassName={solidClassName}
-            outlineClassName={outlineClassName}
-          />
-        </div>
       </div>
       <LandingPageNav
         institution={institution}
         primary={navColor}
         preview={preview}
         tone={tone}
-        variant="tabs"
         activePage={preview ? 'home' : undefined}
-        className="md:hidden"
+        className="col-start-2 row-start-1 hidden justify-center md:flex"
       />
+      <div className="col-start-2 flex items-center justify-end gap-1.5 justify-self-end md:col-start-3 sm:gap-2">
+        <LandingHeaderActions
+          primary={primary}
+          verifyHref={verifyHref}
+          sameTenant={sameTenant}
+          userRole={userRole}
+          onOpenLogin={onOpenLogin}
+          preview={preview}
+          solidClassName={solidClassName}
+          outlineClassName={outlineClassName}
+        />
+        <LandingMobileMenu
+          institution={institution}
+          primary={navColor}
+          preview={preview}
+          tone={tone}
+          activePage={preview ? 'home' : undefined}
+        />
+      </div>
     </div>
   )
 }

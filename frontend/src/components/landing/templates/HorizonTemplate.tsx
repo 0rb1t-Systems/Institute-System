@@ -4,7 +4,7 @@ import LandingHeroSocials from '@/components/landing/LandingHeroSocials'
 import { LandingTemplateMain } from '@/components/landing/LandingSitePages'
 import { landingIsLight, type LandingTemplateProps } from '@/components/landing/types'
 
-/** Airy centered — brand first, wide campus band below. */
+/** Centered brand with wide campus band. */
 export default function HorizonTemplate(p: LandingTemplateProps) {
   const {
     institution,
@@ -27,18 +27,16 @@ export default function HorizonTemplate(p: LandingTemplateProps) {
 
   return (
     <div
-      className={`relative min-h-screen overflow-x-hidden font-sans ${
-        light ? 'bg-[#F4FAF8] text-slate-900' : 'bg-[#061816] text-white'
+      className={`tenant-landing-horizon relative min-h-screen overflow-x-hidden ${
+        light ? 'bg-[#FAFBFA] text-slate-900' : 'bg-[#061816] text-white'
       }`}
     >
-      <div
-        className="pointer-events-none absolute inset-x-0 top-0 h-72"
-        style={{ background: `radial-gradient(ellipse at 50% 0%, ${primary}16, transparent 68%)` }}
-        aria-hidden
-      />
-
-      <header className="relative z-20 mx-auto max-w-5xl px-4 pt-5 sm:px-6 sm:pt-6">
-        <div className="w-full min-w-0">
+      <header
+        className={`relative z-20 border-b ${
+          light ? 'border-transparent bg-[#FAFBFA]' : 'border-white/10 bg-[#061816]'
+        }`}
+      >
+        <div className="mx-auto w-full min-w-0 max-w-6xl px-3 py-3 sm:px-6 sm:py-4">
           <LandingHeaderBar
             institution={institution}
             primary={primary}
@@ -53,11 +51,11 @@ export default function HorizonTemplate(p: LandingTemplateProps) {
                 ? 'font-display text-[13px] font-semibold leading-snug tracking-tight text-slate-900 sm:text-[15px]'
                 : 'font-display text-[13px] font-semibold leading-snug tracking-tight text-white sm:text-[15px]'
             }
-            solidClassName="rounded-xl px-4 text-white"
+            solidClassName="rounded-lg px-4 text-white"
             outlineClassName={
               light
-                ? 'rounded-xl border-slate-200 bg-white text-slate-800'
-                : 'rounded-xl border-white/20 bg-white/5 text-white hover:bg-white/10'
+                ? 'rounded-lg border-slate-200 bg-white text-slate-800'
+                : 'rounded-lg border-white/20 bg-white/5 text-white hover:bg-white/10'
             }
           />
         </div>
@@ -77,52 +75,52 @@ export default function HorizonTemplate(p: LandingTemplateProps) {
         onOpenLogin={onOpenLogin}
         heroImage={heroImage}
         hero={
-          <section className="relative z-10 mx-auto max-w-5xl scroll-mt-24 px-4 py-8 text-center sm:px-6 sm:py-14">
-            <p
-              className="mb-4 text-[11px] font-semibold uppercase tracking-[0.22em]"
-              style={{ color: accent }}
-            >
-              Welcome · {year}
-            </p>
-            <h1
-              className={`mx-auto max-w-2xl break-words font-display text-2xl font-extrabold leading-[1.15] tracking-tight sm:text-4xl lg:text-[2.75rem] ${
-                light ? 'text-slate-900' : 'text-white'
-              }`}
-            >
-              {headline}
-            </h1>
-            <p className={`mx-auto mt-4 max-w-xl text-[15px] leading-relaxed ${light ? 'text-slate-600' : 'text-slate-300'}`}>
-              {tagline}
-            </p>
-            <div className="mx-auto mt-7 w-full max-w-sm sm:mt-8 sm:max-w-md">
-              <LandingCtas
-                primary={primary}
-                verifyHref={verifyHref}
-                sameTenant={sameTenant}
-                userRole={userRole}
-                onOpenLogin={onOpenLogin}
-                preview={preview}
-                size="default"
-                align="center"
-                solidClassName="rounded-xl px-6 text-white"
-                outlineClassName={
-                  light
-                    ? 'rounded-xl border-slate-200 bg-white px-6 text-slate-800'
-                    : 'rounded-xl border-white/20 bg-white/5 px-6 text-white hover:bg-white/10'
-                }
-              />
+          <section className="relative z-10 scroll-mt-24">
+            <div className="mx-auto max-w-5xl px-4 py-8 text-center sm:px-6 sm:py-12">
+              <h1
+                className={`mx-auto max-w-2xl break-words font-display text-[1.75rem] font-extrabold leading-[1.08] tracking-tight sm:text-4xl lg:text-[3.25rem] ${
+                  light ? 'text-teal-950' : 'text-white'
+                }`}
+              >
+                {headline}
+              </h1>
+              <p
+                className={`mx-auto mt-4 max-w-xl text-[15px] leading-relaxed ${
+                  light ? 'text-slate-600' : 'text-slate-300'
+                }`}
+              >
+                {tagline}
+              </p>
+              <div className="mx-auto mt-7 w-full max-w-sm sm:mt-8 sm:max-w-md">
+                <LandingCtas
+                  primary={accent}
+                  verifyHref={verifyHref}
+                  sameTenant={sameTenant}
+                  userRole={userRole}
+                  onOpenLogin={onOpenLogin}
+                  preview={preview}
+                  size="default"
+                  align="center"
+                  solidClassName="rounded-lg px-6 text-white"
+                  outlineClassName={
+                    light
+                      ? 'rounded-lg border-teal-200 bg-white px-6 text-teal-900'
+                      : 'rounded-lg border-white/20 bg-white/5 px-6 text-white hover:bg-white/10'
+                  }
+                />
+              </div>
+              <div className="mt-6">
+                <LandingHeroSocials
+                  institution={institution}
+                  primary={primary}
+                  tone={tone}
+                  align="center"
+                  preview={preview}
+                />
+              </div>
             </div>
-            <div className="mt-6">
-              <LandingHeroSocials
-                institution={institution}
-                primary={primary}
-                tone={tone}
-                align="center"
-                preview={preview}
-              />
-            </div>
-            <div className="mx-auto mt-8 overflow-hidden rounded-2xl shadow-[0_20px_50px_rgba(15,23,42,0.12)] ring-1 ring-black/5 sm:mt-10">
-              <img src={heroImage} alt="" className="aspect-[16/10] w-full object-cover sm:aspect-[21/9]" />
+            <div className="relative mt-2 h-[200px] w-full overflow-hidden sm:h-[280px] lg:h-[320px]">
+              <img src={heroImage} alt="" className="h-full w-full object-cover" />
             </div>
           </section>
         }

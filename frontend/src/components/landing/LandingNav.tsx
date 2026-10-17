@@ -1,11 +1,19 @@
-import React from 'react'
+import React, { useState } from 'react'
 import { Link, useLocation } from 'react-router-dom'
+import { Menu } from 'lucide-react'
 import type { LandingInstitution } from '@/components/landing/types'
 import {
   tenantLandingHref,
   tenantLandingPageFromPath,
   type TenantLandingPage,
 } from '@/lib/tenantLandingRoutes'
+import {
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+  SheetTrigger,
+} from '@/components/ui/sheet'
 
 export const LANDING_NAV_ITEMS: { id: TenantLandingPage; label: string }[] = [
   { id: 'home', label: 'Home' },
@@ -24,6 +32,88 @@ export function scrollToLandingSection(id: string, preview?: boolean) {
 
 export function landingNavItemsFor(_institution?: LandingInstitution) {
   return [...LANDING_NAV_ITEMS]
+}
+
+/** Standard hamburger + slide-out menu for mobile / small tablets. */
+export function LandingMobileMenu({
+  primary,
+  preview,
+  tone = 'light',
+  institution,
+  activePage,
+}: {
+  primary: string
+  preview?: boolean
+  tone?: 'light' | 'dark'
+  institution?: LandingInstitution
+  activePage?: TenantLandingPage
+}) {
+  const [open, setOpen] = useState(false)
+  const location = useLocation()
+  const activeId = activePage || tenantLandingPageFromPath(location.pathname)
+  const items = landingNavItemsFor(institution)
+  const tenant = institution?.subdomain || null
+  const dark = tone === 'dark'
+  const triggerCls = dark
+    ? 'inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-white/15 bg-white/5 text-white hover:bg-white/10'
+    : 'inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-800 hover:bg-slate-50'
+  const panelCls = dark
+    ? 'border-white/10 bg-[#0b1220] text-white'
+    : 'border-slate-200 bg-white text-slate-900'
+  const idleCls = dark ? 'text-white/75 hover:bg-white/10 hover:text-white' : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'
+
+  return (
+    <Sheet open={open} onOpenChange={setOpen}>
+      <SheetTrigger asChild>
+        <button type="button" className={`md:hidden ${triggerCls}`} aria-label="Open menu">
+          <Menu className="h-5 w-5" />
+        </button>
+      </SheetTrigger>
+      <SheetContent side="right" className={`w-[min(100%,20rem)] p-0 ${panelCls}`}>
+        <SheetHeader className={`border-b px-5 py-4 text-left ${dark ? 'border-white/10' : 'border-slate-100'}`}>
+          <SheetTitle className={dark ? 'text-white' : 'text-slate-900'}>Menu</SheetTitle>
+        </SheetHeader>
+        <nav className="flex flex-col gap-1 px-3 py-4" aria-label="Site pages">
+          {items.map((item) => {
+            const active = activeId === item.id
+            const itemCls = `rounded-lg px-3 py-3 text-[15px] font-medium transition ${
+              active ? 'font-semibold' : idleCls
+            }`
+            const style = active
+              ? { backgroundColor: `${primary}22`, color: primary }
+              : undefined
+
+            if (preview) {
+              return (
+                <button
+                  key={item.id}
+                  type="button"
+                  className={`${itemCls} text-left`}
+                  style={style}
+                  onClick={() => setOpen(false)}
+                >
+                  {item.label}
+                </button>
+              )
+            }
+
+            return (
+              <Link
+                key={item.id}
+                to={tenantLandingHref(item.id, { tenant })}
+                className={itemCls}
+                style={style}
+                aria-current={active ? 'page' : undefined}
+                onClick={() => setOpen(false)}
+              >
+                {item.label}
+              </Link>
+            )
+          })}
+        </nav>
+      </SheetContent>
+    </Sheet>
+  )
 }
 
 export function LandingPageNav({

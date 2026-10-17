@@ -4,7 +4,7 @@ import LandingHeroSocials from '@/components/landing/LandingHeroSocials'
 import { LandingTemplateMain } from '@/components/landing/LandingSitePages'
 import { landingIsLight, type LandingTemplateProps } from '@/components/landing/types'
 
-/** Soft light glass — floating nav, rounded portrait hero. */
+/** Soft glass — floating nav, rounded portrait hero. */
 export default function AuroraTemplate(p: LandingTemplateProps) {
   const {
     institution,
@@ -26,7 +26,11 @@ export default function AuroraTemplate(p: LandingTemplateProps) {
   const tone = light ? 'light' : 'dark'
 
   return (
-    <div className={`relative min-h-screen overflow-x-hidden font-sans ${light ? 'bg-[#F8FAFC] text-slate-900' : 'bg-[#0b1220] text-white'}`}>
+    <div
+      className={`tenant-landing-aurora relative min-h-screen overflow-x-hidden ${
+        light ? 'bg-[#F4F7FB] text-slate-900' : 'bg-[#0b1220] text-white'
+      }`}
+    >
       <div
         className="pointer-events-none absolute inset-0"
         style={{
@@ -35,7 +39,7 @@ export default function AuroraTemplate(p: LandingTemplateProps) {
         aria-hidden
       />
 
-      <div className="relative z-30 mx-auto max-w-6xl px-4 pt-5 sm:px-6">
+      <div className="relative z-30 mx-auto max-w-6xl px-3 pt-4 sm:px-6 sm:pt-5">
         <header
           className={`w-full min-w-0 rounded-2xl border px-3 py-2.5 backdrop-blur-xl sm:px-5 sm:py-3 ${
             light
@@ -57,11 +61,11 @@ export default function AuroraTemplate(p: LandingTemplateProps) {
                 ? 'font-display text-[13px] font-semibold leading-snug tracking-tight text-slate-900 sm:text-[15px]'
                 : 'font-display text-[13px] font-semibold leading-snug tracking-tight text-white sm:text-[15px]'
             }
-            solidClassName="rounded-full px-4"
+            solidClassName="rounded-xl px-4"
             outlineClassName={
               light
-                ? 'rounded-full border-slate-200 bg-white text-slate-800'
-                : 'rounded-full border-white/20 bg-white/5 text-white hover:bg-white/10'
+                ? 'rounded-xl border-slate-200 bg-white text-slate-800'
+                : 'rounded-xl border-white/20 bg-white/5 text-white hover:bg-white/10'
             }
           />
         </header>
@@ -81,15 +85,18 @@ export default function AuroraTemplate(p: LandingTemplateProps) {
         onOpenLogin={onOpenLogin}
         heroImage={heroImage}
         hero={
-          <section className="relative z-10 mx-auto grid max-w-6xl scroll-mt-24 items-center gap-8 px-4 py-10 sm:gap-10 sm:px-6 sm:py-12 lg:grid-cols-2 lg:gap-14 lg:py-16">
+          <section className="relative z-10 mx-auto grid max-w-6xl scroll-mt-24 items-center gap-8 px-4 py-10 sm:gap-10 sm:px-6 sm:py-12 md:grid-cols-2 md:gap-10 lg:gap-14 md:py-12 lg:py-16">
             <div className="space-y-5 sm:space-y-6">
-              <p className={`text-[11px] font-semibold uppercase tracking-[0.2em] ${light ? 'text-slate-500' : 'text-slate-400'}`}>
-                {institution.name}
-              </p>
-              <h1 className={`max-w-lg break-words font-display text-2xl font-bold leading-[1.12] tracking-tight sm:text-4xl lg:text-[2.65rem] ${light ? 'text-slate-800' : 'text-white'}`}>
+              <h1
+                className={`max-w-lg break-words font-display text-[1.75rem] font-extrabold leading-[1.08] tracking-tight sm:text-4xl lg:text-[2.65rem] ${
+                  light ? 'text-slate-800' : 'text-white'
+                }`}
+              >
                 {headline}
               </h1>
-              <p className={`max-w-md text-[15px] leading-relaxed ${light ? 'text-slate-600' : 'text-slate-300'}`}>{tagline}</p>
+              <p className={`max-w-md text-[15px] leading-relaxed ${light ? 'text-slate-600' : 'text-slate-300'}`}>
+                {tagline}
+              </p>
               <LandingCtas
                 primary={primary}
                 verifyHref={verifyHref}
@@ -98,31 +105,29 @@ export default function AuroraTemplate(p: LandingTemplateProps) {
                 onOpenLogin={onOpenLogin}
                 preview={preview}
                 size="default"
-                solidClassName="rounded-full px-6 shadow-md shadow-slate-900/10"
+                solidClassName="rounded-xl px-6 shadow-md shadow-slate-900/10"
                 outlineClassName={
                   light
-                    ? 'rounded-full border-slate-200 bg-white px-6 text-slate-800'
-                    : 'rounded-full border-white/20 bg-white/5 px-6 text-white'
+                    ? 'rounded-xl border-slate-200 bg-white px-6 text-slate-800'
+                    : 'rounded-xl border-white/20 bg-white/5 px-6 text-white'
                 }
               />
-              <LandingHeroSocials
-                institution={institution}
-                primary={primary}
-                tone={tone}
-                preview={preview}
-              />
+              <LandingHeroSocials institution={institution} primary={primary} tone={tone} preview={preview} />
             </div>
 
-            <div className="relative mx-auto w-full max-w-md lg:max-w-none">
+            <div className="relative mx-auto w-full max-w-md md:max-w-none">
               <div
-                className="relative overflow-hidden shadow-2xl shadow-slate-900/15"
-                style={{ borderRadius: '1.75rem' }}
-              >
-                <img src={heroImage} alt="" className="aspect-[4/3] max-h-[55vh] w-full object-cover sm:aspect-[5/5] sm:max-h-none" />
-                <div
-                  className="pointer-events-none absolute inset-0"
-                  style={{ background: `linear-gradient(160deg, ${primary}28, transparent 45%)` }}
-                  aria-hidden
+                className="pointer-events-none absolute left-6 top-8 hidden h-[88%] w-[88%] rounded-[1.75rem] sm:block"
+                style={{
+                  background: `linear-gradient(160deg, ${primary}22, ${accent}33)`,
+                }}
+                aria-hidden
+              />
+              <div className="relative overflow-hidden rounded-[1.75rem] shadow-[0_18px_40px_rgba(26,86,219,0.2)]">
+                <img
+                  src={heroImage}
+                  alt=""
+                  className="aspect-[4/3] max-h-[55vh] w-full object-cover sm:aspect-[4/5] sm:max-h-none"
                 />
               </div>
             </div>

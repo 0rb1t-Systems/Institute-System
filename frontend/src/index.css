@@ -1196,6 +1196,64 @@ html[data-platform-theme='dark'] ::-moz-selection {
   font-family: Arial, Helvetica, sans-serif !important;
 }
 
+/* Institution public landings — template typography (not app shell Arial) */
+.tenant-landing {
+  font-family: 'Karla', 'Source Sans 3', system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+  overflow-x: clip;
+  max-width: 100vw;
+}
+
+/* Content photos stay fluid; logos/marks keep explicit Tailwind sizes. */
+.tenant-landing img:not(.landing-logo) {
+  max-width: 100%;
+  height: auto;
+}
+
+.tenant-landing img.absolute,
+.tenant-landing .absolute > img {
+  height: 100%;
+  max-width: none;
+}
+
+.tenant-landing .font-display {
+  font-family: 'Bricolage Grotesque', 'Montserrat', system-ui, sans-serif;
+}
+
+.tenant-landing-classic .font-display {
+  font-family: 'Archivo', 'Bricolage Grotesque', system-ui, sans-serif;
+}
+
+.tenant-landing-horizon .font-display {
+  font-family: 'Sora', 'Bricolage Grotesque', system-ui, sans-serif;
+}
+
+.tenant-landing-crest .font-display {
+  font-family: 'Bodoni Moda', 'Libre Baskerville', Georgia, serif;
+}
+
+.tenant-landing-nova .font-display {
+  font-family: 'Unbounded', 'Syne', system-ui, sans-serif;
+}
+
+.tenant-landing-aurora .font-display {
+  font-family: 'Figtree', 'Bricolage Grotesque', system-ui, sans-serif;
+}
+
+.tenant-landing-ledger .font-display {
+  font-family: 'Chakra Petch', 'Montserrat', system-ui, sans-serif;
+}
+
+.tenant-landing-atelier .font-display {
+  font-family: 'Instrument Serif', 'Libre Baskerville', Georgia, serif;
+}
+
+.tenant-landing ::selection {
+  background-color: color-mix(in srgb, var(--brand-primary, #0C4A6E) 28%, #fff);
+  color: inherit;
+}
+
 html[data-tenant-chrome='1'] {
   caret-color: var(--ds-focus-ring, #1F8A5B);
   accent-color: var(--ds-accent, #1F8A5B);

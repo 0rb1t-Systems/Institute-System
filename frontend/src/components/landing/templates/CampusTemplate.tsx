@@ -26,7 +26,11 @@ export default function CampusTemplate(p: LandingTemplateProps) {
   const tone = light ? 'light' : 'dark'
 
   return (
-    <div className={`min-h-screen overflow-x-hidden font-sans ${light ? 'bg-white text-slate-900' : 'bg-[#071018] text-white'}`}>
+    <div
+      className={`tenant-landing-campus min-h-screen overflow-x-hidden ${
+        light ? 'bg-white text-slate-900' : 'bg-[#071018] text-white'
+      }`}
+    >
       <header
         className={`sticky top-0 z-30 border-b backdrop-blur-md ${
           light ? 'border-slate-100 bg-white/95' : 'border-white/10 bg-[#071018]/90'
@@ -71,12 +75,16 @@ export default function CampusTemplate(p: LandingTemplateProps) {
         onOpenLogin={onOpenLogin}
         heroImage={heroImage}
         hero={
-          <section className="relative grid scroll-mt-24 lg:min-h-[min(72vh,640px)] lg:grid-cols-2">
-            <div className="flex flex-col justify-center px-4 py-10 sm:px-10 sm:py-12 lg:px-14 lg:py-16">
+          <section
+            className={`relative grid scroll-mt-24 md:min-h-[min(64vh,560px)] lg:min-h-[min(72vh,640px)] md:grid-cols-2 ${
+              light ? 'bg-slate-50' : 'bg-[#0a1520]'
+            }`}
+          >
+            <div className="flex flex-col justify-center px-4 py-10 sm:px-10 sm:py-12 md:px-10 lg:px-14 md:py-12 lg:py-16">
               <div className="mx-auto w-full max-w-xl space-y-5 sm:space-y-6">
                 <div className="h-1 w-12 rounded-full" style={{ backgroundColor: accent }} />
                 <h1
-                  className={`break-words font-display text-2xl font-extrabold leading-[1.1] tracking-tight sm:text-4xl lg:text-[2.75rem] ${
+                  className={`break-words font-display text-[1.75rem] font-extrabold leading-[1.08] tracking-tight sm:text-4xl lg:text-[2.75rem] ${
                     light ? 'text-slate-900' : 'text-white'
                   }`}
                 >
@@ -109,11 +117,11 @@ export default function CampusTemplate(p: LandingTemplateProps) {
               </div>
             </div>
 
-            <div className="relative min-h-[220px] sm:min-h-[320px] lg:min-h-full">
+            <div className="relative min-h-[220px] sm:min-h-[280px] md:min-h-full">
               <img src={heroImage} alt="" className="absolute inset-0 h-full w-full object-cover" />
               <div
-                className={`absolute inset-y-0 left-0 hidden w-16 bg-gradient-to-r to-transparent lg:block ${
-                  light ? 'from-white' : 'from-[#071018]'
+                className={`absolute inset-y-0 left-0 hidden w-16 bg-gradient-to-r to-transparent md:block ${
+                  light ? 'from-slate-50' : 'from-[#0a1520]'
                 }`}
                 aria-hidden
               />
