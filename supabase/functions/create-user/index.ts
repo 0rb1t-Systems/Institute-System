@@ -141,6 +141,9 @@ Deno.serve(async (req) => {
     if (!email || !full_name || !role) {
       return json({ error: 'email, full_name, role are required' }, 400)
     }
+    if (role === 'student' && !phone) {
+      return json({ error: 'PHONE_REQUIRED' }, 400)
+    }
     if (role === 'student' && requestedStudentCode) {
       if (requestedStudentCode.length < MIN_STUDENT_ID_LENGTH) {
         return json({ error: 'STUDENT_ID_TOO_SHORT' }, 400)

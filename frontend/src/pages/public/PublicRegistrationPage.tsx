@@ -16,6 +16,7 @@ import {
   submitGeneralRegistration,
 } from '@/lib/api';
 import { resolvePublicTenantSubdomain } from '@/lib/institution';
+import { normalizePhoneNumber, isValidPhoneFormat } from '@/lib/validatePhoneNumber';
 
 const DEFAULT_FIELDS = [
   { id: 'name', label: 'Full Name', type: 'text', required: true },
@@ -118,6 +119,14 @@ const PublicRegistrationPage = () => {
                 throw new Error(`Please fill in required fields: ${missing.join(', ')}`);
             }
 
+            const normalizedPhone = normalizePhoneNumber(formData.phone);
+            if (!normalizedPhone) {
+                throw new Error(MESSAGES.VALIDATION.PHONE_REQUIRED);
+            }
+            if (!isValidPhoneFormat(normalizedPhone)) {
+                throw new Error(MESSAGES.VALIDATION.PHONE);
+            }
+
             // Option B: pending inquiry only. Duplicate email/inquiry enforced by RPC.
             if (!subdomain) throw new Error('INSTITUTION_NOT_FOUND');
 
@@ -126,7 +135,7 @@ const PublicRegistrationPage = () => {
                 class_id: classId,
                 student_name: formData.name,
                 student_email: formData.email,
-                student_phone: formData.phone || null,
+                student_phone: normalizedPhone,
                 university: formData.university_name || null,
                 faculty: formData.faculty || null,
                 year: formData.year || null,

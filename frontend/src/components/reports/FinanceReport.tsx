@@ -278,6 +278,7 @@ const FinanceReport = () => {
         }).length;
     }, [enrollments, classes, classFilter, month, tuitionPaidForMonth]);
 
+    /** Student No. on this report = student phone number. */
     const studentNumber = (s?: { phone?: string | null } | null) =>
         String(s?.phone || '').trim() || '-';
 

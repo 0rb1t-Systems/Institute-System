@@ -14,6 +14,7 @@ import {
   submitGeneralRegistration,
 } from '@/lib/api';
 import { resolvePublicTenantSubdomain } from '@/lib/institution';
+import { normalizePhoneNumber, isValidPhoneFormat } from '@/lib/validatePhoneNumber';
 import { Loader2, CheckCircle2, GraduationCap, User, AlertCircle } from 'lucide-react';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 
@@ -122,10 +123,21 @@ const PublicGeneralRegistrationPage = () => {
             return;
         }
 
+        const normalizedPhone = normalizePhoneNumber(formData.student_phone);
+        if (!normalizedPhone) {
+            setError(MESSAGES.VALIDATION.PHONE_REQUIRED);
+            return;
+        }
+        if (!isValidPhoneFormat(normalizedPhone)) {
+            setError(MESSAGES.VALIDATION.PHONE);
+            return;
+        }
+
         setSubmitting(true);
         try {
             const result = await submitGeneralRegistration({
                 ...formData,
+                student_phone: normalizedPhone,
                 class_id: formData.class_id,
                 resolved_class_id: selected?.class_id || null,
                 subdomain,
@@ -233,9 +245,10 @@ const PublicGeneralRegistrationPage = () => {
                                         placeholder="student@example.com" className="bg-slate-950 border-slate-800 text-white" />
                             </div>
                             <div className="space-y-2">
-                                <Label htmlFor="student_phone" className="text-slate-300">Phone</Label>
+                                <Label htmlFor="student_phone" className="text-slate-300">Phone *</Label>
                                 <Input id="student_phone" value={formData.student_phone} onChange={handleChange}
-                                        placeholder="+252..." className="bg-slate-950 border-slate-800 text-white" />
+                                        placeholder="+252..." required
+                                        className="bg-slate-950 border-slate-800 text-white" />
                             </div>
                             <div className="space-y-2">
                                 <Label htmlFor="year" className="text-slate-300">Year</Label>

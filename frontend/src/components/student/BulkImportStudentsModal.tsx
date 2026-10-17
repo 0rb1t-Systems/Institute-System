@@ -9,11 +9,12 @@ import { useToast } from '@/components/ui/use-toast';
 import { notify, getUserMessage, MESSAGES } from '@/lib/notify';
 import { Loader2, Upload } from 'lucide-react';
 import { registerManualStudent } from '@/lib/api';
+import { normalizePhoneNumber, isValidPhoneFormat } from '@/lib/validatePhoneNumber';
 
 const SYSTEM_FIELDS = [
   { key: 'name', label: 'Full name', required: true },
   { key: 'email', label: 'Email', required: true },
-  { key: 'phone', label: 'Phone', required: false },
+  { key: 'phone', label: 'Phone', required: true },
 ];
 
 function suggestMapping(headers) {
@@ -109,7 +110,7 @@ const MAX_IMPORT_ROWS = 500;
 
   const runImport = async () => {
     if (!mappingValid) {
-      toast({ variant: 'destructive', title: 'Map required fields', description: 'Name and Email are required.' });
+      toast({ variant: 'destructive', title: 'Map required fields', description: 'Name, Email, and Phone are required.' });
       return;
     }
     setImporting(true);
@@ -130,6 +131,18 @@ const MAX_IMPORT_ROWS = 500;
         errors.push(`Row ${i + 2}: missing name/email`);
         continue;
       }
+      const normalizedPhone = normalizePhoneNumber(payload.phone);
+      if (!normalizedPhone) {
+        fail++;
+        errors.push(`Row ${i + 2}: missing phone`);
+        continue;
+      }
+      if (!isValidPhoneFormat(normalizedPhone)) {
+        fail++;
+        errors.push(`Row ${i + 2}: invalid phone (${payload.phone})`);
+        continue;
+      }
+      payload.phone = normalizedPhone;
       const emailKey = payload.email.toLowerCase();
       if (seenEmails.has(emailKey)) {
         fail++;

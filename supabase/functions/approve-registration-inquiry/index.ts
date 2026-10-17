@@ -214,6 +214,9 @@ Deno.serve(async (req) => {
       if (inquiry.university) educationPatch.university = inquiry.university
       if (inquiry.faculty) educationPatch.faculty = inquiry.faculty
       if (inquiry.year_of_study) educationPatch.year_of_study = inquiry.year_of_study
+      // Always copy inquiry phone onto profile when present (fills missing phones).
+      const inquiryPhone = String(inquiry.phone || '').trim()
+      if (inquiryPhone) educationPatch.phone = inquiryPhone
       if (Object.keys(educationPatch).length) {
         await admin.from('profiles').update(educationPatch).eq('id', studentId)
       }

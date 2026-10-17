@@ -85,21 +85,23 @@ const StudentRegistrationModal = ({ isOpen, onClose, onSuccess, classes, users }
         }
 
         const normalizedPhone = normalizePhoneNumber(formData.phone);
-        
-        if (formData.phone && !isValidPhoneFormat(normalizedPhone)) {
+
+        if (!normalizedPhone) {
+            setPhoneError(MESSAGES.VALIDATION.PHONE_REQUIRED);
+            return;
+        }
+        if (!isValidPhoneFormat(normalizedPhone)) {
             setPhoneError(MESSAGES.VALIDATION.PHONE);
             return;
         }
 
         setIsSubmitting(true);
 
-        if (normalizedPhone) {
-            const exists = await checkPhoneExists(normalizedPhone);
-            if (exists) {
-                setPhoneError(MESSAGES.DUPLICATE.PHONE.description);
-                setIsSubmitting(false);
-                return;
-            }
+        const exists = await checkPhoneExists(normalizedPhone);
+        if (exists) {
+            setPhoneError(MESSAGES.DUPLICATE.PHONE.description);
+            setIsSubmitting(false);
+            return;
         }
 
         try {
@@ -230,11 +232,12 @@ const StudentRegistrationModal = ({ isOpen, onClose, onSuccess, classes, users }
                                 <Input id="email" type="email" value={formData.email} onChange={handleChange} className="bg-slate-950 border-slate-800 text-white" required />
                             </div>
                             <div className="space-y-1">
-                                <Label htmlFor="phone" className="text-slate-300">Phone Number (Optional)</Label>
+                                <Label htmlFor="phone" className="text-slate-300">Phone Number *</Label>
                                 <Input 
                                     id="phone" 
                                     value={formData.phone} 
                                     onChange={handleChange} 
+                                    required
                                     className={cn("bg-slate-950 border-slate-800 text-white", phoneError && "border-red-500 focus-visible:ring-red-500")} 
                                 />
                                 {phoneError && (

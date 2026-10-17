@@ -80,11 +80,11 @@ const EditStudentModal = ({ student, isOpen, onClose, onSuccess, users = [] }) =
     if (!formData.email.trim()) newErrors.email = MESSAGES.VALIDATION.EMAIL_REQUIRED;
     else if (!isValidEmail(formData.email)) newErrors.email = MESSAGES.VALIDATION.EMAIL;
     
-    if (formData.phone) {
-        const normalizedPhone = normalizePhoneNumber(formData.phone);
-        if (!isValidPhoneFormat(normalizedPhone)) {
-             newErrors.phone = MESSAGES.VALIDATION.PHONE;
-        }
+    const normalizedPhone = normalizePhoneNumber(formData.phone);
+    if (!normalizedPhone) {
+      newErrors.phone = MESSAGES.VALIDATION.PHONE_REQUIRED;
+    } else if (!isValidPhoneFormat(normalizedPhone)) {
+      newErrors.phone = MESSAGES.VALIDATION.PHONE;
     }
 
     setErrors(newErrors);
@@ -176,7 +176,7 @@ const EditStudentModal = ({ student, isOpen, onClose, onSuccess, users = [] }) =
       const updateData = {
         name: formData.name,
         email: formData.email,
-        phone: formData.phone ? normalizePhoneNumber(formData.phone) : null,
+        phone: normalizePhoneNumber(formData.phone),
         university_name: formData.university_name,
         faculty: formData.faculty,
         year: formData.year,
@@ -293,11 +293,12 @@ const EditStudentModal = ({ student, isOpen, onClose, onSuccess, users = [] }) =
                 {errors.email && <p className="text-xs text-red-400">{errors.email}</p>}
               </div>
               <div className="grid gap-2">
-                <Label htmlFor="phone" className="text-slate-300">Phone Number</Label>
+                <Label htmlFor="phone" className="text-slate-300">Phone Number *</Label>
                 <Input 
                   id="phone" 
                   value={formData.phone} 
                   onChange={handleChange} 
+                  required
                   className={`bg-slate-950 border-slate-800 text-white ${errors.phone ? 'border-red-500' : ''}`} 
                 />
                 {errors.phone && <p className="text-xs text-red-400">{errors.phone}</p>}
