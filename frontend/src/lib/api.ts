@@ -3,7 +3,7 @@
  * Document-request workflow remains out of v1 scope and throws FEATURE_UNAVAILABLE.
  */
 import { supabase, getSupabaseUrl } from '@/lib/supabaseClient'
-import { resolvePublicTenantSubdomain, getTenantLoginUrl, cacheTenantForHost, isLikelyCustomTenantHost } from '@/lib/institution'
+import { resolvePublicTenantSubdomain, cacheTenantForHost, isLikelyCustomTenantHost } from '@/lib/institution'
 import { createDefaultUploadFieldLayout } from '@/lib/certificateBuilder'
 import { LANDING_TEMPLATE_IDS } from '@/lib/landingTemplates'
 import { landingContentForSave } from '@/lib/landingContent'
@@ -412,38 +412,32 @@ export const createNewUser = async (data) => {
   }
 
   // Success-first: if the user was created (id present), never treat as failure.
+  // Welcome email is sent by create-user via Resend (immediately on the server).
   if (payload?.id) {
     const createdRole = payload.role || role
     const skipWelcomeEmail =
-      data.skipWelcomeEmail === true || createdRole === 'affiliate'
+      data.skipWelcomeEmail === true ||
+      createdRole === 'affiliate' ||
+      payload.email_skipped === true
 
-    let emailed = false
-    let emailSkipped = skipWelcomeEmail
-    let emailError = null
+    const emailed = Boolean(payload.emailed)
+    const emailSkipped = skipWelcomeEmail || Boolean(payload.email_skipped)
+    const serverEmailError = String(payload.email_error || '')
+    const planEmailBlocked = /PLAN_ENTITLEMENT_REQUIRED/i.test(serverEmailError)
+    const emailError = emailed
+      ? null
+      : planEmailBlocked
+        ? serverEmailError
+        : emailSkipped
+          ? null
+          : serverEmailError
+            ? 'WELCOME_EMAIL_FAILED'
+            : payload.emailed === false
+              ? 'WELCOME_EMAIL_FAILED'
+              : null
 
-    if (!skipWelcomeEmail) {
-      // Welcome email via EmailJS — login link = this institution's subdomain /login
-      const institution = await getMyInstitution().catch(() => null)
-      const { sendWelcomeEmail } = await import('@/lib/emailjs')
-      const emailResult = await sendWelcomeEmail({
-        fullName: payload.full_name || full_name,
-        role: createdRole,
-        email: payload.email || email,
-        password: payload.password,
-        institutionName: payload.institution_name || institution?.name || 'Training Center',
-        institutionEmail: institution?.email || undefined,
-        loginUrl: getTenantLoginUrl({
-          subdomain: institution?.subdomain || payload.institution_subdomain,
-          name: payload.institution_name || institution?.name,
-        }),
-      })
-
-      if (!emailResult.ok) {
-        console.warn('[createNewUser] welcome email failed', emailResult.error || emailResult.skipped)
-      }
-      emailed = Boolean(emailResult.ok)
-      emailSkipped = Boolean(emailResult.skipped)
-      emailError = emailResult.ok ? null : 'WELCOME_EMAIL_FAILED'
+    if (!emailed && !emailSkipped) {
+      console.warn('[createNewUser] welcome email failed', payload.email_error)
     }
 
     return {
@@ -4752,35 +4746,18 @@ export const approveRegistrationInquiry = async (id) => {
     throw new Error(error?.message || 'APPROVE_FAILED')
   }
 
-  let emailed = false
-  let emailSkipped = false
-  let emailError = null
+  // Welcome email is sent by approve-registration-inquiry via Resend.
+  const emailed = Boolean(payload.emailed)
+  const emailSkipped = Boolean(payload.email_skipped)
+  const emailError =
+    emailed || emailSkipped
+      ? null
+      : payload.password && payload.email && !payload.already_approved
+        ? 'WELCOME_EMAIL_FAILED'
+        : null
 
-  // Welcome email only when a new password was issued (new account). Never on reject.
-  if (payload.password && payload.email && !payload.already_approved) {
-    try {
-      const institution = await getMyInstitution()
-      const loginUrl = getTenantLoginUrl(institution)
-      const { sendWelcomeEmail } = await import('@/lib/emailjs')
-      const emailResult = await sendWelcomeEmail({
-        fullName: payload.name || 'Student',
-        role: 'student',
-        email: payload.email,
-        password: payload.password,
-        institutionName: institution?.name || 'Training Center',
-        institutionEmail: institution?.email || undefined,
-        loginUrl,
-      })
-      emailed = Boolean(emailResult.ok)
-      emailSkipped = Boolean(emailResult.skipped)
-      emailError = emailResult.ok ? null : emailResult.error || 'WELCOME_EMAIL_FAILED'
-      if (!emailResult.ok) {
-        console.warn('[approveRegistrationInquiry] welcome email failed', emailResult.error)
-      }
-    } catch (err) {
-      console.warn('[approveRegistrationInquiry] welcome email error', err)
-      emailError = 'WELCOME_EMAIL_FAILED'
-    }
+  if (emailError) {
+    console.warn('[approveRegistrationInquiry] welcome email failed', payload.email_error)
   }
 
   return {

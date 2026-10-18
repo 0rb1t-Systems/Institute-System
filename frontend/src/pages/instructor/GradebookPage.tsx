@@ -2,12 +2,14 @@ import React, { useState, useMemo } from 'react';
 import { Helmet } from 'react-helmet';
 import AnimatedPage from '@/components/AnimatedPage';
 import PageHeader from '@/components/PageHeader';
+import PlanUpgradeNotice from '@/components/PlanUpgradeNotice';
 import { Card, CardContent } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
 import { useData } from '@/contexts/DataContext';
 import { useAuth } from '@/contexts/AuthContext';
+import { usePlanEntitlements } from '@/hooks/usePlanEntitlements';
 import { AlertCircle, Loader2, ScrollText } from 'lucide-react';
 import { useToast } from '@/components/ui/use-toast';
 import { notify, MESSAGES } from '@/lib/notify';
@@ -16,6 +18,7 @@ import { dedupeManualExamsByCourse } from '@/lib/manualExam';
 const GradebookPage = () => {
   const { user } = useAuth();
   const { classes, enrollments, students, exams, results, courses, assignments, assignmentSubmissions, gradebookEntries, finalizeGradebookForClass } = useData();
+  const { canUseTranscriptsCertificates, loading: planLoading } = usePlanEntitlements();
   const { toast } = useToast();
 
   const [selectedClassId, setSelectedClassId] = useState('');
@@ -125,7 +128,7 @@ const GradebookPage = () => {
   };
 
   const handleFinalize = async () => {
-    if (!selectedClassId) return;
+    if (!selectedClassId || !canUseTranscriptsCertificates) return;
     setFinalizing(true);
     try {
       await finalizeGradebookForClass(selectedClassId);
@@ -144,7 +147,11 @@ const GradebookPage = () => {
       </Helmet>
       <PageHeader
         title="Class Gradebook"
-        subtitle="Exam score + assignment bonus points (capped at exam total). Sync finals to transcripts."
+        subtitle={
+          canUseTranscriptsCertificates
+            ? 'Exam score + assignment bonus points (capped at exam total). Sync finals to transcripts.'
+            : 'Exam score + assignment bonus points (capped at exam total). Transcripts are on Enterprise.'
+        }
       />
 
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6">
@@ -160,13 +167,19 @@ const GradebookPage = () => {
             ))}
           </SelectContent>
         </Select>
-        {selectedClassId && (
-          <Button onClick={handleFinalize} disabled={finalizing}>
+        {selectedClassId && canUseTranscriptsCertificates && (
+          <Button onClick={handleFinalize} disabled={finalizing || planLoading}>
             {finalizing ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <ScrollText className="h-4 w-4 mr-2" />}
             Sync to Transcripts
           </Button>
         )}
       </div>
+
+      {selectedClassId && !planLoading && !canUseTranscriptsCertificates && (
+        <div className="mb-6">
+          <PlanUpgradeNotice feature="Transcripts & Certificates" />
+        </div>
+      )}
 
       {selectedClassId && classData ? (
         <Card className="overflow-hidden">

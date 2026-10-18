@@ -5,6 +5,11 @@
 //  Registration History stays on registration_inquiries (status=approved).
 // =====================================================================
 import { createClient } from 'jsr:@supabase/supabase-js@2'
+import { sendWelcomeResendEmail } from '../_shared/welcome-email.ts'
+import {
+  ENTITLEMENT_EMAIL_SUPPORT,
+  institutionHasEntitlement,
+} from '../_shared/plan-entitlements.ts'
 
 const cors = {
   'Access-Control-Allow-Origin': '*',
@@ -77,7 +82,7 @@ Deno.serve(async (req) => {
 
     const { data: callerInst } = await admin
       .from('institutions')
-      .select('id, status')
+      .select('id, name, email, subdomain, status')
       .eq('id', caller.institution_id)
       .maybeSingle()
 
@@ -256,6 +261,35 @@ Deno.serve(async (req) => {
       studentCode = codeRow?.student_code || studentCode
     }
 
+    let emailed = false
+    let emailError: string | null = null
+    const planAllowsEmail = await institutionHasEntitlement(
+      admin,
+      caller.institution_id,
+      ENTITLEMENT_EMAIL_SUPPORT,
+    )
+    const emailSkipped = !tempPassword || alreadyApproved || !planAllowsEmail
+    // Welcome email only when a new password was issued (new account) + Enterprise email_support.
+    if (tempPassword && email.includes('@') && !alreadyApproved && planAllowsEmail) {
+      const sent = await sendWelcomeResendEmail({
+        to: email,
+        institutionName: callerInst.name || 'Training Center',
+        fullName,
+        role: 'student',
+        loginEmail: email,
+        temporaryPassword: tempPassword,
+        companyEmail: callerInst.email || null,
+        subdomain: callerInst.subdomain || null,
+      })
+      emailed = sent.ok
+      if (!sent.ok) {
+        emailError = sent.error
+        console.error('[approve-registration-inquiry] welcome email failed', sent.error)
+      }
+    } else if (tempPassword && !alreadyApproved && !planAllowsEmail) {
+      emailError = 'PLAN_ENTITLEMENT_REQUIRED: email_support'
+    }
+
     return json({
       id: studentId,
       name: fullName,
@@ -266,6 +300,9 @@ Deno.serve(async (req) => {
       reused_existing: !!existingProfile,
       enrolled: false,
       class_id: null,
+      emailed,
+      email_skipped: emailSkipped,
+      email_error: emailError,
     })
   } catch (e) {
     return json({ error: String(e) }, 500)

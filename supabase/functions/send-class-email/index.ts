@@ -5,6 +5,10 @@
 // =====================================================================
 import { createClient } from 'jsr:@supabase/supabase-js@2'
 import { escapeHtml, normalizeSecret, sendResendEmail } from '../_shared/resend.ts'
+import {
+  ENTITLEMENT_EMAIL_SUPPORT,
+  institutionHasEntitlement,
+} from '../_shared/plan-entitlements.ts'
 
 const cors = {
   'Access-Control-Allow-Origin': '*',
@@ -75,6 +79,15 @@ Deno.serve(async (req) => {
 
     if (!callerInst || callerInst.status === 'suspended') {
       return json({ error: 'AUTH.TENANT_SUSPENDED' }, 403)
+    }
+
+    const planAllowsEmail = await institutionHasEntitlement(
+      admin,
+      caller.institution_id,
+      ENTITLEMENT_EMAIL_SUPPORT,
+    )
+    if (!planAllowsEmail) {
+      return json({ error: 'PLAN_ENTITLEMENT_REQUIRED: email_support' }, 403)
     }
 
     const body = await req.json().catch(() => ({}))

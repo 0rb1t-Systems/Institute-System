@@ -48,6 +48,7 @@ const emptyPlan = {
   max_students: '',
   features: '',
   entitlements_transcripts_certificates: false,
+  entitlements_email_support: false,
   is_active: true,
   sort_order: 0,
 }
@@ -120,6 +121,7 @@ const PlansPage = () => {
       max_students: plan.max_students ?? '',
       features: Array.isArray(plan.features) ? plan.features.join('\n') : '',
       entitlements_transcripts_certificates: entitlements.transcripts_certificates === true,
+      entitlements_email_support: entitlements.email_support === true,
       is_active: plan.is_active !== false,
       sort_order: plan.sort_order ?? 0,
     })
@@ -144,6 +146,7 @@ const PlansPage = () => {
           ...(planForm.entitlements_transcripts_certificates
             ? { transcripts_certificates: true }
             : {}),
+          ...(planForm.entitlements_email_support ? { email_support: true } : {}),
         },
       })
       toast({ title: 'Success', description: MESSAGES.SUCCESS.UPDATED })
@@ -259,6 +262,10 @@ const PlansPage = () => {
                   <span>
                     {plan.entitlements?.transcripts_certificates === true ? 'Included' : '—'}
                   </span>
+                </div>
+                <div className="flex justify-between text-[var(--pf-muted)]">
+                  <span>Email support</span>
+                  <span>{plan.entitlements?.email_support === true ? 'Included' : '—'}</span>
                 </div>
                 <Button variant="ghost" size="sm" className="px-0 font-semibold text-[var(--pf-accent)] hover:text-[var(--pf-accent)] hover:opacity-80" onClick={() => openEditPlan(plan)}>
                   Edit plan
@@ -536,6 +543,19 @@ const PlansPage = () => {
                 }
               />
               Entitlement: Transcripts &amp; Certificates
+            </label>
+            <label className="flex items-center gap-2 text-sm text-slate-300">
+              <input
+                type="checkbox"
+                checked={planForm.entitlements_email_support}
+                onChange={(e) =>
+                  setPlanForm((f) => ({
+                    ...f,
+                    entitlements_email_support: e.target.checked,
+                  }))
+                }
+              />
+              Entitlement: Email support (welcome + class emails)
             </label>
             <label className="flex items-center gap-2 text-sm text-slate-300">
               <input

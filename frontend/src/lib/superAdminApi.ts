@@ -4,8 +4,6 @@
  * reads/updates use RLS + is_super_admin(); audit via write_audit_log RPC.
  */
 import { supabase } from '@/lib/supabaseClient'
-import { sendWelcomeEmail } from '@/lib/emailjs'
-import { getTenantLoginUrl } from '@/lib/institution'
 
 async function getAccessToken() {
   let {
@@ -631,27 +629,9 @@ export async function provisionTenant(form) {
   const payload = await parseInvokeError(error, result)
 
   if (payload?.ok && payload?.institution_id) {
-    let emailed = false
-    let emailError = null
-    try {
-      const loginUrl = getTenantLoginUrl({
-        subdomain: payload.institution_slug,
-        name: payload.institution_name,
-      })
-      const emailResult = await sendWelcomeEmail({
-        fullName: payload.admin?.full_name,
-        role: 'admin',
-        email: payload.admin?.email,
-        password: payload.admin?.password,
-        institutionName: payload.institution_name,
-        loginUrl,
-      })
-      emailed = Boolean(emailResult.ok)
-      if (!emailResult.ok) emailError = 'WELCOME_EMAIL_FAILED'
-    } catch {
-      emailError = 'WELCOME_EMAIL_FAILED'
-    }
-
+    // Welcome email sent by provision-tenant via Resend.
+    const emailed = Boolean(payload.emailed)
+    const emailError = emailed ? null : payload.email_error ? 'WELCOME_EMAIL_FAILED' : null
     return { ...payload, emailed, email_error: emailError }
   }
 
@@ -668,35 +648,8 @@ export async function createTenantAdmin(form) {
   const payload = await parseInvokeError(error, result)
 
   if (payload?.ok && payload?.id) {
-    let emailed = false
-    try {
-      let subdomain = payload.institution_slug || form.institution_slug || ''
-      if (!subdomain && form.institution_id) {
-        const { data: inst } = await supabase
-          .from('institutions')
-          .select('subdomain, name')
-          .eq('id', form.institution_id)
-          .maybeSingle()
-        subdomain = inst?.subdomain || ''
-        if (!payload.institution_name && inst?.name) payload.institution_name = inst.name
-      }
-      const loginUrl = getTenantLoginUrl({
-        subdomain,
-        name: payload.institution_name,
-      })
-      const emailResult = await sendWelcomeEmail({
-        fullName: payload.full_name,
-        role: 'admin',
-        email: payload.email,
-        password: payload.password,
-        institutionName: payload.institution_name,
-        loginUrl,
-      })
-      emailed = Boolean(emailResult.ok)
-    } catch {
-      emailed = false
-    }
-    return { ...payload, emailed }
+    // Welcome email sent by create-tenant-admin via Resend.
+    return { ...payload, emailed: Boolean(payload.emailed) }
   }
 
   throw new Error(friendlyInvokeError(payload, error))

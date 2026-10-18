@@ -3,6 +3,7 @@
 //  Super Admin only — creates an additional Tenant Admin for an institution.
 // =====================================================================
 import { createClient } from 'jsr:@supabase/supabase-js@2'
+import { sendWelcomeResendEmail } from '../_shared/welcome-email.ts'
 
 const cors = {
   'Access-Control-Allow-Origin': '*',
@@ -96,7 +97,7 @@ Deno.serve(async (req) => {
 
     const { data: inst } = await admin
       .from('institutions')
-      .select('id, name')
+      .select('id, name, email, subdomain')
       .eq('id', institution_id)
       .maybeSingle()
     if (!inst) return json({ error: 'Tenant not found.' }, 404)
@@ -148,6 +149,24 @@ Deno.serve(async (req) => {
       metadata: { institution_id, email, full_name },
     })
 
+    let emailed = false
+    let emailError: string | null = null
+    const sent = await sendWelcomeResendEmail({
+      to: email,
+      institutionName: inst.name || 'Training Center',
+      fullName: full_name,
+      role: 'admin',
+      loginEmail: email,
+      temporaryPassword: temporary_password,
+      companyEmail: inst.email || null,
+      subdomain: inst.subdomain || null,
+    })
+    emailed = sent.ok
+    if (!sent.ok) {
+      emailError = sent.error
+      console.error('[create-tenant-admin] welcome email failed', sent.error)
+    }
+
     return json({
       ok: true,
       id: newId,
@@ -157,6 +176,9 @@ Deno.serve(async (req) => {
       role: 'admin',
       institution_id,
       institution_name: inst.name,
+      institution_slug: inst.subdomain || null,
+      emailed,
+      email_error: emailError,
       message: 'Tenant Admin account created successfully.',
     })
   } catch (e) {

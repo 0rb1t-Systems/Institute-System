@@ -141,7 +141,11 @@ const ReportsPage = () => {
       <PageHeader
         eyebrow="Analytics"
         title="Reports Center"
-        subtitle="One place for finance, revenue, attendance, exams, transcripts, certificates, and affiliates."
+        subtitle={
+          canUseTranscriptsCertificates
+            ? 'One place for finance, revenue, attendance, exams, transcripts, certificates, and affiliates.'
+            : 'One place for finance, revenue, attendance, exams, and affiliates.'
+        }
         action={
             <Button variant="ghost" size="sm" onClick={handleRetry} disabled={loading || isRetrying}>
                 <RefreshCw className={`h-4 w-4 mr-2 ${loading || isRetrying ? 'animate-spin' : ''}`} /> Refresh

@@ -3,6 +3,7 @@ import { useAuth } from '@/contexts/AuthContext'
 import { getMyTenantSubscription } from '@/lib/api'
 import { supabase } from '@/lib/supabaseClient'
 import {
+  ENTITLEMENT_EMAIL_SUPPORT,
   ENTITLEMENT_TRANSCRIPTS_CERTIFICATES,
   hasPlanEntitlement,
   type PlanEntitlementKey,
@@ -30,17 +31,27 @@ export function usePlanEntitlements() {
     }
     setLoading(true)
     try {
-      const [subResult, entResult] = await Promise.all([
+      const [subResult, certResult, emailResult] = await Promise.all([
         getMyTenantSubscription().catch(() => null),
         supabase.rpc('tenant_has_entitlement', {
           p_key: ENTITLEMENT_TRANSCRIPTS_CERTIFICATES,
         }),
+        supabase.rpc('tenant_has_entitlement', {
+          p_key: ENTITLEMENT_EMAIL_SUPPORT,
+        }),
       ])
       setSubscription(subResult)
-      const rpcOk = !entResult.error && entResult.data === true
-      const fromSub = hasPlanEntitlement(subResult, ENTITLEMENT_TRANSCRIPTS_CERTIFICATES)
+      // Prefer server RPC when it succeeds (deny-by-default for Starter).
+      // Only fall back to subscription row if the RPC errored (e.g. older DB).
+      const certOk = certResult.error
+        ? hasPlanEntitlement(subResult, ENTITLEMENT_TRANSCRIPTS_CERTIFICATES)
+        : certResult.data === true
+      const emailOk = emailResult.error
+        ? hasPlanEntitlement(subResult, ENTITLEMENT_EMAIL_SUPPORT)
+        : emailResult.data === true
       setEntitlementMap({
-        [ENTITLEMENT_TRANSCRIPTS_CERTIFICATES]: rpcOk || fromSub,
+        [ENTITLEMENT_TRANSCRIPTS_CERTIFICATES]: certOk,
+        [ENTITLEMENT_EMAIL_SUPPORT]: emailOk,
       })
     } catch {
       setSubscription(null)
@@ -61,6 +72,8 @@ export function usePlanEntitlements() {
 
   const canUseTranscriptsCertificates =
     isSuperAdmin || Boolean(entitlementMap[ENTITLEMENT_TRANSCRIPTS_CERTIFICATES])
+  const canUseEmailSupport =
+    isSuperAdmin || Boolean(entitlementMap[ENTITLEMENT_EMAIL_SUPPORT])
 
   return {
     loading,
@@ -68,5 +81,6 @@ export function usePlanEntitlements() {
     reload,
     hasEntitlement,
     canUseTranscriptsCertificates,
+    canUseEmailSupport,
   }
 }

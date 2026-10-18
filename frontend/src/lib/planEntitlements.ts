@@ -1,7 +1,12 @@
 /** Platform plan entitlement keys (machine-readable on platform_plans.entitlements). */
 export const ENTITLEMENT_TRANSCRIPTS_CERTIFICATES = 'transcripts_certificates' as const
+/** Product email (welcome + class broadcast). Enterprise only — Starter $39 does not include. */
+export const ENTITLEMENT_EMAIL_SUPPORT = 'email_support' as const
 
-export type PlanEntitlementKey = typeof ENTITLEMENT_TRANSCRIPTS_CERTIFICATES | string
+export type PlanEntitlementKey =
+  | typeof ENTITLEMENT_TRANSCRIPTS_CERTIFICATES
+  | typeof ENTITLEMENT_EMAIL_SUPPORT
+  | string
 
 type PlanShape = {
   slug?: string | null

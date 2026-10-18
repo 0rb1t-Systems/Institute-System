@@ -19,13 +19,10 @@ npx supabase functions deploy public-provision-tenant --project-ref $Ref --no-ve
 Write-Host "==> Deploying create-tenant-admin"
 npx supabase functions deploy create-tenant-admin --project-ref $Ref
 
-Write-Host "==> Deploying send-welcome-email"
-npx supabase functions deploy send-welcome-email --project-ref $Ref
-
 Write-Host "==> Deploying approve-registration-inquiry"
 npx supabase functions deploy approve-registration-inquiry --project-ref $Ref
 
 Write-Host "==> Deploying public-register-student (retired stub)"
 npx supabase functions deploy public-register-student --project-ref $Ref --no-verify-jwt
 
-Write-Host "Done. Prefer Resend secrets (RESEND_API_KEY + RESEND_FROM_EMAIL); EmailJS is fallback."
+Write-Host "Done. Welcome emails use Resend (RESEND_API_KEY + RESEND_FROM_EMAIL) inside create-user / approve / provision."

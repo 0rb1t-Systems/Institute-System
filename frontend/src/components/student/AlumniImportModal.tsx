@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
@@ -9,6 +9,7 @@ import { notify, MESSAGES } from '@/lib/notify';
 import { Download, GraduationCap, Loader2, Upload } from 'lucide-react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { CERTIFICATE_TEMPLATE_LIBRARY } from '@/lib/certificateTemplates';
+import { usePlanEntitlements } from '@/hooks/usePlanEntitlements';
 import {
   ALUMNI_TEMPLATES,
   MAX_ALUMNI_IMPORT_ROWS,
@@ -21,6 +22,8 @@ import {
 
 export default function AlumniImportModal({ open, onClose, onSuccess }) {
   const { toast } = useToast();
+  const { canUseTranscriptsCertificates, canUseEmailSupport, loading: planLoading } =
+    usePlanEntitlements();
   const [step, setStep] = useState('upload');
   const [rawRows, setRawRows] = useState([]);
   const [mapping, setMapping] = useState({});
@@ -31,12 +34,18 @@ export default function AlumniImportModal({ open, onClose, onSuccess }) {
   const [parseErrors, setParseErrors] = useState([]);
   const [result, setResult] = useState(null);
 
+  useEffect(() => {
+    if (planLoading) return;
+    if (!canUseTranscriptsCertificates) setIssueDocuments(false);
+    if (!canUseEmailSupport) setSendWelcomeEmail(false);
+  }, [planLoading, canUseTranscriptsCertificates, canUseEmailSupport]);
+
   const reset = () => {
     setStep('upload');
     setRawRows([]);
     setMapping({});
     setImporting(false);
-    setIssueDocuments(true);
+    setIssueDocuments(canUseTranscriptsCertificates);
     setCertificateTemplate('institution_default');
     setSendWelcomeEmail(false);
     setParseErrors([]);
@@ -117,8 +126,8 @@ export default function AlumniImportModal({ open, onClose, onSuccess }) {
     setImporting(true);
     try {
       const out = await runAlumniImport(validated.rows, {
-        sendWelcomeEmail,
-        issueDocuments,
+        sendWelcomeEmail: sendWelcomeEmail && canUseEmailSupport,
+        issueDocuments: issueDocuments && canUseTranscriptsCertificates,
         layoutKeyOverride: certificateTemplate !== 'institution_default' ? certificateTemplate : null,
       });
       setResult(out);
@@ -254,10 +263,20 @@ export default function AlumniImportModal({ open, onClose, onSuccess }) {
               </Table>
             </div>
             <label className="flex items-start gap-2 text-sm text-[var(--ds-text-primary,#122018)]">
-              <Checkbox checked={issueDocuments} onCheckedChange={(v) => setIssueDocuments(v === true)} />
-              <span>Issue transcripts and certificates after grades are saved (requires complete institution document settings).</span>
+              <Checkbox
+                checked={issueDocuments && canUseTranscriptsCertificates}
+                disabled={!canUseTranscriptsCertificates || planLoading}
+                onCheckedChange={(v) =>
+                  setIssueDocuments(canUseTranscriptsCertificates && v === true)
+                }
+              />
+              <span>
+                {canUseTranscriptsCertificates
+                  ? 'Issue transcripts and certificates after grades are saved (requires complete institution document settings).'
+                  : 'Issue transcripts and certificates (Enterprise plan only — grades still import on Starter).'}
+              </span>
             </label>
-            {issueDocuments && (
+            {issueDocuments && canUseTranscriptsCertificates && (
               <div className="space-y-1.5 rounded-xl border border-[var(--ds-border,#DDE5DF)] bg-[var(--ds-surface-muted,#F7FAF8)] p-3 pl-4">
                 <Label className="text-sm text-[var(--ds-text-primary,#122018)]">Certificate template</Label>
                 <Select value={certificateTemplate} onValueChange={setCertificateTemplate}>
@@ -283,8 +302,16 @@ export default function AlumniImportModal({ open, onClose, onSuccess }) {
               </div>
             )}
             <label className="flex items-start gap-2 text-sm text-[var(--ds-text-primary,#122018)]">
-              <Checkbox checked={sendWelcomeEmail} onCheckedChange={(v) => setSendWelcomeEmail(v === true)} />
-              <span>Send login emails to newly created students (off by default for alumni).</span>
+              <Checkbox
+                checked={sendWelcomeEmail && canUseEmailSupport}
+                disabled={!canUseEmailSupport || planLoading}
+                onCheckedChange={(v) => setSendWelcomeEmail(canUseEmailSupport && v === true)}
+              />
+              <span>
+                {canUseEmailSupport
+                  ? 'Send login emails to newly created students (off by default for alumni).'
+                  : 'Send login emails (Enterprise email support only — share credentials manually on Starter).'}
+              </span>
             </label>
             <DialogFooter className="gap-2">
               <Button variant="outline" onClick={() => setStep('upload')} disabled={importing}>

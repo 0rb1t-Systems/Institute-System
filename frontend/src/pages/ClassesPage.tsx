@@ -42,6 +42,8 @@ import {
   sendClassStudentEmails,
   type ClassEmailSendRecord,
 } from '@/lib/classEmail';
+import { usePlanEntitlements } from '@/hooks/usePlanEntitlements';
+import PlanUpgradeNotice from '@/components/PlanUpgradeNotice';
 
 const ClassCoursesDialog = ({ classData, isOpen, onClose }) => {
     const { courses, classCourses, addCourseToClass, removeCourseFromClass } = useData();
@@ -743,6 +745,7 @@ const ClassDetailsDialog = ({ classData, isOpen, onClose, onTogglePin }) => {
     const { students, enrollments } = useData();
     const { user, institution } = useAuth();
     const { toast } = useToast();
+    const { canUseEmailSupport, loading: emailPlanLoading } = usePlanEntitlements();
     const canPin = user?.role === 'admin' || user?.role === 'staff';
     const [pinBusy, setPinBusy] = useState(false);
     const [emailSubject, setEmailSubject] = useState('');
@@ -808,7 +811,7 @@ const ClassDetailsDialog = ({ classData, isOpen, onClose, onTogglePin }) => {
     };
 
     const handleSendClassEmail = async () => {
-        if (sendingEmail || studentsWithEmail.length === 0) return;
+        if (sendingEmail || studentsWithEmail.length === 0 || !canUseEmailSupport) return;
 
         const subject = String(emailSubject || '').trim();
         const messageTemplate = String(emailMessage || '').trim();
@@ -974,6 +977,10 @@ const ClassDetailsDialog = ({ classData, isOpen, onClose, onTogglePin }) => {
                             </p>
                         </CardHeader>
                         <CardContent className="space-y-3">
+                            {!emailPlanLoading && !canUseEmailSupport ? (
+                                <PlanUpgradeNotice feature="Email support" />
+                            ) : (
+                              <>
                             <div className="space-y-2">
                                 <Label htmlFor="class-email-subject">Subject</Label>
                                 <Input
@@ -981,7 +988,7 @@ const ClassDetailsDialog = ({ classData, isOpen, onClose, onTogglePin }) => {
                                     value={emailSubject}
                                     onChange={(e) => setEmailSubject(e.target.value)}
                                     placeholder="Subject — cinwaanka emailka"
-                                    disabled={sendingEmail}
+                                    disabled={sendingEmail || !canUseEmailSupport}
                                     autoComplete="off"
                                 />
                             </div>
@@ -992,7 +999,7 @@ const ClassDetailsDialog = ({ classData, isOpen, onClose, onTogglePin }) => {
                                     value={emailMessage}
                                     onChange={(e) => setEmailMessage(e.target.value)}
                                     rows={8}
-                                    disabled={sendingEmail}
+                                    disabled={sendingEmail || !canUseEmailSupport}
                                     spellCheck={false}
                                     autoCorrect="off"
                                     autoCapitalize="off"
@@ -1019,6 +1026,7 @@ const ClassDetailsDialog = ({ classData, isOpen, onClose, onTogglePin }) => {
                                     onClick={handleSendClassEmail}
                                     disabled={
                                         sendingEmail ||
+                                        !canUseEmailSupport ||
                                         studentsWithEmail.length === 0 ||
                                         !emailSubject.trim() ||
                                         !emailMessage.trim()
@@ -1034,6 +1042,8 @@ const ClassDetailsDialog = ({ classData, isOpen, onClose, onTogglePin }) => {
                                         : 'Send email'}
                                 </Button>
                             </div>
+                              </>
+                            )}
                         </CardContent>
                     </Card>
                 </TabsContent>

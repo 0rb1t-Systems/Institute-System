@@ -1,7 +1,7 @@
 // =====================================================================
 //  Edge Function: create-user
 //  Creates auth user + profile in the caller's tenant.
-//  Welcome email is sent from the frontend via EmailJS (not here).
+//  Welcome email is sent immediately via Resend (unless skipped / affiliate).
 //
 //  Security:
 //   - Caller JWT verified (gateway + getUser)
@@ -11,6 +11,11 @@
 //   - Service-role client never inherits the caller's Authorization header
 // =====================================================================
 import { createClient } from 'jsr:@supabase/supabase-js@2'
+import { sendWelcomeResendEmail } from '../_shared/welcome-email.ts'
+import {
+  ENTITLEMENT_EMAIL_SUPPORT,
+  institutionHasEntitlement,
+} from '../_shared/plan-entitlements.ts'
 
 const cors = {
   'Access-Control-Allow-Origin': '*',
@@ -122,6 +127,16 @@ Deno.serve(async (req) => {
       ? String(body.student_code).trim().toUpperCase()
       : ''
     const password = body.password
+    const planAllowsEmail = await institutionHasEntitlement(
+      admin,
+      caller.institution_id,
+      ENTITLEMENT_EMAIL_SUPPORT,
+    )
+    // Starter ($39) has no email_support — skip welcome (matches plan card).
+    const skipWelcomeEmail =
+      body.skipWelcomeEmail === true ||
+      role === 'affiliate' ||
+      !planAllowsEmail
     const settlement_model =
       role === 'instructor' && String(body.settlement_model || '').trim() === 'fixed_fee'
         ? 'fixed_fee'
@@ -225,9 +240,32 @@ Deno.serve(async (req) => {
 
       const { data: inst } = await admin
         .from('institutions')
-        .select('name')
+        .select('name, email, subdomain')
         .eq('id', caller.institution_id)
         .single()
+
+      const institutionName = inst?.name ?? 'Training Center'
+      let emailed = false
+      let emailError: string | null = null
+      if (!skipWelcomeEmail) {
+        const sent = await sendWelcomeResendEmail({
+          to: email,
+          institutionName,
+          fullName: full_name,
+          role,
+          loginEmail: email,
+          temporaryPassword: pwd,
+          companyEmail: inst?.email || null,
+          subdomain: inst?.subdomain || null,
+        })
+        emailed = sent.ok
+        if (!sent.ok) {
+          emailError = sent.error
+          console.error('[create-user] welcome email failed (reactivate)', sent.error)
+        }
+      } else if (!planAllowsEmail && role !== 'affiliate' && body.skipWelcomeEmail !== true) {
+        emailError = 'PLAN_ENTITLEMENT_REQUIRED: email_support'
+      }
 
       return json(
         {
@@ -237,8 +275,12 @@ Deno.serve(async (req) => {
           role,
           full_name,
           institution_id: caller.institution_id,
-          institution_name: inst?.name ?? 'Training Center',
+          institution_name: institutionName,
+          institution_subdomain: inst?.subdomain || null,
           reactivated: true,
+          emailed,
+          email_skipped: skipWelcomeEmail,
+          email_error: emailError,
         },
         200,
       )
@@ -330,9 +372,32 @@ Deno.serve(async (req) => {
 
     const { data: inst } = await admin
       .from('institutions')
-      .select('name')
+      .select('name, email, subdomain')
       .eq('id', caller.institution_id)
       .single()
+
+    const institutionName = inst?.name ?? 'Training Center'
+    let emailed = false
+    let emailError: string | null = null
+    if (!skipWelcomeEmail) {
+      const sent = await sendWelcomeResendEmail({
+        to: email,
+        institutionName,
+        fullName: full_name,
+        role,
+        loginEmail: email,
+        temporaryPassword: returnedPassword,
+        companyEmail: inst?.email || null,
+        subdomain: inst?.subdomain || null,
+      })
+      emailed = sent.ok
+      if (!sent.ok) {
+        emailError = sent.error
+        console.error('[create-user] welcome email failed', sent.error)
+      }
+    } else if (!planAllowsEmail && role !== 'affiliate' && body.skipWelcomeEmail !== true) {
+      emailError = 'PLAN_ENTITLEMENT_REQUIRED: email_support'
+    }
 
     return json(
       {
@@ -343,7 +408,11 @@ Deno.serve(async (req) => {
         full_name,
         student_code: createdProfile?.student_code || null,
         institution_id: caller.institution_id,
-        institution_name: inst?.name ?? 'Training Center',
+        institution_name: institutionName,
+        institution_subdomain: inst?.subdomain || null,
+        emailed,
+        email_skipped: skipWelcomeEmail,
+        email_error: emailError,
       },
       200,
     )

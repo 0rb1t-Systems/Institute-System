@@ -169,6 +169,9 @@ function friendlySendError(code: string): string {
   if (c === 'RESEND_NOT_CONFIGURED' || c === 'SERVER_MISCONFIGURED') {
     return 'Email is not configured on the server (Resend).'
   }
+  if (/PLAN_ENTITLEMENT_REQUIRED/i.test(c)) {
+    return 'Email support is on the Enterprise plan. Upgrade from Plans & Subscriptions.'
+  }
   if (c === 'RECIPIENT_NOT_STUDENT') return 'Recipient is not a student in this institution.'
   if (c === 'NOT_ENROLLED') return 'Student is not enrolled in this class.'
   if (c === 'UNAUTHORIZED' || c === 'FORBIDDEN') return 'You are not allowed to send class emails.'

@@ -30,7 +30,7 @@ function suggestMapping(headers) {
 }
 
 /**
- * Phase 1 bulk import: CSV/XLSX → column map → preview → create-user + EmailJS welcome.
+ * Phase 1 bulk import: CSV/XLSX → column map → preview → create-user (welcome skipped for speed).
  */
 export default function BulkImportStudentsModal({ open, onClose, onSuccess, classes = [] }) {
   const { toast } = useToast();

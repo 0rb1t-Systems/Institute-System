@@ -330,6 +330,16 @@ const CODE_MAP = {
   PLAN_ENTITLEMENT_REQUIRED: {
     title: 'Enterprise plan required',
     description:
+      'This feature is on the Enterprise plan (email support, transcripts & certificates). Upgrade from Plans & Subscriptions.',
+  },
+  'PLAN_ENTITLEMENT_REQUIRED: email_support': {
+    title: 'Email support is on Enterprise',
+    description:
+      'Starter ($39) does not include email. Upgrade to Enterprise to send welcome and class emails.',
+  },
+  'PLAN_ENTITLEMENT_REQUIRED: transcripts_certificates': {
+    title: 'Enterprise plan required',
+    description:
       'Transcripts & Certificates are available on the Enterprise plan. Upgrade from Plans & Subscriptions.',
   },
   PHONE_REQUIRED: {

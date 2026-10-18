@@ -113,15 +113,22 @@ const StudentRegistrationModal = ({ isOpen, onClose, onSuccess, classes, users }
             setSuccessData(data);
             if (onSuccess) onSuccess(); // Trigger refresh in parent
 
-            if (data.emailed) {
-              notify.success(MESSAGES.SUCCESS.STUDENT_CREATED);
-            } else {
-              notify.success(MESSAGES.SUCCESS.STUDENT_CREATED);
-              toast({
-                variant: 'destructive',
-                title: 'Welcome email failed',
-                description: MESSAGES.DOMAIN.EMAIL_SEND_FAILED,
-              });
+            notify.success(MESSAGES.SUCCESS.STUDENT_CREATED);
+            if (!data.emailed) {
+              const planBlocked = /PLAN_ENTITLEMENT_REQUIRED/i.test(String(data.email_error || ''));
+              if (planBlocked) {
+                toast({
+                  title: 'Email support is on Enterprise',
+                  description:
+                    'Starter does not include welcome email. Share the login details below, or upgrade to Enterprise.',
+                });
+              } else if (!data.email_skipped) {
+                toast({
+                  variant: 'destructive',
+                  title: 'Welcome email failed',
+                  description: MESSAGES.DOMAIN.EMAIL_SEND_FAILED,
+                });
+              }
             }
 
         } catch (error) {
@@ -160,7 +167,11 @@ const StudentRegistrationModal = ({ isOpen, onClose, onSuccess, classes, users }
                             Share these credentials with the student. The first password is the Student ID. They can change it after they sign in (new passwords need at least 8 characters).
                             {successData.emailed
                               ? ' A welcome email with these details was also sent.'
-                              : ' Email delivery failed — please share these details manually.'}
+                              : /PLAN_ENTITLEMENT_REQUIRED/i.test(String(successData.email_error || ''))
+                                ? ' Welcome email is an Enterprise feature — please share these details manually.'
+                                : successData.email_skipped
+                                  ? ''
+                                  : ' Email delivery failed — please share these details manually.'}
                         </DialogDescription>
                     </DialogHeader>
 

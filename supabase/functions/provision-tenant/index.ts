@@ -4,6 +4,7 @@
 //  Service-role never exposed to the browser.
 // =====================================================================
 import { createClient } from 'jsr:@supabase/supabase-js@2'
+import { sendWelcomeResendEmail } from '../_shared/welcome-email.ts'
 
 const cors = {
   'Access-Control-Allow-Origin': '*',
@@ -224,6 +225,24 @@ Deno.serve(async (req) => {
       },
     })
 
+    let emailed = false
+    let emailError: string | null = null
+    const sent = await sendWelcomeResendEmail({
+      to: admin_email,
+      institutionName: institution_name,
+      fullName: admin_full_name,
+      role: 'admin',
+      loginEmail: admin_email,
+      temporaryPassword: temporary_password,
+      companyEmail: institution_email,
+      subdomain: institution_slug,
+    })
+    emailed = sent.ok
+    if (!sent.ok) {
+      emailError = sent.error
+      console.error('[provision-tenant] welcome email failed', sent.error)
+    }
+
     return json(
       {
         ok: true,
@@ -237,6 +256,8 @@ Deno.serve(async (req) => {
           password: temporary_password,
           role: 'admin',
         },
+        emailed,
+        email_error: emailError,
         message: 'Tenant created successfully.',
       },
       200,
