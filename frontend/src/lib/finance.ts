@@ -129,12 +129,15 @@ export function isRegistrationFeeRequired(
   return fee > 0
 }
 
-/** True when the student has a completed registration-fee payment. */
+/** True when the student has a completed registration-fee payment with amount > 0. */
 export function hasCompletedRegistrationPayment(
   payments?: FinancePayment[] | null
 ): boolean {
   return (payments || []).some(
-    (p) => p.is_registration_fee === true && isCompletedPayment(p)
+    (p) =>
+      p.is_registration_fee === true &&
+      isCompletedPayment(p) &&
+      Number(p.amount || 0) > 0
   )
 }
 
@@ -163,7 +166,9 @@ export function computeStudentBalance(input: StudentBalanceInput): StudentBalanc
       ? Math.max(0, Number(input.registrationFeeAmount))
       : getRegistrationFeeAmount(input.institution || undefined)
 
-  const regFeePayment = payments.find((p) => p.is_registration_fee === true)
+  const regFeePayment = payments.find(
+    (p) => p.is_registration_fee === true && Number(p.amount || 0) > 0
+  )
   const registrationPaid = !!regFeePayment && isCompletedPayment(regFeePayment)
   const registrationPaidAmount = registrationPaid
     ? Number(regFeePayment?.amount || 0)

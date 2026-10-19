@@ -7,6 +7,10 @@
 //   - Verifies caller JWT
 //   - Caller must be admin in the same tenant as the target
 //   - Cannot delete yourself
+//
+//  Pre-delete cleanup:
+//   - affiliate_settlements references profiles with ON DELETE RESTRICT,
+//     so admin deletes must clear those rows first (same tenant only).
 // =====================================================================
 import { createClient } from 'jsr:@supabase/supabase-js@2'
 
@@ -83,6 +87,18 @@ Deno.serve(async (req) => {
     if (!target) return json({ error: 'User not found' }, 404)
     if (target.institution_id !== caller.institution_id) {
       return json({ error: 'Cross-tenant delete is forbidden' }, 403)
+    }
+
+    // affiliate_settlements → profiles is ON DELETE RESTRICT (both student_id and affiliate_id).
+    // Clear same-tenant rows so admin hard-delete can proceed.
+    const { error: settleErr } = await admin
+      .from('affiliate_settlements')
+      .delete()
+      .eq('institution_id', caller.institution_id)
+      .or(`student_id.eq.${targetId},affiliate_id.eq.${targetId}`)
+    if (settleErr) {
+      console.error('[delete-user] affiliate_settlements cleanup failed', settleErr.message)
+      return json({ error: settleErr.message }, 400)
     }
 
     // Deleting auth.users cascades to profiles (FK on delete cascade)

@@ -25,10 +25,11 @@ import { computeStudentBalance, mustPayRegistrationFirst, remainingForBillingMon
 
 // --- Payment Form Component ---
 const PaymentForm = ({ closeDialog, preSelectedStudentId, preSelectedClassId, existingPayment, financials, initialMode = 'payment' }) => {
-  const { students, classes, enrollments, addPayment, updatePaymentData, payments } = useData();
-  const { institution } = useAuth();
+  const { students, classes, enrollments, addPayment, updatePaymentData, deletePaymentData, payments } = useData();
+  const { institution, user } = useAuth();
   const { toast } = useToast();
   const registrationFee = getRegistrationFeeAmount(institution);
+  const canZeroOrDelete = user?.role === 'admin' || user?.role === 'staff';
   
   const isEditing = !!existingPayment;
   const targetStudentId = existingPayment ? existingPayment.student_id : preSelectedStudentId;
@@ -148,6 +149,7 @@ const PaymentForm = ({ closeDialog, preSelectedStudentId, preSelectedClassId, ex
           p.student_id === targetStudentId && 
           p.is_registration_fee === true &&
           (p.status === 'completed' || !p.status) &&
+          Number(p.amount || 0) > 0 &&
           p.id !== existingPayment?.id 
       );
   }, [payments, targetStudentId, existingPayment]);
@@ -295,7 +297,7 @@ const PaymentForm = ({ closeDialog, preSelectedStudentId, preSelectedClassId, ex
               return { valid: false, error: 'Select the class/enrollment for this registration payment.' };
           }
           const amt = Number(formData.amount)
-          if (!Number.isFinite(amt) || amt <= 0) {
+          if (!Number.isFinite(amt) || amt < 0 || (!isEditing && amt <= 0) || (isEditing && amt <= 0 && !canZeroOrDelete)) {
               return { valid: false, error: 'Enter a valid amount.' }
           }
           if (amt > registrationFee + 0.001) {
@@ -321,7 +323,7 @@ const PaymentForm = ({ closeDialog, preSelectedStudentId, preSelectedClassId, ex
             classId: formData.class_id,
             excludePaymentId: existingPayment?.id,
           })
-          if (rem <= 0) {
+          if (rem <= 0 && !(isEditing && Number(formData.amount) === 0)) {
               return {
                 valid: false,
                 error: `${formData.month_paid} is already fully paid (${formatCurrency(discountedMonthlyFee)}).`,
@@ -329,7 +331,8 @@ const PaymentForm = ({ closeDialog, preSelectedStudentId, preSelectedClassId, ex
               };
           }
           const amt = Number(formData.amount)
-          if (!Number.isFinite(amt) || amt <= 0) {
+          // Admins may zero an existing payment; new records still need amount > 0.
+          if (!Number.isFinite(amt) || amt < 0 || (!isEditing && amt <= 0) || (isEditing && amt <= 0 && !canZeroOrDelete)) {
               return { valid: false, error: 'Enter a valid amount.' }
           }
           if (amt > rem + 0.001) {
@@ -357,7 +360,23 @@ const PaymentForm = ({ closeDialog, preSelectedStudentId, preSelectedClassId, ex
     targetStudentId,
     existingPayment?.id,
     registrationFee,
+    isEditing,
+    canZeroOrDelete,
   ]);
+
+  const handleDeletePayment = async () => {
+      if (!isEditing || !existingPayment?.id || !canZeroOrDelete) return;
+      if (!window.confirm('Delete this payment record permanently? Affiliate commission for this payment will also be removed.')) {
+        return;
+      }
+      try {
+          await deletePaymentData(existingPayment.id);
+          toast({ title: 'Success', description: MESSAGES.SUCCESS.DELETED });
+          closeDialog();
+      } catch (e) {
+          notify.error(e, { context: 'FinancePage - deletePayment', fallback: MESSAGES.DELETE_FAILED });
+      }
+  };
 
   const handleSubmit = async (e) => {
       e.preventDefault();
@@ -554,10 +573,10 @@ const PaymentForm = ({ closeDialog, preSelectedStudentId, preSelectedClassId, ex
                   <Input 
                     type="number"
                     step="0.01"
-                    min="0.01"
+                    min={isEditing && canZeroOrDelete ? '0' : '0.01'}
                     max={
                       formData.type === 'tuition'
-                        ? remainingForSelectedMonth
+                        ? Math.max(remainingForSelectedMonth, Number(existingPayment?.amount) || 0)
                         : formData.type === 'registration'
                           ? registrationFee
                           : undefined
@@ -568,6 +587,11 @@ const PaymentForm = ({ closeDialog, preSelectedStudentId, preSelectedClassId, ex
                     readOnly={formData.type === 'registration' && !isEditing}
                     className={validation.isOverAmount ? 'border-[var(--ds-danger,#DC2626)] focus-visible:ring-[var(--ds-danger,#DC2626)]' : undefined}
                   />
+                  {isEditing && canZeroOrDelete ? (
+                     <div className="text-[10px] text-[var(--ds-text-secondary,#5B6B61)]">
+                        Set to 0 to void this payment (commission clears automatically).
+                     </div>
+                  ) : null}
                   {formData.type === 'tuition' && formData.month_paid ? (
                      <div className="text-right text-[10px] text-[var(--ds-text-secondary,#5B6B61)]">
                         Max for {formData.month_paid}: {formatCurrency(remainingForSelectedMonth)}
@@ -619,7 +643,7 @@ const PaymentForm = ({ closeDialog, preSelectedStudentId, preSelectedClassId, ex
               <Label>Notes</Label>
               <Input value={formData.notes} onChange={e => setFormData({...formData, notes: e.target.value})} placeholder="Optional notes..." />
           </div>
-          <DialogFooter>
+          <DialogFooter className="flex-col gap-2 sm:flex-col">
               <Button 
                 type="submit" 
                 className={`w-full disabled:opacity-50 disabled:cursor-not-allowed ${formData.status === 'pending' ? 'bg-[var(--ds-warning,#C2410C)] hover:bg-[var(--ds-warning,#C2410C)]/90' : ''}`}
@@ -627,6 +651,16 @@ const PaymentForm = ({ closeDialog, preSelectedStudentId, preSelectedClassId, ex
               >
                 {validation.isDuplicate ? "Month fully paid" : validation.isOverAmount ? "Amount too high" : (isEditing ? "Update Record" : (initialMode === 'charge' ? "Create Charge" : "Record Payment"))}
               </Button>
+              {isEditing && canZeroOrDelete ? (
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="w-full border-[var(--ds-danger,#DC2626)]/40 text-[var(--ds-danger,#DC2626)] hover:bg-[var(--ds-danger,#DC2626)]/10"
+                  onClick={handleDeletePayment}
+                >
+                  Delete payment
+                </Button>
+              ) : null}
           </DialogFooter>
       </form>
   );
