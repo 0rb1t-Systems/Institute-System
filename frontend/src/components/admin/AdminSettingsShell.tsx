@@ -7,6 +7,7 @@ import {
   settingsPrimaryTriggerClass,
   settingsShellClass,
 } from '@/components/admin/settingsNav'
+import { usePlanEntitlements } from '@/hooks/usePlanEntitlements'
 
 export const SETTINGS_GROUPS = [
   {
@@ -63,14 +64,19 @@ export function resolveSettingsGroup(pathname: string, groupParam: string | null
 
 export function AdminSettingsGroupNav({
   active,
-  showDocuments = true,
+  showDocuments = false,
 }: {
   active: SettingsGroupId
   showDocuments?: boolean
 }) {
-  const groups = showDocuments
+  const groups = (showDocuments
     ? SETTINGS_GROUPS
     : SETTINGS_GROUPS.filter((g) => g.id !== 'documents')
+  ).map((g) =>
+    g.id === 'academic' && !showDocuments
+      ? { ...g, hint: 'Grading scale' }
+      : g,
+  )
 
   const colClass = showDocuments
     ? 'sm:grid-cols-2 lg:grid-cols-5'
@@ -104,15 +110,29 @@ export function AdminSettingsGroupNav({
   )
 }
 
+/**
+ * Settings chrome. Documents tab is gated here (Enterprise only) so Landing /
+ * Institution / any page using this shell cannot leak it for Starter.
+ */
 export function AdminSettingsShell({
   active,
   children,
-  showDocuments = true,
 }: {
   active: SettingsGroupId
   children: React.ReactNode
+  /** Kept for call-site compatibility; Documents visibility is decided here. */
   showDocuments?: boolean
 }) {
+  const { canUseTranscriptsCertificates, loading, subscription } = usePlanEntitlements()
+  const slug = String(
+    (Array.isArray(subscription?.platform_plans)
+      ? subscription?.platform_plans?.[0]?.slug
+      : subscription?.platform_plans?.slug) || '',
+  ).toLowerCase()
+  // Always gate inside the shell (Landing + Institution). Never show for Starter / while loading.
+  const showDocuments =
+    !loading && slug !== 'starter' && canUseTranscriptsCertificates
+
   return (
     <div className={settingsShellClass}>
       <div className="p-1.5 sm:p-2">

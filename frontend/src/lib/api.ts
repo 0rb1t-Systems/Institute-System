@@ -388,6 +388,15 @@ export const createNewUser = async (data) => {
       role,
       phone: meta.phone || data.phone || null,
       student_code: data.student_code || meta.student_code || null,
+      university: data.university ?? data.university_name ?? meta.university ?? null,
+      faculty: data.faculty ?? meta.faculty ?? null,
+      year_of_study: data.year ?? data.year_of_study ?? meta.year_of_study ?? null,
+      affiliate_id:
+        data.affiliate_id && data.affiliate_id !== 'none'
+          ? data.affiliate_id
+          : meta.affiliate_id && meta.affiliate_id !== 'none'
+            ? meta.affiliate_id
+            : null,
       skipWelcomeEmail: data.skipWelcomeEmail === true,
       settlement_model: role === 'instructor' ? settlementModel : undefined,
       fixed_fee_amount: role === 'instructor' ? fixedFeeAmount : undefined,
@@ -405,6 +414,8 @@ export const createNewUser = async (data) => {
       } else if (ctx && typeof ctx.text === 'function') {
         const text = await ctx.text()
         payload = text ? JSON.parse(text) : null
+      } else if (typeof result === 'object' && result?.error) {
+        payload = result
       }
     } catch {
       /* keep original error */
@@ -461,7 +472,9 @@ export const createNewUser = async (data) => {
 
   const serverMsg = payload?.error || error?.message || null
   if (serverMsg) {
-    const lower = String(serverMsg).toLowerCase()
+    const raw = String(serverMsg)
+    const lower = raw.toLowerCase()
+    console.error('[createNewUser] edge error', { raw, payload, invokeError: error?.message })
     if (
       lower.includes('user_account_exists') ||
       lower.includes('already been registered') ||
@@ -472,6 +485,12 @@ export const createNewUser = async (data) => {
       lower.includes('email_exists')
     ) {
       throw new Error('USER_ACCOUNT_EXISTS')
+    }
+    if (lower.includes('phone_required')) {
+      throw new Error('PHONE_REQUIRED')
+    }
+    if (lower.includes('student_id_exists')) {
+      throw new Error('STUDENT_ID_EXISTS')
     }
     if (lower.includes('unauthorized') || lower.includes('invalid or expired session')) {
       throw new Error('SESSION_EXPIRED')
@@ -492,6 +511,9 @@ export const createNewUser = async (data) => {
     if (lower.includes('student_password_failed')) {
       throw new Error('STUDENT_PASSWORD_FAILED')
     }
+    if (lower.includes('tenant_suspended') || lower.includes('auth.tenant_suspended')) {
+      throw new Error('AUTH.TENANT_SUSPENDED')
+    }
     if (lower.includes('not allowed') || lower.includes('forbidden')) {
       throw new Error('FORBIDDEN')
     }
@@ -499,10 +521,13 @@ export const createNewUser = async (data) => {
     if (lower.includes('bad_jwt') || lower.includes('unrecognized jwt kid') || lower.includes('service role')) {
       throw new Error('SERVER_AUTH_MISCONFIGURED')
     }
-    throw new Error('UNEXPECTED')
+    // Keep a short server hint for mapError (avoids blank "Something went wrong")
+    const hint = raw.replace(/^Error:\s*/i, '').trim().slice(0, 180)
+    throw new Error(hint ? `UNEXPECTED: ${hint}` : 'UNEXPECTED')
   }
 
-  throw new Error('UNEXPECTED')
+  console.error('[createNewUser] empty failure', { result, error })
+  throw new Error('UNEXPECTED: No response from create-user')
 }
 
 export const updateUser = async (userId, data) => {
@@ -797,6 +822,11 @@ export const createStudentWithAutoCode = async (data) => {
     },
     phone: data.phone,
     student_code: data.student_code,
+    university: data.university ?? data.university_name ?? null,
+    faculty: data.faculty ?? null,
+    year: data.year ?? data.year_of_study ?? null,
+    year_of_study: data.year ?? data.year_of_study ?? null,
+    affiliate_id: data.affiliate_id && data.affiliate_id !== 'none' ? data.affiliate_id : null,
     skipWelcomeEmail: data.skipWelcomeEmail === true,
   })
   const code =
@@ -809,6 +839,10 @@ export const createStudentWithAutoCode = async (data) => {
     full_name: data.name || data.full_name,
     email: data.email,
     phone: data.phone || null,
+    university: data.university ?? data.university_name ?? null,
+    faculty: data.faculty ?? null,
+    year_of_study: data.year ?? data.year_of_study ?? null,
+    affiliate_id: data.affiliate_id && data.affiliate_id !== 'none' ? data.affiliate_id : null,
     created_at: new Date().toISOString(),
     status: 'approved',
     role: 'student',
@@ -824,34 +858,8 @@ export const createStudentWithAutoCode = async (data) => {
 }
 
 export const registerManualStudent = async (data) => {
-  let student = await createStudentWithAutoCode(data)
-  const educationUpdates: any = {}
-  if (data.university !== undefined || data.university_name !== undefined) {
-    educationUpdates.university = data.university ?? data.university_name ?? null
-  }
-  if (data.faculty !== undefined) educationUpdates.faculty = data.faculty || null
-  if (data.year !== undefined || data.year_of_study !== undefined) {
-    educationUpdates.year_of_study = data.year ?? data.year_of_study ?? null
-  }
-  if (data.affiliate_id && data.affiliate_id !== 'none') {
-    educationUpdates.affiliate_id = data.affiliate_id
-  }
-  if (Object.keys(educationUpdates).length) {
-    const { data: updated, error } = await supabase
-      .from('profiles')
-      .update(educationUpdates)
-      .eq('id', student.id)
-      .select('*')
-      .single()
-    if (error) throw error
-    student = {
-      ...mapStudent(updated),
-      password: student.password,
-      emailed: student.emailed,
-      email_skipped: student.email_skipped,
-      email_error: student.email_error,
-    }
-  }
+  // Education + affiliate are written by create-user in one step (no follow-up PATCH).
+  const student = await createStudentWithAutoCode(data)
   if (data.class_id && data.class_id !== 'none') {
     await createEnrollment({
       student_id: student.id,

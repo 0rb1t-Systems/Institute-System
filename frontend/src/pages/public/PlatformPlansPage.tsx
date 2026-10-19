@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useState } from 'react'
 import { Helmet } from 'react-helmet'
-import { Link, useNavigate } from 'react-router-dom'
+import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { motion, useReducedMotion } from 'framer-motion'
 import { Check, ArrowRight, Loader2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
@@ -51,6 +51,7 @@ const PlatformPlansPage = () => {
   const { user } = useAuth()
   const { toast } = useToast()
   const navigate = useNavigate()
+  const [searchParams, setSearchParams] = useSearchParams()
   const reduceMotion = useReducedMotion()
   const isTenantAdmin = user?.role === 'admin' && Boolean(user?.institution_id)
 
@@ -95,15 +96,36 @@ const PlatformPlansPage = () => {
   }, [load])
 
   const openBuy = (plan: any) => {
+    if (!plan?.id) return
     const monthly = Number(plan.price_monthly) || 0
     const yearly = Number(plan.price_yearly) || 0
-    if (monthly <= 0 && yearly <= 0) return
+    if (monthly <= 0 && yearly <= 0) {
+      toast({
+        title: 'Custom plan',
+        description: 'This plan needs a quote. Open Support to continue.',
+      })
+      return
+    }
     setSelectedPlan(plan)
     setBillingCycle(monthly > 0 ? 'monthly' : 'yearly')
     setPayerName('')
     setPhone('')
     setBuyOpen(true)
   }
+
+  // Deep-link: /plans?plan=starter|enterprise opens WaafiPay checkout
+  useEffect(() => {
+    if (loading || buyOpen || !plans.length) return
+    const slug = String(searchParams.get('plan') || '').trim().toLowerCase()
+    if (!slug) return
+    const match = plans.find((p) => String(p.slug || '').toLowerCase() === slug)
+    if (!match) return
+    openBuy(match)
+    const next = new URLSearchParams(searchParams)
+    next.delete('plan')
+    setSearchParams(next, { replace: true })
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- open once per ?plan=
+  }, [loading, plans, searchParams])
 
   const chargeAmount =
     selectedPlan == null

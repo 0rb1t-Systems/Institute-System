@@ -6,7 +6,7 @@
 //  Security:
 //   - Caller JWT verified (gateway + getUser)
 //   - admin  -> student | staff | instructor | admin | affiliate
-//   - staff  -> student | instructor
+//   - staff  -> student only
 //   - New user inherits caller's institution_id only (tenant isolation)
 //   - Service-role client never inherits the caller's Authorization header
 // =====================================================================
@@ -123,6 +123,16 @@ Deno.serve(async (req) => {
     const full_name = String(body.full_name || '').trim()
     const role = String(body.role || '').trim().toLowerCase()
     const phone = body.phone ? String(body.phone).trim() : null
+    const university = body.university ? String(body.university).trim() : null
+    const faculty = body.faculty ? String(body.faculty).trim() : null
+    const year_of_study = body.year_of_study
+      ? String(body.year_of_study).trim()
+      : body.year
+        ? String(body.year).trim()
+        : null
+    const affiliate_id_raw = body.affiliate_id ? String(body.affiliate_id).trim() : ''
+    const affiliate_id =
+      affiliate_id_raw && affiliate_id_raw !== 'none' ? affiliate_id_raw : null
     const requestedStudentCode = body.student_code
       ? String(body.student_code).trim().toUpperCase()
       : ''
@@ -230,6 +240,10 @@ Deno.serve(async (req) => {
           full_name,
           role,
           phone,
+          ...(role === 'student' && university ? { university } : {}),
+          ...(role === 'student' && faculty ? { faculty } : {}),
+          ...(role === 'student' && year_of_study ? { year_of_study } : {}),
+          ...(role === 'student' && affiliate_id ? { affiliate_id } : {}),
           ...(role === 'instructor'
             ? { settlement_model, fixed_fee_amount, instructor_commission_rate }
             : {}),
@@ -325,6 +339,10 @@ Deno.serve(async (req) => {
       email,
       phone,
       ...(role === 'student' && requestedStudentCode ? { student_code: requestedStudentCode } : {}),
+      ...(role === 'student' && university ? { university } : {}),
+      ...(role === 'student' && faculty ? { faculty } : {}),
+      ...(role === 'student' && year_of_study ? { year_of_study } : {}),
+      ...(role === 'student' && affiliate_id ? { affiliate_id } : {}),
       settlement_model: role === 'instructor' ? settlement_model : 'commission',
       fixed_fee_amount: role === 'instructor' ? fixed_fee_amount : 0,
       instructor_commission_rate: role === 'instructor' ? instructor_commission_rate : null,

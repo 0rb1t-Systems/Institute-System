@@ -6,6 +6,7 @@ import {
   ENTITLEMENT_EMAIL_SUPPORT,
   ENTITLEMENT_TRANSCRIPTS_CERTIFICATES,
   hasPlanEntitlement,
+  planSlug,
   type PlanEntitlementKey,
 } from '@/lib/planEntitlements'
 
@@ -43,12 +44,17 @@ export function usePlanEntitlements() {
       setSubscription(subResult)
       // Prefer server RPC when it succeeds (deny-by-default for Starter).
       // Only fall back to subscription row if the RPC errored (e.g. older DB).
-      const certOk = certResult.error
-        ? hasPlanEntitlement(subResult, ENTITLEMENT_TRANSCRIPTS_CERTIFICATES)
-        : certResult.data === true
-      const emailOk = emailResult.error
-        ? hasPlanEntitlement(subResult, ENTITLEMENT_EMAIL_SUPPORT)
-        : emailResult.data === true
+      const isStarter = planSlug(subResult) === 'starter'
+      const certOk =
+        !isStarter &&
+        (certResult.error
+          ? hasPlanEntitlement(subResult, ENTITLEMENT_TRANSCRIPTS_CERTIFICATES)
+          : certResult.data === true)
+      const emailOk =
+        !isStarter &&
+        (emailResult.error
+          ? hasPlanEntitlement(subResult, ENTITLEMENT_EMAIL_SUPPORT)
+          : emailResult.data === true)
       setEntitlementMap({
         [ENTITLEMENT_TRANSCRIPTS_CERTIFICATES]: certOk,
         [ENTITLEMENT_EMAIL_SUPPORT]: emailOk,

@@ -28,7 +28,7 @@ const GROUP_TABS = {
 } as const
 
 const SUBTITLES = {
-  institution: 'Institution profile, branding, IDs, and document signatories.',
+  institution: 'Institution profile, branding, and IDs.',
   academic: 'Grading scale and transcript templates.',
   finance: 'Fees, commissions, and invoice templates.',
   documents: 'Certificate templates.',
@@ -98,11 +98,20 @@ const InstitutionSettingsPage = () => {
       </Helmet>
 
       <div className="mx-auto max-w-6xl">
-        <PageHeader title="Institution Settings" subtitle={SUBTITLES[group]} />
+        <PageHeader
+          title="Institution Settings"
+          subtitle={
+            group === 'academic' && !canUseTranscriptsCertificates && !entitlementsLoading
+              ? 'Grading scale for your institution.'
+              : group === 'institution' && !canUseTranscriptsCertificates && !entitlementsLoading
+                ? 'Institution profile, branding, and student IDs.'
+                : SUBTITLES[group]
+          }
+        />
 
         <AdminSettingsShell
           active={group}
-          showDocuments={entitlementsLoading || canUseTranscriptsCertificates}
+          showDocuments={!entitlementsLoading && canUseTranscriptsCertificates}
         >
           {tabs ? (
             <Tabs value={tab} onValueChange={setTab} className="w-full">

@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { AdminSettingsShell } from '@/components/admin/AdminSettingsShell'
 import { useAuth } from '@/contexts/AuthContext'
+import { usePlanEntitlements } from '@/hooks/usePlanEntitlements'
 import { getMyInstitution, updateInstitution, uploadInstitutionAsset } from '@/lib/api'
 import { getInstitutionDisplayName, getTenantPortalUrl, publishInstitutionBrand } from '@/lib/institution'
 import { getUserMessage } from '@/lib/mapError'
@@ -24,6 +25,7 @@ import { sanitizeLandingContent } from '@/lib/landingContent'
  */
 const LandingCustomizePage = () => {
   const { institution: authInst, refreshUser } = useAuth()
+  const { canUseTranscriptsCertificates, loading: entitlementsLoading } = usePlanEntitlements()
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
@@ -197,7 +199,10 @@ const LandingCustomizePage = () => {
           subtitle="Landing page templates, design, and customization."
         />
 
-        <AdminSettingsShell active="landing">
+        <AdminSettingsShell
+          active="landing"
+          showDocuments={!entitlementsLoading && canUseTranscriptsCertificates}
+        >
           <div className="p-4 sm:p-5 space-y-4">
             <div className="flex flex-wrap items-center gap-3">
               <Button asChild variant="outline" size="sm" className="h-9 border-[var(--tenant-line)]">

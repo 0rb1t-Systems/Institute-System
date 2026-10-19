@@ -342,10 +342,6 @@ const CODE_MAP = {
     description:
       'Transcripts & Certificates are available on the Enterprise plan. Upgrade from Plans & Subscriptions.',
   },
-  PHONE_REQUIRED: {
-    title: 'Phone required',
-    description: 'Enter a valid mobile number (e.g. 25261xxxxxxx).',
-  },
   PAYER_NAME_REQUIRED: {
     title: 'Name required',
     description: 'Enter the full name for the payment invoice.',
@@ -644,6 +640,16 @@ export const mapError = (error, options: any = {}) => {
 
   // Prefer explicit application codes
   const appCode = extractCode(error, raw);
+  // UNEXPECTED: <detail> — show safe detail instead of the generic toast
+  if (appCode === 'UNEXPECTED') {
+    const detail = raw.replace(/^UNEXPECTED\s*:\s*/i, '').trim();
+    if (detail && detail !== 'UNEXPECTED' && !isTechnical(detail)) {
+      return {
+        title: MESSAGES.UNEXPECTED.title,
+        description: detail,
+      };
+    }
+  }
   if (appCode && CODE_MAP[appCode]) {
     return asFeedback(CODE_MAP[appCode]);
   }

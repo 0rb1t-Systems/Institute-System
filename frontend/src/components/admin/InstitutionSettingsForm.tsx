@@ -16,6 +16,7 @@ import {
   Wallet,
 } from 'lucide-react'
 import { useAuth } from '@/contexts/AuthContext'
+import { usePlanEntitlements } from '@/hooks/usePlanEntitlements'
 import { updateInstitution, uploadInstitutionAsset, getMyInstitution } from '@/lib/api'
 import {
   brandedImageSrc,
@@ -178,6 +179,8 @@ const InstitutionSettingsForm = ({
   section?: 'grading' | 'finance' | string
 }) => {
   const { institution, refreshUser } = useAuth()
+  const { canUseTranscriptsCertificates, loading: planLoading } = usePlanEntitlements()
+  const showDocFields = !planLoading && canUseTranscriptsCertificates
   const { toast } = useToast()
   const [form, setForm] = useState(empty)
   const [saving, setSaving] = useState(false)
@@ -595,7 +598,9 @@ const InstitutionSettingsForm = ({
         <Alert className="mx-4 mt-4 bg-amber-50 border-amber-200 text-amber-900 py-2.5 [html[data-platform-theme='dark']_&]:bg-amber-950/40 [html[data-platform-theme='dark']_&]:border-amber-800 [html[data-platform-theme='dark']_&]:text-amber-100">
           <AlertCircle className="h-4 w-4" />
           <AlertDescription className="text-sm">
-            Add name, address, phone, and email before issuing certificates, transcripts, or invoices.
+            {showDocFields
+              ? 'Add name, address, phone, and email before issuing certificates, transcripts, or invoices.'
+              : 'Add name, address, phone, and email before issuing invoices.'}
           </AlertDescription>
         </Alert>
       ) : null}
@@ -726,24 +731,28 @@ const InstitutionSettingsForm = ({
                 onFile={(e) => handleAssetFile(e, 'logo', 'logo_url')}
                 uploading={uploading === 'logo'}
               />
-              <AssetUploadField
-                id="inst_stamp"
-                label="Stamp"
-                hint="Used on certificates and transcripts."
-                value={form.seal_url}
-                onUrlChange={(v) => setField('seal_url', v)}
-                onFile={(e) => handleAssetFile(e, 'stamp', 'seal_url')}
-                uploading={uploading === 'stamp'}
-              />
-              <AssetUploadField
-                id="inst_signature"
-                label="Signature"
-                hint="Director / registrar on certificates."
-                value={form.signature_url}
-                onUrlChange={(v) => setField('signature_url', v)}
-                onFile={(e) => handleAssetFile(e, 'signature', 'signature_url')}
-                uploading={uploading === 'signature'}
-              />
+              {showDocFields ? (
+                <>
+                  <AssetUploadField
+                    id="inst_stamp"
+                    label="Stamp"
+                    hint="Used on certificates and transcripts."
+                    value={form.seal_url}
+                    onUrlChange={(v) => setField('seal_url', v)}
+                    onFile={(e) => handleAssetFile(e, 'stamp', 'seal_url')}
+                    uploading={uploading === 'stamp'}
+                  />
+                  <AssetUploadField
+                    id="inst_signature"
+                    label="Signature"
+                    hint="Director / registrar on certificates."
+                    value={form.signature_url}
+                    onUrlChange={(v) => setField('signature_url', v)}
+                    onFile={(e) => handleAssetFile(e, 'signature', 'signature_url')}
+                    uploading={uploading === 'signature'}
+                  />
+                </>
+              ) : null}
             </div>
             <LogoBrandColorPicker
               primary={form.theme_primary}
@@ -759,32 +768,34 @@ const InstitutionSettingsForm = ({
 
         <SectionBlock id="settings-ids" icon={Hash} title="IDs">
             <div className="grid gap-6 sm:grid-cols-2">
-              <Field
-                label="Certificate start"
-                htmlFor="cert_number_start"
-                hint={`Next: ${certNext}${
-                  institution?.certificate_number_last
-                    ? ` · last issued ${formatCertificateSerial(
-                        institution.certificate_number_last,
-                        institution.certificate_number_pad,
-                      )}`
-                    : ''
-                }`}
-              >
-                <div className="flex items-center gap-2">
-                  <span className="font-mono text-[var(--tenant-muted)] shrink-0 text-sm">CERT-</span>
-                  <Input
-                    id="cert_number_start"
-                    value={form.certificate_number_start}
-                    onChange={(e) =>
-                      setField('certificate_number_start', e.target.value.replace(/[^\d]/g, '').slice(0, 9))
-                    }
-                    inputMode="numeric"
-                    placeholder="001"
-                    className={cn(inputCls, 'font-mono')}
-                  />
-                </div>
-              </Field>
+              {showDocFields ? (
+                <Field
+                  label="Certificate start"
+                  htmlFor="cert_number_start"
+                  hint={`Next: ${certNext}${
+                    institution?.certificate_number_last
+                      ? ` · last issued ${formatCertificateSerial(
+                          institution.certificate_number_last,
+                          institution.certificate_number_pad,
+                        )}`
+                      : ''
+                  }`}
+                >
+                  <div className="flex items-center gap-2">
+                    <span className="font-mono text-[var(--tenant-muted)] shrink-0 text-sm">CERT-</span>
+                    <Input
+                      id="cert_number_start"
+                      value={form.certificate_number_start}
+                      onChange={(e) =>
+                        setField('certificate_number_start', e.target.value.replace(/[^\d]/g, '').slice(0, 9))
+                      }
+                      inputMode="numeric"
+                      placeholder="001"
+                      className={cn(inputCls, 'font-mono')}
+                    />
+                  </div>
+                </Field>
+              ) : null}
               <Field
                 label="Student ID start"
                 htmlFor="student_id_sample"
@@ -813,62 +824,68 @@ const InstitutionSettingsForm = ({
 
         <SectionBlock id="settings-documents" icon={FileText} title="Signatories & footers">
           <div className="space-y-5">
-            <div>
-              <p className="text-xs font-medium text-[var(--tenant-muted)] mb-3">Signatories</p>
-              <div className="grid gap-3 sm:grid-cols-2">
-                <Field label="Left title" htmlFor="sig_left_title">
-                  <Input
-                    id="sig_left_title"
-                    value={form.signatory_left_title}
-                    onChange={(e) => setField('signatory_left_title', e.target.value)}
-                    className={inputCls}
-                  />
-                </Field>
-                <Field label="Left name" htmlFor="sig_left_name">
-                  <Input
-                    id="sig_left_name"
-                    value={form.signatory_left_name}
-                    onChange={(e) => setField('signatory_left_name', e.target.value)}
-                    className={inputCls}
-                  />
-                </Field>
-                <Field label="Right title" htmlFor="sig_right_title">
-                  <Input
-                    id="sig_right_title"
-                    value={form.signatory_right_title}
-                    onChange={(e) => setField('signatory_right_title', e.target.value)}
-                    className={inputCls}
-                  />
-                </Field>
-                <Field label="Right name" htmlFor="sig_right_name">
-                  <Input
-                    id="sig_right_name"
-                    value={form.signatory_right_name}
-                    onChange={(e) => setField('signatory_right_name', e.target.value)}
-                    className={inputCls}
-                  />
-                </Field>
+            {showDocFields ? (
+              <div>
+                <p className="text-xs font-medium text-[var(--tenant-muted)] mb-3">Signatories</p>
+                <div className="grid gap-3 sm:grid-cols-2">
+                  <Field label="Left title" htmlFor="sig_left_title">
+                    <Input
+                      id="sig_left_title"
+                      value={form.signatory_left_title}
+                      onChange={(e) => setField('signatory_left_title', e.target.value)}
+                      className={inputCls}
+                    />
+                  </Field>
+                  <Field label="Left name" htmlFor="sig_left_name">
+                    <Input
+                      id="sig_left_name"
+                      value={form.signatory_left_name}
+                      onChange={(e) => setField('signatory_left_name', e.target.value)}
+                      className={inputCls}
+                    />
+                  </Field>
+                  <Field label="Right title" htmlFor="sig_right_title">
+                    <Input
+                      id="sig_right_title"
+                      value={form.signatory_right_title}
+                      onChange={(e) => setField('signatory_right_title', e.target.value)}
+                      className={inputCls}
+                    />
+                  </Field>
+                  <Field label="Right name" htmlFor="sig_right_name">
+                    <Input
+                      id="sig_right_name"
+                      value={form.signatory_right_name}
+                      onChange={(e) => setField('signatory_right_name', e.target.value)}
+                      className={inputCls}
+                    />
+                  </Field>
+                </div>
               </div>
-            </div>
+            ) : null}
             <div>
               <p className="text-xs font-medium text-[var(--tenant-muted)] mb-3">Footer lines</p>
-              <div className="grid gap-3 lg:grid-cols-3">
-                <Field label="Certificate" htmlFor="cert_footer">
-                  <Textarea
-                    id="cert_footer"
-                    value={form.certificate_footer_text}
-                    onChange={(e) => setField('certificate_footer_text', e.target.value)}
-                    className="bg-[var(--tenant-bg-2)] border-[var(--tenant-line)] text-[var(--tenant-text)] min-h-[72px]"
-                  />
-                </Field>
-                <Field label="Transcript" htmlFor="tr_footer">
-                  <Textarea
-                    id="tr_footer"
-                    value={form.transcript_footer_text}
-                    onChange={(e) => setField('transcript_footer_text', e.target.value)}
-                    className="bg-[var(--tenant-bg-2)] border-[var(--tenant-line)] text-[var(--tenant-text)] min-h-[72px]"
-                  />
-                </Field>
+              <div className={cn('grid gap-3', showDocFields ? 'lg:grid-cols-3' : 'lg:grid-cols-1')}>
+                {showDocFields ? (
+                  <>
+                    <Field label="Certificate" htmlFor="cert_footer">
+                      <Textarea
+                        id="cert_footer"
+                        value={form.certificate_footer_text}
+                        onChange={(e) => setField('certificate_footer_text', e.target.value)}
+                        className="bg-[var(--tenant-bg-2)] border-[var(--tenant-line)] text-[var(--tenant-text)] min-h-[72px]"
+                      />
+                    </Field>
+                    <Field label="Transcript" htmlFor="tr_footer">
+                      <Textarea
+                        id="tr_footer"
+                        value={form.transcript_footer_text}
+                        onChange={(e) => setField('transcript_footer_text', e.target.value)}
+                        className="bg-[var(--tenant-bg-2)] border-[var(--tenant-line)] text-[var(--tenant-text)] min-h-[72px]"
+                      />
+                    </Field>
+                  </>
+                ) : null}
                 <Field label="Invoice" htmlFor="inv_footer">
                   <Textarea
                     id="inv_footer"

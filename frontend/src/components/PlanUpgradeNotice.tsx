@@ -21,8 +21,14 @@ export default function PlanUpgradeNotice({
           Upgrade to the Enterprise plan to unlock {feature.toLowerCase()}. Your admin can upgrade
           from Plans &amp; Subscriptions.
         </p>
-        <Button asChild size="sm" className="bg-[var(--ds-primary,#1F8A5B)] text-white hover:opacity-90">
-          <Link to="/plans">View plans</Link>
+        <Button
+          asChild
+          size="sm"
+          className="bg-[var(--ds-primary,#0B3D2E)] text-[#fff] hover:opacity-90 [.tenant-shell_&]:bg-[var(--ds-primary,#0B3D2E)] [.tenant-shell_&]:text-[#fff] [.tenant-shell_&]:hover:bg-[var(--ds-primary-hover,#082E22)]"
+        >
+          <Link to="/plans" className="text-[#fff] hover:text-[#fff]">
+            View plans
+          </Link>
         </Button>
       </AlertDescription>
     </Alert>
