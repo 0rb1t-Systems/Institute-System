@@ -12,6 +12,7 @@ import {
   getPublicRegistrationOptionsBySubdomain,
   getPublicInstitutionBySubdomain,
   submitGeneralRegistration,
+  ensurePublicTenantSubdomain,
 } from '@/lib/api';
 import { resolvePublicTenantSubdomain } from '@/lib/institution';
 import { normalizePhoneNumber, isValidPhoneFormat } from '@/lib/validatePhoneNumber';
@@ -43,9 +44,13 @@ const PublicGeneralRegistrationPage = () => {
     const [inquiryResult, setInquiryResult] = useState(null);
     const [institutionLogo, setInstitutionLogo] = useState('');
     const [error, setError] = useState(null);
+    const [resolvedSubdomain, setResolvedSubdomain] = useState(
+      () => searchParams.get('tenant') || searchParams.get('subdomain') || resolvePublicTenantSubdomain() || '',
+    );
 
-    const subdomain = searchParams.get('tenant') || searchParams.get('subdomain') || resolvePublicTenantSubdomain();
+    const queryTenant = searchParams.get('tenant') || searchParams.get('subdomain') || '';
     const affiliateFromLink = searchParams.get('ref') || searchParams.get('affiliate') || '';
+    const subdomain = resolvedSubdomain;
 
     const [formData, setFormData] = useState({
         student_name: '',
@@ -60,39 +65,53 @@ const PublicGeneralRegistrationPage = () => {
     });
 
     useEffect(() => {
-        fetchPublicData();
-    }, [subdomain, affiliateFromLink]);
+        let cancelled = false;
+        const load = async () => {
+            setLoading(true);
+            setError(null);
+            try {
+                // Custom domains (e.g. brce.site) often have no ?tenant= — resolve by hostname.
+                const slug =
+                  String(queryTenant || '').trim().toLowerCase() ||
+                  (await ensurePublicTenantSubdomain());
+                if (cancelled) return;
+                setResolvedSubdomain(slug);
+
+                if (!slug) {
+                    setError('Institution not found. Open this page from your institution link (?tenant=subdomain).');
+                    setProgramOptions([]);
+                    return;
+                }
+
+                const [options, inst] = await Promise.all([
+                    getPublicRegistrationOptionsBySubdomain(slug, affiliateFromLink || null),
+                    getPublicInstitutionBySubdomain(slug),
+                ]);
+                if (cancelled) return;
+                setProgramOptions(options || []);
+                setInstitutionName(inst?.name || '');
+                setInstitutionLogo(inst?.logo_url || '');
+                setFormData((prev) => ({ ...prev, subdomain: slug }));
+                setError(inst ? null : 'Institution not found or inactive.');
+            } catch (err) {
+                if (cancelled) return;
+                console.error('Failed to fetch public registration data:', err);
+                setError('Unable to load available programs. Please try again later.');
+            } finally {
+                if (!cancelled) setLoading(false);
+            }
+        };
+        load();
+        return () => {
+            cancelled = true;
+        };
+    }, [queryTenant, affiliateFromLink]);
 
     useEffect(() => {
         if (affiliateFromLink) {
             setFormData((prev) => ({ ...prev, affiliate_id: affiliateFromLink }));
         }
     }, [affiliateFromLink]);
-
-    const fetchPublicData = async () => {
-        setLoading(true);
-        try {
-            if (!subdomain) {
-                setError('Institution not found. Open this page from your institution link (?tenant=subdomain).');
-                setProgramOptions([]);
-                return;
-            }
-            const [options, inst] = await Promise.all([
-                getPublicRegistrationOptionsBySubdomain(subdomain, affiliateFromLink || null),
-                getPublicInstitutionBySubdomain(subdomain),
-            ]);
-            setProgramOptions(options || []);
-            setInstitutionName(inst?.name || '');
-            setInstitutionLogo(inst?.logo_url || '');
-            setFormData((prev) => ({ ...prev, subdomain }));
-            setError(inst ? null : 'Institution not found or inactive.');
-        } catch (err) {
-            console.error('Failed to fetch public registration data:', err);
-            setError('Unable to load available programs. Please try again later.');
-        } finally {
-            setLoading(false);
-        }
-    };
 
     const handleChange = (e) => {
         const { id, value } = e.target;

@@ -14,6 +14,7 @@ import {
   getPublicClassesBySubdomain,
   getPublicInstitutionBySubdomain,
   submitGeneralRegistration,
+  ensurePublicTenantSubdomain,
 } from '@/lib/api';
 import { resolvePublicTenantSubdomain } from '@/lib/institution';
 import { normalizePhoneNumber, isValidPhoneFormat } from '@/lib/validatePhoneNumber';
@@ -31,11 +32,11 @@ const PublicRegistrationPage = () => {
     const { classId } = useParams();
     const [searchParams] = useSearchParams();
     const { toast } = useToast();
-    const subdomain =
-      searchParams.get('tenant') ||
-      searchParams.get('subdomain') ||
-      resolvePublicTenantSubdomain();
+    const queryTenant = searchParams.get('tenant') || searchParams.get('subdomain') || '';
     const affiliateFromLink = searchParams.get('ref') || searchParams.get('affiliate') || '';
+    const [subdomain, setSubdomain] = useState(
+      () => queryTenant || resolvePublicTenantSubdomain() || '',
+    );
     
     const [loading, setLoading] = useState(true);
     const [submitting, setSubmitting] = useState(false);
@@ -49,13 +50,20 @@ const PublicRegistrationPage = () => {
 
     useEffect(() => {
         if (!classId) return;
+        let cancelled = false;
 
         const load = async () => {
             try {
                 setLoading(true);
                 setError(null);
 
-                if (!subdomain) {
+                const slug =
+                  String(queryTenant || '').trim().toLowerCase() ||
+                  (await ensurePublicTenantSubdomain());
+                if (cancelled) return;
+                setSubdomain(slug);
+
+                if (!slug) {
                   setClassInfo(null);
                   setError('Institution not found. Open this page from your institution link (?tenant=subdomain).');
                   return;
@@ -63,9 +71,10 @@ const PublicRegistrationPage = () => {
 
                 // Public RPCs only — do not call authenticated getClasses()
                 const [classes, inst] = await Promise.all([
-                  getPublicClassesBySubdomain(subdomain, affiliateFromLink || null),
-                  getPublicInstitutionBySubdomain(subdomain),
+                  getPublicClassesBySubdomain(slug, affiliateFromLink || null),
+                  getPublicInstitutionBySubdomain(slug),
                 ]);
+                if (cancelled) return;
                 const cls = (classes || []).find((c) => c.id === classId);
                 if (!cls) throw new Error('Class not found');
 
@@ -87,14 +96,18 @@ const PublicRegistrationPage = () => {
                 if (searchParams.get('year')) prefillData.year = searchParams.get('year');
                 setFormData(prefillData);
             } catch (err) {
+                if (cancelled) return;
                 setClassInfo(null);
                 notify.error(err, { context: 'PublicRegistrationPage - load', fallback: MESSAGES.LOAD_FAILED });
             } finally {
-                setLoading(false);
+                if (!cancelled) setLoading(false);
             }
         };
         load();
-    }, [classId, searchParams, subdomain]);
+        return () => {
+          cancelled = true;
+        };
+    }, [classId, searchParams, queryTenant, affiliateFromLink]);
 
     const handleChange = (fieldId, value) => {
         setFormData(prev => ({ ...prev, [fieldId]: value }));
