@@ -46,6 +46,7 @@ const ExaminationsPageContent = () => {
   const [expandedClass, setExpandedClass] = useState(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [markingContext, setMarkingContext] = useState(null);
+  const [gradeSearch, setGradeSearch] = useState('');
   const [marksBuffer, setMarksBuffer] = useState({});
   const [isSaving, setIsSaving] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
@@ -192,6 +193,7 @@ const ExaminationsPageContent = () => {
       });
 
       setMarksBuffer(initialBuffer);
+      setGradeSearch('');
       setMarkingContext({
           classId: cls.id,
           courseId: course.id,
@@ -265,6 +267,7 @@ const ExaminationsPageContent = () => {
 
           toast({ title: "Success", description: MESSAGES.SUCCESS.GRADE_SAVED });
           setMarkingContext(null);
+          setGradeSearch('');
           setDialogResults([]);
           setDialogStudents([]);
       } catch (e) {
@@ -300,6 +303,16 @@ const ExaminationsPageContent = () => {
         String(a.name || a.full_name || '').localeCompare(String(b.name || b.full_name || '')),
       );
   }, [markingContext, enrollments, students, results, dialogResults, dialogStudents]);
+
+  const filteredContextStudents = useMemo(() => {
+    const q = gradeSearch.trim().toLowerCase();
+    if (!q) return contextStudents;
+    return contextStudents.filter((s) => {
+      const name = String(s.name || s.full_name || '').toLowerCase();
+      const code = String(s.student_code || '').toLowerCase();
+      return name.includes(q) || code.includes(q);
+    });
+  }, [contextStudents, gradeSearch]);
 
   return (
     <>
@@ -399,22 +412,35 @@ const ExaminationsPageContent = () => {
       <Dialog open={!!markingContext} onOpenChange={(open) => {
         if (!open) {
           setMarkingContext(null);
+          setGradeSearch('');
           setDialogResults([]);
           setDialogStudents([]);
         }
       }}>
           <DialogContent className={`${showCourseProject ? 'max-w-5xl' : 'max-w-4xl'} h-[85vh] flex flex-col p-0 gap-0`}>
               <DialogHeader className="p-6 border-b border-[var(--ds-border,#DDE5DF)]">
-                  <div className="flex items-center justify-between">
-                      <div>
+                  <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
+                      <div className="min-w-0 shrink">
                         <DialogTitle className="text-xl">{markingContext?.courseName}</DialogTitle>
                         <DialogDescription className="mt-1">
                             Grading for <span className="font-medium text-[var(--ds-text-primary,#122018)]">{markingContext?.className}</span>
                         </DialogDescription>
                       </div>
-                      <Badge variant="outline" className="border-[var(--ds-accent,#1F8A5B)]/40 text-[var(--ds-accent,#1F8A5B)] bg-[var(--ds-primary-soft,#ECFDF5)]">
-                          Max Score: {markingContext?.totalMarks}
-                      </Badge>
+                      <div className="flex flex-1 items-center gap-3 sm:max-w-md sm:justify-end">
+                        <div className="relative min-w-0 flex-1">
+                          <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[var(--ds-text-tertiary,#8A978E)]" />
+                          <Input
+                            value={gradeSearch}
+                            onChange={(e) => setGradeSearch(e.target.value)}
+                            placeholder="Search student name or ID…"
+                            className="pl-9"
+                            aria-label="Search students in grading list"
+                          />
+                        </div>
+                        <Badge variant="outline" className="shrink-0 border-[var(--ds-accent,#1F8A5B)]/40 text-[var(--ds-accent,#1F8A5B)] bg-[var(--ds-primary-soft,#ECFDF5)]">
+                            Max Score: {markingContext?.totalMarks}
+                        </Badge>
+                      </div>
                   </div>
               </DialogHeader>
               
@@ -432,8 +458,8 @@ const ExaminationsPageContent = () => {
                           </TableRow>
                       </TableHeader>
                       <TableBody>
-                          {contextStudents.length > 0 ? (
-                              contextStudents.map(student => {
+                          {filteredContextStudents.length > 0 ? (
+                              filteredContextStudents.map(student => {
                                   const buffer = marksBuffer[student.id] || { score: '', comments: '', course_project: '' };
                                   const scoreVal = buffer.score === '' ? NaN : parseFloat(buffer.score);
                                   const isValid = buffer.score === '' || (!isNaN(scoreVal) && scoreVal >= 0 && scoreVal <= (markingContext?.totalMarks || 100));
@@ -485,7 +511,9 @@ const ExaminationsPageContent = () => {
                           ) : (
                               <TableRow>
                                   <TableCell colSpan={showCourseProject ? 5 : 4} className="text-center py-8 text-[var(--ds-text-tertiary,#8A978E)]">
-                                      No students enrolled in this class.
+                                      {gradeSearch.trim()
+                                        ? 'No students match your search.'
+                                        : 'No students enrolled in this class.'}
                                   </TableCell>
                               </TableRow>
                           )}

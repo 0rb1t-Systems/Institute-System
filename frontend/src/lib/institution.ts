@@ -982,18 +982,24 @@ export function isInstitutionSettingsComplete(institution?: InstitutionBrand): b
 }
 
 /**
- * Prefer frozen template_snapshot.branding for issued documents;
- * fall back to live Institution Settings for drafts/previews.
+ * Merge issued-document snapshot with live Institution Settings.
+ * Snapshot fills gaps (historical issue-time fields); live Settings always win
+ * for contact/branding so email/phone/address updates apply to every
+ * transcript, certificate, and printable document — not only newly issued ones.
  */
 export function resolveDocumentBranding(
   institution?: InstitutionBrand,
   templateSnapshot?: { branding?: Record<string, unknown> } | null,
 ): InstitutionBrand {
   const snap = templateSnapshot?.branding
-  if (snap && typeof snap === 'object') {
-    return { ...(institution || {}), ...snap } as InstitutionBrand
+  if (!snap || typeof snap !== 'object') return institution
+
+  const live = (institution || {}) as Record<string, unknown>
+  const out: Record<string, unknown> = { ...snap }
+  for (const [key, value] of Object.entries(live)) {
+    if (value !== undefined) out[key] = value
   }
-  return institution
+  return out as InstitutionBrand
 }
 
 export function getCertificateFooterText(institution?: InstitutionBrand): string {

@@ -1464,6 +1464,40 @@ export const updateInstitution = async (updates) => {
     .single()
   if (error) throw error
 
+  // Keep issued transcript/certificate contact lines in sync with Settings
+  // (template_snapshot.branding used to freeze the old email forever).
+  const brandingTouched = [
+    'name',
+    'email',
+    'phone',
+    'address',
+    'website',
+    'motto',
+    'logo_url',
+    'seal_url',
+    'signature_url',
+    'theme_primary',
+    'theme_accent',
+    'theme_tertiary',
+    'signatory_left_title',
+    'signatory_right_title',
+    'signatory_left_name',
+    'signatory_right_name',
+    'certificate_footer_text',
+    'transcript_footer_text',
+    'transcript_narrative_text',
+    'invoice_footer_text',
+  ].some((k) => allowed[k] !== undefined)
+  if (brandingTouched) {
+    const { error: brandErr } = await supabase.rpc('refresh_institution_document_branding', {
+      p_institution_id: me.institution_id,
+    })
+    // Ignore until migration 0152 is applied; UI still uses live Settings overlay.
+    if (brandErr && !/refresh_institution_document_branding|PGRST202|404/i.test(brandErr.message || '')) {
+      console.warn('refresh_institution_document_branding', brandErr.message)
+    }
+  }
+
   // Keep class commission_rate aligned with Institution Settings so UI matches settlements
   if (allowed.default_instructor_commission_rate !== undefined) {
     const { data: uniqueInstructors } = await supabase
