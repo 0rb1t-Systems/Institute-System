@@ -28,8 +28,12 @@ const ExamGradingPage = () => {
     const navigate = useNavigate();
     const { user, institution } = useAuth();
     const gradeScale = useMemo(() => getInstitutionGradeScale(institution), [institution]);
-    const { exams, results, enrollments, students, saveManualGrades } = useData();
-    const showCourseProject = canManageCourseProjects(institution, user?.role);
+    const { exams, results, enrollments, students, saveManualGrades, ensureStudentTranscript } = useData();
+    const showCourseProject = canManageCourseProjects(
+      institution,
+      user?.role,
+      user?.institution_id,
+    );
     const { toast } = useToast();
     
     const [selectedStudent, setSelectedStudent] = useState(null);
@@ -83,12 +87,25 @@ const ExamGradingPage = () => {
                 submission_date: selectedStudent.result?.submission_date || new Date().toISOString()
             };
             if (showCourseProject) {
-                payload.course_project = sanitizeCourseProject(gradeData.course_project);
+                const project =
+                  sanitizeCourseProject(gradeData.course_project) ||
+                  sanitizeCourseProject(selectedStudent.result?.course_project);
+                if (project) payload.course_project = project;
+                else delete payload.course_project;
             } else {
                 delete payload.course_project;
             }
 
             await saveManualGrades([payload]);
+
+            if (
+              showCourseProject &&
+              exam?.class_id &&
+              selectedStudent?.student?.id &&
+              typeof ensureStudentTranscript === 'function'
+            ) {
+              await ensureStudentTranscript(exam.class_id, selectedStudent.student.id).catch(() => null);
+            }
             
             toast({ title: "Success", description: MESSAGES.SUCCESS.GRADE_SAVED });
             setIsGradeDialogOpen(false);

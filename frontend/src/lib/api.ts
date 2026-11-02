@@ -4074,6 +4074,36 @@ export const getTranscriptById = async (id) => {
   return data
 }
 
+/**
+ * Course project titles already snapshotted onto issued transcripts for one class+course.
+ * Used to re-hydrate the exam grading form when exam_results.course_project was wiped.
+ */
+export const getTranscriptCourseProjects = async (classId, courseId) => {
+  if (!classId || !courseId) return []
+  const { data, error } = await supabase
+    .from('transcript_entries')
+    .select(
+      'course_project, transcript:transcripts!inner(student_id, class_id, status)',
+    )
+    .eq('course_id', courseId)
+    .eq('transcript.class_id', classId)
+    .neq('transcript.status', 'revoked')
+    .not('course_project', 'is', null)
+  if (error) throw error
+
+  const byStudent = new Map()
+  for (const row of data || []) {
+    const studentId = row?.transcript?.student_id
+    const project = String(row?.course_project || '').trim()
+    if (!studentId || !project) continue
+    if (!byStudent.has(studentId)) byStudent.set(studentId, project)
+  }
+  return Array.from(byStudent.entries()).map(([student_id, course_project]) => ({
+    student_id,
+    course_project,
+  }))
+}
+
 export const getTranscriptEntries = async () => {
   const { data, error } = await supabase.from('transcript_entries').select('*')
   if (error) throw error

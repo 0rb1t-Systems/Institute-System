@@ -37,7 +37,11 @@ const ExamResultForm = ({
 }) => {
   const { toast } = useToast();
   const { user, institution } = useAuth();
-  const showCourseProject = canManageCourseProjects(institution, user?.role);
+  const showCourseProject = canManageCourseProjects(
+    institution,
+    user?.role,
+    user?.institution_id,
+  );
   const [loading, setLoading] = useState(false);
   const [duplicateWarning, setDuplicateWarning] = useState(null);
   const [showConfirmDialog, setShowConfirmDialog] = useState(false);
@@ -126,7 +130,12 @@ const ExamResultForm = ({
         submission_date: new Date().toISOString()
       };
       if (showCourseProject) {
-        payload.course_project = sanitizeCourseProject(data.course_project);
+        const project = sanitizeCourseProject(data.course_project);
+        // Do not wipe an existing title with a blank field.
+        if (project) payload.course_project = project;
+        else if (initialData?.course_project) {
+          payload.course_project = sanitizeCourseProject(initialData.course_project);
+        }
       }
 
       if (isEditMode) {

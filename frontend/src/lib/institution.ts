@@ -166,25 +166,37 @@ export const COURSE_PROJECT_MAX_LEN = 200
 
 export function institutionAllowsCourseProjects(
   institution?: { id?: string | null } | null,
+  institutionId?: string | null,
 ): boolean {
-  return COURSE_PROJECT_INSTITUTION_IDS.has(String(institution?.id || '').trim().toLowerCase())
+  const id = String(institution?.id || institutionId || '')
+    .trim()
+    .toLowerCase()
+  return Boolean(id) && COURSE_PROJECT_INSTITUTION_IDS.has(id)
 }
 
 /** Admin of allowed tenants may edit the optional class transcript paragraph. */
 export function canManageTranscriptClassParagraph(
   institution?: { id?: string | null } | null,
   role?: string | null,
+  institutionId?: string | null,
 ): boolean {
-  return String(role || '').toLowerCase() === 'admin' && institutionAllowsCourseProjects(institution)
+  return (
+    String(role || '').toLowerCase() === 'admin' &&
+    institutionAllowsCourseProjects(institution, institutionId)
+  )
 }
 
 /** Admin, staff, and instructors of allowed tenants may enter a course project when grading. */
 export function canManageCourseProjects(
   institution?: { id?: string | null } | null,
   role?: string | null,
+  institutionId?: string | null,
 ): boolean {
   const r = String(role || '').toLowerCase()
-  return (r === 'admin' || r === 'staff' || r === 'instructor') && institutionAllowsCourseProjects(institution)
+  return (
+    (r === 'admin' || r === 'staff' || r === 'instructor') &&
+    institutionAllowsCourseProjects(institution, institutionId)
+  )
 }
 
 export function sanitizeCourseProject(raw?: string | null): string {

@@ -22,11 +22,15 @@ import {
   sanitizeCourseProject,
 } from '@/lib/institution';
 import { pickCanonicalManualExam } from '@/lib/manualExam';
-import { getClassGradingContext, getResultsForExam } from '@/lib/api';
+import { getClassGradingContext, getResultsForExam, getTranscriptCourseProjects } from '@/lib/api';
 
 const ExaminationsPageContent = () => {
   const { user, institution } = useAuth();
-  const showCourseProject = canManageCourseProjects(institution, user?.role);
+  const showCourseProject = canManageCourseProjects(
+    institution,
+    user?.role,
+    user?.institution_id,
+  );
   const { 
     classes, 
     courses, 
@@ -38,6 +42,7 @@ const ExaminationsPageContent = () => {
     results, 
     saveExam, 
     saveManualGrades,
+    ensureStudentTranscript,
     refreshData,
     users = [],
   } = useData();
@@ -163,6 +168,19 @@ const ExaminationsPageContent = () => {
       setDialogResults(currentResults);
       setDialogStudents(rosterStudents);
 
+      // Re-hydrate Course project from issued transcript when exam_results lost it.
+      let transcriptProjects = new Map();
+      if (showCourseProject) {
+        try {
+          const rows = await getTranscriptCourseProjects(cls.id, course.id);
+          transcriptProjects = new Map(
+            (rows || []).map((r) => [r.student_id, sanitizeCourseProject(r.course_project)]),
+          );
+        } catch {
+          transcriptProjects = new Map();
+        }
+      }
+
       const initialBuffer: any = {};
       const enrolledStudentIds = new Set(rosterStudents.map((s) => s.id));
       currentResults.forEach((r) => {
@@ -181,13 +199,16 @@ const ExaminationsPageContent = () => {
               initialBuffer[sid] = {
                   score: scoreVal !== null && scoreVal !== undefined && scoreVal !== '' ? scoreVal : '',
                   comments: comments,
-                  course_project: res.course_project || '',
+                  course_project:
+                    sanitizeCourseProject(res.course_project) ||
+                    transcriptProjects.get(sid) ||
+                    '',
               };
           } else {
               initialBuffer[sid] = {
                   score: '',
                   comments: '',
-                  course_project: '',
+                  course_project: transcriptProjects.get(sid) || '',
               };
           }
       });
@@ -221,8 +242,27 @@ const ExaminationsPageContent = () => {
       setIsSaving(true);
       try {
           const updates = Object.entries(marksBuffer).map(([studentId, data]: [string, any]) => {
+              const existing = (dialogResults || []).find((r) => r.student_id === studentId);
+              const project = showCourseProject ? sanitizeCourseProject(data.course_project) : '';
+              const hasScore = !(data.score === '' || data.score === null || data.score === undefined);
+
               // Leave blank rows alone — never overwrite an existing DB grade with 0/empty.
-              if (data.score === '' || data.score === null || data.score === undefined) return null;
+              // Exception: allow re-saving a course project onto an existing graded row.
+              if (!hasScore) {
+                  if (!project || !existing) return null;
+                  const prior = existing.score ?? existing.final_score ?? existing.raw_score;
+                  const priorNum = Number(prior);
+                  if (!Number.isFinite(priorNum)) return null;
+                  return {
+                      exam_id: markingContext.examId,
+                      student_id: studentId,
+                      score: priorNum,
+                      total_marks: markingContext.totalMarks,
+                      submission_date: existing.submission_date || existing.graded_at || new Date().toISOString(),
+                      answers: existing.answers || [{ question_id: 'manual_comment', answer: data.comments || '' }],
+                      course_project: project,
+                  };
+              }
 
               const scoreNum = parseFloat(data.score);
               
@@ -238,8 +278,12 @@ const ExaminationsPageContent = () => {
                   submission_date: new Date().toISOString(),
                   answers: [{ question_id: 'manual_comment', answer: data.comments || '' }] 
               };
+              // Keep Course project sticky: prefer typed value, else keep whatever was already saved.
+              // Never send blank — that used to wipe the title and leave the transcript empty.
               if (showCourseProject) {
-                  row.course_project = sanitizeCourseProject(data.course_project);
+                  const preserved =
+                    project || sanitizeCourseProject(existing?.course_project);
+                  if (preserved) row.course_project = preserved;
               }
               return row;
           }).filter(Boolean);
@@ -263,6 +307,23 @@ const ExaminationsPageContent = () => {
               });
               return Array.from(byStudent.values());
             });
+          }
+
+          // Always refresh issued transcript rows after grading so Course project
+          // (and marks) stay on the transcript every time — not only when retyped.
+          if (
+            showCourseProject &&
+            markingContext?.classId &&
+            typeof ensureStudentTranscript === 'function' &&
+            Array.isArray(saved) &&
+            saved.length
+          ) {
+            const studentIds = [...new Set(saved.map((r) => r.student_id).filter(Boolean))];
+            await Promise.all(
+              studentIds.map((sid) =>
+                ensureStudentTranscript(markingContext.classId, sid).catch(() => null),
+              ),
+            );
           }
 
           toast({ title: "Success", description: MESSAGES.SUCCESS.GRADE_SAVED });

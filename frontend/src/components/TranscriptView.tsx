@@ -9,7 +9,7 @@ import { Loader2, ScanLine, CheckCircle2, XCircle, Printer, FileDown, User, Refr
 import Logo from '@/components/Logo';
 import QRCode from 'react-qr-code';
 import { Html5QrcodeScanner } from 'html5-qrcode';
-import { verifyTranscriptCredential } from '@/lib/api';
+import { verifyTranscriptCredential, getTranscriptById, getDocumentTemplate } from '@/lib/api';
 import { useNavigate } from 'react-router-dom';
 import {
   getInstitutionDisplayName,
@@ -25,7 +25,6 @@ import {
   getSignatoryRightTitle,
   sanitizeCourseProject,
 } from '@/lib/institution';
-import { getDocumentTemplate } from '@/lib/api';
 import {
   normalizeTranscriptLayoutKey,
   libraryTranscriptLayoutKey,
@@ -250,6 +249,8 @@ const TranscriptView = ({ studentId, onClose, initialClassId }: any) => {
     const [showScanner, setShowScanner] = useState(false);
     const [liveLayoutKey, setLiveLayoutKey] = useState<TranscriptLayoutKey>('classic');
     const [customDesign, setCustomDesign] = useState<HydratedDocumentDesign | null>(null);
+    /** Issued transcript rows (list endpoint omits nested entries). */
+    const [loadedTranscriptEntries, setLoadedTranscriptEntries] = useState([]);
     const navigate = useNavigate();
     
     // Scanner States
@@ -441,7 +442,13 @@ const TranscriptView = ({ studentId, onClose, initialClassId }: any) => {
           selectedClassId,
           classEnrollment?.id,
         );
-        const transcriptRows = studentTranscript?.entries || studentTranscript?.transcript_entries || [];
+        const transcriptRows =
+          (Array.isArray(loadedTranscriptEntries) && loadedTranscriptEntries.length
+            ? loadedTranscriptEntries
+            : null) ||
+          studentTranscript?.entries ||
+          studentTranscript?.transcript_entries ||
+          [];
 
         return relevantCourses.map(course => {
             const gb = gradebook.find(
@@ -468,7 +475,17 @@ const TranscriptView = ({ studentId, onClose, initialClassId }: any) => {
                 sameId(r.student_id, studentData.id) && 
                 relevantExams.some(e => sameId(e.id, r.exam_id))
             );
-            const bestResult = studentResults.sort((a, b) => (Number(b.score ?? b.final_score) || 0) - (Number(a.score ?? a.final_score) || 0))[0];
+            // Score: highest mark. Project: newest non-empty title (not tied to highest score).
+            const bestResult = [...studentResults].sort(
+              (a, b) => (Number(b.score ?? b.final_score) || 0) - (Number(a.score ?? a.final_score) || 0),
+            )[0];
+            const projectResult = [...studentResults]
+              .filter((r) => sanitizeCourseProject(r?.course_project))
+              .sort(
+                (a, b) =>
+                  Number(new Date(b.graded_at || b.submission_date || 0)) -
+                  Number(new Date(a.graded_at || a.submission_date || 0)),
+              )[0];
             const examDetails = bestResult ? exams.find(e => e.id === bestResult.exam_id) : (relevantExams[0] || null);
             
             let marks = null;
@@ -512,8 +529,15 @@ const TranscriptView = ({ studentId, onClose, initialClassId }: any) => {
                   ? Number(liveSem.sort_order ?? 0)
                   : 9999;
 
+            // Once entered, prefer issued transcript snapshot, then any graded
+            // exam row with a title, then the course catalog default — never drop
+            // a known title just because the highest-score row lacks one.
             const courseProject = sanitizeCourseProject(
-              te?.course_project || bestResult?.course_project || '',
+              sanitizeCourseProject(te?.course_project) ||
+                sanitizeCourseProject(projectResult?.course_project) ||
+                sanitizeCourseProject(bestResult?.course_project) ||
+                sanitizeCourseProject(course?.course_project) ||
+                '',
             );
 
             return {
@@ -534,7 +558,7 @@ const TranscriptView = ({ studentId, onClose, initialClassId }: any) => {
                 semester_sort: semesterSort,
             };
         });
-    }, [studentData, selectedClassId, classes, courses, results, classCourses, diplomaCourses, diplomaSemesters, exams, currentClass, gradebookEntries, transcripts, gradeScale, enrollments]);
+    }, [studentData, selectedClassId, classes, courses, results, classCourses, diplomaCourses, diplomaSemesters, exams, currentClass, gradebookEntries, transcripts, gradeScale, enrollments, loadedTranscriptEntries]);
 
     const stats = useMemo(() => {
         const graded = transcriptData.filter(t => t.marks !== null);
@@ -573,8 +597,16 @@ const TranscriptView = ({ studentId, onClose, initialClassId }: any) => {
       let cancelled = false;
       ;(async () => {
         try {
-          await ensureStudentTranscript(selectedClassId, studentData.id);
-          if (!cancelled) ensuredTranscriptKeyRef.current = key;
+          const transcriptId = await ensureStudentTranscript(selectedClassId, studentData.id);
+          if (cancelled) return;
+          ensuredTranscriptKeyRef.current = key;
+          const id = transcriptId != null ? String(transcriptId) : null;
+          if (id) {
+            const full = await getTranscriptById(id);
+            if (!cancelled) {
+              setLoadedTranscriptEntries(full?.entries || full?.transcript_entries || []);
+            }
+          }
         } catch (err) {
           console.error('Auto-issue transcript failed', err);
         }
@@ -584,6 +616,29 @@ const TranscriptView = ({ studentId, onClose, initialClassId }: any) => {
         cancelled = true;
       };
     }, [studentData?.id, selectedClassId, ensureStudentTranscript]);
+
+    // Load nested entries whenever the issued transcript id is known (list API omits them).
+    useEffect(() => {
+      const id = issuedTranscript?.id;
+      if (!id) {
+        setLoadedTranscriptEntries([]);
+        return;
+      }
+      let cancelled = false;
+      ;(async () => {
+        try {
+          const full = await getTranscriptById(id);
+          if (!cancelled) {
+            setLoadedTranscriptEntries(full?.entries || full?.transcript_entries || []);
+          }
+        } catch (err) {
+          console.error('Load transcript entries failed', err);
+        }
+      })();
+      return () => {
+        cancelled = true;
+      };
+    }, [issuedTranscript?.id]);
 
     const brand = resolveDocumentBranding(institution, issuedTranscript?.template_snapshot);
     const verifyCode = String(issuedTranscript?.verification_code || '').trim();
