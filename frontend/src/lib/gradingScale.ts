@@ -181,6 +181,23 @@ export function formatClassificationRange(c: GradeClassification): string {
   return `${a} - ${b}`
 }
 
+/** Award class from CGPA using the institution (or default) classification bands. */
+export function getAwardClassificationFromScale(
+  cgpa: number,
+  scale?: GradingScale | null,
+): GradeClassification | null {
+  const s = scale || getDefaultGradingScale()
+  const g = Number(cgpa)
+  if (!Number.isFinite(g) || !s.classifications?.length) return null
+  const sorted = [...s.classifications].sort((a, b) => b.min - a.min)
+  for (const band of sorted) {
+    if (g >= band.min && g <= band.max + 1e-9) return band
+  }
+  // Edge: above top max (e.g. 4.0 with floating noise) → top band
+  if (g > sorted[0].max && g <= s.scale_max + 0.05) return sorted[0]
+  return null
+}
+
 /** Validate bands before save. Returns error message or null. */
 export function validateGradingScale(scale: GradingScale): string | null {
   if (!scale.bands?.length) return 'Add at least one grade band.'

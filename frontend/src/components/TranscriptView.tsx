@@ -9,7 +9,12 @@ import { Loader2, ScanLine, CheckCircle2, XCircle, Printer, FileDown, User, Refr
 import Logo from '@/components/Logo';
 import QRCode from 'react-qr-code';
 import { Html5QrcodeScanner } from 'html5-qrcode';
-import { verifyTranscriptCredential, getTranscriptById, getDocumentTemplate } from '@/lib/api';
+import {
+  verifyTranscriptCredential,
+  getTranscriptById,
+  getDocumentTemplate,
+  getTranscriptWatermarkSettings,
+} from '@/lib/api';
 import { useNavigate } from 'react-router-dom';
 import {
   getInstitutionDisplayName,
@@ -24,6 +29,11 @@ import {
   getSignatoryRightName,
   getSignatoryRightTitle,
   sanitizeCourseProject,
+  institutionUsesBrceRegistrationTranscript,
+  getTranscriptWatermarkUrl,
+  getTranscriptWatermarkOpacity,
+  getTranscriptWatermarkScalePercent,
+  brandedImageSrc,
 } from '@/lib/institution';
 import {
   normalizeTranscriptLayoutKey,
@@ -47,13 +57,14 @@ import CertificateDesignRenderer from '@/components/certificates/CertificateDesi
 import type { CertificateRenderData } from '@/lib/certificateTemplates';
 import {
   formatClassificationRange,
+  getAwardClassificationFromScale,
   getGradePointsFromScale,
   getInstitutionGradeScale,
   getLetterGradeFromScale,
   isCoursePassedFromScale,
 } from '@/lib/gradingScale';
 import { coursesForClass, coursesForDiploma, groupTranscriptRowsBySemester, semestersForDiploma } from '@/lib/diplomaCourses';
-import { formatMonthYear } from '@/lib/utils';
+import { formatClassTimeRange, formatMonthYear, parseLocalDate } from '@/lib/utils';
 
 function sameId(a, b) {
   if (a == null || b == null || a === '' || b === '') return false;
@@ -96,13 +107,20 @@ type TranscriptGroupPage = {
 };
 
 /** Estimated vertical weight so long grade tables can spill onto extra A4 pages. */
-function transcriptRowUnits(row: any): number {
-  return row?.courseProject ? 1.35 : 1;
+function transcriptRowUnits(row: any, compactRows = false): number {
+  const base = compactRows ? 0.85 : 1;
+  return row?.courseProject ? base + 0.35 : base;
 }
 
-function transcriptGroupUnits(group: TranscriptGroupPage): number {
-  let units = group.name ? 0.7 : 0;
-  for (const row of group.rows || []) units += transcriptRowUnits(row);
+function transcriptGroupUnits(
+  group: TranscriptGroupPage,
+  opts?: { compactRows?: boolean; semesterTotals?: boolean },
+): number {
+  const compactRows = Boolean(opts?.compactRows);
+  let units = group.name ? (compactRows ? 0.55 : 0.7) : 0;
+  for (const row of group.rows || []) units += transcriptRowUnits(row, compactRows);
+  // BRCE per-semester credit / QP / GPA bar under the table
+  if (opts?.semesterTotals) units += compactRows ? 1.1 : 1.35;
   return units;
 }
 
@@ -110,26 +128,47 @@ function cloneGroupWithRows(group: TranscriptGroupPage, rows: any[]): Transcript
   return { key: group.key, name: group.name, rows };
 }
 
+type TranscriptPageOpts = {
+  firstWithFooter: number;
+  firstContinue: number;
+  continuePage: number;
+  lastWithFooter: number;
+  /** BRCE: Semester One always stays on page 1 (never split). */
+  keepFirstSemesterWhole?: boolean;
+  compactRows?: boolean;
+  semesterTotals?: boolean;
+};
+
 /**
  * Pack whole semester groups onto a page. Only splits a semester when that one
  * group alone exceeds the page capacity (keeps Sem 1 / Sem 2 on separate pages when possible).
  */
-function takeWholeSemesterGroups(groups: TranscriptGroupPage[], maxUnits: number) {
+function takeWholeSemesterGroups(
+  groups: TranscriptGroupPage[],
+  maxUnits: number,
+  measureOpts?: { compactRows?: boolean; semesterTotals?: boolean },
+  allowSplit = true,
+) {
   const page: TranscriptGroupPage[] = [];
   let units = 0;
   let index = 0;
 
   while (index < groups.length) {
     const group = groups[index];
-    const weight = transcriptGroupUnits(group);
+    const weight = transcriptGroupUnits(group, measureOpts);
 
     if (page.length === 0 && weight > maxUnits) {
+      if (!allowSplit) {
+        // Prefer a full semester on one page over splitting mid-table.
+        page.push(group);
+        return { page, rest: groups.slice(index + 1) };
+      }
       // Oversized semester: fill what fits, keep semester header on the continuation.
       const rows: any[] = [];
-      let rowUnits = group.name ? 0.7 : 0;
+      let rowUnits = group.name ? (measureOpts?.compactRows ? 0.55 : 0.7) : 0;
       let rowIndex = 0;
       while (rowIndex < (group.rows || []).length) {
-        const nextWeight = transcriptRowUnits(group.rows[rowIndex]);
+        const nextWeight = transcriptRowUnits(group.rows[rowIndex], measureOpts?.compactRows);
         if (rows.length > 0 && rowUnits + nextWeight > maxUnits) break;
         rows.push(group.rows[rowIndex]);
         rowUnits += nextWeight;
@@ -165,17 +204,16 @@ function takeWholeSemesterGroups(groups: TranscriptGroupPage[], maxUnits: number
  */
 function paginateTranscriptGroups(
   groups: TranscriptGroupPage[],
-  opts: {
-    firstWithFooter: number;
-    firstContinue: number;
-    continuePage: number;
-    lastWithFooter: number;
-  },
+  opts: TranscriptPageOpts,
 ): TranscriptGroupPage[][] {
+  const measureOpts = {
+    compactRows: Boolean(opts.compactRows),
+    semesterTotals: Boolean(opts.semesterTotals),
+  };
   const source = (groups || []).filter((g) => (g.rows || []).length > 0);
   if (!source.length) return [[]];
 
-  const totalUnits = source.reduce((sum, g) => sum + transcriptGroupUnits(g), 0);
+  const totalUnits = source.reduce((sum, g) => sum + transcriptGroupUnits(g, measureOpts), 0);
   if (totalUnits <= opts.firstWithFooter) {
     return [source];
   }
@@ -185,28 +223,43 @@ function paginateTranscriptGroups(
   const multiSemester = source.filter((g) => !!g.name).length >= 2;
 
   if (multiSemester) {
-    // First page = first semester only (split only if that semester alone overflows).
-    const first = takeWholeSemesterGroups([remaining[0]], opts.firstContinue);
-    pages.push(first.page);
-    remaining = [...first.rest, ...remaining.slice(1)];
+    // First page = Semester One only. BRCE keeps it whole on one page.
+    if (opts.keepFirstSemesterWhole) {
+      pages.push([remaining[0]]);
+      remaining = remaining.slice(1);
+    } else {
+      const first = takeWholeSemesterGroups(
+        [remaining[0]],
+        opts.firstContinue,
+        measureOpts,
+        true,
+      );
+      pages.push(first.page);
+      remaining = [...first.rest, ...remaining.slice(1)];
+    }
   } else {
-    const first = takeWholeSemesterGroups(remaining, opts.firstContinue);
+    const first = takeWholeSemesterGroups(
+      remaining,
+      opts.firstContinue,
+      measureOpts,
+      !opts.keepFirstSemesterWhole,
+    );
     pages.push(first.page);
     remaining = first.rest;
   }
 
   while (remaining.length) {
-    const restUnits = remaining.reduce((sum, g) => sum + transcriptGroupUnits(g), 0);
+    const restUnits = remaining.reduce((sum, g) => sum + transcriptGroupUnits(g, measureOpts), 0);
     if (restUnits <= opts.lastWithFooter) {
       pages.push(remaining);
       break;
     }
-    const chunk = takeWholeSemesterGroups(remaining, opts.continuePage);
+    const chunk = takeWholeSemesterGroups(remaining, opts.continuePage, measureOpts, true);
     if (!chunk.page.length) {
       pages.push(remaining);
       break;
     }
-    const afterUnits = chunk.rest.reduce((sum, g) => sum + transcriptGroupUnits(g), 0);
+    const afterUnits = chunk.rest.reduce((sum, g) => sum + transcriptGroupUnits(g, measureOpts), 0);
     if (chunk.rest.length && afterUnits <= opts.lastWithFooter) {
       pages.push(chunk.page);
       pages.push(chunk.rest);
@@ -227,9 +280,138 @@ function collectTranscriptPdfPages(): HTMLElement[] {
   return [...academic, gradingKey].filter(Boolean) as HTMLElement[];
 }
 
+/** Faint centered logo behind transcript page content (print-safe). */
+function TranscriptPageWatermark({
+  url,
+  opacity,
+  scalePercent = 45,
+}: {
+  url?: string | null
+  opacity: number
+  scalePercent?: number
+}) {
+  const src = String(url || '').trim()
+  if (!src || !(opacity > 0)) return null
+  const size = `${Math.min(65, Math.max(25, scalePercent))}%`
+  return (
+    <div
+      className="pointer-events-none absolute inset-0 z-0 flex items-center justify-center overflow-hidden"
+      aria-hidden
+    >
+      <img
+        src={src}
+        alt=""
+        className="object-contain select-none"
+        style={{
+          opacity,
+          width: size,
+          height: size,
+          maxWidth: size,
+          maxHeight: size,
+          WebkitPrintColorAdjust: 'exact',
+          printColorAdjust: 'exact',
+        }}
+      />
+    </div>
+  )
+}
+
+function monthIndex(date: Date): number {
+  return date.getFullYear() * 12 + date.getMonth();
+}
+
+function dateFromMonthIndex(index: number): Date {
+  const d = new Date(Math.floor(index / 12), index % 12, 1);
+  d.setFullYear(Math.floor(index / 12));
+  return d;
+}
+
+/** Split a class start/end window evenly across N semesters (BRCE transcript headers). */
+function splitClassTimeAcrossSemesters(
+  startRaw: string | Date | null | undefined,
+  endRaw: string | Date | null | undefined,
+  count: number,
+): Array<{ start: Date | null; end: Date | null }> {
+  const n = Math.max(1, count);
+  const start = parseLocalDate(startRaw);
+  const end = parseLocalDate(endRaw);
+  if (!start && !end) return Array.from({ length: n }, () => ({ start: null, end: null }));
+  if (!start || !end || n === 1) {
+    return Array.from({ length: n }, () => ({ start, end }));
+  }
+  const startIdx = monthIndex(start);
+  const endIdx = monthIndex(end);
+  const totalMonths = Math.max(1, endIdx - startIdx + 1);
+  return Array.from({ length: n }, (_, i) => {
+    const from = startIdx + Math.floor((totalMonths * i) / n);
+    const to = startIdx + Math.floor((totalMonths * (i + 1)) / n) - 1;
+    return {
+      start: dateFromMonthIndex(from),
+      end: dateFromMonthIndex(Math.max(from, to)),
+    };
+  });
+}
+
+function formatBrceSemesterHeading(
+  semesterName: string | null | undefined,
+  timeRange: string,
+): string | null {
+  const name = String(semesterName || '').trim();
+  if (!name && !timeRange) return null;
+  if (!name) return timeRange || null;
+  if (!timeRange) return name.toUpperCase();
+  if (name.toUpperCase().includes(timeRange)) return name.toUpperCase();
+  return `${name.toUpperCase()} | ${timeRange}`;
+}
+
+/** BRCE registration math: QP = credits × grade point; GPA = ΣQP ÷ Σcredits. */
+function computeBrceCreditTotals(rows: any[] = []) {
+  let credits = 0;
+  let qualityPoints = 0;
+  for (const row of rows || []) {
+    if (row?.marks == null && row?.gradePoint == null) continue;
+    const c = Number(row.credits) > 0 ? Number(row.credits) : 3;
+    const gp =
+      row.gradePoint != null && row.gradePoint !== ''
+        ? Number(row.gradePoint)
+        : Number(row.qualityPoints) > 0 && c > 0
+          ? Number(row.qualityPoints) / c
+          : 0;
+    if (!Number.isFinite(c) || !Number.isFinite(gp)) continue;
+    credits += c;
+    qualityPoints +=
+      row.qualityPoints != null && row.qualityPoints !== ''
+        ? Number(row.qualityPoints)
+        : c * gp;
+  }
+  const gpa = credits > 0 ? qualityPoints / credits : 0;
+  return {
+    credits,
+    qualityPoints: Number(qualityPoints.toFixed(1)),
+    gpa: gpa.toFixed(2),
+    gpaNumber: gpa,
+  };
+}
+
+function isLastPageAppearanceOfGroup(
+  pages: TranscriptGroupPage[][],
+  pageIndex: number,
+  groupKey: string,
+): boolean {
+  for (let p = pageIndex + 1; p < pages.length; p++) {
+    if ((pages[p] || []).some((g) => g.key === groupKey)) return false;
+  }
+  return true;
+}
+
 const TranscriptView = ({ studentId, onClose, initialClassId }: any) => {
     const { user, institution } = useAuth();
     const gradeScale = useMemo(() => getInstitutionGradeScale(institution), [institution]);
+    const isBrceTranscript = useMemo(
+      () => institutionUsesBrceRegistrationTranscript(institution),
+      [institution],
+    );
+    const brceColSpan = 7;
     const {
       students,
       results,
@@ -249,6 +431,11 @@ const TranscriptView = ({ studentId, onClose, initialClassId }: any) => {
     const [showScanner, setShowScanner] = useState(false);
     const [liveLayoutKey, setLiveLayoutKey] = useState<TranscriptLayoutKey>('classic');
     const [customDesign, setCustomDesign] = useState<HydratedDocumentDesign | null>(null);
+    const [watermarkSettings, setWatermarkSettings] = useState<{
+      url: string | null
+      opacity: number
+      scale: number
+    }>({ url: null, opacity: 12, scale: 45 });
     /** Issued transcript rows (list endpoint omits nested entries). */
     const [loadedTranscriptEntries, setLoadedTranscriptEntries] = useState([]);
     const navigate = useNavigate();
@@ -540,6 +727,12 @@ const TranscriptView = ({ studentId, onClose, initialClassId }: any) => {
                 '',
             );
 
+            const credits = Number(course.credits) > 0 ? Number(course.credits) : 3;
+            const gradePoint =
+              marks !== null ? getGradePointsFromScale(percentageValue, gradeScale) : null;
+            const qualityPoints =
+              gradePoint != null ? Number((credits * gradePoint).toFixed(1)) : null;
+
             return {
                 id: course.id,
                 code: course.code || `CRS-${course.id.substring(0,4).toUpperCase()}`,
@@ -551,8 +744,10 @@ const TranscriptView = ({ studentId, onClose, initialClassId }: any) => {
                 percentage: displayPercentage,
                 percentageValue: percentageValue,
                 grade: grade,
+                gradePoint,
+                qualityPoints,
                 status: status,
-                credits: course.credits || 3,
+                credits,
                 date: bestResult ? new Date(bestResult.submission_date || bestResult.graded_at || Date.now()).toLocaleDateString() : '-',
                 semester_name: semesterName,
                 semester_sort: semesterSort,
@@ -560,24 +755,80 @@ const TranscriptView = ({ studentId, onClose, initialClassId }: any) => {
         });
     }, [studentData, selectedClassId, classes, courses, results, classCourses, diplomaCourses, diplomaSemesters, exams, currentClass, gradebookEntries, transcripts, gradeScale, enrollments, loadedTranscriptEntries]);
 
+    const transcriptGroups = useMemo(() => {
+      const groups = groupTranscriptRowsBySemester(transcriptData);
+      if (!isBrceTranscript) return groups;
+
+      const named = groups.filter((g) => g.name);
+      const windows = splitClassTimeAcrossSemesters(
+        currentClass?.start_date || currentClass?.start_month,
+        currentClass?.end_date || currentClass?.end_month,
+        Math.max(1, named.length || 1),
+      );
+
+      let namedIndex = 0;
+      return groups.map((g) => {
+        if (!g.name) return g;
+        const window = windows[Math.min(namedIndex, windows.length - 1)] || {
+          start: null,
+          end: null,
+        };
+        namedIndex += 1;
+        const timeRange = formatClassTimeRange(window.start, window.end);
+        return {
+          ...g,
+          name: formatBrceSemesterHeading(g.name, timeRange),
+        };
+      });
+    }, [transcriptData, isBrceTranscript, currentClass]);
+
+    const brceSemesterTotalsByKey = useMemo(() => {
+      const map = new Map<string, ReturnType<typeof computeBrceCreditTotals>>();
+      if (!isBrceTranscript) return map;
+      for (const g of transcriptGroups) {
+        map.set(g.key, computeBrceCreditTotals(g.rows));
+      }
+      return map;
+    }, [transcriptGroups, isBrceTranscript]);
+
     const stats = useMemo(() => {
         const graded = transcriptData.filter(t => t.marks !== null);
         const passed = transcriptData.filter(t => t.status === 'Pass').length;
         const failed = transcriptData.filter(t => t.status === 'Fail').length;
-        
-        let totalPoints = 0;
-        graded.forEach(t => {
-            totalPoints += getGradePointsFromScale(t.percentageValue, gradeScale);
-        });
-        
-        const gpa = graded.length > 0 ? (totalPoints / graded.length).toFixed(2) : "0.00";
-        return { total: transcriptData.length, passed, failed, gpa };
-    }, [transcriptData, gradeScale]);
 
-    const transcriptGroups = useMemo(
-      () => groupTranscriptRowsBySemester(transcriptData),
-      [transcriptData],
-    );
+        let gpa = '0.00';
+        let totalCredits = transcriptData.reduce(
+          (sum, t) => sum + (Number(t.credits) > 0 ? Number(t.credits) : 3),
+          0,
+        );
+        let totalQualityPoints = 0;
+
+        if (isBrceTranscript) {
+          // Programme totals = sum of semester earned credits / QP (never average semester GPAs).
+          const programme = computeBrceCreditTotals(transcriptData);
+          totalCredits = programme.credits;
+          totalQualityPoints = programme.qualityPoints;
+          gpa = programme.gpa;
+        } else {
+          let totalPoints = 0;
+          graded.forEach((t) => {
+            totalPoints += getGradePointsFromScale(t.percentageValue, gradeScale);
+          });
+          gpa = graded.length > 0 ? (totalPoints / graded.length).toFixed(2) : '0.00';
+        }
+
+        const award = getAwardClassificationFromScale(Number(gpa), gradeScale);
+
+        return {
+          total: transcriptData.length,
+          passed,
+          failed,
+          gpa,
+          totalCredits,
+          totalQualityPoints: Number(Number(totalQualityPoints).toFixed(1)),
+          awardName: award?.name || null,
+        };
+    }, [transcriptData, gradeScale, isBrceTranscript]);
 
     const issuedTranscript = useMemo(() => {
       if (!studentData?.id || !selectedClassId) return null;
@@ -650,16 +901,33 @@ const TranscriptView = ({ studentId, onClose, initialClassId }: any) => {
     const transcriptFooter = getTranscriptFooterText(brand);
     const transcriptNarrative = getTranscriptNarrativeText(brand, currentDiploma, currentClass);
     const primary = getInstitutionPrimary(brand);
+    const watermarkSrc = brandedImageSrc(
+      getTranscriptWatermarkUrl(institution || brand, watermarkSettings),
+    );
+    const watermarkOpacity = getTranscriptWatermarkOpacity(watermarkSettings);
+    const watermarkScale = getTranscriptWatermarkScalePercent(watermarkSettings);
 
     // Live institution template (Page Builder / Upload Own activate immediately, like certificates)
     useEffect(() => {
       let cancelled = false;
       ;(async () => {
         try {
-          const tpl = await getDocumentTemplate('transcript');
+          const [tpl, wm] = await Promise.all([
+            getDocumentTemplate('transcript'),
+            getTranscriptWatermarkSettings().catch(() => ({
+              url: null,
+              opacity: 12,
+              scale: 45,
+            })),
+          ]);
           if (cancelled) return;
           const key = normalizeTranscriptLayoutKey(tpl?.layout_key);
           setLiveLayoutKey(key);
+          setWatermarkSettings({
+            url: wm?.url || null,
+            opacity: Number(wm?.opacity) || 12,
+            scale: Number(wm?.scale) || 78,
+          });
           if (isCustomTranscriptLayout(key)) {
             const hydrated = await hydrateDocumentDesignFromTemplate(tpl, 'transcript');
             if (!cancelled) setCustomDesign(hydrated);
@@ -694,15 +962,25 @@ const TranscriptView = ({ studentId, onClose, initialClassId }: any) => {
             : 'text-lg tracking-wide';
 
     const transcriptPages = useMemo(() => {
-      // firstContinue leaves room for header + narrative + ~9–10 Sem-1 course rows on A4.
-      const capacities =
-        layoutKey === 'compact'
+      // firstContinue leaves room for header + narrative + course rows on A4.
+      // BRCE: Semester One is forced onto a single page (not split across sheets).
+      const capacities: TranscriptPageOpts = isBrceTranscript
+        ? {
+            firstWithFooter: showNarrative ? 14 : 16,
+            firstContinue: showNarrative ? 14 : 16,
+            continuePage: 18,
+            lastWithFooter: 12,
+            keepFirstSemesterWhole: true,
+            compactRows: true,
+            semesterTotals: true,
+          }
+        : layoutKey === 'compact'
           ? { firstWithFooter: 10, firstContinue: 14, continuePage: 22, lastWithFooter: 14 }
           : showNarrative
             ? { firstWithFooter: 5, firstContinue: 11, continuePage: 18, lastWithFooter: 12 }
             : { firstWithFooter: 8, firstContinue: 12, continuePage: 20, lastWithFooter: 13 };
       return paginateTranscriptGroups(transcriptGroups, capacities);
-    }, [transcriptGroups, layoutKey, showNarrative]);
+    }, [transcriptGroups, layoutKey, showNarrative, isBrceTranscript]);
 
     const gradesSummary = useMemo(
       () =>
@@ -974,10 +1252,14 @@ const TranscriptView = ({ studentId, onClose, initialClassId }: any) => {
               key={`${selectedClassId || 'transcript'}-p${pageIndex}`}
               className={`bg-white text-black shadow-2xl w-[210mm] min-w-[210mm] mx-auto h-[297mm] max-h-[297mm] overflow-hidden relative flex flex-col print:shadow-none print:m-0 print:w-full print:min-w-0 print:h-[297mm] print:max-h-[297mm] print:break-after-page ${chrome.outerFrame} ${chrome.pageExtra}`}
             >
-                
+                <TranscriptPageWatermark
+                  url={watermarkSrc}
+                  opacity={watermarkOpacity}
+                  scalePercent={watermarkScale}
+                />
                 {/* Header */}
                 <div
-                  className={`shrink-0 px-6 ${isFirstPage ? 'pt-5' : 'pt-4'} pb-2 print:px-6 print:pt-4 print:pb-2 ${showNarrative && isFirstPage ? 'pt-4' : ''} ${chrome.headerBorder}`}
+                  className={`relative z-[1] shrink-0 px-6 ${isFirstPage ? 'pt-5' : 'pt-4'} pb-2 print:px-6 print:pt-4 print:pb-2 ${showNarrative && isFirstPage ? 'pt-4' : ''} ${chrome.headerBorder}`}
                   style={layoutStyles.headerBorderColor ? { borderBottomColor: layoutStyles.headerBorderColor } : undefined}
                 >
                     <div className="flex justify-between items-start gap-3">
@@ -1050,7 +1332,7 @@ const TranscriptView = ({ studentId, onClose, initialClassId }: any) => {
                     </div>
                 </div>
 
-                <div className={`px-6 ${dense ? 'py-2' : 'py-4'} min-h-0 flex-1 flex flex-col print:px-6 print:py-2`}>
+                <div className={`relative z-[1] bg-transparent px-6 ${dense ? 'py-2' : 'py-4'} min-h-0 flex-1 flex flex-col print:px-6 print:py-2`}>
                     {/* Student Info & Photo Grid — first page only */}
                     {isFirstPage ? (
                     <div className={`flex justify-between items-start gap-3 relative z-10 shrink-0 ${showNarrative || layoutKey === 'compact' ? 'mb-2' : 'mb-4'}`}>
@@ -1112,7 +1394,7 @@ const TranscriptView = ({ studentId, onClose, initialClassId }: any) => {
                     <div className={`flex gap-3 shrink-0 ${showNarrative ? 'mb-3' : 'mb-4 print:mb-3'}`}>
                         <div
                           data-transcript-stat-box
-                          className="bg-white px-3 py-2.5 rounded border-2 border-black flex-1 overflow-visible"
+                          className="bg-white/55 px-3 py-2.5 rounded border-2 border-black flex-1 overflow-visible"
                         >
                             <div className="text-[9px] text-black font-bold uppercase leading-none mb-2">Cumulative GPA</div>
                             <div
@@ -1124,14 +1406,20 @@ const TranscriptView = ({ studentId, onClose, initialClassId }: any) => {
                         </div>
                         <div
                           data-transcript-stat-box
-                          className="bg-white px-3 py-2.5 rounded border-2 border-black flex-1 overflow-visible"
+                          className="bg-white/55 px-3 py-2.5 rounded border-2 border-black flex-1 overflow-visible"
                         >
-                            <div className="text-[9px] text-black font-bold uppercase leading-none mb-2">Academic Standing</div>
+                            <div className="text-[9px] text-black font-bold uppercase leading-none mb-2">
+                              {isBrceTranscript ? 'Award Classification' : 'Academic Standing'}
+                            </div>
                             <div
                               data-transcript-stat-value
                               className={`${showNarrative ? 'text-sm' : 'text-sm'} font-bold leading-none`}
                             >
-                                {stats.failed === 0 && stats.passed > 0 ? (
+                                {isBrceTranscript ? (
+                                  <span className="text-black leading-snug">
+                                    {stats.awardName || '—'}
+                                  </span>
+                                ) : stats.failed === 0 && stats.passed > 0 ? (
                                     <span className="text-black inline-flex items-center gap-1 leading-none">
                                       <span aria-hidden className="text-base leading-none">✓</span>
                                       Good Standing
@@ -1155,32 +1443,133 @@ const TranscriptView = ({ studentId, onClose, initialClassId }: any) => {
 
                     {/* Grades Table (paginated) */}
                     <div className={`min-h-0 flex-1 ${dense ? 'mb-1' : 'mb-4 print:mb-2'}`}>
+                        {isBrceTranscript ? (
+                          pageGroups.length > 0 ? (
+                            <div className="space-y-4">
+                              {pageGroups.map((group) => {
+                                const showSemesterTotals = isLastPageAppearanceOfGroup(
+                                  transcriptPages,
+                                  pageIndex,
+                                  group.key,
+                                );
+                                const semesterTotals =
+                                  brceSemesterTotalsByKey.get(group.key) ||
+                                  computeBrceCreditTotals(group.rows);
+                                return (
+                                <div key={`${pageIndex}-${group.key}`} className="space-y-0">
+                                  {group.name ? (
+                                    <div className="border border-b-0 border-black bg-black/[0.05] px-2 py-2 text-center print:bg-transparent">
+                                      <p className="m-0 font-black uppercase text-[10px] tracking-[0.1em] text-black leading-none">
+                                        {group.name}
+                                      </p>
+                                    </div>
+                                  ) : null}
+                                  <Table
+                                    className={`w-full border-collapse bg-transparent ${chrome.tableBorder}`}
+                                    style={layoutStyles.tableBorderColor ? { borderColor: layoutStyles.tableBorderColor } : undefined}
+                                  >
+                                    <TableHeader>
+                                      <TableRow className="border-b border-black bg-black/[0.04] hover:bg-black/[0.04]">
+                                        <TableHead className="bg-transparent font-bold text-black uppercase text-[8px] tracking-wide w-[72px] border-r border-black h-8 py-1.5 pl-1.5 align-middle">Course Code</TableHead>
+                                        <TableHead className="bg-transparent font-bold text-black uppercase text-[8px] tracking-wide border-r border-black h-8 py-1.5 px-1.5 text-left align-middle">Course Title</TableHead>
+                                        <TableHead className="bg-transparent font-bold text-black uppercase text-[8px] tracking-wide text-center w-[52px] border-r border-black h-8 py-1.5 align-middle">Credit Hours</TableHead>
+                                        <TableHead className="bg-transparent font-bold text-black uppercase text-[8px] tracking-wide text-center w-[52px] border-r border-black h-8 py-1.5 align-middle">{'Marks (%)'}</TableHead>
+                                        <TableHead className="bg-transparent font-bold text-black uppercase text-[8px] tracking-wide text-center w-[52px] border-r border-black h-8 py-1.5 align-middle">Grade Point</TableHead>
+                                        <TableHead className="bg-transparent font-bold text-black uppercase text-[8px] tracking-wide text-center w-[48px] border-r border-black h-8 py-1.5 align-middle">Grade Letter</TableHead>
+                                        <TableHead className="bg-transparent font-bold text-black uppercase text-[8px] tracking-wide text-center w-[56px] h-8 py-1.5 pr-1.5 align-middle">Quality Points</TableHead>
+                                      </TableRow>
+                                    </TableHeader>
+                                    <TableBody>
+                                      {group.rows.map((row) => (
+                                        <TableRow key={row.id} className="bg-transparent hover:bg-transparent border-b border-black">
+                                          <TableCell className="bg-transparent font-mono font-bold text-black text-[9px] py-1.5 pl-1.5 border-r border-black align-middle">{row.code}</TableCell>
+                                          <TableCell className="bg-transparent py-1.5 px-1.5 border-r border-black align-middle">
+                                            <div className="font-bold text-black text-[9px] uppercase leading-snug">{row.name}</div>
+                                            {row.courseProject ? (
+                                              <div className="text-[8px] font-bold text-black leading-snug mt-0.5">
+                                                Course Project: {row.courseProject}
+                                              </div>
+                                            ) : null}
+                                          </TableCell>
+                                          <TableCell className="bg-transparent text-center font-bold text-black text-[9px] py-1.5 border-r border-black align-middle">{row.credits}</TableCell>
+                                          <TableCell className="bg-transparent text-center font-bold text-black text-[9px] py-1.5 border-r border-black align-middle">
+                                            {row.marks !== null ? Number(row.marks).toFixed(0) : '—'}
+                                          </TableCell>
+                                          <TableCell className="bg-transparent text-center font-bold text-black text-[9px] py-1.5 border-r border-black align-middle">
+                                            {row.gradePoint != null ? Number(row.gradePoint).toFixed(1) : '—'}
+                                          </TableCell>
+                                          <TableCell className="bg-transparent text-center font-bold text-black text-[9px] py-1.5 border-r border-black align-middle">{row.grade}</TableCell>
+                                          <TableCell className="bg-transparent text-center font-bold text-black text-[9px] py-1.5 pr-1.5 align-middle">
+                                            {row.qualityPoints != null ? Number(row.qualityPoints).toFixed(1) : '—'}
+                                          </TableCell>
+                                        </TableRow>
+                                      ))}
+                                    </TableBody>
+                                  </Table>
+                                  {showSemesterTotals ? (
+                                    <div className="border border-t-0 border-black bg-transparent px-2 py-1.5 space-y-0.5">
+                                      <div className="flex justify-between gap-3 text-[9px] font-bold uppercase text-black">
+                                        <span>Total Credit Hours Earned</span>
+                                        <span>{semesterTotals.credits}</span>
+                                      </div>
+                                      <div className="flex justify-between gap-3 text-[9px] font-bold uppercase text-black">
+                                        <span>Total Quality Points</span>
+                                        <span>{Number(semesterTotals.qualityPoints).toFixed(1)}</span>
+                                      </div>
+                                      <div className="flex justify-between gap-3 text-[9px] font-black uppercase text-black">
+                                        <span>Semester GPA (4.00 Scale)</span>
+                                        <span>{semesterTotals.gpa}</span>
+                                      </div>
+                                    </div>
+                                  ) : null}
+                                </div>
+                              );
+                              })}
+                            </div>
+                          ) : isFirstPage ? (
+                            <Table
+                              className={`w-full border-collapse ${chrome.tableBorder}`}
+                              style={layoutStyles.tableBorderColor ? { borderColor: layoutStyles.tableBorderColor } : undefined}
+                            >
+                              <TableBody>
+                                <TableRow>
+                                  <TableCell colSpan={brceColSpan} className="text-center py-8 text-black italic text-xs">
+                                    No grades found in transcript.
+                                  </TableCell>
+                                </TableRow>
+                              </TableBody>
+                            </Table>
+                          ) : null
+                        ) : (
                         <Table
                           className={`w-full border-collapse ${chrome.tableBorder}`}
                           style={layoutStyles.tableBorderColor ? { borderColor: layoutStyles.tableBorderColor } : undefined}
                         >
                             <TableHeader>
-                                <TableRow className="border-b-2 border-black bg-white hover:bg-white">
-                                    <TableHead className="font-bold text-black uppercase text-[10px] w-[100px] border-r border-black h-9 py-2 pl-2 align-middle">Code</TableHead>
-                                    <TableHead className="font-bold text-black uppercase text-[10px] border-r border-black h-9 py-2 px-2 text-left align-middle">Course Title</TableHead>
-                                    <TableHead className="font-bold text-black uppercase text-[10px] text-center w-[80px] border-r border-black h-9 py-2 align-middle">Score</TableHead>
-                                    <TableHead className="font-bold text-black uppercase text-[10px] text-center w-[80px] h-9 py-2 pr-2 align-middle">Grade</TableHead>
-                                </TableRow>
+                                  <TableRow className="border-b-2 border-black bg-black/[0.04] hover:bg-black/[0.04]">
+                                    <TableHead className="bg-transparent font-bold text-black uppercase text-[10px] w-[100px] border-r border-black h-9 py-2 pl-2 align-middle">Code</TableHead>
+                                    <TableHead className="bg-transparent font-bold text-black uppercase text-[10px] border-r border-black h-9 py-2 px-2 text-left align-middle">Course Title</TableHead>
+                                    <TableHead className="bg-transparent font-bold text-black uppercase text-[10px] text-center w-[80px] border-r border-black h-9 py-2 align-middle">Score</TableHead>
+                                    <TableHead className="bg-transparent font-bold text-black uppercase text-[10px] text-center w-[80px] h-9 py-2 pr-2 align-middle">Grade</TableHead>
+                                  </TableRow>
                             </TableHeader>
                             <TableBody>
                                 {pageGroups.length > 0 ? pageGroups.map((group) => (
                                     <React.Fragment key={`${pageIndex}-${group.key}`}>
                                         {group.name ? (
-                                            <TableRow className="bg-slate-100 hover:bg-slate-100 border-b border-black">
-                                                <TableCell colSpan={4} className="py-2 px-2 font-black uppercase text-[10px] tracking-wide text-black align-middle">
+                                            <TableRow className="bg-black/[0.05] hover:bg-black/[0.05] border-b border-black">
+                                                <TableCell
+                                                  colSpan={4}
+                                                  className="bg-transparent py-2 px-2 font-black uppercase tracking-wide text-black align-middle text-[10px]"
+                                                >
                                                     {group.name}
                                                 </TableCell>
                                             </TableRow>
                                         ) : null}
                                         {group.rows.map((row) => (
-                                            <TableRow key={row.id} className="bg-white hover:bg-slate-50 border-b border-black">
-                                                <TableCell className="font-mono font-bold text-black text-xs py-2.5 pl-2 border-r border-black align-middle">{row.code}</TableCell>
-                                                <TableCell className="py-2.5 px-2.5 border-r border-black align-middle">
+                                              <TableRow key={row.id} className="bg-transparent hover:bg-transparent border-b border-black">
+                                                <TableCell className="bg-transparent font-mono font-bold text-black text-xs py-2.5 pl-2 border-r border-black align-middle">{row.code}</TableCell>
+                                                <TableCell className="bg-transparent py-2.5 px-2.5 border-r border-black align-middle">
                                                     <div className="font-bold text-black text-xs uppercase leading-snug">{row.name}</div>
                                                     {row.courseProject ? (
                                                         <div className="text-[11px] font-bold text-black leading-snug mt-1">
@@ -1188,33 +1577,63 @@ const TranscriptView = ({ studentId, onClose, initialClassId }: any) => {
                                                         </div>
                                                     ) : null}
                                                 </TableCell>
-                                                <TableCell className="text-center font-bold text-black text-xs py-2.5 border-r border-black align-middle">{row.marks !== null ? row.marks : '-'}</TableCell>
-                                                <TableCell className="text-center font-bold text-black text-xs py-2.5 pr-2 align-middle">{row.grade}</TableCell>
-                                            </TableRow>
+                                                <TableCell className="bg-transparent text-center font-bold text-black text-xs py-2.5 border-r border-black align-middle">{row.marks !== null ? row.marks : '-'}</TableCell>
+                                                <TableCell className="bg-transparent text-center font-bold text-black text-xs py-2.5 pr-2 align-middle">{row.grade}</TableCell>
+                                              </TableRow>
                                         ))}
                                     </React.Fragment>
                                 )) : (
                                     isFirstPage ? (
-                                      <TableRow><TableCell colSpan={4} className="text-center py-8 text-black italic text-xs">No grades found in transcript.</TableCell></TableRow>
+                                      <TableRow>
+                                        <TableCell
+                                          colSpan={4}
+                                          className="bg-transparent text-center py-8 text-black italic text-xs"
+                                        >
+                                          No grades found in transcript.
+                                        </TableCell>
+                                      </TableRow>
                                     ) : null
                                 )}
                             </TableBody>
                         </Table>
+                        )}
                     </div>
 
                     {/* Totals + signatures + QR only on the last academic page so they are never clipped */}
                     {isLastPage ? (
                     <>
                     <div className={`flex justify-end shrink-0 ${showNarrative ? 'mb-2' : 'mb-6 print:mb-4'}`}>
-                        <div className={`w-56 border-2 border-black bg-white ${showNarrative ? 'px-2 py-1.5' : 'p-3'}`}>
-                            <div className="flex justify-between text-[11px] font-bold mb-0.5 text-black">
-                                <span className="uppercase">Total Credits:</span>
-                                <span>{transcriptData.reduce((sum: any, t: any) => sum + (t.credits || 3), 0)}</span>
-                            </div>
-                            <div className="flex justify-between text-[11px] font-bold text-black">
-                                <span className="uppercase">CGPA:</span>
-                                <span>{stats.gpa}</span>
-                            </div>
+                        <div className={`${isBrceTranscript ? 'w-72' : 'w-56'} border-2 border-black bg-white/55 ${showNarrative ? 'px-2 py-1.5' : 'p-3'}`}>
+                            {isBrceTranscript ? (
+                              <>
+                                <div className="text-[8px] font-black uppercase tracking-wide text-black mb-1">
+                                  Cumulative Programme Summary
+                                </div>
+                                <div className="flex justify-between text-[11px] font-bold mb-0.5 text-black">
+                                  <span className="uppercase">Total Credit Hours Earned:</span>
+                                  <span>{stats.totalCredits}</span>
+                                </div>
+                                <div className="flex justify-between text-[11px] font-bold mb-0.5 text-black">
+                                  <span className="uppercase">Total Quality Points:</span>
+                                  <span>{Number(stats.totalQualityPoints).toFixed(1)}</span>
+                                </div>
+                                <div className="flex justify-between text-[11px] font-black text-black">
+                                  <span className="uppercase">CGPA (4.00 Scale):</span>
+                                  <span>{stats.gpa}</span>
+                                </div>
+                              </>
+                            ) : (
+                              <>
+                                <div className="flex justify-between text-[11px] font-bold mb-0.5 text-black">
+                                  <span className="uppercase">Total Credits:</span>
+                                  <span>{stats.totalCredits}</span>
+                                </div>
+                                <div className="flex justify-between text-[11px] font-bold text-black">
+                                  <span className="uppercase">CGPA:</span>
+                                  <span>{stats.gpa}</span>
+                                </div>
+                              </>
+                            )}
                         </div>
                     </div>
 
@@ -1269,7 +1688,12 @@ const TranscriptView = ({ studentId, onClose, initialClassId }: any) => {
              {!useCustomLayout ? (
              <div className="w-full overflow-x-auto print:overflow-visible">
              <div id="transcript-grading-key" className="bg-white text-black shadow-2xl w-[210mm] min-w-[210mm] mx-auto h-[297mm] relative flex flex-col justify-center items-center p-8 sm:p-16 print:shadow-none print:m-0 print:w-full print:min-w-0 print:h-[297mm] print:break-before-page">
-                <div className="w-full border-2 border-black p-10 h-[240mm] flex flex-col justify-between">
+                <TranscriptPageWatermark
+                  url={watermarkSrc}
+                  opacity={watermarkOpacity}
+                  scalePercent={watermarkScale}
+                />
+                <div className="relative z-[1] w-full border-2 border-black p-10 h-[240mm] flex flex-col justify-between">
                     
                     <div className="space-y-12">
                          {/* Key to Grades Section */}

@@ -1241,6 +1241,7 @@ const ALLOWED_ASSET_KINDS = new Set([
   'stamp',
   'seal',
   'signature',
+  'watermark',
   'hero',
   'grading_key',
   'program',
@@ -1608,6 +1609,84 @@ export const upsertDocumentTemplate = async (documentType, updates: any = {}) =>
   if (error) throw error
   clearDocumentTemplateCache(type)
   return data
+}
+
+export type TranscriptWatermarkSettings = {
+  /** Custom image URL; empty/null → use institution logo */
+  url: string | null
+  /** Opacity percent 0–40 */
+  opacity: number
+  /** Scale percent of page (default 78) */
+  scale: number
+}
+
+const DEFAULT_WATERMARK_OPACITY = 12
+const DEFAULT_WATERMARK_SCALE = 45
+
+function normalizeWatermarkOpacity(raw: unknown): number {
+  const n = Number(raw)
+  if (!Number.isFinite(n)) return DEFAULT_WATERMARK_OPACITY
+  return Math.min(40, Math.max(0, Math.round(n)))
+}
+
+function normalizeWatermarkScale(raw: unknown): number {
+  const n = Number(raw)
+  if (!Number.isFinite(n)) return DEFAULT_WATERMARK_SCALE
+  // Migrate previous oversized default (~78–95) down to the compact size.
+  if (n >= 70) return DEFAULT_WATERMARK_SCALE
+  return Math.min(65, Math.max(25, Math.round(n)))
+}
+
+/** Read faint transcript watermark from document_templates.config (no DB column needed). */
+export const getTranscriptWatermarkSettings = async (): Promise<TranscriptWatermarkSettings> => {
+  const tpl = await getDocumentTemplate('transcript')
+  const wm = tpl?.config?.watermark && typeof tpl.config.watermark === 'object' ? tpl.config.watermark : {}
+  const url = String(wm?.url || '').trim() || null
+  return {
+    url,
+    opacity: normalizeWatermarkOpacity(wm?.opacity),
+    scale: normalizeWatermarkScale(wm?.scale),
+  }
+}
+
+/** Save watermark into transcript template config (merge; keeps logo_builder etc.). */
+export const saveTranscriptWatermarkSettings = async (patch: {
+  url?: string | null
+  opacity?: number
+  scale?: number
+}): Promise<TranscriptWatermarkSettings> => {
+  const tpl = await getDocumentTemplate('transcript')
+  const prevConfig = tpl?.config && typeof tpl.config === 'object' ? { ...tpl.config } : {}
+  const prevWm =
+    prevConfig.watermark && typeof prevConfig.watermark === 'object' ? { ...prevConfig.watermark } : {}
+
+  const nextWm = {
+    url:
+      patch.url !== undefined
+        ? String(patch.url || '').trim() || null
+        : String(prevWm.url || '').trim() || null,
+    opacity:
+      patch.opacity !== undefined
+        ? normalizeWatermarkOpacity(patch.opacity)
+        : normalizeWatermarkOpacity(prevWm.opacity),
+    scale:
+      patch.scale !== undefined
+        ? normalizeWatermarkScale(patch.scale)
+        : normalizeWatermarkScale(prevWm.scale),
+  }
+
+  await upsertDocumentTemplate('transcript', {
+    config: {
+      ...prevConfig,
+      watermark: nextWm,
+    },
+  })
+
+  return {
+    url: nextWm.url,
+    opacity: nextWm.opacity,
+    scale: nextWm.scale,
+  }
 }
 
 /** Set the institution's active certificate layout (server resolves institution_id). */

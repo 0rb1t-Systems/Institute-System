@@ -18,6 +18,7 @@ import {
   getInstitutionAccent,
   getInstitutionContactLine,
   getTranscriptFooterText,
+  institutionUsesBrceRegistrationTranscript,
 } from '@/lib/institution'
 import TranscriptCanvas from '@/components/transcripts/TranscriptCanvas'
 import { useToast } from '@/components/ui/use-toast'
@@ -75,6 +76,9 @@ const TranscriptTemplateLibrary = () => {
       credentialNumber: '0000042',
       footerText: getTranscriptFooterText(institution) || undefined,
       gpa: '3.40',
+      brceRegistration: institutionUsesBrceRegistrationTranscript(institution),
+      startMonth: 'July 2025',
+      completionMonth: 'June 2026',
     }),
     [institution, previewKey],
   )

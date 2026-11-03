@@ -160,7 +160,19 @@ export type TranscriptRenderData = {
   footerText?: string
   narrativeText?: string
   gpa?: string
-  courses?: Array<{ code: string; name: string; marks: string; grade: string; courseProject?: string }>
+  /** BRCE registration columns (credits / grade points / quality points). */
+  brceRegistration?: boolean
+  courses?: Array<{
+    code: string
+    name: string
+    marks: string
+    grade: string
+    courseProject?: string
+    semester?: string
+    credits?: string | number
+    gradePoint?: string | number
+    qualityPoints?: string | number
+  }>
 }
 
 /** Shared layout chrome for live transcript + library preview. */

@@ -147,6 +147,43 @@ export const formatMonthYear = (dateString?: string | Date | null) => {
   }
 };
 
+/** Uppercase month name only (e.g. JANUARY). */
+export const formatMonthNameUpper = (dateString?: string | Date | null) => {
+  if (!dateString) return '';
+  try {
+    const date = parseLocalDate(dateString);
+    if (!date) return '';
+    return date.toLocaleDateString('en-US', { month: 'long' }).toUpperCase();
+  } catch {
+    return '';
+  }
+};
+
+/**
+ * Class / semester window for BRCE transcript headers
+ * (e.g. "JULY–DECEMBER 2025" or "JANUARY–JUNE 2026").
+ */
+export const formatClassTimeRange = (
+  start?: string | Date | null,
+  end?: string | Date | null,
+) => {
+  const startDate = parseLocalDate(start);
+  const endDate = parseLocalDate(end);
+  if (!startDate && !endDate) return '';
+  if (startDate && !endDate) {
+    return `${formatMonthNameUpper(startDate)} ${startDate.getFullYear()}`;
+  }
+  if (!startDate && endDate) {
+    return `${formatMonthNameUpper(endDate)} ${endDate.getFullYear()}`;
+  }
+  const sm = formatMonthNameUpper(startDate);
+  const em = formatMonthNameUpper(endDate);
+  const sy = startDate!.getFullYear();
+  const ey = endDate!.getFullYear();
+  if (sy === ey) return `${sm}–${em} ${sy}`;
+  return `${sm} ${sy}–${em} ${ey}`;
+};
+
 /** Date + time for assignment deadlines (local). */
 export const formatDateTime = (dateString?: string | Date | null) => {
   if (!dateString) return 'N/A';

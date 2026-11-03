@@ -174,6 +174,18 @@ export function institutionAllowsCourseProjects(
   return Boolean(id) && COURSE_PROJECT_INSTITUTION_IDS.has(id)
 }
 
+/**
+ * BRCE registration transcript: credit hours, grade points, quality points,
+ * weighted CGPA, and semester headers that include the class date window.
+ * Same tenant allowlist as course projects (ID-gated, not name/subdomain).
+ */
+export function institutionUsesBrceRegistrationTranscript(
+  institution?: { id?: string | null } | null,
+  institutionId?: string | null,
+): boolean {
+  return institutionAllowsCourseProjects(institution, institutionId)
+}
+
 /** Admin of allowed tenants may edit the optional class transcript paragraph. */
 export function canManageTranscriptClassParagraph(
   institution?: { id?: string | null } | null,
@@ -1020,6 +1032,42 @@ export function getCertificateFooterText(institution?: InstitutionBrand): string
 
 export function getTranscriptFooterText(institution?: InstitutionBrand): string {
   return String(institution?.transcript_footer_text || '').trim()
+}
+
+type TranscriptWatermarkSource = {
+  url?: string | null
+  opacity?: number | null
+  scale?: number | null
+} | null | undefined
+
+/** Custom watermark if set; otherwise institution logo (first-time default). */
+export function getTranscriptWatermarkUrl(
+  institution?: InstitutionBrand,
+  watermark?: TranscriptWatermarkSource,
+): string {
+  const custom = String(watermark?.url || '').trim()
+  if (custom) return custom
+  return institutionLogoUrl(institution)
+}
+
+/** Faint watermark opacity as 0–1 for CSS. Default ~12%. Cap 40%. */
+export function getTranscriptWatermarkOpacity(watermark?: TranscriptWatermarkSource): number {
+  const raw = watermark?.opacity
+  const n = raw == null ? 12 : Number(raw)
+  const pct = Number.isFinite(n) ? Math.min(40, Math.max(0, n)) : 12
+  return pct / 100
+}
+
+export function getTranscriptWatermarkOpacityPercent(watermark?: TranscriptWatermarkSource): number {
+  return Math.round(getTranscriptWatermarkOpacity(watermark) * 100)
+}
+
+/** Watermark image size as % of page (25–65). Default 45 (compact). */
+export function getTranscriptWatermarkScalePercent(watermark?: TranscriptWatermarkSource): number {
+  const n = Number(watermark?.scale)
+  if (!Number.isFinite(n)) return 45
+  if (n >= 70) return 45
+  return Math.min(65, Math.max(25, Math.round(n)))
 }
 
 type ClassNarrativeSource = { transcript_narrative_text?: string | null } | null | undefined

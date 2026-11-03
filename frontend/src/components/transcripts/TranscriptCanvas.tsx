@@ -17,14 +17,54 @@ type Props = {
 const TranscriptCanvas = ({ data, compact = false }: Props) => {
   const chrome = getTranscriptLayoutChrome(data.layoutKey, data.primary)
   const styles = getTranscriptLayoutStyles(data.layoutKey, data.primary)
+  const brce = Boolean(data.brceRegistration)
+  const colSpan = brce ? 7 : 4
   const courses =
     data.courses?.length
       ? data.courses
-      : [
-          { code: 'ACC101', name: 'Bookkeeping', marks: '80', grade: 'B', semester: 'Semester 1' },
-          { code: 'ACC110', name: 'Taxation', marks: '72', grade: 'C', semester: 'Semester 1' },
-          { code: 'ACC201', name: 'Auditing', marks: '68', grade: 'D', semester: 'Semester 2' },
-        ]
+      : brce
+        ? [
+            {
+              code: 'ARS001',
+              name: 'Research Methodology Process',
+              marks: '94',
+              grade: 'A',
+              credits: 4,
+              gradePoint: '4.0',
+              qualityPoints: '16.0',
+              semester: 'SEMESTER 1 | JULY–DECEMBER 2025',
+            },
+            {
+              code: 'ARS002',
+              name: 'Applied Descriptive Statistics',
+              marks: '96',
+              grade: 'A',
+              credits: 3,
+              gradePoint: '4.0',
+              qualityPoints: '12.0',
+              semester: 'SEMESTER 1 | JULY–DECEMBER 2025',
+            },
+            {
+              code: 'BRP001',
+              name: 'Research Writing and Publication Pathway',
+              marks: '90',
+              grade: 'A',
+              credits: 4,
+              gradePoint: '4.0',
+              qualityPoints: '16.0',
+              semester: 'SEMESTER 2 | JANUARY–JUNE 2026',
+            },
+          ]
+        : [
+            { code: 'ACC101', name: 'Bookkeeping', marks: '80', grade: 'B', semester: 'Semester 1' },
+            { code: 'ACC110', name: 'Taxation', marks: '72', grade: 'C', semester: 'Semester 1' },
+            { code: 'ACC201', name: 'Auditing', marks: '68', grade: 'D', semester: 'Semester 2' },
+          ]
+
+  const th = `font-bold uppercase py-0.5 px-0.5 border-r border-inherit align-middle ${
+    compact ? 'text-[3.5px]' : 'text-[6px]'
+  }`
+  const td = `py-0.5 px-0.5 border-r border-inherit align-middle ${compact ? 'text-[3.5px]' : 'text-[6.5px]'}`
 
   return (
     <div
@@ -124,49 +164,121 @@ const TranscriptCanvas = ({ data, compact = false }: Props) => {
           </p>
         ) : null}
 
-        <table className={`w-full border-collapse ${chrome.tableBorder}`} style={styles.tableBorderColor ? { borderColor: styles.tableBorderColor } : undefined}>
-          <thead>
-            <tr className="border-b border-inherit">
-              <th className={`text-left font-bold uppercase py-0.5 px-1 border-r border-inherit ${compact ? 'text-[4px]' : 'text-[7px]'}`}>Code</th>
-              <th className={`text-left font-bold uppercase py-0.5 px-1 border-r border-inherit ${compact ? 'text-[4px]' : 'text-[7px]'}`}>Course</th>
-              <th className={`text-center font-bold uppercase py-0.5 px-1 border-r border-inherit ${compact ? 'text-[4px]' : 'text-[7px]'}`}>Score</th>
-              <th className={`text-center font-bold uppercase py-0.5 px-1 ${compact ? 'text-[4px]' : 'text-[7px]'}`}>Grade</th>
-            </tr>
-          </thead>
-          <tbody>
-            {(() => {
-              const grouped = [];
-              for (const c of courses) {
-                const key = c.semester || '';
-                let g = grouped.find((x) => x.name === key);
-                if (!g) {
-                  g = { name: key, courses: [] };
-                  grouped.push(g);
-                }
-                g.courses.push(c);
-              }
-              return grouped.map((g) => (
-                <React.Fragment key={g.name || 'all'}>
-                  {g.name ? (
-                    <tr className="border-b border-inherit">
-                      <td colSpan={4} className={`font-black uppercase py-0.5 px-1 ${compact ? 'text-[4px]' : 'text-[7px]'}`}>
-                        {g.name}
-                      </td>
-                    </tr>
-                  ) : null}
-                  {g.courses.map((c) => (
-                    <tr key={c.code} className="border-b border-inherit">
-                      <td className={`font-mono py-1 px-1 border-r border-inherit align-middle ${compact ? 'text-[4px]' : 'text-[7px]'}`}>{c.code}</td>
-                      <td className={`py-1 px-1 border-r border-inherit uppercase align-middle leading-snug ${compact ? 'text-[4px]' : 'text-[7px]'}`}>{c.name}</td>
-                      <td className={`text-center py-1 px-1 border-r border-inherit align-middle ${compact ? 'text-[4px]' : 'text-[7px]'}`}>{c.marks}</td>
-                      <td className={`text-center font-bold py-1 px-1 align-middle ${compact ? 'text-[4px]' : 'text-[7px]'}`}>{c.grade}</td>
-                    </tr>
-                  ))}
-                </React.Fragment>
-              ));
-            })()}
-          </tbody>
-        </table>
+        {(() => {
+          const grouped = [];
+          for (const c of courses) {
+            const key = c.semester || '';
+            let g = grouped.find((x) => x.name === key);
+            if (!g) {
+              g = { name: key, courses: [] };
+              grouped.push(g);
+            }
+            g.courses.push(c);
+          }
+
+          if (brce) {
+            return (
+              <div className="space-y-1.5">
+                {grouped.map((g) => (
+                  <div key={g.name || 'all'}>
+                    {g.name ? (
+                      <div className="border border-b-0 border-inherit bg-slate-100 px-1 py-0.5 text-center">
+                        <p
+                          className={`m-0 font-black uppercase tracking-wide ${
+                            compact ? 'text-[3.5px]' : 'text-[6.5px]'
+                          }`}
+                        >
+                          {g.name}
+                        </p>
+                      </div>
+                    ) : null}
+                    <table
+                      className={`w-full border-collapse ${chrome.tableBorder}`}
+                      style={styles.tableBorderColor ? { borderColor: styles.tableBorderColor } : undefined}
+                    >
+                      <thead>
+                        <tr className="border-b border-inherit bg-slate-50">
+                          <th className={`text-left ${th}`}>Course Code</th>
+                          <th className={`text-left ${th}`}>Course Title</th>
+                          <th className={`text-center ${th}`}>Credit Hours</th>
+                          <th className={`text-center ${th}`}>{'Marks (%)'}</th>
+                          <th className={`text-center ${th}`}>Grade Point</th>
+                          <th className={`text-center ${th}`}>Grade Letter</th>
+                          <th
+                            className={`text-center font-bold uppercase py-0.5 px-0.5 align-middle ${
+                              compact ? 'text-[3.5px]' : 'text-[6px]'
+                            }`}
+                          >
+                            Quality Points
+                          </th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {g.courses.map((c) => (
+                          <tr key={`${g.name}-${c.code}`} className="border-b border-inherit">
+                            <td className={`font-mono ${td}`}>{c.code}</td>
+                            <td className={`uppercase leading-snug ${td}`}>{c.name}</td>
+                            <td className={`text-center ${td}`}>{c.credits ?? '—'}</td>
+                            <td className={`text-center ${td}`}>{c.marks}</td>
+                            <td className={`text-center ${td}`}>{c.gradePoint ?? '—'}</td>
+                            <td className={`text-center font-bold ${td}`}>{c.grade}</td>
+                            <td
+                              className={`text-center font-bold py-0.5 px-0.5 align-middle ${
+                                compact ? 'text-[3.5px]' : 'text-[6.5px]'
+                              }`}
+                            >
+                              {c.qualityPoints ?? '—'}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                ))}
+              </div>
+            )
+          }
+
+          return (
+            <table
+              className={`w-full border-collapse ${chrome.tableBorder}`}
+              style={styles.tableBorderColor ? { borderColor: styles.tableBorderColor } : undefined}
+            >
+              <thead>
+                <tr className="border-b border-inherit">
+                  <th className={`text-left font-bold uppercase py-0.5 px-1 border-r border-inherit ${compact ? 'text-[4px]' : 'text-[7px]'}`}>Code</th>
+                  <th className={`text-left font-bold uppercase py-0.5 px-1 border-r border-inherit ${compact ? 'text-[4px]' : 'text-[7px]'}`}>Course</th>
+                  <th className={`text-center font-bold uppercase py-0.5 px-1 border-r border-inherit ${compact ? 'text-[4px]' : 'text-[7px]'}`}>Score</th>
+                  <th className={`text-center font-bold uppercase py-0.5 px-1 ${compact ? 'text-[4px]' : 'text-[7px]'}`}>Grade</th>
+                </tr>
+              </thead>
+              <tbody>
+                {grouped.map((g) => (
+                  <React.Fragment key={g.name || 'all'}>
+                    {g.name ? (
+                      <tr className="border-b border-inherit bg-slate-100">
+                        <td
+                          colSpan={colSpan}
+                          className={`font-black uppercase py-0.5 px-1 ${compact ? 'text-[3.5px]' : 'text-[6.5px]'}`}
+                        >
+                          {g.name}
+                        </td>
+                      </tr>
+                    ) : null}
+                    {g.courses.map((c) => (
+                      <tr key={`${g.name}-${c.code}`} className="border-b border-inherit">
+                        <td className={`font-mono py-1 px-1 border-r border-inherit align-middle ${compact ? 'text-[4px]' : 'text-[7px]'}`}>{c.code}</td>
+                        <td className={`py-1 px-1 border-r border-inherit uppercase align-middle leading-snug ${compact ? 'text-[4px]' : 'text-[7px]'}`}>{c.name}</td>
+                        <td className={`text-center py-1 px-1 border-r border-inherit align-middle ${compact ? 'text-[4px]' : 'text-[7px]'}`}>{c.marks}</td>
+                        <td className={`text-center font-bold py-1 px-1 align-middle ${compact ? 'text-[4px]' : 'text-[7px]'}`}>{c.grade}</td>
+                      </tr>
+                    ))}
+                  </React.Fragment>
+                ))}
+              </tbody>
+            </table>
+          )
+        })()}
 
         {data.footerText ? (
           <p className={`text-center text-slate-600 ${compact ? 'text-[3px]' : 'text-[6px]'}`}>{data.footerText}</p>
