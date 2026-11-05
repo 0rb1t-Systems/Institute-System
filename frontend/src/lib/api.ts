@@ -2321,6 +2321,11 @@ export const createCourse = async (data) => {
   const diplomaIds = normalizeDiplomaIds(data) || []
   const primaryDiplomaId = diplomaIds[0] || null
 
+  const creditsRaw = data.credits !== undefined && data.credits !== null && data.credits !== ''
+    ? Number(data.credits)
+    : 3
+  const credits = Number.isFinite(creditsRaw) && creditsRaw > 0 ? creditsRaw : 3
+
   const { data: row, error } = await supabase
     .from('courses')
     .insert({
@@ -2330,6 +2335,7 @@ export const createCourse = async (data) => {
       type: data.type || 'regular',
       diploma_id: primaryDiplomaId,
       sort_order: 0,
+      credits,
       ...(data.course_project !== undefined
         ? { course_project: data.course_project || null }
         : {}),
@@ -2353,6 +2359,10 @@ export const updateCourse = async (id, data) => {
   if (data.code !== undefined) updates.code = data.code
   if (data.type !== undefined) updates.type = data.type
   if (data.sort_order !== undefined) updates.sort_order = Number(data.sort_order) || 0
+  if (data.credits !== undefined) {
+    const n = Number(data.credits)
+    updates.credits = Number.isFinite(n) && n > 0 ? n : 3
+  }
   if (data.course_project !== undefined) updates.course_project = data.course_project || null
 
   // diploma_ids replaces membership; diploma_id on edit is ignored so the

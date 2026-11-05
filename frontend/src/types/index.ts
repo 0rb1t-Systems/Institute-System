@@ -29,6 +29,8 @@ export interface Course {
   description?: string;
   duration?: number;
   fee?: number;
+  /** Credit hours used on transcripts / GPA (default 3). */
+  credits?: number;
   [key: string]: unknown;
 }
 

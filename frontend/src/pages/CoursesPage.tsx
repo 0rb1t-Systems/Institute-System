@@ -292,6 +292,10 @@ const CourseForm = ({ course, closeDialog }: any) => {
     const [code, setCode] = useState(course?.code || '');
     const [description, setDescription] = useState(course?.description || '');
     const [type, setType] = useState(course?.type || 'regular');
+    const [credits, setCredits] = useState(() => {
+        const n = Number(course?.credits);
+        return Number.isFinite(n) && n > 0 ? String(n) : '3';
+    });
     const [diplomaId, setDiplomaId] = useState(() => {
         if (course?.diploma_id) return course.diploma_id;
         if (!course?.id) return 'none';
@@ -351,12 +355,18 @@ const CourseForm = ({ course, closeDialog }: any) => {
         }
 
         try {
+            const creditsNum = Number(credits);
+            if (!Number.isFinite(creditsNum) || creditsNum <= 0) {
+                notify.validation('Credit hours must be a number greater than 0.');
+                return;
+            }
             const semester = semesterId === 'none' ? null : semesterId;
             const payload = {
                 name: name.trim(),
                 code,
                 description,
                 type,
+                credits: creditsNum,
                 diploma_id: diplomaId === 'none' ? null : diplomaId,
                 diploma_ids: diplomaId === 'none' ? [] : [diplomaId],
                 semester_id: semester,
@@ -368,6 +378,7 @@ const CourseForm = ({ course, closeDialog }: any) => {
                     code: payload.code,
                     description: payload.description,
                     type: payload.type,
+                    credits: payload.credits,
                 });
                 if (diplomaId !== 'none') {
                     const linked = (diplomaCourses || []).some(
@@ -401,6 +412,23 @@ const CourseForm = ({ course, closeDialog }: any) => {
                 <div className="space-y-1.5 min-w-0">
                     <Label htmlFor="course-code">Course code</Label>
                     <Input id="course-code" value={code} onChange={e => setCode(e.target.value)} className="w-full min-w-0" placeholder="e.g. CS101" />
+                </div>
+                <div className="space-y-1.5 min-w-0">
+                    <Label htmlFor="course-credits">Credit hours</Label>
+                    <Input
+                        id="course-credits"
+                        type="number"
+                        min={0.5}
+                        step={0.5}
+                        value={credits}
+                        onChange={(e) => setCredits(e.target.value)}
+                        className="w-full min-w-0"
+                        placeholder="e.g. 3"
+                        required
+                    />
+                    <p className="text-xs text-[var(--ds-text-tertiary,#8A978E)]">
+                        Used on the BRCE transcript (Credit Hours column and GPA).
+                    </p>
                 </div>
                 <div className="space-y-1.5 min-w-0">
                     <Label>Type</Label>
@@ -901,6 +929,9 @@ const CoursesPage = () => {
                                                                     >
                                                                         <span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-[var(--ds-accent,#1F8A5B)]" />
                                                                         <span className="min-w-0 flex-1 break-words leading-snug">{c.name}</span>
+                                                                        <span className="shrink-0 text-xs text-[var(--ds-text-tertiary,#8A978E)]">
+                                                                          {Number(c.credits) > 0 ? Number(c.credits) : 3} cr
+                                                                        </span>
                                                                     </li>
                                                                 ))}
                                                             </ul>
@@ -1004,10 +1035,15 @@ const CoursesPage = () => {
 
                                     <CardContent className="flex flex-grow flex-col pb-4 pt-0">
                                           <div className="border-t border-[var(--ds-border,#DDE5DF)] pt-3">
-                                            <div className="flex items-center gap-2 text-sm text-[var(--ds-text-secondary,#5B6B61)]">
-                                              <BookOpen className="h-4 w-4 shrink-0 text-[var(--ds-text-primary,#122018)]" strokeWidth={2} />
-                                              <span>
+                                            <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-[var(--ds-text-secondary,#5B6B61)]">
+                                              <span className="inline-flex items-center gap-2">
+                                                <BookOpen className="h-4 w-4 shrink-0 text-[var(--ds-text-primary,#122018)]" strokeWidth={2} />
                                                 Assigned to {diplomaCount} diploma{diplomaCount === 1 ? '' : 's'}
+                                              </span>
+                                              <span className="text-[var(--ds-text-tertiary,#8A978E)]">·</span>
+                                              <span>
+                                                {Number(course.credits) > 0 ? Number(course.credits) : 3} credit hour
+                                                {(Number(course.credits) > 0 ? Number(course.credits) : 3) === 1 ? '' : 's'}
                                               </span>
                                             </div>
                                             {hasDiplomas ? (
