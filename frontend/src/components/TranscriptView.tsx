@@ -359,10 +359,24 @@ function formatBrceSemesterHeading(
   const name = String(semesterName || '').trim();
   if (!name && !timeRange) return null;
   if (!name) return timeRange || null;
-  if (!timeRange) return name.toUpperCase();
-  if (name.toUpperCase().includes(timeRange)) return name.toUpperCase();
-  return `${name.toUpperCase()} | ${timeRange}`;
+  if (!timeRange) return name;
+  const rangeUpper = timeRange.toUpperCase();
+  if (name.toUpperCase().includes(rangeUpper) || name.toUpperCase().includes(timeRange.toUpperCase())) {
+    return name;
+  }
+  // Word/BRCE style: "Semester 1: July : December 2025"
+  return `${name}: ${timeRange}`;
 }
+
+function formatBrceQualityPoints(value: unknown): string {
+  const n = Number(value);
+  if (!Number.isFinite(n)) return '—';
+  return Number.isInteger(n) ? String(n) : n.toFixed(1);
+}
+
+/** Word/BRCE registration transcript typeface (matches official template). */
+const BRCE_TRANSCRIPT_FONT =
+  "'Times New Roman', Times, Georgia, serif" as const;
 
 /** BRCE registration math: QP = credits × grade point; GPA = ΣQP ÷ Σcredits. */
 function computeBrceCreditTotals(rows: any[] = []) {
@@ -898,6 +912,20 @@ const TranscriptView = ({ studentId, onClose, initialClassId }: any) => {
       : '';
     const institutionName = getInstitutionDisplayName(brand);
     const contactLine = getInstitutionContactLine(brand);
+    /** Full contact block for transcript end (Tel / Email / Web) — avoids crowding the header. */
+    const footerContact = useMemo(() => {
+      const tel = String(brand?.phone || '').trim();
+      const email = String(brand?.email || '').trim();
+      const webRaw = String(brand?.website || '').trim();
+      const web = webRaw.replace(/^https?:\/\//i, '').replace(/\/$/, '');
+      return {
+        name: institutionName,
+        tel,
+        email,
+        web,
+        hasAny: Boolean(tel || email || web),
+      };
+    }, [brand?.phone, brand?.email, brand?.website, institutionName]);
     const transcriptFooter = getTranscriptFooterText(brand);
     const transcriptNarrative = getTranscriptNarrativeText(brand, currentDiploma, currentClass);
     const primary = getInstitutionPrimary(brand);
@@ -1251,6 +1279,7 @@ const TranscriptView = ({ studentId, onClose, initialClassId }: any) => {
               data-transcript-academic-page
               key={`${selectedClassId || 'transcript'}-p${pageIndex}`}
               className={`bg-white text-black shadow-2xl w-[210mm] min-w-[210mm] mx-auto h-[297mm] max-h-[297mm] overflow-hidden relative flex flex-col print:shadow-none print:m-0 print:w-full print:min-w-0 print:h-[297mm] print:max-h-[297mm] print:break-after-page ${chrome.outerFrame} ${chrome.pageExtra}`}
+              style={isBrceTranscript ? { fontFamily: BRCE_TRANSCRIPT_FONT } : undefined}
             >
                 <TranscriptPageWatermark
                   url={watermarkSrc}
@@ -1369,13 +1398,13 @@ const TranscriptView = ({ studentId, onClose, initialClassId }: any) => {
                             </div>
                         </div>
 
-                        {/* Student Photo */}
-                        <div className={`${showNarrative ? 'w-[96px] h-[112px]' : 'w-[120px] h-[140px]'} border border-black bg-slate-50 flex items-center justify-center overflow-hidden shrink-0`}>
+                        {/* Student Photo — square 1:1 (print/PDF safe) */}
+                        <div className={`${showNarrative ? 'w-[104px] h-[104px]' : 'w-[120px] h-[120px]'} aspect-square border border-black bg-slate-50 flex items-center justify-center overflow-hidden shrink-0`}>
                              {studentData.avatar_url ? (
                                 <img 
                                     src={studentData.avatar_url} 
                                     alt="Student" 
-                                    className="w-full h-full object-cover"
+                                    className="w-full h-full object-cover object-center"
                                     onError={(e: any) => {
                                         e.target.onerror = null;
                                         e.target.style.display = 'none'; 
@@ -1383,7 +1412,7 @@ const TranscriptView = ({ studentId, onClose, initialClassId }: any) => {
                                     }}
                                 />
                              ) : (
-                                <User className="h-14 w-14 text-slate-300" />
+                                <User className="h-12 w-12 text-slate-300" />
                              )}
                         </div>
                     </div>
@@ -1442,7 +1471,7 @@ const TranscriptView = ({ studentId, onClose, initialClassId }: any) => {
                     ) : null}
 
                     {/* Grades Table (paginated) */}
-                    <div className={`min-h-0 flex-1 ${dense ? 'mb-1' : 'mb-4 print:mb-2'}`}>
+                    <div className={`min-h-0 flex-1 flex flex-col ${dense ? 'mb-1' : 'mb-4 print:mb-2'}`}>
                         {isBrceTranscript ? (
                           pageGroups.length > 0 ? (
                             <div className="space-y-4">
@@ -1456,72 +1485,132 @@ const TranscriptView = ({ studentId, onClose, initialClassId }: any) => {
                                   brceSemesterTotalsByKey.get(group.key) ||
                                   computeBrceCreditTotals(group.rows);
                                 return (
-                                <div key={`${pageIndex}-${group.key}`} className="space-y-0">
+                                <div
+                                  key={`${pageIndex}-${group.key}`}
+                                  className="space-y-0"
+                                  style={{ fontFamily: BRCE_TRANSCRIPT_FONT }}
+                                >
                                   {group.name ? (
-                                    <div className="border border-b-0 border-black bg-black/[0.05] px-2 py-2 text-center print:bg-transparent">
-                                      <p className="m-0 font-black uppercase text-[10px] tracking-[0.1em] text-black leading-none">
+                                    <div
+                                      className="border-2 border-b-0 border-black bg-transparent px-2 py-2 text-center"
+                                      style={{ borderColor: '#000' }}
+                                    >
+                                      <p
+                                        className="m-0 tracking-normal text-black leading-snug"
+                                        style={{ fontFamily: BRCE_TRANSCRIPT_FONT, fontWeight: 900, fontSize: '14px' }}
+                                      >
                                         {group.name}
                                       </p>
                                     </div>
                                   ) : null}
                                   <Table
-                                    className={`w-full border-collapse bg-transparent ${chrome.tableBorder}`}
-                                    style={layoutStyles.tableBorderColor ? { borderColor: layoutStyles.tableBorderColor } : undefined}
+                                    className="w-full border-collapse bg-transparent"
+                                    style={{
+                                      fontFamily: BRCE_TRANSCRIPT_FONT,
+                                      border: '2px solid #000',
+                                      borderColor: '#000',
+                                      tableLayout: 'fixed',
+                                      width: '100%',
+                                    }}
                                   >
+                                    <colgroup>
+                                      <col style={{ width: '12%' }} />
+                                      <col style={{ width: '34%' }} />
+                                      <col style={{ width: '11%' }} />
+                                      <col style={{ width: '10%' }} />
+                                      <col style={{ width: '11%' }} />
+                                      <col style={{ width: '11%' }} />
+                                      <col style={{ width: '11%' }} />
+                                    </colgroup>
                                     <TableHeader>
-                                      <TableRow className="border-b border-black bg-black/[0.04] hover:bg-black/[0.04]">
-                                        <TableHead className="bg-transparent font-bold text-black uppercase text-[8px] tracking-wide w-[72px] border-r border-black h-8 py-1.5 pl-1.5 align-middle">Course Code</TableHead>
-                                        <TableHead className="bg-transparent font-bold text-black uppercase text-[8px] tracking-wide border-r border-black h-8 py-1.5 px-1.5 text-left align-middle">Course Title</TableHead>
-                                        <TableHead className="bg-transparent font-bold text-black uppercase text-[8px] tracking-wide text-center w-[52px] border-r border-black h-8 py-1.5 align-middle">Credit Hours</TableHead>
-                                        <TableHead className="bg-transparent font-bold text-black uppercase text-[8px] tracking-wide text-center w-[52px] border-r border-black h-8 py-1.5 align-middle">{'Marks (%)'}</TableHead>
-                                        <TableHead className="bg-transparent font-bold text-black uppercase text-[8px] tracking-wide text-center w-[52px] border-r border-black h-8 py-1.5 align-middle">Grade Point</TableHead>
-                                        <TableHead className="bg-transparent font-bold text-black uppercase text-[8px] tracking-wide text-center w-[48px] border-r border-black h-8 py-1.5 align-middle">Grade Letter</TableHead>
-                                        <TableHead className="bg-transparent font-bold text-black uppercase text-[8px] tracking-wide text-center w-[56px] h-8 py-1.5 pr-1.5 align-middle">Quality Points</TableHead>
+                                      <TableRow className="bg-transparent hover:bg-transparent" style={{ borderBottom: '2px solid #000' }}>
+                                        <TableHead className="bg-transparent text-black text-center align-middle whitespace-nowrap" style={{ borderRight: '1.5px solid #000', fontFamily: BRCE_TRANSCRIPT_FONT, fontWeight: 900, fontSize: '13px', padding: '10px 3px', lineHeight: 1.2 }}>Course Code</TableHead>
+                                        <TableHead className="bg-transparent text-black text-center align-middle whitespace-nowrap" style={{ borderRight: '1.5px solid #000', fontFamily: BRCE_TRANSCRIPT_FONT, fontWeight: 900, fontSize: '13px', padding: '10px 4px', lineHeight: 1.2 }}>Course Title</TableHead>
+                                        <TableHead className="bg-transparent text-black text-center align-middle whitespace-nowrap" style={{ borderRight: '1.5px solid #000', fontFamily: BRCE_TRANSCRIPT_FONT, fontWeight: 900, fontSize: '13px', padding: '10px 2px', lineHeight: 1.2 }}>Credit Hours</TableHead>
+                                        <TableHead className="bg-transparent text-black text-center align-middle whitespace-nowrap" style={{ borderRight: '1.5px solid #000', fontFamily: BRCE_TRANSCRIPT_FONT, fontWeight: 900, fontSize: '13px', padding: '10px 2px', lineHeight: 1.2 }}>Marks %</TableHead>
+                                        <TableHead className="bg-transparent text-black text-center align-middle whitespace-nowrap" style={{ borderRight: '1.5px solid #000', fontFamily: BRCE_TRANSCRIPT_FONT, fontWeight: 900, fontSize: '13px', padding: '10px 2px', lineHeight: 1.2 }}>Grade Point</TableHead>
+                                        <TableHead className="bg-transparent text-black text-center align-middle whitespace-nowrap" style={{ borderRight: '1.5px solid #000', fontFamily: BRCE_TRANSCRIPT_FONT, fontWeight: 900, fontSize: '13px', padding: '10px 2px', lineHeight: 1.2 }}>Grade Letter</TableHead>
+                                        <TableHead className="bg-transparent text-black text-center align-middle whitespace-nowrap" style={{ fontFamily: BRCE_TRANSCRIPT_FONT, fontWeight: 900, fontSize: '13px', padding: '10px 2px', lineHeight: 1.2 }}>Quality Points</TableHead>
                                       </TableRow>
                                     </TableHeader>
                                     <TableBody>
                                       {group.rows.map((row) => (
-                                        <TableRow key={row.id} className="bg-transparent hover:bg-transparent border-b border-black">
-                                          <TableCell className="bg-transparent font-mono font-bold text-black text-[9px] py-1.5 pl-1.5 border-r border-black align-middle">{row.code}</TableCell>
-                                          <TableCell className="bg-transparent py-1.5 px-1.5 border-r border-black align-middle">
-                                            <div className="font-bold text-black text-[9px] uppercase leading-snug">{row.name}</div>
+                                        <TableRow key={row.id} className="bg-transparent hover:bg-transparent" style={{ borderBottom: '1.5px solid #000' }}>
+                                          <TableCell className="bg-transparent text-black text-center align-middle" style={{ borderRight: '1.5px solid #000', fontFamily: BRCE_TRANSCRIPT_FONT, fontWeight: 700, fontSize: '12px', padding: '7px 3px' }}>{row.code}</TableCell>
+                                          <TableCell className="bg-transparent align-middle text-left" style={{ borderRight: '1.5px solid #000', padding: '7px 4px' }}>
+                                            <div className="text-black leading-snug" style={{ fontFamily: BRCE_TRANSCRIPT_FONT, fontWeight: 700, fontSize: '12px' }}>{row.name}</div>
                                             {row.courseProject ? (
-                                              <div className="text-[8px] font-bold text-black leading-snug mt-0.5">
+                                              <div className="text-black leading-snug mt-0.5" style={{ fontFamily: BRCE_TRANSCRIPT_FONT, fontWeight: 700, fontSize: '10px' }}>
                                                 Course Project: {row.courseProject}
                                               </div>
                                             ) : null}
                                           </TableCell>
-                                          <TableCell className="bg-transparent text-center font-bold text-black text-[9px] py-1.5 border-r border-black align-middle">{row.credits}</TableCell>
-                                          <TableCell className="bg-transparent text-center font-bold text-black text-[9px] py-1.5 border-r border-black align-middle">
+                                          <TableCell className="bg-transparent text-center text-black align-middle" style={{ borderRight: '1.5px solid #000', fontFamily: BRCE_TRANSCRIPT_FONT, fontWeight: 700, fontSize: '12px', padding: '7px 2px' }}>{row.credits}</TableCell>
+                                          <TableCell className="bg-transparent text-center text-black align-middle" style={{ borderRight: '1.5px solid #000', fontFamily: BRCE_TRANSCRIPT_FONT, fontWeight: 700, fontSize: '12px', padding: '7px 2px' }}>
                                             {row.marks !== null ? Number(row.marks).toFixed(0) : '—'}
                                           </TableCell>
-                                          <TableCell className="bg-transparent text-center font-bold text-black text-[9px] py-1.5 border-r border-black align-middle">
+                                          <TableCell className="bg-transparent text-center text-black align-middle" style={{ borderRight: '1.5px solid #000', fontFamily: BRCE_TRANSCRIPT_FONT, fontWeight: 700, fontSize: '12px', padding: '7px 2px' }}>
                                             {row.gradePoint != null ? Number(row.gradePoint).toFixed(1) : '—'}
                                           </TableCell>
-                                          <TableCell className="bg-transparent text-center font-bold text-black text-[9px] py-1.5 border-r border-black align-middle">{row.grade}</TableCell>
-                                          <TableCell className="bg-transparent text-center font-bold text-black text-[9px] py-1.5 pr-1.5 align-middle">
-                                            {row.qualityPoints != null ? Number(row.qualityPoints).toFixed(1) : '—'}
+                                          <TableCell className="bg-transparent text-center text-black align-middle" style={{ borderRight: '1.5px solid #000', fontFamily: BRCE_TRANSCRIPT_FONT, fontWeight: 700, fontSize: '12px', padding: '7px 2px' }}>{row.grade}</TableCell>
+                                          <TableCell className="bg-transparent text-center text-black align-middle" style={{ fontFamily: BRCE_TRANSCRIPT_FONT, fontWeight: 700, fontSize: '12px', padding: '7px 2px' }}>
+                                            {row.qualityPoints != null ? formatBrceQualityPoints(row.qualityPoints) : '—'}
                                           </TableCell>
                                         </TableRow>
                                       ))}
+                                      {showSemesterTotals ? (
+                                        <>
+                                          {/* Word style: only credit + QP totals — empty cells merged (no extra boxes) */}
+                                          <TableRow className="bg-transparent hover:bg-transparent" style={{ borderBottom: '1.5px solid #000' }}>
+                                            <TableCell
+                                              colSpan={2}
+                                              className="bg-transparent align-middle"
+                                              style={{ borderRight: '1.5px solid #000', padding: '8px 4px' }}
+                                            />
+                                            <TableCell
+                                              className="bg-transparent text-center text-black align-middle"
+                                              style={{ borderRight: '1.5px solid #000', fontFamily: BRCE_TRANSCRIPT_FONT, fontWeight: 900, fontSize: '15px', padding: '8px 2px' }}
+                                            >
+                                              {semesterTotals.credits}
+                                            </TableCell>
+                                            <TableCell
+                                              colSpan={3}
+                                              className="bg-transparent align-middle"
+                                              style={{ borderRight: '1.5px solid #000', padding: '8px 2px' }}
+                                            />
+                                            <TableCell
+                                              className="bg-transparent text-center text-black align-middle"
+                                              style={{ fontFamily: BRCE_TRANSCRIPT_FONT, fontWeight: 900, fontSize: '15px', padding: '8px 2px' }}
+                                            >
+                                              {formatBrceQualityPoints(semesterTotals.qualityPoints)}
+                                            </TableCell>
+                                          </TableRow>
+                                          {/* Word style: GPA label + value side-by-side on the right */}
+                                          <TableRow className="bg-transparent hover:bg-transparent">
+                                            <TableCell
+                                              colSpan={3}
+                                              className="bg-transparent align-middle"
+                                              style={{ borderRight: '1.5px solid #000', padding: '8px 2px' }}
+                                            />
+                                            <TableCell
+                                              colSpan={2}
+                                              className="bg-transparent text-black text-left align-middle whitespace-nowrap"
+                                              style={{ borderRight: '1.5px solid #000', fontFamily: BRCE_TRANSCRIPT_FONT, fontWeight: 900, fontSize: '14px', padding: '8px 6px' }}
+                                            >
+                                              GPA
+                                            </TableCell>
+                                            <TableCell
+                                              className="bg-transparent text-center text-black align-middle"
+                                              style={{ borderRight: '1.5px solid #000', fontFamily: BRCE_TRANSCRIPT_FONT, fontWeight: 900, fontSize: '15px', padding: '8px 2px' }}
+                                            >
+                                              {semesterTotals.gpa}
+                                            </TableCell>
+                                            <TableCell className="bg-transparent align-middle" style={{ padding: '8px 2px' }} />
+                                          </TableRow>
+                                        </>
+                                      ) : null}
                                     </TableBody>
                                   </Table>
-                                  {showSemesterTotals ? (
-                                    <div className="border border-t-0 border-black bg-transparent px-2 py-1.5 space-y-0.5">
-                                      <div className="flex justify-between gap-3 text-[9px] font-bold uppercase text-black">
-                                        <span>Total Credit Hours Earned</span>
-                                        <span>{semesterTotals.credits}</span>
-                                      </div>
-                                      <div className="flex justify-between gap-3 text-[9px] font-bold uppercase text-black">
-                                        <span>Total Quality Points</span>
-                                        <span>{Number(semesterTotals.qualityPoints).toFixed(1)}</span>
-                                      </div>
-                                      <div className="flex justify-between gap-3 text-[9px] font-black uppercase text-black">
-                                        <span>Semester GPA (4.00 Scale)</span>
-                                        <span>{semesterTotals.gpa}</span>
-                                      </div>
-                                    </div>
-                                  ) : null}
                                 </div>
                               );
                               })}
@@ -1597,45 +1686,57 @@ const TranscriptView = ({ studentId, onClose, initialClassId }: any) => {
                             </TableBody>
                         </Table>
                         )}
+
+                        {/* BRCE: Cumulative summary sits in the empty area under the last semester table (right side) */}
+                        {isLastPage && isBrceTranscript ? (
+                          <div
+                            className="flex justify-end shrink-0 mt-3 mb-2"
+                            style={{ fontFamily: BRCE_TRANSCRIPT_FONT }}
+                          >
+                            <div
+                              className="w-[300px] border-2 border-black bg-white/70 px-3 py-2.5"
+                              style={{ borderColor: '#000' }}
+                            >
+                              <div
+                                className="uppercase text-black mb-2"
+                                style={{ fontFamily: BRCE_TRANSCRIPT_FONT, fontWeight: 900, fontSize: '11px', letterSpacing: '0.04em' }}
+                              >
+                                Cumulative Programme Summary
+                              </div>
+                              <div className="flex justify-between gap-3 text-black mb-1" style={{ fontFamily: BRCE_TRANSCRIPT_FONT, fontWeight: 800, fontSize: '12px' }}>
+                                <span className="uppercase">Total Credit Hours Earned:</span>
+                                <span>{stats.totalCredits}</span>
+                              </div>
+                              <div className="flex justify-between gap-3 text-black mb-1" style={{ fontFamily: BRCE_TRANSCRIPT_FONT, fontWeight: 800, fontSize: '12px' }}>
+                                <span className="uppercase">Total Quality Points:</span>
+                                <span>{Number(stats.totalQualityPoints).toFixed(1)}</span>
+                              </div>
+                              <div className="flex justify-between gap-3 text-black" style={{ fontFamily: BRCE_TRANSCRIPT_FONT, fontWeight: 900, fontSize: '13px' }}>
+                                <span className="uppercase">GPA:</span>
+                                <span>{stats.gpa}</span>
+                              </div>
+                            </div>
+                          </div>
+                        ) : null}
                     </div>
 
                     {/* Totals + signatures + QR only on the last academic page so they are never clipped */}
                     {isLastPage ? (
                     <>
+                    {!isBrceTranscript ? (
                     <div className={`flex justify-end shrink-0 ${showNarrative ? 'mb-2' : 'mb-6 print:mb-4'}`}>
-                        <div className={`${isBrceTranscript ? 'w-72' : 'w-56'} border-2 border-black bg-white/55 ${showNarrative ? 'px-2 py-1.5' : 'p-3'}`}>
-                            {isBrceTranscript ? (
-                              <>
-                                <div className="text-[8px] font-black uppercase tracking-wide text-black mb-1">
-                                  Cumulative Programme Summary
-                                </div>
-                                <div className="flex justify-between text-[11px] font-bold mb-0.5 text-black">
-                                  <span className="uppercase">Total Credit Hours Earned:</span>
-                                  <span>{stats.totalCredits}</span>
-                                </div>
-                                <div className="flex justify-between text-[11px] font-bold mb-0.5 text-black">
-                                  <span className="uppercase">Total Quality Points:</span>
-                                  <span>{Number(stats.totalQualityPoints).toFixed(1)}</span>
-                                </div>
-                                <div className="flex justify-between text-[11px] font-black text-black">
-                                  <span className="uppercase">CGPA (4.00 Scale):</span>
-                                  <span>{stats.gpa}</span>
-                                </div>
-                              </>
-                            ) : (
-                              <>
-                                <div className="flex justify-between text-[11px] font-bold mb-0.5 text-black">
-                                  <span className="uppercase">Total Credits:</span>
-                                  <span>{stats.totalCredits}</span>
-                                </div>
-                                <div className="flex justify-between text-[11px] font-bold text-black">
-                                  <span className="uppercase">CGPA:</span>
-                                  <span>{stats.gpa}</span>
-                                </div>
-                              </>
-                            )}
+                        <div className="w-56 border-2 border-black bg-white/55 p-3">
+                            <div className="flex justify-between text-[11px] font-bold mb-0.5 text-black">
+                              <span className="uppercase">Total Credits:</span>
+                              <span>{stats.totalCredits}</span>
+                            </div>
+                            <div className="flex justify-between text-[11px] font-bold text-black">
+                              <span className="uppercase">CGPA:</span>
+                              <span>{stats.gpa}</span>
+                            </div>
                         </div>
                     </div>
+                    ) : null}
 
                     <div className="mt-auto shrink-0">
                         <div className={`grid grid-cols-2 gap-12 border-t border-black ${showNarrative ? 'pt-2 mt-1' : 'pt-4 mt-4 print:mt-2 print:pt-2'}`}>
@@ -1659,12 +1760,40 @@ const TranscriptView = ({ studentId, onClose, initialClassId }: any) => {
                                 )}
                             </p>
                         </div>
+
+                        {isBrceTranscript && footerContact.hasAny ? (
+                          <div
+                            className="mt-3 mb-1 text-center px-2"
+                            style={{ fontFamily: BRCE_TRANSCRIPT_FONT }}
+                          >
+                            <p
+                              className="m-0 text-black leading-snug"
+                              style={{ fontWeight: 800, fontSize: '11px' }}
+                            >
+                              {footerContact.name}
+                            </p>
+                            {footerContact.tel ? (
+                              <p className="m-0 text-black leading-snug" style={{ fontWeight: 700, fontSize: '10px' }}>
+                                Tel: {footerContact.tel}
+                              </p>
+                            ) : null}
+                            {footerContact.email ? (
+                              <p className="m-0 text-black leading-snug" style={{ fontWeight: 700, fontSize: '10px' }}>
+                                Email: {footerContact.email}
+                              </p>
+                            ) : null}
+                            {footerContact.web ? (
+                              <p className="m-0 text-black leading-snug" style={{ fontWeight: 700, fontSize: '10px' }}>
+                                Web: {footerContact.web}
+                              </p>
+                            ) : null}
+                          </div>
+                        ) : null}
                         
                         <div className={`flex justify-center ${showNarrative ? 'mt-1.5 pb-2' : 'mt-3 pb-4 print:mt-2 print:pb-2'}`}>
                             {verifyUrl ? (
-                              <div className="flex flex-col items-center gap-0.5">
+                              <div className="flex flex-col items-center">
                                   <QRCode value={verifyUrl} size={showNarrative ? 40 : 48} fgColor="#000000" />
-                                  <span className="text-[6px] font-mono font-bold text-black">{verifyCode}</span>
                               </div>
                             ) : (
                               <p className="text-[8px] text-slate-500">Preparing verification QR…</p>
@@ -1687,7 +1816,11 @@ const TranscriptView = ({ studentId, onClose, initialClassId }: any) => {
              {/* Grading Key (library layouts only — custom designs are self-contained) */}
              {!useCustomLayout ? (
              <div className="w-full overflow-x-auto print:overflow-visible">
-             <div id="transcript-grading-key" className="bg-white text-black shadow-2xl w-[210mm] min-w-[210mm] mx-auto h-[297mm] relative flex flex-col justify-center items-center p-8 sm:p-16 print:shadow-none print:m-0 print:w-full print:min-w-0 print:h-[297mm] print:break-before-page">
+             <div
+               id="transcript-grading-key"
+               className="bg-white text-black shadow-2xl w-[210mm] min-w-[210mm] mx-auto h-[297mm] relative flex flex-col justify-center items-center p-8 sm:p-16 print:shadow-none print:m-0 print:w-full print:min-w-0 print:h-[297mm] print:break-before-page"
+               style={isBrceTranscript ? { fontFamily: BRCE_TRANSCRIPT_FONT } : undefined}
+             >
                 <TranscriptPageWatermark
                   url={watermarkSrc}
                   opacity={watermarkOpacity}

@@ -31,8 +31,8 @@ const TranscriptCanvas = ({ data, compact = false }: Props) => {
               grade: 'A',
               credits: 4,
               gradePoint: '4.0',
-              qualityPoints: '16.0',
-              semester: 'SEMESTER 1 | JULY–DECEMBER 2025',
+              qualityPoints: '16',
+              semester: 'Semester 1: July : December 2025',
             },
             {
               code: 'ARS002',
@@ -41,8 +41,8 @@ const TranscriptCanvas = ({ data, compact = false }: Props) => {
               grade: 'A',
               credits: 3,
               gradePoint: '4.0',
-              qualityPoints: '12.0',
-              semester: 'SEMESTER 1 | JULY–DECEMBER 2025',
+              qualityPoints: '12',
+              semester: 'Semester 1: July : December 2025',
             },
             {
               code: 'BRP001',
@@ -51,8 +51,8 @@ const TranscriptCanvas = ({ data, compact = false }: Props) => {
               grade: 'A',
               credits: 4,
               gradePoint: '4.0',
-              qualityPoints: '16.0',
-              semester: 'SEMESTER 2 | JANUARY–JUNE 2026',
+              qualityPoints: '16',
+              semester: 'Semester 2: January : June 2026',
             },
           ]
         : [
@@ -71,7 +71,10 @@ const TranscriptCanvas = ({ data, compact = false }: Props) => {
       className={`bg-white text-black overflow-hidden ${chrome.outerFrame} ${chrome.pageExtra} ${
         compact ? 'text-[5px] leading-tight' : 'text-[10px]'
       }`}
-      style={{ aspectRatio: '210 / 297' }}
+      style={{
+        aspectRatio: '210 / 297',
+        ...(brce ? { fontFamily: "'Times New Roman', Times, Georgia, serif" } : null),
+      }}
     >
       <div
         className={`px-3 pt-2 pb-1 ${chrome.headerBorder}`}
@@ -182,9 +185,9 @@ const TranscriptCanvas = ({ data, compact = false }: Props) => {
                 {grouped.map((g) => (
                   <div key={g.name || 'all'}>
                     {g.name ? (
-                      <div className="border border-b-0 border-inherit bg-slate-100 px-1 py-0.5 text-center">
+                      <div className="border border-b-0 border-inherit bg-transparent px-1 py-0.5 text-center">
                         <p
-                          className={`m-0 font-black uppercase tracking-wide ${
+                          className={`m-0 font-bold tracking-normal ${
                             compact ? 'text-[3.5px]' : 'text-[6.5px]'
                           }`}
                         >
@@ -193,19 +196,19 @@ const TranscriptCanvas = ({ data, compact = false }: Props) => {
                       </div>
                     ) : null}
                     <table
-                      className={`w-full border-collapse ${chrome.tableBorder}`}
+                      className={`w-full border-collapse border border-inherit ${chrome.tableBorder}`}
                       style={styles.tableBorderColor ? { borderColor: styles.tableBorderColor } : undefined}
                     >
                       <thead>
-                        <tr className="border-b border-inherit bg-slate-50">
-                          <th className={`text-left ${th}`}>Course Code</th>
-                          <th className={`text-left ${th}`}>Course Title</th>
-                          <th className={`text-center ${th}`}>Credit Hours</th>
-                          <th className={`text-center ${th}`}>{'Marks (%)'}</th>
-                          <th className={`text-center ${th}`}>Grade Point</th>
-                          <th className={`text-center ${th}`}>Grade Letter</th>
+                        <tr className="border-b border-inherit bg-transparent">
+                          <th className={`text-center font-bold ${th}`}>Course Code</th>
+                          <th className={`text-center font-bold ${th}`}>Course Title</th>
+                          <th className={`text-center font-bold ${th}`}>Credit Hours</th>
+                          <th className={`text-center font-bold ${th}`}>Marks %</th>
+                          <th className={`text-center font-bold ${th}`}>Grade Point</th>
+                          <th className={`text-center font-bold ${th}`}>Grade Letter</th>
                           <th
-                            className={`text-center font-bold uppercase py-0.5 px-0.5 align-middle ${
+                            className={`text-center font-bold py-0.5 px-0.5 align-middle ${
                               compact ? 'text-[3.5px]' : 'text-[6px]'
                             }`}
                           >
@@ -216,11 +219,11 @@ const TranscriptCanvas = ({ data, compact = false }: Props) => {
                       <tbody>
                         {g.courses.map((c) => (
                           <tr key={`${g.name}-${c.code}`} className="border-b border-inherit">
-                            <td className={`font-mono ${td}`}>{c.code}</td>
-                            <td className={`uppercase leading-snug ${td}`}>{c.name}</td>
-                            <td className={`text-center ${td}`}>{c.credits ?? '—'}</td>
-                            <td className={`text-center ${td}`}>{c.marks}</td>
-                            <td className={`text-center ${td}`}>{c.gradePoint ?? '—'}</td>
+                            <td className={`text-center font-bold ${td}`}>{c.code}</td>
+                            <td className={`font-bold leading-snug ${td}`}>{c.name}</td>
+                            <td className={`text-center font-bold ${td}`}>{c.credits ?? '—'}</td>
+                            <td className={`text-center font-bold ${td}`}>{c.marks}</td>
+                            <td className={`text-center font-bold ${td}`}>{c.gradePoint ?? '—'}</td>
                             <td className={`text-center font-bold ${td}`}>{c.grade}</td>
                             <td
                               className={`text-center font-bold py-0.5 px-0.5 align-middle ${
@@ -231,6 +234,34 @@ const TranscriptCanvas = ({ data, compact = false }: Props) => {
                             </td>
                           </tr>
                         ))}
+                        <tr className="border-b border-inherit">
+                          <td colSpan={2} className={td} />
+                          <td className={`text-center font-bold ${td}`}>
+                            {g.courses.reduce((sum, c) => sum + (Number(c.credits) || 0), 0) || '—'}
+                          </td>
+                          <td colSpan={3} className={td} />
+                          <td
+                            className={`text-center font-bold py-0.5 px-0.5 align-middle ${
+                              compact ? 'text-[3.5px]' : 'text-[6.5px]'
+                            }`}
+                          >
+                            {g.courses.reduce((sum, c) => sum + (Number(c.qualityPoints) || 0), 0) || '—'}
+                          </td>
+                        </tr>
+                        <tr>
+                          <td colSpan={3} className={td} />
+                          <td colSpan={2} className={`font-bold ${td}`}>
+                            GPA
+                          </td>
+                          <td
+                            className={`text-center font-bold py-0.5 px-0.5 align-middle ${
+                              compact ? 'text-[3.5px]' : 'text-[6.5px]'
+                            }`}
+                          >
+                            3.10
+                          </td>
+                          <td className={td} />
+                        </tr>
                       </tbody>
                     </table>
                   </div>
