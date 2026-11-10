@@ -292,6 +292,8 @@ function TranscriptPageWatermark({
 }) {
   const src = String(url || '').trim()
   if (!src || !(opacity > 0)) return null
+  // Size from page WIDTH only. Equal width/height % on A4 stretches the mark
+  // (height % resolves against the taller page) and makes the logo look tilted.
   const size = `${Math.min(65, Math.max(25, scalePercent))}%`
   return (
     <div
@@ -301,13 +303,15 @@ function TranscriptPageWatermark({
       <img
         src={src}
         alt=""
-        className="object-contain select-none"
+        className="select-none"
         style={{
           opacity,
           width: size,
-          height: size,
           maxWidth: size,
-          maxHeight: size,
+          height: 'auto',
+          aspectRatio: '1 / 1',
+          objectFit: 'contain',
+          objectPosition: 'center',
           WebkitPrintColorAdjust: 'exact',
           printColorAdjust: 'exact',
         }}
@@ -364,7 +368,7 @@ function formatBrceSemesterHeading(
   if (name.toUpperCase().includes(rangeUpper) || name.toUpperCase().includes(timeRange.toUpperCase())) {
     return name;
   }
-  // Word/BRCE style: "Semester 1: July : December 2025"
+  // Word/BRCE style: "Semester 1: July – December 2025"
   return `${name}: ${timeRange}`;
 }
 
@@ -1343,7 +1347,7 @@ const TranscriptView = ({ studentId, onClose, initialClassId }: any) => {
                     >
                         <span
                           data-transcript-title-label
-                          className={`${programTitleClass} font-black uppercase`}
+                          className={`${programTitleClass} uppercase`}
                           style={{
                             display: 'block',
                             width: '100%',
@@ -1354,6 +1358,10 @@ const TranscriptView = ({ studentId, onClose, initialClassId }: any) => {
                             overflowWrap: 'anywhere',
                             wordBreak: 'break-word',
                             color: 'inherit',
+                            // Word/BRCE registration title — Times, not UI sans
+                            fontFamily: BRCE_TRANSCRIPT_FONT,
+                            fontWeight: 700,
+                            letterSpacing: '0.02em',
                           }}
                         >
                           {programName}
@@ -1442,17 +1450,14 @@ const TranscriptView = ({ studentId, onClose, initialClassId }: any) => {
                             </div>
                             <div
                               data-transcript-stat-value
-                              className={`${showNarrative ? 'text-sm' : 'text-sm'} font-bold leading-none`}
+                              className="text-sm font-bold leading-none"
                             >
                                 {isBrceTranscript ? (
                                   <span className="text-black leading-snug">
-                                    {stats.awardName || '—'}
+                                    {stats.awardName && stats.failed === 0 ? `✓ ${stats.awardName}` : (stats.awardName || '—')}
                                   </span>
                                 ) : stats.failed === 0 && stats.passed > 0 ? (
-                                    <span className="text-black inline-flex items-center gap-1 leading-none">
-                                      <span aria-hidden className="text-base leading-none">✓</span>
-                                      Good Standing
-                                    </span>
+                                    <span className="text-black leading-none">✓ Good Standing</span>
                                 ) : (
                                     <span className="text-black leading-none">Active</span>
                                 )}

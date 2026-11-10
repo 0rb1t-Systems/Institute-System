@@ -32,7 +32,7 @@ const TranscriptCanvas = ({ data, compact = false }: Props) => {
               credits: 4,
               gradePoint: '4.0',
               qualityPoints: '16',
-              semester: 'Semester 1: July : December 2025',
+              semester: 'Semester 1: July – December 2025',
             },
             {
               code: 'ARS002',
@@ -42,7 +42,7 @@ const TranscriptCanvas = ({ data, compact = false }: Props) => {
               credits: 3,
               gradePoint: '4.0',
               qualityPoints: '12',
-              semester: 'Semester 1: July : December 2025',
+              semester: 'Semester 1: July – December 2025',
             },
             {
               code: 'BRP001',
@@ -52,7 +52,7 @@ const TranscriptCanvas = ({ data, compact = false }: Props) => {
               credits: 4,
               gradePoint: '4.0',
               qualityPoints: '16',
-              semester: 'Semester 2: January : June 2026',
+              semester: 'Semester 2: January – June 2026',
             },
           ]
         : [

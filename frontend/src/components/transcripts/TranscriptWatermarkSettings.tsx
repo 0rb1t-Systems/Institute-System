@@ -235,13 +235,15 @@ const TranscriptWatermarkSettings = () => {
                 <img
                   src={previewSrc}
                   alt=""
-                  className="absolute inset-0 m-auto object-contain pointer-events-none"
+                  className="absolute inset-0 m-auto pointer-events-none"
                   style={{
                     opacity: opacity / 100,
                     width: `${scale}%`,
-                    height: `${scale}%`,
                     maxWidth: `${scale}%`,
-                    maxHeight: `${scale}%`,
+                    height: 'auto',
+                    aspectRatio: '1 / 1',
+                    objectFit: 'contain',
+                    objectPosition: 'center',
                   }}
                 />
               ) : null}

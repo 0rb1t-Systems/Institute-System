@@ -173,8 +173,8 @@ export const formatMonthName = (dateString?: string | Date | null) => {
 
 /**
  * Class / semester window for BRCE transcript headers
- * (e.g. "July : December 2025" or "January 2026 : June 2026").
- * Uses a colon between months (Word/BRCE registration style).
+ * (e.g. "July – December 2025" or "January 2026 – June 2026").
+ * Uses an en dash between months (Word style: "Semester 1: July – December 2025").
  */
 export const formatClassTimeRange = (
   start?: string | Date | null,
@@ -193,8 +193,8 @@ export const formatClassTimeRange = (
   const em = formatMonthName(endDate);
   const sy = startDate!.getFullYear();
   const ey = endDate!.getFullYear();
-  if (sy === ey) return `${sm} : ${em} ${sy}`;
-  return `${sm} ${sy} : ${em} ${ey}`;
+  if (sy === ey) return `${sm} – ${em} ${sy}`;
+  return `${sm} ${sy} – ${em} ${ey}`;
 };
 
 /** Date + time for assignment deadlines (local). */

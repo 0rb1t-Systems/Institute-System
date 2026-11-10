@@ -157,9 +157,13 @@ function rasterizeTranscriptTitleBars(root: HTMLElement): () => void {
     const labelCs = label ? window.getComputedStyle(label) : barCs
     const bg = barCs.backgroundColor || '#000000'
     const color = labelCs.color || barCs.color || '#ffffff'
-    const fontWeight = labelCs.fontWeight || '800'
-    const fontFamily = labelCs.fontFamily || 'Arial, sans-serif'
-    const letterSpacing = labelCs.letterSpacing || '0px'
+    const fontWeight = labelCs.fontWeight || '700'
+    // Prefer the on-page face (Times for BRCE); avoid falling back to Arial.
+    const fontFamily =
+      labelCs.fontFamily ||
+      barCs.fontFamily ||
+      "'Times New Roman', Times, Georgia, serif"
+    const letterSpacing = labelCs.letterSpacing || '0.02em'
     const padX = Math.max(
       16,
       Math.round(Number.parseFloat(barCs.paddingLeft) || 0),
@@ -270,17 +274,21 @@ async function buildDomPagesPdf(pages: HTMLElement[]): Promise<InstanceType<type
           cloned.querySelectorAll('[data-transcript-stat-box]').forEach((el) => {
             const box = el as HTMLElement
             box.style.overflow = 'visible'
-            box.style.paddingTop = '10px'
-            box.style.paddingBottom = '10px'
+            box.style.display = 'flex'
+            box.style.flexDirection = 'column'
+            box.style.justifyContent = 'center'
+            box.style.paddingTop = '8px'
+            box.style.paddingBottom = '8px'
             box.style.transform = 'none'
           })
           cloned.querySelectorAll('[data-transcript-stat-value]').forEach((el) => {
             const val = el as HTMLElement
-            val.style.lineHeight = '1'
+            val.style.lineHeight = '1.2'
             val.style.margin = '0'
             val.style.padding = '0'
             val.style.transform = 'none'
             val.style.position = 'static'
+            val.style.display = 'block'
           })
         },
       })

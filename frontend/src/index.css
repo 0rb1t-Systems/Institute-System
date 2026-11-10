@@ -1042,6 +1042,13 @@ html[data-platform-theme='dark'] {
   --ds-primary-muted: #1A4034;
   --ds-accent: #34B87A;
   --ds-accent-soft: #1A4034;
+  /* Finance charts — slightly deeper than neon accent so they match overview cards */
+  --ds-chart-1: #2A9A68;
+  --ds-chart-2: #1F7A55;
+  --ds-chart-3: #3F7A62;
+  --ds-chart-4: #5B6B61;
+  --ds-chart-5: #6B8578;
+  --ds-chart-6: #8A9A91;
   --ds-bg: #0A1210;
   --ds-surface: #121C18;
   --ds-surface-muted: #18241F;
@@ -1107,6 +1114,13 @@ html[data-platform-theme='light'] {
   --ds-primary-muted: #D1FAE5;
   --ds-accent: #1F8A5B;
   --ds-accent-soft: #D1FAE5;
+  /* Finance charts — same family as overview accent / progress bar */
+  --ds-chart-1: #1F8A5B;
+  --ds-chart-2: #187A50;
+  --ds-chart-3: #3FA876;
+  --ds-chart-4: #5B6B61;
+  --ds-chart-5: #6B8578;
+  --ds-chart-6: #8A978E;
   --ds-bg: #F2F5F3;
   --ds-surface: #FFFFFF;
   --ds-surface-muted: #F7FAF8;

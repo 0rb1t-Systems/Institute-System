@@ -32,7 +32,10 @@ import {
 } from '@/lib/examPass'
 import { getInstitutionGradeScale } from '@/lib/gradingScale'
 
-const COLORS = ['#1F8A5B', '#C2410C']
+/** Same multi-color palette as Overview / Finance charts. */
+const CHART_PALETTE = ['#2563EB', '#1F8A5B', '#F59E0B', '#8B5CF6', '#06B6D4', '#EC4899'] as const
+/** Pass / fail keep semantic green + amber-orange. */
+const PASS_FAIL_COLORS = ['#1F8A5B', '#F59E0B'] as const
 
 type ReportRow = {
   id: string
@@ -186,6 +189,7 @@ const ExamReport = () => {
       }))
       .sort((a, b) => b.average - a.average)
       .slice(0, 10)
+      .map((row, index) => ({ ...row, fill: CHART_PALETTE[index % CHART_PALETTE.length] }))
   }, [filteredRows])
 
   const avgChartHeight = Math.max(300, avgScoreData.length * 38 + 56)
@@ -311,7 +315,7 @@ const ExamReport = () => {
                     label={({ name, value }) => `${name}: ${value}`}
                   >
                     {passFailData.map((_, index) => (
-                      <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                      <Cell key={`cell-${index}`} fill={PASS_FAIL_COLORS[index % PASS_FAIL_COLORS.length]} />
                     ))}
                   </Pie>
                   <Tooltip />
@@ -339,14 +343,14 @@ const ExamReport = () => {
                   margin={{ top: 4, right: 12, left: 4, bottom: 4 }}
                   barCategoryGap="28%"
                 >
-                  <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="#DDE5DF" />
-                  <XAxis type="number" domain={[0, 100]} tick={{ fontSize: 11, fill: '#8A978E' }} />
+                  <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="var(--ds-border,#DDE5DF)" />
+                  <XAxis type="number" domain={[0, 100]} tick={{ fontSize: 11, fill: 'var(--ds-text-tertiary,#8A978E)' }} />
                   <YAxis
                     dataKey="name"
                     type="category"
                     width={132}
                     interval={0}
-                    tick={{ fontSize: 11, fill: '#1F8A5B', dy: 2 }}
+                    tick={{ fontSize: 11, fill: 'var(--ds-text-secondary,#5B6B61)', dy: 2 }}
                     axisLine={false}
                     tickLine={false}
                   />
@@ -356,7 +360,11 @@ const ExamReport = () => {
                       payload?.[0]?.payload?.fullName || payload?.[0]?.payload?.name || ''
                     }
                   />
-                  <Bar dataKey="average" fill="#1F8A5B" radius={[0, 4, 4, 0]} barSize={16} />
+                  <Bar dataKey="average" radius={[0, 4, 4, 0]} barSize={16}>
+                    {avgScoreData.map((entry) => (
+                      <Cell key={entry.fullName} fill={entry.fill} />
+                    ))}
+                  </Bar>
                 </BarChart>
               </ResponsiveContainer>
             )}

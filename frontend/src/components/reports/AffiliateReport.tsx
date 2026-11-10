@@ -410,9 +410,9 @@ const AffiliateReport = () => {
                   <TableHead className={`text-right ${thClass}`}>Pending</TableHead>
                   <TableHead className={`text-right ${thClass}`}>Payments</TableHead>
                   <TableHead className={`text-right ${thClass}`}>Commission</TableHead>
-                  <TableHead className={thClass}>Referral Link</TableHead>
+                  <TableHead className={`w-12 text-center ${thClass}`}>Link</TableHead>
                   {canManagePrograms ? (
-                    <TableHead className={`text-right ${thClass}`}>Programs</TableHead>
+                    <TableHead className={`w-[1%] whitespace-nowrap text-right ${thClass}`}>Programs</TableHead>
                   ) : null}
                 </TableRow>
               </TableHeader>
@@ -423,40 +423,37 @@ const AffiliateReport = () => {
                       key={a.id}
                       className="border-[var(--ds-border,#DDE5DF)] hover:bg-[var(--ds-surface-muted,#F7FAF8)]"
                     >
-                      <TableCell className="font-medium text-[var(--ds-text-primary,#122018)]">
+                      <TableCell className="max-w-[140px] truncate font-medium text-[var(--ds-text-primary,#122018)]" title={a.name}>
                         {a.name}
                       </TableCell>
-                      <TableCell className="text-sm text-[var(--ds-text-secondary,#5B6B61)]">
+                      <TableCell className="max-w-[180px] truncate text-sm text-[var(--ds-text-secondary,#5B6B61)]" title={a.email || undefined}>
                         {a.email || '—'}
                       </TableCell>
-                      <TableCell className="text-right">{a.studentsCount}</TableCell>
-                      <TableCell className="text-right text-[var(--ds-warning,#C2410C)]">
+                      <TableCell className="whitespace-nowrap text-right">{a.studentsCount}</TableCell>
+                      <TableCell className="whitespace-nowrap text-right text-[var(--ds-warning,#C2410C)]">
                         {a.pendingCount || 0}
                       </TableCell>
-                      <TableCell className="text-right text-[var(--ds-accent,#1F8A5B)]">
+                      <TableCell className="whitespace-nowrap text-right text-[var(--ds-accent,#1F8A5B)]">
                         {formatCurrency(a.paymentTotal)}
                       </TableCell>
-                      <TableCell className="text-right text-[var(--ds-warning,#C2410C)]">
+                      <TableCell className="whitespace-nowrap text-right text-[var(--ds-warning,#C2410C)]">
                         {formatCurrency(a.earnings)}
                       </TableCell>
-                      <TableCell>
-                        <div className="flex max-w-[240px] items-center gap-2">
-                          <span className="truncate font-mono text-xs text-violet-700">
-                            {a.link}
-                          </span>
-                          <Button
-                            type="button"
-                            variant="ghost"
-                            size="icon"
-                            className="h-7 w-7 shrink-0"
-                            onClick={() => copyLink(a.link)}
-                          >
-                            <Copy className="h-3.5 w-3.5" />
-                          </Button>
-                        </div>
+                      <TableCell className="w-12 text-center">
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon"
+                          className="mx-auto h-8 w-8"
+                          title="Copy referral link"
+                          aria-label="Copy referral link"
+                          onClick={() => copyLink(a.link)}
+                        >
+                          <Copy className="h-4 w-4" />
+                        </Button>
                       </TableCell>
                       {canManagePrograms ? (
-                        <TableCell className="text-right">
+                        <TableCell className="whitespace-nowrap text-right">
                           <Button
                             type="button"
                             variant="outline"

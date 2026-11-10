@@ -12,19 +12,30 @@ import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContaine
 import jsPDF from 'jspdf';
 import 'jspdf-autotable';
 
-const COLORS = ['#1F8A5B', '#3FA876', '#6BBF94', '#A7D9C0', '#5B6B61', '#8A978E'];
+/** Same multi-color palette as Overview (Student Distribution / Class Registration). */
+const CHART_PALETTE = ['#2563EB', '#1F8A5B', '#F59E0B', '#8B5CF6', '#06B6D4', '#EC4899'] as const;
 
 const cardShell =
   'overflow-hidden rounded-[var(--ds-radius-xl,16px)] border border-[var(--ds-border,#DDE5DF)] bg-[var(--ds-surface,#fff)] shadow-[var(--ds-shadow-card,0_1px_2px_#1F8A5B14,0_8px_24px_#1F8A5B0A)] transition-shadow hover:border-[var(--ds-border-strong,#C5D0C8)] hover:shadow-[0_8px_28px_#1F8A5B18]';
 
-const iconBadge =
-  'flex h-11 w-11 shrink-0 items-center justify-center rounded-[14px] border border-[var(--ds-accent,#1F8A5B)]/15 bg-[var(--ds-primary-soft,#ECFDF5)] text-[var(--ds-accent,#1F8A5B)] shadow-[inset_0_1px_0_#ffffff80]';
+const iconBadgeBase =
+  'flex h-11 w-11 shrink-0 items-center justify-center rounded-[14px] border shadow-[inset_0_1px_0_#ffffff20]';
+
+/** Per-card icon colors (same family as Overview / chart palette). */
+const ICON_TONES = {
+  collected: { color: '#1F8A5B', border: 'rgba(31,138,91,0.28)', bg: 'rgba(31,138,91,0.14)' },
+  unpaid: { color: '#F59E0B', border: 'rgba(245,158,11,0.28)', bg: 'rgba(245,158,11,0.14)' },
+  rate: { color: '#2563EB', border: 'rgba(37,99,235,0.28)', bg: 'rgba(37,99,235,0.14)' },
+  trend: { color: '#8B5CF6', border: 'rgba(139,92,246,0.28)', bg: 'rgba(139,92,246,0.14)' },
+  methods: { color: '#06B6D4', border: 'rgba(6,182,212,0.28)', bg: 'rgba(6,182,212,0.14)' },
+} as const;
 
 const chartTooltipStyle = {
   backgroundColor: 'var(--ds-surface,#fff)',
   border: '1px solid var(--ds-border,#DDE5DF)',
   borderRadius: 12,
-  boxShadow: '0 8px 24px #1F8A5B14',
+  boxShadow: '0 8px 24px color-mix(in srgb, #2563EB 12%, transparent)',
+  color: 'var(--ds-text-primary, #122018)',
 };
 
 /** Matches FinancePage payment kinds (no DB type column — inferred carefully). */
@@ -246,7 +257,11 @@ const FinanceReport = () => {
                 })
                 .reduce((sum: any, p: any) => sum + Number(p.amount || 0), 0);
             
-            result.push({ name: mLabel, revenue: total });
+            result.push({
+                name: mLabel,
+                revenue: total,
+                fill: CHART_PALETTE[(5 - i) % CHART_PALETTE.length],
+            });
         }
         return result;
     }, [payments, classFilter]);
@@ -257,7 +272,11 @@ const FinanceReport = () => {
             const key = p.method || 'other';
             counts[key] = (counts[key] || 0) + Number(p.amount || 0);
         });
-        return Object.keys(counts).map(k => ({ name: k, value: counts[k] }));
+        return Object.keys(counts).map((k, index) => ({
+            name: k,
+            value: counts[k],
+            fill: CHART_PALETTE[index % CHART_PALETTE.length],
+        }));
     }, [collectedPayments]);
 
     const paidEnrollmentCount = useMemo(() => {
@@ -424,7 +443,11 @@ const FinanceReport = () => {
                         <CardTitle className="text-[12px] font-semibold leading-none text-[var(--ds-text-secondary,#5B6B61)]">
                             Collected ({monthLabel})
                         </CardTitle>
-                        <div className={iconBadge} aria-hidden>
+                        <div
+                          className={iconBadgeBase}
+                          style={{ color: ICON_TONES.collected.color, borderColor: ICON_TONES.collected.border, background: ICON_TONES.collected.bg }}
+                          aria-hidden
+                        >
                             <Wallet className="h-[22px] w-[22px]" strokeWidth={1.6} />
                         </div>
                     </CardHeader>
@@ -457,7 +480,11 @@ const FinanceReport = () => {
                         <CardTitle className="text-[12px] font-semibold leading-none text-[var(--ds-text-secondary,#5B6B61)]">
                             Unpaid Amount
                         </CardTitle>
-                        <div className={iconBadge} aria-hidden>
+                        <div
+                          className={iconBadgeBase}
+                          style={{ color: ICON_TONES.unpaid.color, borderColor: ICON_TONES.unpaid.border, background: ICON_TONES.unpaid.bg }}
+                          aria-hidden
+                        >
                             <AlertCircle className="h-[22px] w-[22px]" strokeWidth={1.6} />
                         </div>
                     </CardHeader>
@@ -481,7 +508,11 @@ const FinanceReport = () => {
                         <CardTitle className="text-[12px] font-semibold leading-none text-[var(--ds-text-secondary,#5B6B61)]">
                             Payment Rate
                         </CardTitle>
-                        <div className={iconBadge} aria-hidden>
+                        <div
+                          className={iconBadgeBase}
+                          style={{ color: ICON_TONES.rate.color, borderColor: ICON_TONES.rate.border, background: ICON_TONES.rate.bg }}
+                          aria-hidden
+                        >
                             <Gauge className="h-[22px] w-[22px]" strokeWidth={1.6} />
                         </div>
                     </CardHeader>
@@ -495,7 +526,7 @@ const FinanceReport = () => {
                         <div className="mt-auto space-y-2.5 border-t border-[var(--ds-border,#DDE5DF)] pt-3">
                             <div className="h-2 overflow-hidden rounded-full bg-[var(--ds-surface-muted,#F7FAF8)]">
                                 <div
-                                    className="h-full rounded-full bg-[var(--ds-accent,#1F8A5B)] transition-all duration-500"
+                                    className="h-full rounded-full bg-[#2563EB] transition-all duration-500"
                                     style={{ width: `${Math.min(100, Math.max(0, paymentRate))}%` }}
                                 />
                             </div>
@@ -516,7 +547,11 @@ const FinanceReport = () => {
                             </CardTitle>
                             <p className="text-[12px] text-[var(--ds-text-tertiary,#8A978E)]">Last 6 months</p>
                         </div>
-                        <div className={iconBadge} aria-hidden>
+                        <div
+                          className={iconBadgeBase}
+                          style={{ color: ICON_TONES.trend.color, borderColor: ICON_TONES.trend.border, background: ICON_TONES.trend.bg }}
+                          aria-hidden
+                        >
                             <TrendingUp className="h-[22px] w-[22px]" strokeWidth={1.6} />
                         </div>
                     </CardHeader>
@@ -529,9 +564,13 @@ const FinanceReport = () => {
                                 <Tooltip
                                     formatter={(value: any) => formatCurrency(value)}
                                     contentStyle={chartTooltipStyle}
-                                    cursor={{ fill: 'var(--ds-primary-soft,#ECFDF5)', opacity: 0.55 }}
+                                    cursor={{ fill: 'color-mix(in srgb, #2563EB 10%, transparent)' }}
                                 />
-                                <Bar dataKey="revenue" fill="var(--ds-accent,#1F8A5B)" radius={[6, 6, 0, 0]} maxBarSize={48} />
+                                <Bar dataKey="revenue" radius={[6, 6, 0, 0]} maxBarSize={48}>
+                                    {trendData.map((entry) => (
+                                        <Cell key={entry.name} fill={entry.fill} />
+                                    ))}
+                                </Bar>
                             </BarChart>
                         </ResponsiveContainer>
                     </CardContent>
@@ -544,7 +583,11 @@ const FinanceReport = () => {
                             </CardTitle>
                             <p className="text-[12px] text-[var(--ds-text-tertiary,#8A978E)]">How students paid</p>
                         </div>
-                        <div className={iconBadge} aria-hidden>
+                        <div
+                          className={iconBadgeBase}
+                          style={{ color: ICON_TONES.methods.color, borderColor: ICON_TONES.methods.border, background: ICON_TONES.methods.bg }}
+                          aria-hidden
+                        >
                             <CreditCard className="h-[22px] w-[22px]" strokeWidth={1.6} />
                         </div>
                     </CardHeader>
@@ -559,11 +602,30 @@ const FinanceReport = () => {
                                     outerRadius={88}
                                     paddingAngle={3}
                                     labelLine={false}
-                                    label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
+                                    label={(props: any) => {
+                                        const { cx, cy, midAngle, outerRadius, name, percent } = props;
+                                        const RADIAN = Math.PI / 180;
+                                        const radius = outerRadius + 16;
+                                        const x = cx + radius * Math.cos(-midAngle * RADIAN);
+                                        const y = cy + radius * Math.sin(-midAngle * RADIAN);
+                                        return (
+                                            <text
+                                                x={x}
+                                                y={y}
+                                                fill="var(--ds-text-secondary, #9AABA1)"
+                                                textAnchor={x > cx ? 'start' : 'end'}
+                                                dominantBaseline="central"
+                                                fontSize={12}
+                                                fontWeight={600}
+                                            >
+                                                {`${name} ${(Number(percent || 0) * 100).toFixed(0)}%`}
+                                            </text>
+                                        );
+                                    }}
                                     dataKey="value"
                                 >
                                     {methodData.map((entry, index) => (
-                                        <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} stroke="var(--ds-surface,#fff)" strokeWidth={2} />
+                                        <Cell key={`cell-${index}`} fill={entry.fill} stroke="var(--ds-surface,#fff)" strokeWidth={2} />
                                     ))}
                                 </Pie>
                                 <Tooltip
