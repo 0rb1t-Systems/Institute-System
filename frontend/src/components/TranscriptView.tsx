@@ -1717,7 +1717,7 @@ const TranscriptView = ({ studentId, onClose, initialClassId }: any) => {
                                 <span>{Number(stats.totalQualityPoints).toFixed(1)}</span>
                               </div>
                               <div className="flex justify-between gap-3 text-black" style={{ fontFamily: BRCE_TRANSCRIPT_FONT, fontWeight: 900, fontSize: '13px' }}>
-                                <span className="uppercase">GPA:</span>
+                                <span className="uppercase">CGPA:</span>
                                 <span>{stats.gpa}</span>
                               </div>
                             </div>
